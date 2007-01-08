@@ -9,7 +9,10 @@ from mercurial import hg, ui, patch
 import textwrap
 import re
 
-xml = gtk.glade.XML("hgview.glade")
+_mod = sys.modules["__main__"]
+_basedir = os.path.dirname(_mod.__file__)
+
+xml = gtk.glade.XML(os.path.join( _basedir, "hgview.glade") )
 
 dir_ = None
 if len(sys.argv)>1:
@@ -29,8 +32,9 @@ M_AUTHOR = 3
 M_DATE = 4
 M_FULLDESC = 5
 M_FILELIST = 6
-class HgViewApp(object):
 
+
+class HgViewApp(object):
     def __init__(self, repodir, filerex = None ):
         self.dir = repodir
         self.ui = ui.ui()
@@ -193,7 +197,7 @@ class HgViewApp(object):
             mark = text_buffer.create_mark( "file%d" % idx, pos )
 
             out = StringIO()
-            patch.diff( self.repo, node1=node, node2=parent, files=[f], fp=out )
+            patch.diff( self.repo, node1=parent, node2=node, files=[f], fp=out )
             for l in out.getvalue().splitlines():
                 if l.startswith("+"):
                     tag="green"
