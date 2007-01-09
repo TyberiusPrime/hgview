@@ -10,6 +10,7 @@ from mercurial import hg, ui, patch
 import textwrap
 import re
 from buildtree import RevGraph
+from graphrenderer import RevGraphRenderer
 
 _mod = sys.modules["__main__"]
 _basedir = os.path.dirname(_mod.__file__)
@@ -34,6 +35,8 @@ M_AUTHOR = 3
 M_DATE = 4
 M_FULLDESC = 5
 M_FILELIST = 6
+M_NODEX = 7
+M_EDGES = 8
 
 def make_texttag( name, **kwargs ):
     tag = gtk.TextTag(name)
@@ -60,6 +63,8 @@ class HgViewApp(object):
                                         gobject.TYPE_STRING,   # date
                                         gobject.TYPE_STRING,   # full desc
                                         gobject.TYPE_PYOBJECT, # file list
+                                        gobject.TYPE_PYOBJECT,      # x for the node
+                                        gobject.TYPE_PYOBJECT, # lines for nodes
                                         )
 
         self.filelist = gtk.ListStore( gobject.TYPE_STRING, # filename
@@ -104,8 +109,14 @@ class HgViewApp(object):
 
         rend = gtk.CellRendererText()
         col = gtk.TreeViewColumn("ID", rend, text=0 )
-        col.set_resizable(True)
+        #col.set_resizable(True)
         tree.append_column( col )
+
+        rend = RevGraphRenderer()
+        col = gtk.TreeViewColumn("T", rend, nodex=M_NODEX, edges=M_EDGES )
+        #col.set_resizable(True)
+        tree.append_column( col )
+        
 
         rend = gtk.CellRendererText()
         col = gtk.TreeViewColumn("Log", rend, text=2 )
@@ -136,7 +147,9 @@ class HgViewApp(object):
         tree.set_model( self.filelist )
 
     def refresh_tree(self):
-        self.graph = RevGraph( self.repo )
+        print "Computing graph..."
+        graph = RevGraph( self.repo )
+        print "done"
         tree = xml.get_widget( "treeview_revisions" )
         tree.freeze_child_notify()
         self.revisions.clear()
@@ -144,12 +157,12 @@ class HgViewApp(object):
         add_rev = self.revisions.append
         cnt = changelog.count()
         bar = cnt/10 or 1
-        for i in xrange( cnt-1, -1, -1 ):
-            node = changelog.node( i )
+        for i in xrange( len(graph.rowid) ):
+            node = graph.rowid[i]
             id,author,date,filelist,log,unk = changelog.read( node )
             lines = log.strip().splitlines()
             if lines:
-                text = "\n".join(textwrap.wrap( lines[0].strip() ))
+                text = lines[0].strip()
             else:
                 text = "*** no log"
             date_ = time.strftime( "%F %H:%M", time.gmtime( date[0] ) )
@@ -160,11 +173,15 @@ class HgViewApp(object):
                         break
                 else:
                     continue
-            add_rev( (i, node, text, author, date_, log, filelist ) )
+            lines = []
+            for x1,y1,x2,y2 in graph.rowlines[i]:
+                lines.append( (x1,y1-i,x2,y2-i) )
+            add_rev( (i, node, text, author, date_, log, filelist, graph.x[node], lines ) )
             if (cnt-i) % bar == 0:
                 print ".",
                 sys.stdout.flush()
         tree.thaw_child_notify()
+        tree.set_fixed_height_mode( True )
 
 
     def get_revlog_header( self, node ):
