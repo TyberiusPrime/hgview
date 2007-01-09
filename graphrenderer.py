@@ -10,14 +10,19 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
         'edges' : ( gobject.TYPE_PYOBJECT,
                         'edges', 'list of edges',
                         gobject.PARAM_READWRITE ),
+        'text' : ( gobject.TYPE_STRING,
+                   'edges', 'list of edges', "",
+                   gobject.PARAM_READWRITE ),
         }
 
 
     def __init__(self):
         self.__gobject_init__()
-        self.w = 8
+        self.w = 20
+        self.r = 10
         self.nodex = 0
         self.edges = []
+        self.pen = None
         
     def do_get_property( self, propname ):
         return getattr( self, propname.name )
@@ -31,19 +36,31 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
         h+=3 # this is probably padding
         y-=1
         W = self.w
+        R = self.r
         X = self.nodex
         fgc = widget.style.fg_gc[gtk.STATE_NORMAL]
+        bgc = widget.style.bg_gc[gtk.STATE_NORMAL]
         x_ = x + W*X
         y_ = y + (h-W)/2
-        window.draw_arc( fgc, False, x_, y_, W, W, 0, 360*64 )
 
         #xc = x + W/2
         #yc = y + h/2
+        if not self.pen:
+            pen = gtk.gdk.GC( window )
+            pen.copy( fgc )
+            self.pen = pen
+        else:
+            pen = self.pen
+        pen.set_clip_rectangle( (x,y-1,w,h+2) )
         for x1,y1,x2,y2 in self.edges:
-            window.draw_line( fgc,
+            window.draw_line( pen,
                               x + (2*x1+1)*W/2, y+(2*y1+1)*h/2,
                               x + (2*x2+1)*W/2, y+(2*y2+1)*h/2 )
 
+
+        window.draw_arc( bgc, True, x_ + (W-R)/2, y_+(W-R)/2, R, R, 0, 360*64 )
+        window.draw_arc( fgc, False, x_ + (W-R)/2, y_+(W-R)/2, R, R, 0, 360*64 )
+        
 
     def on_get_size(self, widget, cell_area):
         return 0, 0, (self.nodex+1)*self.w, self.w
