@@ -1,13 +1,15 @@
 #!/usr/bin/env python
 # gui.py - gui classes for mercurial
 #
+# Copyright (C) 2007 Logilab. All rights reserved.
 # Copyright (C) 2005 Tristan Wibberley <tristan at wibberley.com>. All rights reserved.
 # Copyright (C) 2005 Paul Mackerras.  All rights reserved.
 #
 # This software may be used and distributed according to the terms
 # of the GNU General Public License, incorporated herein by reference.
 
-# This was translated from tcl/tk (gitk) to python
+# This was translated by Tristan from tcl/tk (gitk) to python
+# and then reworked and pruned
 
 from mercurial import hg, ui
 from mercurial.node import hex as binhex
@@ -21,57 +23,94 @@ def parents_of(repo, node):
 
 class RevGraph(object):
     
-    def __init__(self, repo, nodes):
+    def __init__(self, repo, nodes, allnodes):
         self.repo = repo
 
         start = repo.heads()
         ncleft = {} # number of children left to do for a given node
         self.x = {} # for a given node
-        self.rowid = {} # mapping of row to node
         self.idrow = {} # mapping of node to row
-        self.rowlines = {} # mapping of row to list of lines
-        self.rownlines = {} # mapping of row to number of lines
+        self.rowlines = [ set() for i in xrange(len(allnodes)) ] # mapping of row to list of lines
+        self.rownlines = [None]*len(allnodes) # mapping of row to number of lines
 
         # calculate initial ncleft for each node
         ncleft = dict( izip( nodes, repeat(0) ) )
         ncleft[nullid] = 0
+
+        _parents = {}
+        for p in allnodes:
+            _parents[p] = parents_of(repo,p)
+        if len(nodes)==len(allnodes):
+            todo = start[:] # None is a blank column
+            parents = _parents
+        else:
+            children = {}
+            parents = {}
+            todo = allnodes
+            _nodes = set(nodes)
+            while todo:
+                print "*"
+                next = set()
+                for node in todo:
+                    par = _parents[node]
+                    npar = set()
+                    for p in par:
+                        if p not in _nodes:
+                            npar.update( _parents[p] )
+                            next.add( node )
+                        else:
+                            npar.add(p)
+                    for p in set(npar):
+                        for k in _parents[p]:
+                            if k in npar:
+                                npar.remove(p)
+                                break
+                    _parents[node] = npar
+                todo = next
+            for n in nodes:
+                par = _parents[n]
+                parents[n] = list(par)
+                for p in par:
+                    children[p] = n
+            todo = []
+            for p in nodes:
+                if p not in children:
+                    todo.append( p )
+            del children
+
         for node in nodes:
-            ps = repo.changelog.parents(node)
+            ps = parents[node]
             for p in ps:
                 ncleft[p] += 1
 
-        todo = start[:] # None is a blank column
         level = len(todo) - 1 # column of the node being worked with
         nullentry = -1 # next column to be eradicate when it is determined that one should be
         rowno = -1
-        numcommits = 0
         linestarty = {}
         datemode = False
 
-        while(todo != []):
-
-            numcommits += 1
+        # each node is treated only once
+        while todo:
             rowno += 1
-
             self.rownlines[rowno] = len(todo)
             id = todo[level]
-            self.rowid[rowno] = id
             self.idrow[id] = rowno
-            actualparents = []
+            actualparents = parents[id]
 
-            for p in parents_of(repo,id):
+            for p in actualparents:
                 ncleft[p] -= 1
-                actualparents.append(p)
-            
+
             self.x[id] = level
 
+            level_linestart = linestarty.get( level, rowno )
             # linestarty is top of line at each level
-            if level in linestarty and linestarty[level] < rowno:
+            # and thus should always be <=rowno
+            assert level_linestart<=rowno
+            if level_linestart < rowno:
                 # add line from (x, linestarty[level]) to (x, rowno)
-                for r in xrange(min(linestarty[level],rowno),max(linestarty[level],rowno)+1):
-                    if r not in self.rowlines:
-                        self.rowlines[r] = set()
-                    self.rowlines[r].add( (level,linestarty[level],level,rowno) )
+                # XXX: shouldn't we have added the ones <rowno already ??
+                for r in xrange(level_linestart, rowno+1 ):
+                    self.rowlines[r].add( (level,level_linestart,level,rowno) )
             linestarty[level] = rowno # starting a new line
 
             # TODO tags
@@ -92,7 +131,8 @@ class RevGraph(object):
             oldstarty = {}
             
             for i in xrange(self.rownlines[rowno]):
-                if todo[i] == None: continue
+                if todo[i] is None:
+                    continue
                 if i in linestarty:
                     oldstarty[i] = linestarty[i]
                     del linestarty[i]
@@ -125,18 +165,18 @@ class RevGraph(object):
 
             for k in xrange(todol-1,-1,-1):
                 p = todo[k]
-                if p == None:
+                if p is None:
                     continue
 
                 if ncleft[p] == 0:
                     if datemode:
-                        if (latest == None) or (cdate[p] > latest):
+                        if (latest is None) or (cdate[p] > latest):
                             level = k
                             latest = cdate[p]
                     else:
                         level = k
                         break
-                        
+
             if level < 0:
                 if todo != []:
                     print "ERROR: none of the pending commits can be done yet"
@@ -186,82 +226,12 @@ class RevGraph(object):
                 # add line from (x1, y1) to (x2, y2)
                 (x1,y1) = coords[0]
                 for (x2,y2) in coords[1:]:
-                    
                     for r in xrange(min(y1,y2),max(y1,y2)+1):
-                        if r not in self.rowlines:
-                            self.rowlines[r] = set()
                         self.rowlines[r].add((x1,y1,x2,y2))
                     (x1,y1) = (x2,y2)
 
                 if j not in linestarty:
                     linestarty[j] = rowno + 1
-
-
-
-    def show(self):
-        pass
-
-    def paint(self, area, event):
-        
-        size = 5
-        
-        ctx = area.window.cairo_create()
-	(x,y,w,h) = event.area
-	ctx.rectangle(x,y,w,h)
-	ctx.clip()
-
-        (w,h) = area.window.get_size()
-
-        stop = int(self.top)
-        
-        lines = set()
-
-        for srow in xrange(0, h / (size * 4) + 1):
-            row = srow + stop
-
-            if row in self.rowlines:
-                lines.update(self.rowlines[row])
-
-        ctx.set_line_width(size / 5.0)
-
-        for ((x1,y1),(x2,y2)) in lines:
-            x1 = size * 4 * x1 + size * 2
-            x2 = size * 4 * x2 + size * 2
-            y1 = size * 4 * (y1 - stop) + size * 2
-            y2 = size * 4 * (y2 - stop) + size * 2
-            
-            if x1 < 0: x1 = 0
-            if x2 < 0: x2 = 0
-            if y1 < 0: y1 = 0
-            if y2 < 0: y2 = 0
-            if x1 > w: x1 = w
-            if x2 > w: x2 = w
-            if y1 > h: y1 = h
-            if y2 > h: y2 = h
-            
-            ctx.move_to(x1, y1)
-            ctx.line_to(x2, y2)
-            ctx.stroke()
-
-        for srow in xrange(0, h / (size * 4) + 1):
-            row = srow + stop
-
-            if row not in self.rowid:
-                continue
-            id = self.rowid[row]
-            ctx.arc(size * 4 * self.x[id] + size * 2,
-                    size * 4 * srow + size * 2, size, 0, 2*3.1415)
-            ctx.set_source_rgba(1,1,1,1)
-            ctx.fill_preserve()
-            ctx.set_source_rgba(0,0,0,1)
-            ctx.stroke()
-            
-            ctx.move_to(size * 4 * self.rownlines[row] + size * 2,
-                        size * 4 * srow + size * 2)
-            ctx.text_path(self.rowtext[row])
-            ctx.stroke()
-            
-    
 
 if __name__ == '__main__':
     ui_ = ui.ui()

@@ -111,19 +111,14 @@ class HgViewApp(object):
         tree.append_column( col )
 
         rend = RevGraphRenderer()
-        col = gtk.TreeViewColumn("Log")
-        col.pack_start( rend, False )
-        col.set_attributes( rend, nodex=M_NODEX, edges=M_EDGES )
-        rend = gtk.CellRendererText()
-        col.pack_start( rend )
-        col.set_attributes( rend, text=2 )
+        col = gtk.TreeViewColumn("T", rend, nodex=M_NODEX, edges=M_EDGES )
         col.set_resizable(True)
         tree.append_column( col )
 
-##         rend = gtk.CellRendererText()
-##         col = gtk.TreeViewColumn("Log", rend, text=2 )
-##         col.set_resizable(True)
-##         tree.append_column( col )
+        rend = gtk.CellRendererText()
+        col = gtk.TreeViewColumn("Log", rend, text=2 )
+        col.set_resizable(True)
+        tree.append_column( col )
 
         rend = gtk.CellRendererText()
         col = gtk.TreeViewColumn("Author", rend, text=3 )
@@ -156,6 +151,7 @@ class HgViewApp(object):
         cnt = changelog.count()
 
         nodes = []
+        keepnodes = []
         nodeinfo = {}
         bar = cnt/10 or 1
         for i in xrange(cnt):
@@ -184,23 +180,23 @@ class HgViewApp(object):
                     continue
                 filelist = matching + notmatching
             nodeinfo[node] = (i, node, text, author, date_, log, filelist )
+            keepnodes.append( node )
 
         print "Computing graph..."
-        graph = RevGraph( self.repo, nodes )
+        graph = RevGraph( self.repo, keepnodes, nodes )
         print "done"
-        rowselected = set()
-        for n, node in graph.rowid.items():
+        rowselected = [None]*len(nodes)
+        for node, n in graph.idrow.items():
             if node in nodeinfo:
-                rowselected.add( n )
+                rowselected[n] = node
         tree.freeze_child_notify()
-        for n in xrange( len(graph.rowid) ):
-            node = graph.rowid[n]
-            if n not in rowselected:
+        for n, node in enumerate(rowselected):
+            if node is None:
                 continue
             (i, node, text, author, date_, log, filelist ) = nodeinfo[node]
             lines = []
             for x1,y1,x2,y2 in graph.rowlines[n]:
-                if y1 not in rowselected or y2 not in rowselected:
+                if not rowselected[y1] or not rowselected[y2]:
                     continue
                 lines.append( (x1,y1-n,x2,y2-n) )
             add_rev( (i, node, text, author, date_, log, filelist, graph.x[node], lines ) )
