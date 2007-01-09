@@ -78,11 +78,9 @@ class HgViewApp(object):
         self.find_text = None
 
     def on_window_main_delete_event( self, win, evt ):
-        print "BYE"
         gtk.main_quit()
 
     def on_quit1_activate( self, *args ):
-        print "BYE", args
         gtk.main_quit()
 
     def setup_tags(self):
@@ -113,15 +111,19 @@ class HgViewApp(object):
         tree.append_column( col )
 
         rend = RevGraphRenderer()
-        col = gtk.TreeViewColumn("T", rend, nodex=M_NODEX, edges=M_EDGES )
-        #col.set_resizable(True)
-        tree.append_column( col )
-        
-
+        col = gtk.TreeViewColumn("Log")
+        col.pack_start( rend, False )
+        col.set_attributes( rend, nodex=M_NODEX, edges=M_EDGES )
         rend = gtk.CellRendererText()
-        col = gtk.TreeViewColumn("Log", rend, text=2 )
+        col.pack_start( rend )
+        col.set_attributes( rend, text=2 )
         col.set_resizable(True)
         tree.append_column( col )
+
+##         rend = gtk.CellRendererText()
+##         col = gtk.TreeViewColumn("Log", rend, text=2 )
+##         col.set_resizable(True)
+##         tree.append_column( col )
 
         rend = gtk.CellRendererText()
         col = gtk.TreeViewColumn("Author", rend, text=3 )
@@ -147,18 +149,21 @@ class HgViewApp(object):
         tree.set_model( self.filelist )
 
     def refresh_tree(self):
-        print "Computing graph..."
-        graph = RevGraph( self.repo )
-        print "done"
         tree = xml.get_widget( "treeview_revisions" )
-        tree.freeze_child_notify()
         self.revisions.clear()
         changelog = self.repo.changelog
         add_rev = self.revisions.append
         cnt = changelog.count()
+
+        nodes = []
+        nodeinfo = {}
         bar = cnt/10 or 1
-        for i in xrange( len(graph.rowid) ):
-            node = graph.rowid[i]
+        for i in xrange(cnt):
+            if (i+1) % bar == 0:
+                print ".",
+                sys.stdout.flush()
+            node = changelog.node( i )
+            nodes.append( node )
             id,author,date,filelist,log,unk = changelog.read( node )
             lines = log.strip().splitlines()
             if lines:
@@ -168,18 +173,37 @@ class HgViewApp(object):
             date_ = time.strftime( "%F %H:%M", time.gmtime( date[0] ) )
 
             if self.filerex:
+                matching = []
+                notmatching = []
                 for f in filelist:
                     if self.filerex.search( f ):
-                        break
-                else:
+                        matching.append( f )
+                    else:
+                        notmatching.append( f )
+                if not matching:
                     continue
+                filelist = matching + notmatching
+            nodeinfo[node] = (i, node, text, author, date_, log, filelist )
+
+        print "Computing graph..."
+        graph = RevGraph( self.repo, nodes )
+        print "done"
+        rowselected = set()
+        for n, node in graph.rowid.items():
+            if node in nodeinfo:
+                rowselected.add( n )
+        tree.freeze_child_notify()
+        for n in xrange( len(graph.rowid) ):
+            node = graph.rowid[n]
+            if n not in rowselected:
+                continue
+            (i, node, text, author, date_, log, filelist ) = nodeinfo[node]
             lines = []
-            for x1,y1,x2,y2 in graph.rowlines[i]:
-                lines.append( (x1,y1-i,x2,y2-i) )
+            for x1,y1,x2,y2 in graph.rowlines[n]:
+                if y1 not in rowselected or y2 not in rowselected:
+                    continue
+                lines.append( (x1,y1-n,x2,y2-n) )
             add_rev( (i, node, text, author, date_, log, filelist, graph.x[node], lines ) )
-            if (cnt-i) % bar == 0:
-                print ".",
-                sys.stdout.flush()
         tree.thaw_child_notify()
         tree.set_fixed_height_mode( True )
 
@@ -234,7 +258,6 @@ class HgViewApp(object):
             textwidget.thaw_child_notify()
         sob, eob = text_buffer.get_bounds()
         text_buffer.apply_tag_by_name( "mono", sob, eob )
-    
 
     def hilight_search_string( self ):
         # Highlight the search string
@@ -242,7 +265,7 @@ class HgViewApp(object):
         text_buffer = textwidget.get_buffer()
         if not self.find_text:
             return
-        
+
         rexp = re.compile(self.find_text)
         sob, eob = text_buffer.get_bounds()
         enddesc = text_buffer.get_iter_at_mark(text_buffer.get_mark( "enddesc" ))
@@ -253,7 +276,6 @@ class HgViewApp(object):
             _e = text_buffer.get_iter_at_offset( m.end() )
             text_buffer.apply_tag_by_name("yellowbg", _b, _e )
             m = rexp.search( txt, m.end() )
-        
 
     def fileselection_changed( self, selection ):
         model, it = selection.get_selected()
@@ -300,10 +322,8 @@ class HgViewApp(object):
         it = self.find_next_row( it, re.compile( txt ) )
         self.select_row( it )
         self.hilight_search_string()
-        
+
     def on_entry_find_changed( self, *args ):
-        print "CHANGED", args
-        import re
         txt = xml.get_widget( "entry_find" ).get_text()
         sel = xml.get_widget( "treeview_revisions" ).get_selection()
         model, it = sel.get_selected()
@@ -312,7 +332,6 @@ class HgViewApp(object):
         self.hilight_search_string()
 
     def on_entry_find_activate( self, *args ):
-        print "DONE"
         self.on_button_find_clicked()
 
 app = HgViewApp( dir_, filrex )

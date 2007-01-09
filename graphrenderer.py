@@ -15,7 +15,7 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
 
     def __init__(self):
         self.__gobject_init__()
-        self.w = 10
+        self.w = 8
         self.nodex = 0
         self.edges = []
         
@@ -28,8 +28,7 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
     def on_render(self, window, widget, background_area,
                   cell_area, expose_area, flags ):
         x, y, w, h = cell_area
-        print x,y,w,h
-        h+=3
+        h+=3 # this is probably padding
         y-=1
         W = self.w
         X = self.nodex

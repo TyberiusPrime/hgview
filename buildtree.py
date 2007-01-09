@@ -10,56 +10,36 @@
 # This was translated from tcl/tk (gitk) to python
 
 from mercurial import hg, ui
+from mercurial.node import hex as binhex
 from itertools import *
 nullid = "\x00"*20
 
 def parents_of(repo, node):
-    (p1,p2) = repo.changelog.parents(node)
-    if (p1 != nullid) and (p2 == nullid):
-        return [p1]
-    if (p2 != nullid) and (p1 == nullid):
-        return [p2]
-    if (p2 == nullid) and (p1 == nullid):
-        return []
-    return [p1,p2]
+    return [ p for p in repo.changelog.parents(node) if p != nullid ]
 
-def parents_of_rev(repo,rev):
-    return map(repo.changelog.rev,parents_of(repo,repo.changelog.node(rev)))
+# TODO : make it work with a partial set of nodes ?
 
 class RevGraph(object):
     
-    def __init__(self, repo):        
+    def __init__(self, repo, nodes):
         self.repo = repo
 
         start = repo.heads()
         ncleft = {} # number of children left to do for a given node
-        self.nchildren = {} # total number of children for a given node
-        self.nparents = {} # total number of parents for a given node
         self.x = {} # for a given node
         self.rowid = {} # mapping of row to node
         self.idrow = {} # mapping of node to row
         self.rowlines = {} # mapping of row to list of lines
         self.rownlines = {} # mapping of row to number of lines
-        self.rowtext = {} # mapping of row to text
 
-        # calculate nparents and nchildren for each node
-        for rev in xrange(repo.changelog.count()):
-
-            node = repo.changelog.node(rev)
+        # calculate initial ncleft for each node
+        ncleft = dict( izip( nodes, repeat(0) ) )
+        ncleft[nullid] = 0
+        for node in nodes:
             ps = repo.changelog.parents(node)
             for p in ps:
-                if p not in self.nchildren:
-                    self.nchildren[p] = 0
-                self.nchildren[p] += 1
-            self.nparents[node] = len(ps)
+                ncleft[p] += 1
 
-        # initialise ncleft for each node
-        for rev in xrange(repo.changelog.count()):
-            node = repo.changelog.node(rev)
-            if node not in self.nchildren:
-                self.nchildren[node] = 0
-            ncleft[node] = self.nchildren[node]
-            
         todo = start[:] # None is a blank column
         level = len(todo) - 1 # column of the node being worked with
         nullentry = -1 # next column to be eradicate when it is determined that one should be
@@ -77,8 +57,6 @@ class RevGraph(object):
             id = todo[level]
             self.rowid[rowno] = id
             self.idrow[id] = rowno
-            (_,_,_,_,text,_) = repo.changelog.read(id)
-            self.rowtext[rowno] = text.splitlines()[0]
             actualparents = []
 
             for p in parents_of(repo,id):
@@ -163,7 +141,7 @@ class RevGraph(object):
                 if todo != []:
                     print "ERROR: none of the pending commits can be done yet"
                     for p in todo:
-                        print "  " + revlog.hex(p)
+                        print "  " + binhex(p)
                 break
 
             # if we are reducing, put in a null entry
