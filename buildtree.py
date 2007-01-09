@@ -71,7 +71,7 @@ class RevGraph(object):
                 for r in xrange(min(linestarty[level],rowno),max(linestarty[level],rowno)+1):
                     if r not in self.rowlines:
                         self.rowlines[r] = set()
-                    self.rowlines[r].update([((level,linestarty[level],level,rowno))])
+                    self.rowlines[r].add( (level,linestarty[level],level,rowno) )
             linestarty[level] = rowno # starting a new line
 
             # TODO tags
@@ -190,7 +190,7 @@ class RevGraph(object):
                     for r in xrange(min(y1,y2),max(y1,y2)+1):
                         if r not in self.rowlines:
                             self.rowlines[r] = set()
-                        self.rowlines[r].update([(x1,y1,x2,y2)])
+                        self.rowlines[r].add((x1,y1,x2,y2))
                     (x1,y1) = (x2,y2)
 
                 if j not in linestarty:
