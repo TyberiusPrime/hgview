@@ -2,12 +2,14 @@
 import gtk
 import gtk.glade
 import gobject
+import pango
 import sys, os
 import time
 from StringIO import StringIO
 from mercurial import hg, ui, patch
 import textwrap
 import re
+from buildtree import RevGraph
 
 _mod = sys.modules["__main__"]
 _basedir = os.path.dirname(_mod.__file__)
@@ -24,7 +26,7 @@ filrex = None
 if len(sys.argv)>2:
     filrex = sys.argv[2]
 
-DIFFHDR = "-"*10 + " %s " + "-"*10 + "\n"
+DIFFHDR = "=== %s ===\n"
 
 M_NODE = 1
 M_SHORT_DESC = 2
@@ -33,6 +35,12 @@ M_DATE = 4
 M_FULLDESC = 5
 M_FILELIST = 6
 
+def make_texttag( name, **kwargs ):
+    tag = gtk.TextTag(name)
+    for key, value in kwargs.items():
+        key=key.replace("_","-")
+        tag.set_property( key, value )
+    return tag
 
 class HgViewApp(object):
     def __init__(self, repodir, filerex = None ):
@@ -45,12 +53,13 @@ class HgViewApp(object):
             self.filerex = None
 
         self.revisions = gtk.ListStore( gobject.TYPE_INT,
-                                        gobject.TYPE_STRING,  # node
-                                        gobject.TYPE_STRING,  # short description
-                                        gobject.TYPE_STRING,  # author
-                                        gobject.TYPE_STRING,  # date
-                                        gobject.TYPE_STRING,  # full desc
-                                        gobject.TYPE_PYOBJECT,  # file list
+                                        gobject.TYPE_PYOBJECT, # node (stored as python strings)
+                                                               # because they can contain zeroes
+                                        gobject.TYPE_STRING,   # short description
+                                        gobject.TYPE_STRING,   # author
+                                        gobject.TYPE_STRING,   # date
+                                        gobject.TYPE_STRING,   # full desc
+                                        gobject.TYPE_PYOBJECT, # file list
                                         )
 
         self.filelist = gtk.ListStore( gobject.TYPE_STRING, # filename
@@ -58,6 +67,7 @@ class HgViewApp(object):
                                        )
 
         self.setup_tags()
+        self.graph = None
         self.setup_tree()
         self.refresh_tree()
         self.find_text = None
@@ -74,36 +84,17 @@ class HgViewApp(object):
         textwidget = xml.get_widget( "textview_status" )
         text_buffer = textwidget.get_buffer()
         tag_table = text_buffer.get_tag_table()
-        
-        blue_tag = gtk.TextTag("blue")
-        blue_tag.set_property("foreground","blue")
-        blue_tag.set_property("family", "Monospace")
-        tag_table.add( blue_tag )
-        
-        red_tag = gtk.TextTag("red")
-        red_tag.set_property("foreground","red")
-        red_tag.set_property("family", "Monospace")
-        tag_table.add( red_tag )
 
-        green_tag = gtk.TextTag("green")
-        green_tag.set_property("foreground","green")
-        green_tag.set_property("family", "Monospace")
-        tag_table.add( green_tag )
+        tag_table.add( make_texttag( "mono", family="Monospace" ))
+        tag_table.add( make_texttag( "blue", foreground='blue' ))
+        tag_table.add( make_texttag( "red", foreground='red' ))
+        tag_table.add( make_texttag( "green", foreground='darkgreen' ))
+        tag_table.add( make_texttag( "black", foreground='black' ))
+        tag_table.add( make_texttag( "greybg",
+                                     paragraph_background='grey',
+                                     weight=pango.WEIGHT_BOLD ))
+        tag_table.add( make_texttag( "yellowbg", background='yellow' ))
 
-        black_tag = gtk.TextTag("black")
-        black_tag.set_property("foreground","black")
-        black_tag.set_property("family", "Monospace")
-        tag_table.add( black_tag )
-
-        greybg_tag = gtk.TextTag("greybg")
-        greybg_tag.set_property("paragraph-background","grey")
-        greybg_tag.set_property("family", "Monospace")
-        #greybg_tag.set_property("justification", gtk.JUSTIFY_CENTER )
-        tag_table.add( greybg_tag )
-
-        yellowbg_tag = gtk.TextTag("yellowbg")
-        yellowbg_tag.set_property("background", "yellow")
-        tag_table.add( yellowbg_tag )
 
     def setup_tree(self):
         tree = xml.get_widget( "treeview_revisions" )
@@ -145,6 +136,7 @@ class HgViewApp(object):
         tree.set_model( self.filelist )
 
     def refresh_tree(self):
+        self.graph = RevGraph( self.repo )
         tree = xml.get_widget( "treeview_revisions" )
         tree.freeze_child_notify()
         self.revisions.clear()
@@ -171,52 +163,80 @@ class HgViewApp(object):
             add_rev( (i, node, text, author, date_, log, filelist ) )
             if (cnt-i) % bar == 0:
                 print ".",
+                sys.stdout.flush()
         tree.thaw_child_notify()
+
+
+    def get_revlog_header( self, node ):
+        pass
 
     def selection_changed( self, selection ):
         model, it = selection.get_selected()
         if it is None:
             return
-        node = model.get_value( it, 1 )
-#        info = self.repo.changelog.read( node )
-        fulltext = model.get_value( it, M_FULLDESC )
-        filelist = model.get_value( it, M_FILELIST )
+        node, fulltext, filelist = model.get( it, M_NODE,
+                                              M_FULLDESC, M_FILELIST )
         textwidget = xml.get_widget( "textview_status" )
         text_buffer = textwidget.get_buffer()
-        text_buffer.set_text( fulltext+"\n\n" )
-
-        ctx = self.repo.changectx( node )
-        parent = self.repo.parents(node)[0].node()
-        self.filelist.clear()
-        sob, eob = text_buffer.get_bounds()
-        for idx,f in enumerate(filelist):
-            self.filelist.append( (f,idx) )
-            text_buffer.insert_with_tags_by_name(eob, DIFFHDR % f, "greybg" )
-            pos = eob.copy()
-            pos.backward_char()
-            mark = text_buffer.create_mark( "file%d" % idx, pos )
-
-            out = StringIO()
-            patch.diff( self.repo, node1=parent, node2=node, files=[f], fp=out )
-            for l in out.getvalue().splitlines():
-                if l.startswith("+"):
-                    tag="green"
-                elif l.startswith("-"):
-                    tag="red"
-                else:
-                    tag="black"
-                text_buffer.insert_with_tags_by_name(eob, l+"\n", tag )
-
-        if self.find_text:
-            rexp = re.compile(self.find_text)
+        textwidget.freeze_child_notify()
+        try:
+            hdr = self.get_revlog_header( node )
+            text_buffer.set_text( fulltext+"\n\n" )
+            parent = self.repo.parents(node)[0].node()
+            self.filelist.clear()
             sob, eob = text_buffer.get_bounds()
-            txt = text_buffer.get_slice(sob, eob, True )
-            m = rexp.search( txt )
-            while m:
-                _b = text_buffer.get_iter_at_offset( m.start() )
-                _e = text_buffer.get_iter_at_offset( m.end() )
-                text_buffer.apply_tag_by_name("yellowbg", _b, _e )
-                m = rexp.search( txt, m.end() ) 
+            enddesc = eob.copy()
+            enddesc.backward_line()
+            text_buffer.create_mark( "enddesc", enddesc )
+            for idx,f in enumerate(filelist):
+                self.filelist.append( (f,idx) )
+                text_buffer.insert_with_tags_by_name(eob, DIFFHDR % f, "greybg")
+                # eob is bound to the end even if we insert text after that
+                # the default left gravity doesn't seem to change that
+                pos = eob.copy()
+                pos.backward_line()
+                mark = text_buffer.create_mark( "file%d" % idx, pos )
+                try:
+                    out = StringIO()
+                    patch.diff(self.repo, node1=parent, node2=node,
+                               files=[f], fp=out)
+                    for l in out.getvalue().splitlines()[3:]:
+                        if l.startswith("+"):
+                            tag="green"
+                        elif l.startswith("-"):
+                            tag="red"
+                        elif l.startswith("@@"):
+                            tag="blue"
+                        else:
+                            tag="black"
+                        text_buffer.insert_with_tags_by_name(eob, l+"\n", tag )
+                except:
+                    # continue
+                    raise
+        finally:
+            textwidget.thaw_child_notify()
+        sob, eob = text_buffer.get_bounds()
+        text_buffer.apply_tag_by_name( "mono", sob, eob )
+    
+
+    def hilight_search_string( self ):
+        # Highlight the search string
+        textwidget = xml.get_widget( "textview_status" )
+        text_buffer = textwidget.get_buffer()
+        if not self.find_text:
+            return
+        
+        rexp = re.compile(self.find_text)
+        sob, eob = text_buffer.get_bounds()
+        enddesc = text_buffer.get_iter_at_mark(text_buffer.get_mark( "enddesc" ))
+        txt = text_buffer.get_slice(sob, enddesc, True )
+        m = rexp.search( txt )
+        while m:
+            _b = text_buffer.get_iter_at_offset( m.start() )
+            _e = text_buffer.get_iter_at_offset( m.end() )
+            text_buffer.apply_tag_by_name("yellowbg", _b, _e )
+            m = rexp.search( txt, m.end() )
+        
 
     def fileselection_changed( self, selection ):
         model, it = selection.get_selected()
@@ -230,7 +250,8 @@ class HgViewApp(object):
 
     def find_next_row( self, iter, rexp ):
         while iter:
-            author, log, files = self.revisions.get( iter, M_AUTHOR, M_FULLDESC, M_FILELIST )
+            author, log, files = self.revisions.get( iter, M_AUTHOR,
+                                                     M_FULLDESC, M_FILELIST )
             if ( rexp.search( author ) or
                  rexp.search( log ) ):
                 return iter
@@ -261,6 +282,7 @@ class HgViewApp(object):
         it = self.revisions.iter_next( it )
         it = self.find_next_row( it, re.compile( txt ) )
         self.select_row( it )
+        self.hilight_search_string()
         
     def on_entry_find_changed( self, *args ):
         print "CHANGED", args
@@ -270,6 +292,7 @@ class HgViewApp(object):
         model, it = sel.get_selected()
         it = self.find_next_row( it, re.compile( txt ) )
         self.select_row( it )
+        self.hilight_search_string()
 
     def on_entry_find_activate( self, *args ):
         print "DONE"

@@ -195,6 +195,7 @@
 
 	  <child>
 	    <widget class="GtkScrolledWindow" id="scrolledwindow1">
+	      <property name="border_width">3</property>
 	      <property name="visible">True</property>
 	      <property name="can_focus">True</property>
 	      <property name="hscrollbar_policy">GTK_POLICY_ALWAYS</property>
@@ -230,6 +231,7 @@
 
 	      <child>
 		<widget class="GtkHBox" id="hbox1">
+		  <property name="border_width">3</property>
 		  <property name="visible">True</property>
 		  <property name="homogeneous">False</property>
 		  <property name="spacing">0</property>
@@ -373,6 +375,7 @@
 
 		  <child>
 		    <widget class="GtkScrolledWindow" id="scrolledwindow3">
+		      <property name="border_width">3</property>
 		      <property name="visible">True</property>
 		      <property name="can_focus">True</property>
 		      <property name="hscrollbar_policy">GTK_POLICY_ALWAYS</property>
@@ -408,6 +411,7 @@
 
 		  <child>
 		    <widget class="GtkScrolledWindow" id="scrolledwindow4">
+		      <property name="border_width">3</property>
 		      <property name="visible">True</property>
 		      <property name="can_focus">True</property>
 		      <property name="hscrollbar_policy">GTK_POLICY_ALWAYS</property>
