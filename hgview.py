@@ -130,6 +130,8 @@ class HgViewApp(object):
                                  text=M_SHORTDESC,
                                  tags=M_TAGS)
         col.set_resizable(True)
+        col.set_sizing( gtk.TREE_VIEW_COLUMN_FIXED )
+        col.set_fixed_width( 400 )
         tree.append_column( col )
 
         rend = gtk.CellRendererText()
