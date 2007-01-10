@@ -16,6 +16,7 @@ GLADE_FILE_NAME = "hgview.glade"
 GLADE_FILE_LOCATIONS = [ '/usr/share/hgview' ]
 
 def load_glade():
+    """Try several paths in which the glade file might be found"""
     mod = sys.modules[__name__]
     # Try this module's dir first (dev case)
     _basedir = os.path.dirname(mod.__file__)
@@ -56,6 +57,7 @@ M_EDGES = 8
 M_TAGS = 9
 
 def make_texttag( name, **kwargs ):
+    """Helper function generating a TextTag"""
     tag = gtk.TextTag(name)
     for key, value in kwargs.items():
         key=key.replace("_","-")
@@ -73,7 +75,7 @@ class HgViewApp(object):
             self.filerex = re.compile( filerex )
         else:
             self.filerex = None
-
+        self.changelog_cache = {}
         self.revisions = gtk.ListStore( gobject.TYPE_INT,
                                         gobject.TYPE_PYOBJECT, # node (stored as python strings)
                                                                # because they can contain zeroes
@@ -96,6 +98,51 @@ class HgViewApp(object):
         self.setup_tree()
         self.refresh_tree()
         self.find_text = None
+
+    def read_changelog(self):
+        changelog = self.repo.changelog
+        nodeinfo = self.changelog_cache
+        cnt = changelog.count()
+        bar = cnt/10 or 1
+        nodes = [None]*cnt
+        self.nodes = nodes
+        print "Retrieving changelog",
+        for i in xrange(cnt):
+            if (i+1) % bar == 0:
+                print ".",
+                sys.stdout.flush()
+            node = changelog.node( i )
+            nodes[i] = node
+            id,author,date,filelist,log,unk = changelog.read( node )
+            lines = log.strip().splitlines()
+            if lines:
+                text = lines[0].strip()
+            else:
+                text = "*** no log"
+            date_ = time.strftime( "%F %H:%M", time.gmtime( date[0] ) )
+            taglist = self.repo.nodetags( node )
+            tags = ", ".join( taglist )
+            nodeinfo[node] = (i, node, text, author, date_, log, filelist, tags )
+        print "done"
+
+    def filter_nodes(self):
+        keepnodes = []
+        if not self.filerex:
+            return keepnodes
+        for n in self.nodes:
+            t = nodeinfo[n]
+            matching = []
+            notmatching = []
+            for f in filelist:
+                if self.filerex.search( f ):
+                    matching.append( f )
+                else:
+                    notmatching.append( f )
+            if not matching:
+                continue
+            filelist = matching + notmatching
+            keepnodes.append( (node,filelist) )
+        return keepnodes
 
     def on_window_main_delete_event( self, win, evt ):
         gtk.main_quit()
