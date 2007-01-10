@@ -260,8 +260,11 @@ class HgViewApp(object):
                         idx += 1
                         mark = text_buffer.create_mark( markname, pos )
                         self.filelist.append( (f, markname) )
-                        it.next()
-                        it.next()
+                        # XXX handle binary diffs
+                        continue
+                    elif l.startswith("+++"):
+                        continue
+                    elif l.startswith("---"):
                         continue
                     elif l.startswith("+"):
                         tag="green"
@@ -310,7 +313,7 @@ class HgViewApp(object):
     def find_next_row( self, iter, stop_iter=None ):
         txt = xml.get_widget( "entry_find" ).get_text()
         rexp = re.compile( txt )
-        while iter != stop_iter:
+        while iter != stop_iter and iter!=None:
             author, log, files = self.revisions.get( iter, M_AUTHOR,
                                                      M_FULLDESC, M_FILELIST )
             if ( rexp.search( author ) or
@@ -323,7 +326,7 @@ class HgViewApp(object):
                 iter = self.revisions.iter_next( iter )
                 continue
             break
-        if iter==stop_iter:
+        if iter==stop_iter or iter is None:
             return None
         self.select_row( iter )
         self.hilight_search_string()
