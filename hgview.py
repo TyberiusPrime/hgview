@@ -12,10 +12,22 @@ import re
 from buildtree import RevGraph
 from graphrenderer import RevGraphRenderer
 
-_mod = sys.modules["__main__"]
-_basedir = os.path.dirname(_mod.__file__)
+GLADE_FILE_NAME = "hgview.glade"
+GLADE_FILE_LOCATIONS = [ '/usr/share/hgview' ]
 
-xml = gtk.glade.XML(os.path.join( _basedir, "hgview.glade") )
+def load_glade():
+    mod = sys.modules[__name__]
+    # Try this module's dir first (dev case)
+    _basedir = os.path.dirname(mod.__file__)
+
+    test_dirs = [_basedir] + GLADE_FILE_LOCATIONS
+    for dirname in test_dirs:
+        glade_file = os.path.join(dirname, GLADE_FILE_NAME)
+        if os.path.exists(glade_file):
+            return gtk.glade.XML( glade_file )
+
+    raise ImportError("Couldn't find %s in (%s)" % (GLADE_FILE_NAME,
+                                                    ",".join( "'%s'" % f for f in dirname ) ) )
 
 def find_repository(path):
     """returns <path>'s mercurial repository
@@ -30,15 +42,6 @@ def find_repository(path):
             return None
     return path
 
-dir_ = None
-if len(sys.argv)>1:
-    dir_ = sys.argv[1]
-else:
-    dir_ = find_repository(os.getcwd())
-
-filrex = None
-if len(sys.argv)>2:
-    filrex = sys.argv[2]
 
 DIFFHDR = "=== %s ===\n"
 
@@ -61,9 +64,11 @@ def make_texttag( name, **kwargs ):
 
 class HgViewApp(object):
     def __init__(self, repodir, filerex = None ):
+        self.xml = load_glade()
+        self.xml.signal_autoconnect( self )
         self.dir = repodir
         self.ui = ui.ui()
-        self.repo = hg.repository( self.ui, dir_ )
+        self.repo = hg.repository( self.ui, repodir )
         if filerex:
             self.filerex = re.compile( filerex )
         else:
@@ -99,7 +104,7 @@ class HgViewApp(object):
         gtk.main_quit()
 
     def setup_tags(self):
-        textwidget = xml.get_widget( "textview_status" )
+        textwidget = self.xml.get_widget( "textview_status" )
         text_buffer = textwidget.get_buffer()
         tag_table = text_buffer.get_tag_table()
 
@@ -115,7 +120,7 @@ class HgViewApp(object):
 
 
     def setup_tree(self):
-        tree = xml.get_widget( "treeview_revisions" )
+        tree = self.xml.get_widget( "treeview_revisions" )
         tree.set_enable_search( True )
         tree.set_search_column( M_FULLDESC )
         tree.get_selection().connect("changed", self.selection_changed )
@@ -147,7 +152,7 @@ class HgViewApp(object):
         tree.set_model( self.revisions )
 
         # file tree
-        tree = xml.get_widget( "treeview_filelist" )
+        tree = self.xml.get_widget( "treeview_filelist" )
         tree.set_rules_hint( 1 )
         tree.get_selection().connect("changed", self.fileselection_changed )
 
@@ -158,7 +163,7 @@ class HgViewApp(object):
         tree.set_model( self.filelist )
 
     def refresh_tree(self):
-        tree = xml.get_widget( "treeview_revisions" )
+        tree = self.xml.get_widget( "treeview_revisions" )
         self.revisions.clear()
         changelog = self.repo.changelog
         add_rev = self.revisions.append
@@ -229,7 +234,7 @@ class HgViewApp(object):
             return
         node, fulltext, filelist = model.get( it, M_NODE,
                                               M_FULLDESC, M_FILELIST )
-        textwidget = xml.get_widget( "textview_status" )
+        textwidget = self.xml.get_widget( "textview_status" )
         text_buffer = textwidget.get_buffer()
         textwidget.freeze_child_notify()
         try:
@@ -282,7 +287,7 @@ class HgViewApp(object):
 
     def hilight_search_string( self ):
         # Highlight the search string
-        textwidget = xml.get_widget( "textview_status" )
+        textwidget = self.xml.get_widget( "textview_status" )
         text_buffer = textwidget.get_buffer()
         if not self.find_text:
             return
@@ -303,12 +308,12 @@ class HgViewApp(object):
         if it is None:
             return
         markname = model.get_value( it, 1 )
-        tw = xml.get_widget("textview_status" )
+        tw = self.xml.get_widget("textview_status" )
         mark = tw.get_buffer().get_mark( markname )
         tw.scroll_to_mark( mark, .2, use_align=True, xalign=1., yalign=0. )
 
     def find_next_row( self, iter, stop_iter=None ):
-        txt = xml.get_widget( "entry_find" ).get_text()
+        txt = self.xml.get_widget( "entry_find" ).get_text()
         rexp = re.compile( txt )
         while iter != stop_iter:
             author, log, files = self.revisions.get( iter, M_AUTHOR,
@@ -334,9 +339,9 @@ class HgViewApp(object):
             self.find_text = None
             return
         else:
-            self.find_text = xml.get_widget( "entry_find" ).get_text()
+            self.find_text = self.xml.get_widget( "entry_find" ).get_text()
 
-        tree = xml.get_widget( "treeview_revisions" )
+        tree = self.xml.get_widget( "treeview_revisions" )
         sel = tree.get_selection()
         sel.select_iter( itr )
         path = self.revisions.get_path( itr )
@@ -344,7 +349,7 @@ class HgViewApp(object):
 
 
     def get_selected_rev(self):
-        sel = xml.get_widget( "treeview_revisions" ).get_selection()
+        sel = self.xml.get_widget( "treeview_revisions" ).get_selection()
         model, it = sel.get_selected()
         if it is None:
             it = model.get_iter_first()
@@ -368,8 +373,25 @@ class HgViewApp(object):
     def on_entry_find_activate( self, *args ):
         self.on_button_find_clicked()
 
-app = HgViewApp( dir_, filrex )
 
-xml.signal_autoconnect( app )
+def main():
+    # TODO: either do proper option handling or make
+    # this an hg extension
+    dir_ = None
+    if len(sys.argv)>1:
+        dir_ = sys.argv[1]
+    else:
+        dir_ = find_repository(os.getcwd())
+    
+    filrex = None
+    if len(sys.argv)>2:
+        filrex = sys.argv[2]
+    
+    app = HgViewApp( dir_, filrex )
+    
+    
+    gtk.main()
 
-gtk.main()
+
+if __name__ == "__main__":
+    main()
