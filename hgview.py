@@ -68,7 +68,7 @@ class HgViewApp(object):
                                         )
 
         self.filelist = gtk.ListStore( gobject.TYPE_STRING, # filename
-                                       gobject.TYPE_INT     # idx
+                                       gobject.TYPE_STRING  # markname
                                        )
 
         self.setup_tags()
@@ -221,31 +221,49 @@ class HgViewApp(object):
             enddesc = eob.copy()
             enddesc.backward_line()
             text_buffer.create_mark( "enddesc", enddesc )
-            for idx,f in enumerate(filelist):
-                self.filelist.append( (f,idx) )
-                text_buffer.insert_with_tags_by_name(eob, DIFFHDR % f, "greybg")
-                # eob is bound to the end even if we insert text after that
-                # the default left gravity doesn't seem to change that
-                pos = eob.copy()
-                pos.backward_line()
-                mark = text_buffer.create_mark( "file%d" % idx, pos )
-                try:
-                    out = StringIO()
-                    patch.diff(self.repo, node1=parent, node2=node,
-                               files=[f], fp=out)
-                    for l in out.getvalue().splitlines()[3:]:
-                        if l.startswith("+"):
-                            tag="green"
-                        elif l.startswith("-"):
-                            tag="red"
-                        elif l.startswith("@@"):
-                            tag="blue"
-                        else:
-                            tag="black"
-                        text_buffer.insert_with_tags_by_name(eob, l+"\n", tag )
-                except:
-                    # continue
-                    raise
+            text_buffer.create_mark( "begdesc", sob )
+            self.filelist.append( ("Content", "begdesc" ) )
+            try:
+                out = StringIO()
+                patch.diff(self.repo, node1=parent, node2=node,
+                           files=filelist, fp=out)
+                it = iter(out.getvalue().splitlines())
+                idx = 0
+                for l in it:
+                    if l.startswith("diff"):
+                        f = l.split()[-1]
+                        text_buffer.insert_with_tags_by_name(eob,
+                                                             DIFFHDR % f, "greybg")
+                        pos = eob.copy()
+                        pos.backward_line()
+                        markname = "file%d" % idx
+                        idx += 1
+                        mark = text_buffer.create_mark( markname, pos )
+                        self.filelist.append( (f, markname) )
+                        it.next()
+                        it.next()
+                        continue
+                    elif l.startswith("+"):
+                        tag="green"
+                    elif l.startswith("-"):
+                        tag="red"
+                    elif l.startswith("@@"):
+                        tag="blue"
+                    else:
+                        tag="black"
+                    text_buffer.insert_with_tags_by_name(eob, l+"\n", tag )
+            except:
+                # continue
+                raise
+
+##             for idx,f in enumerate(filelist):
+##                 self.filelist.append( (f,idx) )
+##                 text_buffer.insert_with_tags_by_name(eob, DIFFHDR % f, "greybg")
+##                 # eob is bound to the end even if we insert text after that
+##                 # the default left gravity doesn't seem to change that
+##                 pos = eob.copy()
+##                 pos.backward_line()
+##                 mark = text_buffer.create_mark( "file%d" % idx, pos )
         finally:
             textwidget.thaw_child_notify()
         sob, eob = text_buffer.get_bounds()
@@ -273,8 +291,7 @@ class HgViewApp(object):
         model, it = selection.get_selected()
         if it is None:
             return
-        val = model.get_value( it, 1 )
-        markname = "file%d" % val
+        markname = model.get_value( it, 1 )
         tw = xml.get_widget("textview_status" )
         mark = tw.get_buffer().get_mark( markname )
         tw.scroll_to_mark( mark, .2, use_align=True, xalign=1., yalign=0. )
