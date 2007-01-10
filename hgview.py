@@ -30,7 +30,7 @@ if len(sys.argv)>2:
 DIFFHDR = "=== %s ===\n"
 
 M_NODE = 1
-M_SHORT_DESC = 2
+M_SHORTDESC = 2
 M_AUTHOR = 3
 M_DATE = 4
 M_FULLDESC = 5
@@ -111,12 +111,8 @@ class HgViewApp(object):
         tree.append_column( col )
 
         rend = RevGraphRenderer()
-        col = gtk.TreeViewColumn("T", rend, nodex=M_NODEX, edges=M_EDGES )
-        col.set_resizable(True)
-        tree.append_column( col )
-
-        rend = gtk.CellRendererText()
-        col = gtk.TreeViewColumn("Log", rend, text=2 )
+        col = gtk.TreeViewColumn("Log", rend, nodex=M_NODEX, edges=M_EDGES,
+                                 text=M_SHORTDESC )
         col.set_resizable(True)
         tree.append_column( col )
 
@@ -201,7 +197,7 @@ class HgViewApp(object):
                 lines.append( (x1,y1-n,x2,y2-n) )
             add_rev( (i, node, text, author, date_, log, filelist, graph.x[node], lines ) )
         tree.thaw_child_notify()
-        tree.set_fixed_height_mode( True )
+        #tree.set_fixed_height_mode( True )
 
 
     def get_revlog_header( self, node ):
