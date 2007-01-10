@@ -22,10 +22,10 @@ def find_repository(path):
 
     None if <path> is not under hg control
     """
-    path = abspath(path)
-    while not isdir(join(path, ".hg")):
+    path = os.path.abspath(path)
+    while not os.path.isdir(os.path.join(path, ".hg")):
         oldpath = path
-        path = dirname(path)
+        path = os.path.dirname(path)
         if path == oldpath:
             return None
     return path
@@ -305,18 +305,27 @@ class HgViewApp(object):
         mark = tw.get_buffer().get_mark( markname )
         tw.scroll_to_mark( mark, .2, use_align=True, xalign=1., yalign=0. )
 
-    def find_next_row( self, iter, rexp ):
-        while iter:
+    def find_next_row( self, iter, stop_iter=None ):
+        txt = xml.get_widget( "entry_find" ).get_text()
+        rexp = re.compile( txt )
+        while iter != stop_iter:
             author, log, files = self.revisions.get( iter, M_AUTHOR,
                                                      M_FULLDESC, M_FILELIST )
             if ( rexp.search( author ) or
                  rexp.search( log ) ):
-                return iter
+                break
             for f in files:
                 if rexp.search( f ):
-                    return iter
-            iter = self.revisions.iter_next( iter )
-
+                    break
+            else:
+                iter = self.revisions.iter_next( iter )
+                continue
+            break
+        if iter==stop_iter:
+            return None
+        self.select_row( iter )
+        self.hilight_search_string()
+        return iter
 
     def select_row( self, itr ):
         if itr is None:
@@ -331,23 +340,28 @@ class HgViewApp(object):
         path = self.revisions.get_path( itr )
         tree.scroll_to_cell( path, use_align=True, row_align=0.2 )
 
-    def on_button_find_clicked( self, *args ):
-        import re
-        txt = xml.get_widget( "entry_find" ).get_text()
+
+    def get_selected_rev(self):
         sel = xml.get_widget( "treeview_revisions" ).get_selection()
         model, it = sel.get_selected()
+        if it is None:
+            it = model.get_iter_first()
+        return model, it
+
+    def on_button_find_clicked( self, *args ):
+        model, it = self.get_selected_rev()
         it = self.revisions.iter_next( it )
-        it = self.find_next_row( it, re.compile( txt ) )
-        self.select_row( it )
-        self.hilight_search_string()
+        start_it = it
+        res = self.find_next_row( it )
+        if res is None:
+            self.find_next_row( self.revisions.get_iter_first(), start_it )
 
     def on_entry_find_changed( self, *args ):
-        txt = xml.get_widget( "entry_find" ).get_text()
-        sel = xml.get_widget( "treeview_revisions" ).get_selection()
-        model, it = sel.get_selected()
-        it = self.find_next_row( it, re.compile( txt ) )
-        self.select_row( it )
-        self.hilight_search_string()
+        model, it = self.get_selected_rev()
+        start_it = it
+        res = self.find_next_row( it )
+        if res is None:
+            self.find_next_row( self.revisions.get_iter_first(), start_it )
 
     def on_entry_find_activate( self, *args ):
         self.on_button_find_clicked()
