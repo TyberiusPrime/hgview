@@ -17,11 +17,24 @@ _basedir = os.path.dirname(_mod.__file__)
 
 xml = gtk.glade.XML(os.path.join( _basedir, "hgview.glade") )
 
+def find_repository(path):
+    """returns <path>'s mercurial repository
+
+    None if <path> is not under hg control
+    """
+    path = abspath(path)
+    while not isdir(join(path, ".hg")):
+        oldpath = path
+        path = dirname(path)
+        if path == oldpath:
+            return None
+    return path
+
 dir_ = None
 if len(sys.argv)>1:
     dir_ = sys.argv[1]
 else:
-    dir_ = os.getcwd()
+    dir_ = find_repository(os.getcwd())
 
 filrex = None
 if len(sys.argv)>2:
