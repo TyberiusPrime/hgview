@@ -14,6 +14,9 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
         'text' : ( gobject.TYPE_STRING,
                    'edges', 'list of edges', "",
                    gobject.PARAM_READWRITE ),
+        'tags' : ( gobject.TYPE_STRING,
+                   'tags', 'tags to display', "",
+                   gobject.PARAM_READWRITE ),
         }
 
 
@@ -22,13 +25,56 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
         self.r = 10
         self.nodex = 0
         self.edges = []
-        self.pen = None
+        self.text = ""
+        self.tags = ""
+        self.pengc = None
+        self.yellowcolor = None
+        self.tag_layout = None
+        self.text_layout = None
         
     def do_get_property( self, propname ):
         return getattr( self, propname.name )
 
     def do_set_property( self, propname, value):
         setattr(self, propname.name, value)
+
+    def get_tag_layout(self,widget):
+        if self.tag_layout:
+            return self.tag_layout
+        ctx = widget.get_pango_context()
+        desc = ctx.get_font_description()
+        desc = desc.copy()
+        desc.set_size( int(desc.get_size()*0.8) )
+        self.tag_layout = pango.Layout( ctx )
+        self.tag_layout.set_font_description( desc )
+        return self.tag_layout
+    
+    def get_text_layout(self,widget):
+        if self.text_layout:
+            return self.text_layout
+        ctx = widget.get_pango_context()
+        self.text_layout = pango.Layout( ctx )
+        return self.text_layout
+
+    def get_yellow_color( self, widget ):
+        if not self.yellowcolor:
+            cmap = widget.get_colormap()
+            color = cmap.alloc_color("yellow")
+            self.yellowcolor = color
+            return color
+        else:
+            return self.yellowcolor
+
+
+    def get_pen_gc( self, widget, window ):
+        if not self.pengc:
+            fgc = widget.style.fg_gc[gtk.STATE_NORMAL]
+            pen = gtk.gdk.GC( window )
+            pen.copy( fgc )
+            self.pengc = pen
+            return pen
+        else:
+            return self.pengc
 
     def on_render(self, window, widget, background_area,
                   cell_area, expose_area, flags ):
@@ -45,12 +91,7 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
 
         #xc = x + W/2
         #yc = y + h/2
-        if not self.pen:
-            pen = gtk.gdk.GC( window )
-            pen.copy( fgc )
-            self.pen = pen
-        else:
-            pen = self.pen
+        pen = self.get_pen_gc( widget, window )
         pen.set_clip_rectangle( (x,y-1,w,h+2) )
         xmax = X
         for x1,y1,x2,y2 in self.edges:
@@ -66,16 +107,23 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
         window.draw_arc( bgc, True, x_ + (W-R)/2, y_+(W-R)/2, R, R, 0, 360*64 )
         window.draw_arc( fgc, False, x_ + (W-R)/2, y_+(W-R)/2, R, R, 0, 360*64 )
 
-        ctx = widget.get_pango_context()
-        layout = pango.Layout( ctx )
+        offset = 0
+        if self.tags:
+            layout = self.get_tag_layout(widget)
+            layout.set_text( self.tags )
+            w_,h_ = layout.get_size()
+            d_= (h-h_/pango.SCALE)/2
+            offset = w_/pango.SCALE + 3
+            window.draw_layout( fgc, x + W*(xmax+1), y+d_, layout, background=self.get_yellow_color(widget) )
+
+        layout = self.get_text_layout(widget)
         layout.set_text( self.text )
         w_,h_ = layout.get_size()
         d_ = (h-h_/pango.SCALE)/2
-        window.draw_layout( fgc, x + W*(xmax+1), y+d_, layout )
+        window.draw_layout( fgc, x + offset + W*(xmax+1), y+d_, layout )
 
     def on_get_size(self, widget, cell_area):
-        ctx = widget.get_pango_context()
-        layout = pango.Layout( ctx )
+        layout = self.get_text_layout(widget)
         layout.set_text( self.text )
         tw, th = layout.get_size()
         tw /= pango.SCALE

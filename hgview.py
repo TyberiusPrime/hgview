@@ -37,6 +37,7 @@ M_FULLDESC = 5
 M_FILELIST = 6
 M_NODEX = 7
 M_EDGES = 8
+M_TAGS = 9
 
 def make_texttag( name, **kwargs ):
     tag = gtk.TextTag(name)
@@ -65,6 +66,7 @@ class HgViewApp(object):
                                         gobject.TYPE_PYOBJECT, # file list
                                         gobject.TYPE_PYOBJECT,      # x for the node
                                         gobject.TYPE_PYOBJECT, # lines for nodes
+                                        gobject.TYPE_STRING,   # tag
                                         )
 
         self.filelist = gtk.ListStore( gobject.TYPE_STRING, # filename
@@ -112,7 +114,8 @@ class HgViewApp(object):
 
         rend = RevGraphRenderer()
         col = gtk.TreeViewColumn("Log", rend, nodex=M_NODEX, edges=M_EDGES,
-                                 text=M_SHORTDESC )
+                                 text=M_SHORTDESC,
+                                 tags=M_TAGS)
         col.set_resizable(True)
         tree.append_column( col )
 
@@ -175,7 +178,9 @@ class HgViewApp(object):
                 if not matching:
                     continue
                 filelist = matching + notmatching
-            nodeinfo[node] = (i, node, text, author, date_, log, filelist )
+            taglist = self.repo.nodetags( node )
+            tags = ", ".join( taglist )
+            nodeinfo[node] = (i, node, text, author, date_, log, filelist, tags )
             keepnodes.append( node )
 
         print "Computing graph..."
@@ -189,15 +194,15 @@ class HgViewApp(object):
         for n, node in enumerate(rowselected):
             if node is None:
                 continue
-            (i, node, text, author, date_, log, filelist ) = nodeinfo[node]
+            (i, node, text, author, date_, log, filelist, tags ) = nodeinfo[node]
             lines = []
             for x1,y1,x2,y2 in graph.rowlines[n]:
                 if not rowselected[y1] or not rowselected[y2]:
                     continue
                 lines.append( (x1,y1-n,x2,y2-n) )
-            add_rev( (i, node, text, author, date_, log, filelist, graph.x[node], lines ) )
+            add_rev( (i, node, text, author, date_, log, filelist, graph.x[node], lines, tags ) )
         tree.thaw_child_notify()
-        #tree.set_fixed_height_mode( True )
+        tree.set_fixed_height_mode( True )
 
 
     def get_revlog_header( self, node ):
@@ -255,15 +260,6 @@ class HgViewApp(object):
             except:
                 # continue
                 raise
-
-##             for idx,f in enumerate(filelist):
-##                 self.filelist.append( (f,idx) )
-##                 text_buffer.insert_with_tags_by_name(eob, DIFFHDR % f, "greybg")
-##                 # eob is bound to the end even if we insert text after that
-##                 # the default left gravity doesn't seem to change that
-##                 pos = eob.copy()
-##                 pos.backward_line()
-##                 mark = text_buffer.create_mark( "file%d" % idx, pos )
         finally:
             textwidget.thaw_child_notify()
         sob, eob = text_buffer.get_bounds()
