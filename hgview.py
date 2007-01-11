@@ -7,6 +7,8 @@ import sys, os
 import time
 from StringIO import StringIO
 from mercurial import hg, ui, patch
+from mercurial.node import short as short_hex
+from mercurial.node import nullid
 import textwrap
 import re
 from buildtree import RevGraph
@@ -207,6 +209,8 @@ class HgViewApp(object):
                                      paragraph_background='grey',
                                      weight=pango.WEIGHT_BOLD ))
         tag_table.add( make_texttag( "yellowbg", background='yellow' ))
+        tag_table.add( make_texttag( "link", foreground="blue",
+                                     underline=pango.UNDERLINE_SINGLE ))
 
 
     def author_data_func( self, column, cell, model, iter, user_data=None ):
@@ -304,8 +308,33 @@ class HgViewApp(object):
             return False
         return True
 
-    def get_revlog_header( self, node ):
-        pass
+    def set_revlog_header( self, buf, node ):
+        sob, eob = buf.get_bounds()
+        changelog = self.repo.changelog
+        buf.insert( eob, "Revision: %d\n" % changelog.rev(node) )
+        author_id = self.changelog_cache[node][2]
+        buf.insert( eob, "Author: %s\n" %  self.authors[author_id] )
+
+        for p in changelog.parents(node):
+            if p == nullid:
+                continue
+            rev = changelog.rev(p)
+            short = short_hex(p)
+            desc = self.changelog_cache[p][1]
+            buf.insert( eob, "Parent: %d:" % rev )
+            buf.insert_with_tags_by_name( eob, short, "link" )
+            buf.insert(eob, "(%s)\n" % desc)
+        for p in changelog.children(node):
+            if p == nullid:
+                continue
+            rev = changelog.rev(p)
+            short = short_hex(p)
+            desc = self.changelog_cache[p][1]
+            buf.insert( eob, "Child:  %d:" % rev )
+            buf.insert_with_tags_by_name( eob, short, "link" )
+            buf.insert(eob, "(%s)\n" % desc)
+
+        buf.insert( eob, "\n" )
 
     def selection_changed( self, selection ):
         model, it = selection.get_selected()
@@ -318,8 +347,10 @@ class HgViewApp(object):
         text_buffer = textwidget.get_buffer()
         textwidget.freeze_child_notify()
         try:
-            hdr = self.get_revlog_header( node )
-            text_buffer.set_text( fulltext+"\n\n" )
+            text_buffer.set_text( "" )
+            self.set_revlog_header( text_buffer, node )
+            sob, eob = text_buffer.get_bounds()
+            text_buffer.insert( eob, fulltext+"\n\n" )
             parent = self.repo.parents(node)[0].node()
             self.filelist.clear()
             sob, eob = text_buffer.get_bounds()

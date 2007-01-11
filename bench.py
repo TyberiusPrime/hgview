@@ -35,10 +35,11 @@ import hotshot
 prof = hotshot.Profile("/home/ludal/hg2.prof")
 
 nodes = build_nodes()
-prof.run("info = build_info(nodes)")
+#prof.run("info = build_info(nodes)")
+info = build_info(nodes)
 
-import sys
-sys.exit(0)
+## import sys
+## sys.exit(0)
 
 ## info = {}
 ## t1=time();
@@ -51,12 +52,12 @@ sys.exit(0)
 uid=0
 authors = {}
 fileset = {}
-s_id = s_author=s_date=s_filelist=s_log = 0
+s_id = s_authors=s_date=s_filelist=s_log = 0
 t1=time()
 for k,v in info.items():
     id,author,date,filelist,log,unk = v
     s_id+=4
-    s_author+=len(author)
+    s_authors+=len(author)
     s_date+=len(date)
     s_filelist+=sum( len(f) for f in filelist )
     s_log += len(log)
@@ -71,7 +72,7 @@ t2=time()
 print "Computing sizes", t2-t1
 print "COUNT=", len(info)
 print "ID=", s_id/1000000.
-print "AUTH=", s_author/1000000.
+print "AUTH=", s_authors/1000000.
 print "DATE=", s_date/1000000.
 print "FILES=", s_filelist/1000000.
 print "LOG=", s_log/1000000.
