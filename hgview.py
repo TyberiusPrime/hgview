@@ -76,6 +76,7 @@ class HgViewApp(object):
     def __init__(self, repodir, filerex = None ):
         self.xml = load_glade()
         self.xml.signal_autoconnect( self )
+        self.statusbar = self.xml.get_widget("statusbar1")
         self.dir = repodir
         self.ui = ui.ui()
         self.repo = hg.repository( self.ui, repodir )
@@ -259,32 +260,49 @@ class HgViewApp(object):
         tree = self.xml.get_widget( "treeview_revisions" )
         nodeinfo = self.changelog_cache
         print "Computing graph..."
-        graph = RevGraph( self.repo, self.nodes, self.nodes )
-        print "done"        
-        rowselected = [None]*len(self.nodes)
-        for node, n in graph.idrow.items():
-            if node in nodeinfo:
-                rowselected[n] = node
-        # detaching the model prevents notifications and updates of view
-        print "Filling model"
         t1 = time.clock()
-        tree.set_model(None)
+        graph = RevGraph( self.repo, self.nodes, self.nodes )
+        print "done in", time.clock()-t1
+        # detaching the model prevents notifications and updates of view
         self.revisions.clear()
+
+        self.progressbar = gtk.ProgressBar()
+        self.progressbar.show()
+        self.statusbar.pack_start( self.progressbar )
+        self.last_node = 0
+        self.graph = graph
+        gobject.idle_add( self.idle_fill_model )
+        return
+
+    def idle_fill_model(self):
+        NMAX = 300
+        graph = self.graph
+        N = self.last_node
+        graph.build(NMAX)
+        rowselected = self.graph.rows
         add_rev = self.revisions.append
-        for n, node in enumerate(rowselected):
+        M = len(rowselected)
+        nodeinfo = self.changelog_cache
+        tree = self.xml.get_widget( "treeview_revisions" )
+        tree.freeze_notify()
+        for n in xrange(N, min(M,N+NMAX)):
+            node = rowselected[n]
             if node is None:
                 continue
             (i, text, author, date_, log, filelist, tags ) = nodeinfo[node]
-            lines = []
-            for x1,y1,x2,y2 in graph.rowlines[n]:
-                if not rowselected[y1] or not rowselected[y2]:
-                    continue
-                lines.append( (x1,y1-n,x2,y2-n) )
-            add_rev( (i, node, text, author, date_, filelist, graph.x[node], lines, tags ) )
-        print "Done in", time.clock()-t1
-        tree.set_model(self.revisions)
-        tree.set_fixed_height_mode( True )
-
+            lines = graph.rowlines[n]
+            add_rev( (i, node, text, author, date_, filelist, graph.x[node], (lines,n), tags ) )
+            
+        self.last_node = min(M,N+NMAX)
+        tree.thaw_notify()
+        self.progressbar.set_fraction( float(self.last_node)/M )
+        if self.last_node == M:
+            self.graph = None
+            self.rowselected = None
+            gtk.Container.remove(self.statusbar, self.progressbar )
+            self.progressbar = None
+            return False
+        return True
 
     def get_revlog_header( self, node ):
         pass
@@ -380,6 +398,7 @@ class HgViewApp(object):
         while iter != stop_iter:
             node, author, files = self.revisions.get( iter, M_NODE, M_AUTHOR,
                                                      M_FILELIST )
+            author = self.authors[author]
             log = self.changelog_cache[node][4]
             if ( rexp.search( author ) or
                  rexp.search( log ) ):

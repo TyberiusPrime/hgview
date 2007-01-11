@@ -32,7 +32,8 @@ class RevGraph(object):
         self.idrow = {} # mapping of node to row
         self.rowlines = [ set() for i in xrange(len(allnodes)) ] # mapping of row to list of lines
         self.rownlines = [None]*len(allnodes) # mapping of row to number of lines
-
+        self.rows = [None]*len(allnodes)
+        
         # calculate initial ncleft for each node
         ncleft = dict( izip( nodes, repeat(0) ) )
         ncleft[nullid] = 0
@@ -87,14 +88,36 @@ class RevGraph(object):
         nullentry = -1 # next column to be eradicate when it is determined that one should be
         rowno = -1
         linestarty = {}
-        datemode = False
+        self.datemode = False
+        
+        self.todo = todo
+        self.rowno = rowno
+        self.level = level
+        self.parents = parents
+        self.ncleft = ncleft
+        self.linestarty = linestarty
+        self.nullentry = nullentry
+        
+    def build(self, NMAX=500 ):
+        datemode = self.datemode
+        todo = self.todo
+        rowno = self.rowno
+        level = self.level
+        parents = self.parents
+        ncleft = self.ncleft
+        linestarty = self.linestarty
+        nullentry = self.nullentry
 
+        rowmax = rowno+NMAX
         # each node is treated only once
         while todo:
+            if rowno==rowmax:
+                break
             rowno += 1
             self.rownlines[rowno] = len(todo)
             id = todo[level]
             self.idrow[id] = rowno
+            self.rows[rowno] = id
             actualparents = parents[id]
 
             for p in actualparents:
@@ -229,6 +252,14 @@ class RevGraph(object):
 
                 if j not in linestarty:
                     linestarty[j] = rowno + 1
+
+        self.todo = todo
+        self.rowno = rowno
+        self.level = level
+        self.parents = parents
+        self.ncleft = ncleft
+        self.linestarty = linestarty
+        self.nullentry = nullentry
 
 if __name__ == '__main__':
     ui_ = ui.ui()
