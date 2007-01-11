@@ -22,7 +22,7 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
 
     def __init__(self):
         self.__gobject_init__()
-        self.r = 10
+        self.r = 6
         self.nodex = 0
         self.edges = []
         self.text = ""
@@ -81,7 +81,7 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
         x, y, w, h = cell_area
         h+=3 # this is probably padding
         y-=1
-        W = h
+        W = self.r+2
         R = self.r
         X = self.nodex
         fgc = widget.style.fg_gc[gtk.STATE_NORMAL]
@@ -120,7 +120,7 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
         layout.set_text( self.text )
         w_,h_ = layout.get_size()
         d_ = (h-h_/pango.SCALE)/2
-        window.draw_layout( fgc, x + offset + W*(xmax+1), y+d_, layout )
+        window.draw_layout( fgc, x + offset + W*(xmax+2), y+d_, layout )
 
     def on_get_size(self, widget, cell_area):
         layout = self.get_text_layout(widget)
@@ -128,7 +128,7 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
         tw, th = layout.get_size()
         tw /= pango.SCALE
         th /= pango.SCALE
-        size = 0, 0, (self.nodex+1)*self.r*2+tw, max(self.r*2,th)
+        size = 0, 0, (self.nodex+1)*(self.r+2)+tw, max(self.r*2,th)
         return size
 
 

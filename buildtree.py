@@ -113,9 +113,6 @@ class RevGraph(object):
                     self.rowlines[r].add( (level,level_linestart,level,rowno) )
             linestarty[level] = rowno # starting a new line
 
-            # TODO tags
-            #
-
             # if only one parent and last child,
             # replace with parent in todo
             if (not datemode) and (len(actualparents) == 1):
