@@ -12,10 +12,29 @@ import re
 from buildtree import RevGraph
 from graphrenderer import RevGraphRenderer
 
-_mod = sys.modules["__main__"]
-_basedir = os.path.dirname(_mod.__file__)
+GLADE_FILE_NAME = "hgview.glade"
+GLADE_FILE_LOCATIONS = [ '/usr/share/hgview' ]
 
-xml = gtk.glade.XML(os.path.join( _basedir, "hgview.glade") )
+# monkeypatch hg.util.tolocal since we really want utf-8 for gtk
+def tolocal(s):
+    return s
+import mercurial.util
+mercurial.util.tolocal = tolocal
+
+def load_glade():
+    """Try several paths in which the glade file might be found"""
+    mod = sys.modules[__name__]
+    # Try this module's dir first (dev case)
+    _basedir = os.path.dirname(mod.__file__)
+
+    test_dirs = [_basedir] + GLADE_FILE_LOCATIONS
+    for dirname in test_dirs:
+        glade_file = os.path.join(dirname, GLADE_FILE_NAME)
+        if os.path.exists(glade_file):
+            return gtk.glade.XML( glade_file )
+
+    raise ImportError("Couldn't find %s in (%s)" % (GLADE_FILE_NAME,
+                                                    ",".join( "'%s'" % f for f in dirname ) ) )
 
 def find_repository(path):
     """returns <path>'s mercurial repository
@@ -30,15 +49,6 @@ def find_repository(path):
             return None
     return path
 
-dir_ = None
-if len(sys.argv)>1:
-    dir_ = sys.argv[1]
-else:
-    dir_ = find_repository(os.getcwd())
-
-filrex = None
-if len(sys.argv)>2:
-    filrex = sys.argv[2]
 
 DIFFHDR = "=== %s ===\n"
 
@@ -46,38 +56,48 @@ M_NODE = 1
 M_SHORTDESC = 2
 M_AUTHOR = 3
 M_DATE = 4
-M_FULLDESC = 5
-M_FILELIST = 6
-M_NODEX = 7
-M_EDGES = 8
-M_TAGS = 9
+M_FILELIST = 5
+M_NODEX = 6
+M_EDGES = 7
+M_TAGS = 8
+
+COLORS = [ "blue", "darkgreen", "red", "green", "darkblue", "purple", "cyan", "magenta" ]
 
 def make_texttag( name, **kwargs ):
+    """Helper function generating a TextTag"""
     tag = gtk.TextTag(name)
     for key, value in kwargs.items():
         key=key.replace("_","-")
         tag.set_property( key, value )
     return tag
 
+
 class HgViewApp(object):
     def __init__(self, repodir, filerex = None ):
+        self.xml = load_glade()
+        self.xml.signal_autoconnect( self )
+        self.statusbar = self.xml.get_widget("statusbar1")
         self.dir = repodir
         self.ui = ui.ui()
-        self.repo = hg.repository( self.ui, dir_ )
+        self.repo = hg.repository( self.ui, repodir )
         if filerex:
             self.filerex = re.compile( filerex )
         else:
             self.filerex = None
-
+        # cache and indexing of changelog
+        self.changelog_cache = {}
+        self.authors = []
+        self.logs = []
+        self.files = []
+        self.colors = []
         self.revisions = gtk.ListStore( gobject.TYPE_INT,
                                         gobject.TYPE_PYOBJECT, # node (stored as python strings)
                                                                # because they can contain zeroes
                                         gobject.TYPE_STRING,   # short description
-                                        gobject.TYPE_STRING,   # author
+                                        gobject.TYPE_INT,      # author
                                         gobject.TYPE_STRING,   # date
-                                        gobject.TYPE_STRING,   # full desc
                                         gobject.TYPE_PYOBJECT, # file list
-                                        gobject.TYPE_PYOBJECT,      # x for the node
+                                        gobject.TYPE_PYOBJECT, # x for the node
                                         gobject.TYPE_PYOBJECT, # lines for nodes
                                         gobject.TYPE_STRING,   # tag
                                         )
@@ -89,8 +109,83 @@ class HgViewApp(object):
         self.setup_tags()
         self.graph = None
         self.setup_tree()
+        self.read_changelog()
         self.refresh_tree()
         self.find_text = None
+
+    def read_changelog(self):
+        aid = 0
+        fid = 0
+        self.changelog_cache = {}
+        authors = {}
+        changelog = self.repo.changelog
+        nodeinfo = self.changelog_cache
+        cnt = changelog.count()
+        bar = cnt/10 or 1
+        nodes = [None]*cnt
+        self.nodes = nodes
+        t1 = time.clock()
+        print "Retrieving changelog"
+        for i in xrange(cnt):
+            if (i+1) % bar == 0:
+                print ".",
+                sys.stdout.flush()
+            node = changelog.node( i )
+            nodes[i] = node
+            id,author,date,filelist,log,unk = changelog.read( node )
+            author_id = authors.setdefault( author, aid )
+            if author_id == aid:
+                aid+=1
+            filelist = [ intern(f) for f in filelist ]
+            lines = log.strip().splitlines()
+            if lines:
+                text = lines[0].strip()
+            else:
+                text = "*** no log"
+            date_ = time.strftime( "%F %H:%M", time.gmtime( date[0] ) )
+            taglist = self.repo.nodetags( node )
+            tags = ", ".join( taglist )
+            nodeinfo[node] = (i, text, author_id, date_, log, tuple(filelist), tags )
+        # create authors index
+        # real plan is to allow the user to configure user groups and assign
+        # colors to them; groups, colors & co would be saved in $HOME/.hgviewrc
+        # and/or .hg/hgviewrc
+        _a = self.authors = [None]*len(authors)
+        _c = self.colors =  [None]*len(authors)
+        colidx = 0
+        for k,v in authors.iteritems():
+            _a[v]=k
+            _c[v]=COLORS[colidx]
+            colidx+=1
+            if colidx % len(COLORS)==0:
+                colidx = 0
+        t2 = time.clock()
+        print "done in", t2-t1
+
+    def filter_nodes(self):
+        nodeinfo = self.changelog_cache
+        if not self.filerex:
+            return [ (node,nodeinfo[node][5]) for node in self.nodes ]
+        # build set of matching file names
+        filelist = set()
+        for _id, f in enumerate(self.files):
+            if self.filerex.search( f ):
+                filelist.add( _id )
+        # build list of matching nodes
+        keepnodes = []
+        for n in self.nodes:
+            t = nodeinfo[n]
+            nodefiles = set(t[5])
+            # matching files in alphabetical order first
+            matching = sorted(filelist.intersection(nodefiles),
+                              key=lambda v:self.files[v])
+            if not matching:
+                continue
+            notmatching = sorted(nodefiles.difference(filelist),
+                              key=lambda v:self.files[v])
+            filelist = matching + notmatching
+            keepnodes.append( (node,filelist) )
+        return keepnodes
 
     def on_window_main_delete_event( self, win, evt ):
         gtk.main_quit()
@@ -99,7 +194,7 @@ class HgViewApp(object):
         gtk.main_quit()
 
     def setup_tags(self):
-        textwidget = xml.get_widget( "textview_status" )
+        textwidget = self.xml.get_widget( "textview_status" )
         text_buffer = textwidget.get_buffer()
         tag_table = text_buffer.get_tag_table()
 
@@ -114,10 +209,13 @@ class HgViewApp(object):
         tag_table.add( make_texttag( "yellowbg", background='yellow' ))
 
 
+    def author_data_func( self, column, cell, model, iter, user_data=None ):
+        author_id = model.get_value( iter, M_AUTHOR )
+        cell.set_property( "text", self.authors[author_id] )
+        cell.set_property( "foreground", self.colors[author_id] )
+
     def setup_tree(self):
-        tree = xml.get_widget( "treeview_revisions" )
-        tree.set_enable_search( True )
-        tree.set_search_column( M_FULLDESC )
+        tree = self.xml.get_widget( "treeview_revisions" )
         tree.get_selection().connect("changed", self.selection_changed )
 
         rend = gtk.CellRendererText()
@@ -135,7 +233,8 @@ class HgViewApp(object):
         tree.append_column( col )
 
         rend = gtk.CellRendererText()
-        col = gtk.TreeViewColumn("Author", rend, text=3 )
+        col = gtk.TreeViewColumn("Author", rend )
+        col.set_cell_data_func( rend, self.author_data_func )
         col.set_resizable(True)
         tree.append_column( col )
 
@@ -147,7 +246,7 @@ class HgViewApp(object):
         tree.set_model( self.revisions )
 
         # file tree
-        tree = xml.get_widget( "treeview_filelist" )
+        tree = self.xml.get_widget( "treeview_filelist" )
         tree.set_rules_hint( 1 )
         tree.get_selection().connect("changed", self.fileselection_changed )
 
@@ -158,67 +257,52 @@ class HgViewApp(object):
         tree.set_model( self.filelist )
 
     def refresh_tree(self):
-        tree = xml.get_widget( "treeview_revisions" )
-        self.revisions.clear()
-        changelog = self.repo.changelog
-        add_rev = self.revisions.append
-        cnt = changelog.count()
-
-        nodes = []
-        keepnodes = []
-        nodeinfo = {}
-        bar = cnt/10 or 1
-        for i in xrange(cnt):
-            if (i+1) % bar == 0:
-                print ".",
-                sys.stdout.flush()
-            node = changelog.node( i )
-            nodes.append( node )
-            id,author,date,filelist,log,unk = changelog.read( node )
-            lines = log.strip().splitlines()
-            if lines:
-                text = lines[0].strip()
-            else:
-                text = "*** no log"
-            date_ = time.strftime( "%F %H:%M", time.gmtime( date[0] ) )
-
-            if self.filerex:
-                matching = []
-                notmatching = []
-                for f in filelist:
-                    if self.filerex.search( f ):
-                        matching.append( f )
-                    else:
-                        notmatching.append( f )
-                if not matching:
-                    continue
-                filelist = matching + notmatching
-            taglist = self.repo.nodetags( node )
-            tags = ", ".join( taglist )
-            nodeinfo[node] = (i, node, text, author, date_, log, filelist, tags )
-            keepnodes.append( node )
-
+        tree = self.xml.get_widget( "treeview_revisions" )
+        nodeinfo = self.changelog_cache
         print "Computing graph..."
-        graph = RevGraph( self.repo, keepnodes, nodes )
-        print "done"
-        rowselected = [None]*len(nodes)
-        for node, n in graph.idrow.items():
-            if node in nodeinfo:
-                rowselected[n] = node
-        tree.freeze_child_notify()
-        for n, node in enumerate(rowselected):
+        t1 = time.clock()
+        graph = RevGraph( self.repo, self.nodes, self.nodes )
+        print "done in", time.clock()-t1
+        # detaching the model prevents notifications and updates of view
+        self.revisions.clear()
+
+        self.progressbar = gtk.ProgressBar()
+        self.progressbar.show()
+        self.statusbar.pack_start( self.progressbar )
+        self.last_node = 0
+        self.graph = graph
+        gobject.idle_add( self.idle_fill_model )
+        return
+
+    def idle_fill_model(self):
+        NMAX = 300
+        graph = self.graph
+        N = self.last_node
+        graph.build(NMAX)
+        rowselected = self.graph.rows
+        add_rev = self.revisions.append
+        M = len(rowselected)
+        nodeinfo = self.changelog_cache
+        tree = self.xml.get_widget( "treeview_revisions" )
+        tree.freeze_notify()
+        for n in xrange(N, min(M,N+NMAX)):
+            node = rowselected[n]
             if node is None:
                 continue
-            (i, node, text, author, date_, log, filelist, tags ) = nodeinfo[node]
-            lines = []
-            for x1,y1,x2,y2 in graph.rowlines[n]:
-                if not rowselected[y1] or not rowselected[y2]:
-                    continue
-                lines.append( (x1,y1-n,x2,y2-n) )
-            add_rev( (i, node, text, author, date_, log, filelist, graph.x[node], lines, tags ) )
-        tree.thaw_child_notify()
-        tree.set_fixed_height_mode( True )
-
+            (i, text, author, date_, log, filelist, tags ) = nodeinfo[node]
+            lines = graph.rowlines[n]
+            add_rev( (i, node, text, author, date_, filelist, graph.x[node], (lines,n), tags ) )
+            
+        self.last_node = min(M,N+NMAX)
+        tree.thaw_notify()
+        self.progressbar.set_fraction( float(self.last_node)/M )
+        if self.last_node == M:
+            self.graph = None
+            self.rowselected = None
+            gtk.Container.remove(self.statusbar, self.progressbar )
+            self.progressbar = None
+            return False
+        return True
 
     def get_revlog_header( self, node ):
         pass
@@ -227,9 +311,10 @@ class HgViewApp(object):
         model, it = selection.get_selected()
         if it is None:
             return
-        node, fulltext, filelist = model.get( it, M_NODE,
-                                              M_FULLDESC, M_FILELIST )
-        textwidget = xml.get_widget( "textview_status" )
+        node, filelist = model.get( it, M_NODE,
+                                    M_FILELIST )
+        fulltext = self.changelog_cache[node][4]
+        textwidget = self.xml.get_widget( "textview_status" )
         text_buffer = textwidget.get_buffer()
         textwidget.freeze_child_notify()
         try:
@@ -285,7 +370,7 @@ class HgViewApp(object):
 
     def hilight_search_string( self ):
         # Highlight the search string
-        textwidget = xml.get_widget( "textview_status" )
+        textwidget = self.xml.get_widget( "textview_status" )
         text_buffer = textwidget.get_buffer()
         if not self.find_text:
             return
@@ -306,16 +391,18 @@ class HgViewApp(object):
         if it is None:
             return
         markname = model.get_value( it, 1 )
-        tw = xml.get_widget("textview_status" )
+        tw = self.xml.get_widget("textview_status" )
         mark = tw.get_buffer().get_mark( markname )
         tw.scroll_to_mark( mark, .2, use_align=True, xalign=1., yalign=0. )
 
     def find_next_row( self, iter, stop_iter=None ):
-        txt = xml.get_widget( "entry_find" ).get_text()
+        txt = self.xml.get_widget( "entry_find" ).get_text()
         rexp = re.compile( txt )
         while iter != stop_iter and iter!=None:
-            author, log, files = self.revisions.get( iter, M_AUTHOR,
-                                                     M_FULLDESC, M_FILELIST )
+            node, author, files = self.revisions.get( iter, M_NODE, M_AUTHOR,
+                                                     M_FILELIST )
+            author = self.authors[author]
+            log = self.changelog_cache[node][4]
             if ( rexp.search( author ) or
                  rexp.search( log ) ):
                 break
@@ -337,9 +424,9 @@ class HgViewApp(object):
             self.find_text = None
             return
         else:
-            self.find_text = xml.get_widget( "entry_find" ).get_text()
+            self.find_text = self.xml.get_widget( "entry_find" ).get_text()
 
-        tree = xml.get_widget( "treeview_revisions" )
+        tree = self.xml.get_widget( "treeview_revisions" )
         sel = tree.get_selection()
         sel.select_iter( itr )
         path = self.revisions.get_path( itr )
@@ -347,7 +434,7 @@ class HgViewApp(object):
 
 
     def get_selected_rev(self):
-        sel = xml.get_widget( "treeview_revisions" ).get_selection()
+        sel = self.xml.get_widget( "treeview_revisions" ).get_selection()
         model, it = sel.get_selected()
         if it is None:
             it = model.get_iter_first()
@@ -371,8 +458,25 @@ class HgViewApp(object):
     def on_entry_find_activate( self, *args ):
         self.on_button_find_clicked()
 
-app = HgViewApp( dir_, filrex )
 
-xml.signal_autoconnect( app )
+def main():
+    # TODO: either do proper option handling or make
+    # this an hg extension
+    dir_ = None
+    if len(sys.argv)>1:
+        dir_ = sys.argv[1]
+    else:
+        dir_ = find_repository(os.getcwd())
+    
+    filrex = None
+    if len(sys.argv)>2:
+        filrex = sys.argv[2]
+    
+    app = HgViewApp( dir_, filrex )
+    
+    
+    gtk.main()
 
-gtk.main()
+
+if __name__ == "__main__":
+    main()
