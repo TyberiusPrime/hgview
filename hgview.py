@@ -7,7 +7,7 @@ import sys, os
 import time
 from StringIO import StringIO
 from mercurial import hg, ui, patch
-from mercurial.node import short as short_hex
+from mercurial.node import short as short_hex, bin as short_bin
 from mercurial.node import nullid
 import textwrap
 import re
@@ -209,8 +209,40 @@ class HgViewApp(object):
                                      paragraph_background='grey',
                                      weight=pango.WEIGHT_BOLD ))
         tag_table.add( make_texttag( "yellowbg", background='yellow' ))
-        tag_table.add( make_texttag( "link", foreground="blue",
-                                     underline=pango.UNDERLINE_SINGLE ))
+        link_tag = make_texttag( "link", foreground="blue",
+                                 underline=pango.UNDERLINE_SINGLE )
+        link_tag.connect("event",self.link_event )
+        tag_table.add( link_tag )
+
+
+    def link_event( self, tag, widget, event, iter ):
+        if event.type != gtk.gdk.BUTTON_RELEASE:
+            return
+        buffer = widget.get_buffer()
+        beg = iter.copy()
+        while not beg.begins_tag(tag):
+            beg.backward_char()
+        end = iter.copy()
+        while not end.ends_tag(tag):
+            end.forward_char()
+        text = buffer.get_text( beg, end )
+
+        it = self.revisions.get_iter_first()
+        while it:
+            node = self.revisions.get_value( it, M_NODE )
+            hhex = short_hex(node)
+##             print short_hex(node), short_hex(lookup), node==lookup
+##             print repr(node), repr(lookup)
+            if hhex==text:
+                break
+            it = self.revisions.iter_next( it )
+        if not it:
+            return
+        tree = self.xml.get_widget("treeview_revisions")
+        sel = tree.get_selection()
+        sel.select_iter(it)
+        path = self.revisions.get_path(it)
+        tree.scroll_to_cell( path )
 
 
     def author_data_func( self, column, cell, model, iter, user_data=None ):
