@@ -10,6 +10,8 @@
 
 # This was translated by Tristan from tcl/tk (gitk) to python
 # and then reworked and pruned
+# I got it from : http://www.selenic.com/pipermail/mercurial/2005-August/003585.html
+
 
 from mercurial import hg, ui
 from mercurial.node import hex as binhex

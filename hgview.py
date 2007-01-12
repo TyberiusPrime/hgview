@@ -116,6 +116,7 @@ class HgViewApp(object):
         self.find_text = None
 
     def read_changelog(self):
+        """Retrieve the information from the changelog and cache it"""
         aid = 0
         fid = 0
         self.changelog_cache = {}
@@ -196,6 +197,7 @@ class HgViewApp(object):
         gtk.main_quit()
 
     def setup_tags(self):
+        """Creates the tags to be used inside the TextView"""
         textwidget = self.xml.get_widget( "textview_status" )
         text_buffer = textwidget.get_buffer()
         tag_table = text_buffer.get_tag_table()
@@ -216,6 +218,7 @@ class HgViewApp(object):
 
 
     def link_event( self, tag, widget, event, iter ):
+        """Handle a click on a 'link' tag in the main TextView"""
         if event.type != gtk.gdk.BUTTON_RELEASE:
             return
         buffer = widget.get_buffer()
