@@ -1,5 +1,4 @@
-#!/usr/bin/env python
-# gui.py - gui classes for mercurial
+# buildtree.py - the graph algorithm inherited from gitk
 #
 # Copyright (C) 2007 Logilab. All rights reserved.
 # Copyright (C) 2005 Tristan Wibberley <tristan at wibberley.com>. All rights reserved.

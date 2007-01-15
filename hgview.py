@@ -1,4 +1,13 @@
-
+#!/usr/bin/env python
+# hgview.py - gtk-based hgk
+#
+# Copyright (C) 2007 Logilab. All rights reserved.
+#
+# This software may be used and distributed according to the terms
+# of the GNU General Public License, incorporated herein by reference.
+"""
+Main gtk application for hgview
+"""
 import gtk
 import gtk.glade
 import gobject
@@ -17,8 +26,8 @@ from graphrenderer import RevGraphRenderer
 GLADE_FILE_NAME = "hgview.glade"
 GLADE_FILE_LOCATIONS = [ '/usr/share/hgview' ]
 
-# monkeypatch hg.util.tolocal since we really want utf-8 for gtk
 def tolocal(s):
+    """monkeypatch hg.util.tolocal since we really want utf-8 for gtk"""
     return s
 import mercurial.util
 mercurial.util.tolocal = tolocal
@@ -30,13 +39,15 @@ def load_glade():
     _basedir = os.path.dirname(mod.__file__)
 
     test_dirs = [_basedir] + GLADE_FILE_LOCATIONS
-    for dirname in test_dirs:
-        glade_file = os.path.join(dirname, GLADE_FILE_NAME)
+    for _dir in test_dirs:
+        glade_file = os.path.join(_dir, GLADE_FILE_NAME)
         if os.path.exists(glade_file):
             return gtk.glade.XML( glade_file )
 
-    raise ImportError("Couldn't find %s in (%s)" % (GLADE_FILE_NAME,
-                                                    ",".join( "'%s'" % f for f in dirname ) ) )
+    raise ImportError("Couldn't find %s in (%s)" %
+                      (GLADE_FILE_NAME,
+                       ",".join( "'%s'" % f for f in test_dirs ) )
+                       )
 
 def find_repository(path):
     """returns <path>'s mercurial repository
@@ -65,24 +76,27 @@ M_NODEX = 6
 M_EDGES = 7
 M_TAGS = 8
 
-COLORS = [ "blue", "darkgreen", "red", "green", "darkblue", "purple", "cyan", "magenta" ]
+COLORS = [ "blue", "darkgreen", "red", "green", "darkblue", "purple",
+           "cyan", "magenta" ]
 
 def make_texttag( name, **kwargs ):
     """Helper function generating a TextTag"""
     tag = gtk.TextTag(name)
     for key, value in kwargs.items():
-        key=key.replace("_","-")
+        key = key.replace("_","-")
         tag.set_property( key, value )
     return tag
 
 def timeit( f ):
+    """Decorator used to time the execution of a function"""
     def timefunc( *args, **kwargs ):
+        """wrapper"""
         t1 = time.time()
         t2 = time.clock()
-        res = f(*args,**kwargs)
+        res = f(*args, **kwargs)
         t3 = time.clock()
         t4 = time.time()
-        print f.func_name,t3-t2,t4-t1
+        print f.func_name, t3 - t2, t4 - t1
         return res
     return timefunc
 
@@ -114,15 +128,16 @@ class HgViewApp(object):
         self.logs = []
         self.files = []
         self.colors = []
-        self.revisions = gtk.ListStore( gobject.TYPE_INT,
-                                        gobject.TYPE_PYOBJECT, # node (stored as python strings)
-                                                               # because they can contain zeroes
-                                        gobject.TYPE_PYOBJECT,   # short description
+        # The strings are stored as PYOBJECT when they contain zeros and
+        # to save memory when they are used by the custom renderer
+        self.revisions = gtk.ListStore( gobject.TYPE_INT, # Revision
+                                        gobject.TYPE_PYOBJECT, # node
+                                        gobject.TYPE_PYOBJECT, # short desc
                                         gobject.TYPE_INT,      # author
                                         gobject.TYPE_STRING,   # date
                                         gobject.TYPE_PYOBJECT, # file list
                                         gobject.TYPE_PYOBJECT, # x for the node
-                                        gobject.TYPE_PYOBJECT, # lines for nodes
+                                        gobject.TYPE_PYOBJECT, # lines to draw
                                         gobject.TYPE_STRING,   # tag
                                         )
 
@@ -138,9 +153,10 @@ class HgViewApp(object):
 
 
     def filter_nodes(self):
+        """XXX reimplement this"""
         nodeinfo = self.changelog_cache
         if not self.filerex:
-            return [ (node,nodeinfo[node][5]) for node in self.nodes ]
+            return [ (node, nodeinfo[node][5]) for node in self.nodes ]
         # build set of matching file names
         filelist = set()
         for _id, f in enumerate(self.files):
@@ -148,8 +164,8 @@ class HgViewApp(object):
                 filelist.add( _id )
         # build list of matching nodes
         keepnodes = []
-        for n in self.nodes:
-            t = nodeinfo[n]
+        for node in self.nodes:
+            t = nodeinfo[node]
             nodefiles = set(t[5])
             # matching files in alphabetical order first
             matching = sorted(filelist.intersection(nodefiles),
@@ -159,13 +175,15 @@ class HgViewApp(object):
             notmatching = sorted(nodefiles.difference(filelist),
                               key=lambda v:self.files[v])
             filelist = matching + notmatching
-            keepnodes.append( (node,filelist) )
+            keepnodes.append( (node, filelist) )
         return keepnodes
 
     def on_window_main_delete_event( self, win, evt ):
+        """Bye"""
         gtk.main_quit()
 
     def on_quit1_activate( self, *args ):
+        """Bye"""
         gtk.main_quit()
 
     def setup_tags(self):
@@ -185,28 +203,28 @@ class HgViewApp(object):
         tag_table.add( make_texttag( "yellowbg", background='yellow' ))
         link_tag = make_texttag( "link", foreground="blue",
                                  underline=pango.UNDERLINE_SINGLE )
-        link_tag.connect("event",self.link_event )
+        link_tag.connect("event", self.link_event )
         tag_table.add( link_tag )
 
 
-    def link_event( self, tag, widget, event, iter ):
+    def link_event( self, tag, widget, event, iter_ ):
         """Handle a click on a 'link' tag in the main TextView"""
         if event.type != gtk.gdk.BUTTON_RELEASE:
             return
-        buffer = widget.get_buffer()
-        beg = iter.copy()
+        text_buffer = widget.get_buffer()
+        beg = iter_.copy()
         while not beg.begins_tag(tag):
             beg.backward_char()
-        end = iter.copy()
+        end = iter_.copy()
         while not end.ends_tag(tag):
             end.forward_char()
-        text = buffer.get_text( beg, end )
+        text = text_buffer.get_text( beg, end )
 
         it = self.revisions.get_iter_first()
         while it:
             node = self.revisions.get_value( it, M_NODE )
             hhex = short_hex(node)
-            if hhex==text:
+            if hhex == text:
                 break
             it = self.revisions.iter_next( it )
         if not it:
@@ -218,12 +236,15 @@ class HgViewApp(object):
         tree.scroll_to_cell( path )
 
 
-    def author_data_func( self, column, cell, model, iter, user_data=None ):
-        author_id = model.get_value( iter, M_AUTHOR )
+    def author_data_func( self, column, cell, model, iter_, user_data=None ):
+        """A Cell datafunction used to provide the author's name and
+        foreground color"""
+        author_id = model.get_value( iter_, M_AUTHOR )
         cell.set_property( "text", self.authors[author_id] )
         cell.set_property( "foreground", self.colors[author_id] )
 
     def setup_tree(self):
+        """Configure the 2 gtk.TreeView"""
         # Setup the revisions treeview
         tree = self.xml.get_widget( "treeview_revisions" )
         tree.get_selection().connect("changed", self.selection_changed )
@@ -279,6 +300,7 @@ class HgViewApp(object):
         self.authors_dict = {}
 
     def refresh_tree(self):
+        """Starts the process of filling the ListStore model"""
         self.read_nodes()
         print "Computing graph..."
         t1 = time.clock()
@@ -298,7 +320,18 @@ class HgViewApp(object):
 ##     def idle_fill_model(self):
 ##         return PROF.runcall(self.idle_fill_model_prof)
 
+    def get_short_log( self, log ):
+        lines = log.strip().splitlines()
+        if lines:
+            text = lines[0].strip()
+        else:
+            text = "*** no log"
+        return text
+
+
     def idle_fill_model(self):
+        """Idle task filling the ListStore model chunks by chunks"""
+        t1 = time.clock()
         NMAX = 300  # Max number of entries we process each time
         aid = len(self.authors)
         authors = self.authors_dict
@@ -310,41 +343,37 @@ class HgViewApp(object):
         graph.build(NMAX)
         rowselected = self.graph.rows
         add_rev = self.revisions.append
-        M = len(rowselected)
         nodeinfo = self.changelog_cache
         tree = self.xml.get_widget( "treeview_revisions" )
         tree.freeze_notify()
-        for n in xrange(N, min(M,N+NMAX)):
+        last_node = min(len(rowselected), N + NMAX)
+        for n in xrange(N, last_node ):
             node = rowselected[n]
             if node is None:
                 continue
-
-            id,author,date,filelist,log,unk = changelog.read( node )
+            _, author, date, filelist, log, _ = changelog.read( node )
             rev = changelog.rev( node )
             author_id = authors.setdefault( author, aid )
             if author_id == aid:
                 self.authors.append( author )
                 self.colors.append( COLORS[aid%NCOLORS] )
-                aid+=1
+                aid += 1
             filelist = [ intern(f) for f in filelist ]
-            lines = log.strip().splitlines()
-            if lines:
-                text = lines[0].strip()
-            else:
-                text = "*** no log"
-            date_ = time.strftime( "%F %H:%M", time.gmtime( date[0] ) )
-            taglist = self.repo.nodetags( node )
-            tags = ", ".join( taglist )
+            text = self.get_short_log( log )
+            date_ = time.strftime( "%F %H:%M", time.gmtime(date[0]) )
+            taglist = self.repo.nodetags(node)
+            tags = ", ".join(taglist)
             filelist = tuple(filelist)
-            nodeinfo[node] = (rev, text, author_id, date_, log, filelist, tags )
+            nodeinfo[node] = (rev, text, author_id, date_, log, filelist, tags)
             lines = graph.rowlines[n]
             add_rev( (rev, node, text, author_id, date_, filelist,
                       graph.x[node], (lines,n), tags ) )
 
-        self.last_node = min(M,N+NMAX)
+        self.last_node = last_node
         tree.thaw_notify()
-        self.progressbar.set_fraction( float(self.last_node)/M )
-        if self.last_node == M:
+        self.progressbar.set_fraction( float(self.last_node) / M )
+        print "batch: %09.6f" % (time.clock()-t1)
+        if self.last_node == len(rowselected):
             self.graph = None
             self.rowselected = None
             gtk.Container.remove(self.statusbar, self.progressbar )
@@ -353,7 +382,8 @@ class HgViewApp(object):
         return True
 
     def set_revlog_header( self, buf, node ):
-        sob, eob = buf.get_bounds()
+        """Put the revision log header in the TextBuffer"""
+        eob = buf.get_end_iter()
         changelog = self.repo.changelog
         buf.insert( eob, "Revision: %d\n" % changelog.rev(node) )
         author_id = self.changelog_cache[node][2]
@@ -364,7 +394,7 @@ class HgViewApp(object):
                 continue
             rev = changelog.rev(p)
             short = short_hex(p)
-            desc = self.changelog_cache.get(p,EMPTY_NODE)[1]
+            desc = self.changelog_cache.get(p, EMPTY_NODE)[1]
             buf.insert( eob, "Parent: %d:" % rev )
             buf.insert_with_tags_by_name( eob, short, "link" )
             buf.insert(eob, "(%s)\n" % desc)
@@ -373,7 +403,7 @@ class HgViewApp(object):
                 continue
             rev = changelog.rev(p)
             short = short_hex(p)
-            desc = self.changelog_cache.get(p,EMPTY_NODE)[1]
+            desc = self.changelog_cache.get(p, EMPTY_NODE)[1]
             buf.insert( eob, "Child:  %d:" % rev )
             buf.insert_with_tags_by_name( eob, short, "link" )
             buf.insert(eob, "(%s)\n" % desc)
@@ -389,55 +419,51 @@ class HgViewApp(object):
         fulltext = self.changelog_cache[node][4]
         textwidget = self.xml.get_widget( "textview_status" )
         text_buffer = textwidget.get_buffer()
+        text_buffer.set_text( "" )
+        text_buffer.create_mark( "begdesc", text_buffer.get_start_iter() )
         textwidget.freeze_child_notify()
         try:
-            text_buffer.set_text( "" )
             self.set_revlog_header( text_buffer, node )
-            sob, eob = text_buffer.get_bounds()
+            eob = text_buffer.get_end_iter()
             text_buffer.insert( eob, fulltext+"\n\n" )
             parent = self.repo.parents(node)[0].node()
             self.filelist.clear()
-            sob, eob = text_buffer.get_bounds()
-            enddesc = eob.copy()
+            enddesc = text_buffer.get_end_iter()
             enddesc.backward_line()
             text_buffer.create_mark( "enddesc", enddesc )
-            text_buffer.create_mark( "begdesc", sob )
             self.filelist.append( ("Content", "begdesc" ) )
-            try:
-                out = StringIO()
-                patch.diff(self.repo, node1=parent, node2=node,
-                           files=filelist, fp=out)
-                it = iter(out.getvalue().splitlines())
-                idx = 0
-                for l in it:
-                    if l.startswith("diff"):
-                        f = l.split()[-1]
-                        text_buffer.insert_with_tags_by_name(eob,
-                                                             DIFFHDR % f, "greybg")
-                        pos = eob.copy()
-                        pos.backward_line()
-                        markname = "file%d" % idx
-                        idx += 1
-                        mark = text_buffer.create_mark( markname, pos )
-                        self.filelist.append( (f, markname) )
-                        # XXX handle binary diffs
-                        continue
-                    elif l.startswith("+++"):
-                        continue
-                    elif l.startswith("---"):
-                        continue
-                    elif l.startswith("+"):
-                        tag="green"
-                    elif l.startswith("-"):
-                        tag="red"
-                    elif l.startswith("@@"):
-                        tag="blue"
-                    else:
-                        tag="black"
-                    text_buffer.insert_with_tags_by_name(eob, l+"\n", tag )
-            except:
-                # continue
-                raise
+            out = StringIO()
+            patch.diff(self.repo, node1=parent, node2=node,
+                       files=filelist, fp=out)
+            it = iter(out.getvalue().splitlines())
+            idx = 0
+            for l in it:
+                if l.startswith("diff"):
+                    f = l.split()[-1]
+                    text_buffer.insert_with_tags_by_name(eob,
+                                                         DIFFHDR % f,
+                                                         "greybg")
+                    pos = eob.copy()
+                    pos.backward_line()
+                    markname = "file%d" % idx
+                    idx += 1
+                    mark = text_buffer.create_mark( markname, pos )
+                    self.filelist.append( (f, markname) )
+                    # XXX handle binary diffs
+                    continue
+                elif l.startswith("+++"):
+                    continue
+                elif l.startswith("---"):
+                    continue
+                elif l.startswith("+"):
+                    tag = "green"
+                elif l.startswith("-"):
+                    tag = "red"
+                elif l.startswith("@@"):
+                    tag = "blue"
+                else:
+                    tag = "black"
+                text_buffer.insert_with_tags_by_name(eob, l + "\n", tag )
         finally:
             textwidget.thaw_child_notify()
         sob, eob = text_buffer.get_bounds()
@@ -452,7 +478,8 @@ class HgViewApp(object):
 
         rexp = re.compile(self.find_text)
         sob, eob = text_buffer.get_bounds()
-        enddesc = text_buffer.get_iter_at_mark(text_buffer.get_mark( "enddesc" ))
+        mark = text_buffer.get_mark( "enddesc" )
+        enddesc = text_buffer.get_iter_at_mark(mark)
         txt = text_buffer.get_slice(sob, enddesc, True )
         m = rexp.search( txt )
         while m:
