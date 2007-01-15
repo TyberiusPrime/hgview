@@ -11,8 +11,8 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
         'edges' : ( gobject.TYPE_PYOBJECT,
                         'edges', 'list of edges',
                         gobject.PARAM_READWRITE ),
-        'text' : ( gobject.TYPE_STRING,
-                   'edges', 'list of edges', "",
+        'text' : ( gobject.TYPE_PYOBJECT,
+                   'edges', 'list of edges',
                    gobject.PARAM_READWRITE ),
         'tags' : ( gobject.TYPE_STRING,
                    'tags', 'tags to display', "",
@@ -31,7 +31,7 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
         self.yellowcolor = None
         self.tag_layout = None
         self.text_layout = None
-        
+
     def do_get_property( self, propname ):
         return getattr( self, propname.name )
 
@@ -48,7 +48,7 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
         self.tag_layout = pango.Layout( ctx )
         self.tag_layout.set_font_description( desc )
         return self.tag_layout
-    
+
     def get_text_layout(self,widget):
         if self.text_layout:
             return self.text_layout
@@ -65,7 +65,6 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
         else:
             return self.yellowcolor
 
-
     def get_pen_gc( self, widget, window ):
         if not self.pengc:
             fgc = widget.style.fg_gc[gtk.STATE_NORMAL]
@@ -79,7 +78,7 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
     def on_render(self, window, widget, background_area,
                   cell_area, expose_area, flags ):
         x, y, w, h = cell_area
-        h+=3 # this is probably padding
+        h+=3 # this is needed probably because of padding
         y-=1
         W = self.r+2
         R = self.r
@@ -89,8 +88,6 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
         x_ = x + W*X
         y_ = y + (h-W)/2
 
-        #xc = x + W/2
-        #yc = y + h/2
         pen = self.get_pen_gc( widget, window )
         pen.set_clip_rectangle( (x,y-1,w,h+2) )
         xmax = X
@@ -101,6 +98,7 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
             window.draw_line( pen,
                               x + (2*x1+1)*W/2, y+(2*y1+1)*h/2,
                               x + (2*x2+1)*W/2, y+(2*y2+1)*h/2 )
+            # the 'and' conditions are there to handle diagonal lines properly
             if x1>xmax and (y1==0 or x1==x2):
                 xmax = x1
             if x2>xmax and (y2==0 or x1==x2):
@@ -117,7 +115,8 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
             w_,h_ = layout.get_size()
             d_= (h-h_/pango.SCALE)/2
             offset = w_/pango.SCALE + 3
-            window.draw_layout( fgc, x + W*(xmax+1), y+d_, layout, background=self.get_yellow_color(widget) )
+            window.draw_layout( fgc, x + W*(xmax+1), y+d_, layout,
+                                background=self.get_yellow_color(widget) )
 
         layout = self.get_text_layout(widget)
         layout.set_text( self.text )

@@ -51,6 +51,8 @@ def find_repository(path):
             return None
     return path
 
+#import hotshot
+#PROF = hotshot.Profile("/tmp/hgview.prof")
 
 DIFFHDR = "=== %s ===\n"
 
@@ -73,8 +75,28 @@ def make_texttag( name, **kwargs ):
         tag.set_property( key, value )
     return tag
 
+def timeit( f ):
+    def timefunc( *args, **kwargs ):
+        t1 = time.time()
+        t2 = time.clock()
+        res = f(*args,**kwargs)
+        t3 = time.clock()
+        t4 = time.time()
+        print f.func_name,t3-t2,t4-t1
+        return res
+    return timefunc
 
+# A default changelog_cache node
+EMPTY_NODE = (-1,  # REV num
+              "",  # short desc
+              -1,  # author ID
+              "",  # full log
+              "",  # Date
+              (),  # file list
+              [],  # tags
+              )
 class HgViewApp(object):
+    """Main hg view application"""
     def __init__(self, repodir, filerex = None ):
         self.xml = load_glade()
         self.xml.signal_autoconnect( self )
@@ -95,7 +117,7 @@ class HgViewApp(object):
         self.revisions = gtk.ListStore( gobject.TYPE_INT,
                                         gobject.TYPE_PYOBJECT, # node (stored as python strings)
                                                                # because they can contain zeroes
-                                        gobject.TYPE_STRING,   # short description
+                                        gobject.TYPE_PYOBJECT,   # short description
                                         gobject.TYPE_INT,      # author
                                         gobject.TYPE_STRING,   # date
                                         gobject.TYPE_PYOBJECT, # file list
@@ -111,59 +133,9 @@ class HgViewApp(object):
         self.setup_tags()
         self.graph = None
         self.setup_tree()
-        self.read_changelog()
         self.refresh_tree()
         self.find_text = None
 
-    def read_changelog(self):
-        """Retrieve the information from the changelog and cache it"""
-        aid = 0
-        fid = 0
-        self.changelog_cache = {}
-        authors = {}
-        changelog = self.repo.changelog
-        nodeinfo = self.changelog_cache
-        cnt = changelog.count()
-        bar = cnt/10 or 1
-        nodes = [None]*cnt
-        self.nodes = nodes
-        t1 = time.clock()
-        print "Retrieving changelog"
-        for i in xrange(cnt):
-            if (i+1) % bar == 0:
-                print ".",
-                sys.stdout.flush()
-            node = changelog.node( i )
-            nodes[i] = node
-            id,author,date,filelist,log,unk = changelog.read( node )
-            author_id = authors.setdefault( author, aid )
-            if author_id == aid:
-                aid+=1
-            filelist = [ intern(f) for f in filelist ]
-            lines = log.strip().splitlines()
-            if lines:
-                text = lines[0].strip()
-            else:
-                text = "*** no log"
-            date_ = time.strftime( "%F %H:%M", time.gmtime( date[0] ) )
-            taglist = self.repo.nodetags( node )
-            tags = ", ".join( taglist )
-            nodeinfo[node] = (i, text, author_id, date_, log, tuple(filelist), tags )
-        # create authors index
-        # real plan is to allow the user to configure user groups and assign
-        # colors to them; groups, colors & co would be saved in $HOME/.hgviewrc
-        # and/or .hg/hgviewrc
-        _a = self.authors = [None]*len(authors)
-        _c = self.colors =  [None]*len(authors)
-        colidx = 0
-        for k,v in authors.iteritems():
-            _a[v]=k
-            _c[v]=COLORS[colidx]
-            colidx+=1
-            if colidx % len(COLORS)==0:
-                colidx = 0
-        t2 = time.clock()
-        print "done in", t2-t1
 
     def filter_nodes(self):
         nodeinfo = self.changelog_cache
@@ -234,8 +206,6 @@ class HgViewApp(object):
         while it:
             node = self.revisions.get_value( it, M_NODE )
             hhex = short_hex(node)
-##             print short_hex(node), short_hex(lookup), node==lookup
-##             print repr(node), repr(lookup)
             if hhex==text:
                 break
             it = self.revisions.iter_next( it )
@@ -254,12 +224,13 @@ class HgViewApp(object):
         cell.set_property( "foreground", self.colors[author_id] )
 
     def setup_tree(self):
+        # Setup the revisions treeview
         tree = self.xml.get_widget( "treeview_revisions" )
         tree.get_selection().connect("changed", self.selection_changed )
 
         rend = gtk.CellRendererText()
         col = gtk.TreeViewColumn("ID", rend, text=0 )
-        #col.set_resizable(True)
+        col.set_resizable(True)
         tree.append_column( col )
 
         rend = RevGraphRenderer()
@@ -284,7 +255,7 @@ class HgViewApp(object):
 
         tree.set_model( self.revisions )
 
-        # file tree
+        # Setup the filelist treeview
         tree = self.xml.get_widget( "treeview_filelist" )
         tree.set_rules_hint( 1 )
         tree.get_selection().connect("changed", self.fileselection_changed )
@@ -295,16 +266,26 @@ class HgViewApp(object):
 
         tree.set_model( self.filelist )
 
+
+    @timeit
+    def read_nodes(self):
+        """Read the nodes of the changelog"""
+        changelog = self.repo.changelog
+        cnt = changelog.count()
+        self.nodes = [ changelog.node(i) for i in xrange(cnt) ]
+        self.changelog_cache = {}
+        self.authors = []
+        self.colors = []
+        self.authors_dict = {}
+
     def refresh_tree(self):
-        tree = self.xml.get_widget( "treeview_revisions" )
-        nodeinfo = self.changelog_cache
+        self.read_nodes()
         print "Computing graph..."
         t1 = time.clock()
         graph = RevGraph( self.repo, self.nodes, self.nodes )
         print "done in", time.clock()-t1
-        # detaching the model prevents notifications and updates of view
-        self.revisions.clear()
 
+        self.revisions.clear()
         self.progressbar = gtk.ProgressBar()
         self.progressbar.show()
         self.statusbar.pack_start( self.progressbar )
@@ -313,8 +294,17 @@ class HgViewApp(object):
         gobject.idle_add( self.idle_fill_model )
         return
 
+
+##     def idle_fill_model(self):
+##         return PROF.runcall(self.idle_fill_model_prof)
+
     def idle_fill_model(self):
-        NMAX = 300
+        NMAX = 300  # Max number of entries we process each time
+        aid = len(self.authors)
+        authors = self.authors_dict
+        NCOLORS = len(COLORS)
+        changelog = self.repo.changelog
+        nodeinfo = self.changelog_cache
         graph = self.graph
         N = self.last_node
         graph.build(NMAX)
@@ -328,10 +318,29 @@ class HgViewApp(object):
             node = rowselected[n]
             if node is None:
                 continue
-            (i, text, author, date_, log, filelist, tags ) = nodeinfo[node]
+
+            id,author,date,filelist,log,unk = changelog.read( node )
+            rev = changelog.rev( node )
+            author_id = authors.setdefault( author, aid )
+            if author_id == aid:
+                self.authors.append( author )
+                self.colors.append( COLORS[aid%NCOLORS] )
+                aid+=1
+            filelist = [ intern(f) for f in filelist ]
+            lines = log.strip().splitlines()
+            if lines:
+                text = lines[0].strip()
+            else:
+                text = "*** no log"
+            date_ = time.strftime( "%F %H:%M", time.gmtime( date[0] ) )
+            taglist = self.repo.nodetags( node )
+            tags = ", ".join( taglist )
+            filelist = tuple(filelist)
+            nodeinfo[node] = (rev, text, author_id, date_, log, filelist, tags )
             lines = graph.rowlines[n]
-            add_rev( (i, node, text, author, date_, filelist, graph.x[node], (lines,n), tags ) )
-            
+            add_rev( (rev, node, text, author_id, date_, filelist,
+                      graph.x[node], (lines,n), tags ) )
+
         self.last_node = min(M,N+NMAX)
         tree.thaw_notify()
         self.progressbar.set_fraction( float(self.last_node)/M )
@@ -355,7 +364,7 @@ class HgViewApp(object):
                 continue
             rev = changelog.rev(p)
             short = short_hex(p)
-            desc = self.changelog_cache[p][1]
+            desc = self.changelog_cache.get(p,EMPTY_NODE)[1]
             buf.insert( eob, "Parent: %d:" % rev )
             buf.insert_with_tags_by_name( eob, short, "link" )
             buf.insert(eob, "(%s)\n" % desc)
@@ -364,7 +373,7 @@ class HgViewApp(object):
                 continue
             rev = changelog.rev(p)
             short = short_hex(p)
-            desc = self.changelog_cache[p][1]
+            desc = self.changelog_cache.get(p,EMPTY_NODE)[1]
             buf.insert( eob, "Child:  %d:" % rev )
             buf.insert_with_tags_by_name( eob, short, "link" )
             buf.insert(eob, "(%s)\n" % desc)
@@ -533,14 +542,12 @@ def main():
         dir_ = sys.argv[1]
     else:
         dir_ = find_repository(os.getcwd())
-    
+
     filrex = None
     if len(sys.argv)>2:
         filrex = sys.argv[2]
-    
+
     app = HgViewApp( dir_, filrex )
-    
-    
     gtk.main()
 
 
