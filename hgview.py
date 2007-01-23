@@ -589,6 +589,9 @@ def main():
         dir_ = sys.argv[1]
     else:
         dir_ = find_repository(os.getcwd())
+        if dir_ == None:
+            print "You are not in a repo, are you ?"
+            sys.exit(1)
 
     filrex = None
     if len(sys.argv)>2:
