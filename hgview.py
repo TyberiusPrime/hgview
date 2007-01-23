@@ -120,7 +120,7 @@ class HgViewApp(object):
         try:
             self.repo = hg.repository( self.ui, repodir )
         except:
-            print "You are not in a repo, aren't you ?"
+            print "You are not in a repo, are you ?"
             import sys
             sys.exit(0)
         if filerex:
