@@ -117,7 +117,12 @@ class HgViewApp(object):
         self.statusbar = self.xml.get_widget("statusbar1")
         self.dir = repodir
         self.ui = ui.ui()
-        self.repo = hg.repository( self.ui, repodir )
+        try:
+            self.repo = hg.repository( self.ui, repodir )
+        except:
+            print "You are not in a repo, aren't you ?"
+            import sys
+            sys.exit(0)
         if filerex:
             self.filter_files = re.compile( filerex )
         else:
