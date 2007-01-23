@@ -149,9 +149,9 @@ class HgViewApp(object):
         self.setup_tags()
         self.graph = None
         self.setup_tree()
+        self.init_filter()
         self.refresh_tree()
         self.find_text = None
-        self.filter_dialog = self.xml.get_widget("dialog_filter")
 
 
     def filter_nodes(self):
@@ -299,7 +299,6 @@ class HgViewApp(object):
             todo_nodes = self.filter_nodes()
         else:
             todo_nodes = self.nodes
-        print "TODO", todo_nodes
         graph = RevGraph( self.repo, todo_nodes, self.nodes )
         print "done in", time.clock()-t1
 
@@ -555,6 +554,31 @@ class HgViewApp(object):
 
     def on_entry_find_activate( self, *args ):
         self.on_button_find_clicked()
+
+
+    def on_filter1_activate( self, *args ):
+        self.filter_dialog.show()
+
+    def init_filter(self):
+        file_filter = self.xml.get_widget("entry_file_filter")
+        node_low = self.xml.get_widget("spinbutton_rev_low")
+        node_high = self.xml.get_widget("spinbutton_rev_high")
+
+        cnt = self.repo.changelog.count()
+        if self.filter_files:
+            file_filter.set_text( self.filter_files )
+        node_low.set_range(0, cnt+1 )
+        node_high.set_range(0, cnt+1 )
+        node_low.set_value( 0 )
+        node_high.set_value( cnt )
+
+    def on_button_filter_apply_clicked( self, *args ):
+        file_filter = self.xml.get_widget("entry_file_filter")
+        node_low = self.xml.get_widget("spinbutton_rev_low")
+        node_high = self.xml.get_widget("spinbutton_rev_high")
+        self.filter_files = re.compile(file_filter.get_text())
+        self.filter_noderange = set(range( node_low.get_value_as_int(), node_high.get_value_as_int() ))
+        self.refresh_tree()
 
 
 def main():
