@@ -119,9 +119,10 @@ class HgViewApp(object):
         self.ui = ui.ui()
         self.repo = hg.repository( self.ui, repodir )
         if filerex:
-            self.filerex = re.compile( filerex )
+            self.filter_files = re.compile( filerex )
         else:
-            self.filerex = None
+            self.filter_files = None
+        self.filter_noderange = None
         # cache and indexing of changelog
         self.changelog_cache = {}
         self.authors = []
@@ -150,32 +151,22 @@ class HgViewApp(object):
         self.setup_tree()
         self.refresh_tree()
         self.find_text = None
+        self.filter_dialog = self.xml.get_widget("dialog_filter")
 
 
     def filter_nodes(self):
-        """XXX reimplement this"""
-        nodeinfo = self.changelog_cache
-        if not self.filerex:
-            return [ (node, nodeinfo[node][5]) for node in self.nodes ]
-        # build set of matching file names
-        filelist = set()
-        for _id, f in enumerate(self.files):
-            if self.filerex.search( f ):
-                filelist.add( _id )
-        # build list of matching nodes
+        """Filter the nodes according to filter_files and filter_nodes"""
         keepnodes = []
-        for node in self.nodes:
-            t = nodeinfo[node]
-            nodefiles = set(t[5])
-            # matching files in alphabetical order first
-            matching = sorted(filelist.intersection(nodefiles),
-                              key=lambda v:self.files[v])
-            if not matching:
-                continue
-            notmatching = sorted(nodefiles.difference(filelist),
-                              key=lambda v:self.files[v])
-            filelist = matching + notmatching
-            keepnodes.append( (node, filelist) )
+        nodes = self.nodes
+        frex = self.filter_files
+        noderange = self.filter_noderange or set(range(len(nodes)))
+        for n in nodes:
+            rev, text, author_id, date_, log_, filelist, tags = self.read_node( n )
+            if rev in noderange:
+                for f in filelist:
+                    if frex.search(f):
+                        keepnodes.append( n )
+                        break
         return keepnodes
 
     def on_window_main_delete_event( self, win, evt ):
@@ -304,7 +295,12 @@ class HgViewApp(object):
         self.read_nodes()
         print "Computing graph..."
         t1 = time.clock()
-        graph = RevGraph( self.repo, self.nodes, self.nodes )
+        if self.filter_files or self.filter_noderange:
+            todo_nodes = self.filter_nodes()
+        else:
+            todo_nodes = self.nodes
+        print "TODO", todo_nodes
+        graph = RevGraph( self.repo, todo_nodes, self.nodes )
         print "done in", time.clock()-t1
 
         self.revisions.clear()
@@ -316,10 +312,6 @@ class HgViewApp(object):
         gobject.idle_add( self.idle_fill_model )
         return
 
-
-##     def idle_fill_model(self):
-##         return PROF.runcall(self.idle_fill_model_prof)
-
     def get_short_log( self, log ):
         lines = log.strip().splitlines()
         if lines:
@@ -328,22 +320,39 @@ class HgViewApp(object):
             text = "*** no log"
         return text
 
+    def read_node( self, node ):
+        NCOLORS = len(COLORS)
+        nodeinfo = self.changelog_cache
+        changelog = self.repo.changelog
+        if node in nodeinfo:
+            return nodeinfo[node]
+        _, author, date, filelist, log, _ = changelog.read( node )
+        rev = changelog.rev( node )
+        aid = len(self.authors)
+        author_id = self.authors_dict.setdefault( author, aid )
+        if author_id == aid:
+            self.authors.append( author )
+            self.colors.append( COLORS[aid%NCOLORS] )
+        filelist = [ intern(f) for f in filelist ]
+        text = self.get_short_log( log )
+        date_ = time.strftime( "%F %H:%M", time.gmtime(date[0]) )
+        taglist = self.repo.nodetags(node)
+        tags = ", ".join(taglist)
+        filelist = tuple(filelist)
+        _node = (rev, text, author_id, date_, log, filelist, tags)
+        nodeinfo[node] = _node
+        return _node
+
 
     def idle_fill_model(self):
         """Idle task filling the ListStore model chunks by chunks"""
-        t1 = time.clock()
+        #t1 = time.time()
         NMAX = 300  # Max number of entries we process each time
-        aid = len(self.authors)
-        authors = self.authors_dict
-        NCOLORS = len(COLORS)
-        changelog = self.repo.changelog
-        nodeinfo = self.changelog_cache
         graph = self.graph
         N = self.last_node
         graph.build(NMAX)
         rowselected = self.graph.rows
         add_rev = self.revisions.append
-        nodeinfo = self.changelog_cache
         tree = self.xml.get_widget( "treeview_revisions" )
         tree.freeze_notify()
         last_node = min(len(rowselected), N + NMAX)
@@ -351,28 +360,15 @@ class HgViewApp(object):
             node = rowselected[n]
             if node is None:
                 continue
-            _, author, date, filelist, log, _ = changelog.read( node )
-            rev = changelog.rev( node )
-            author_id = authors.setdefault( author, aid )
-            if author_id == aid:
-                self.authors.append( author )
-                self.colors.append( COLORS[aid%NCOLORS] )
-                aid += 1
-            filelist = [ intern(f) for f in filelist ]
-            text = self.get_short_log( log )
-            date_ = time.strftime( "%F %H:%M", time.gmtime(date[0]) )
-            taglist = self.repo.nodetags(node)
-            tags = ", ".join(taglist)
-            filelist = tuple(filelist)
-            nodeinfo[node] = (rev, text, author_id, date_, log, filelist, tags)
+            rev, text, author_id, date_, log_, filelist, tags = self.read_node(node)
             lines = graph.rowlines[n]
             add_rev( (rev, node, text, author_id, date_, filelist,
                       graph.x[node], (lines,n), tags ) )
-
         self.last_node = last_node
         tree.thaw_notify()
-        self.progressbar.set_fraction( float(self.last_node) / M )
-        print "batch: %09.6f" % (time.clock()-t1)
+        self.progressbar.set_fraction( float(self.last_node) / len(rowselected) )
+        #print "batch: %09.6f" % (time.time()-t1)
+        print self.last_node, "/", len(rowselected)
         if self.last_node == len(rowselected):
             self.graph = None
             self.rowselected = None
