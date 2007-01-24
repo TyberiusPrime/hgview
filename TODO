@@ -1,5 +1,12 @@
 
 temporary TODO list :
 
+ - manage group of users and save config in $HOME/.hgviewrc or $HGDIR/.hgviewrc
 
+   - assign a color to each group instead of each user/email
 
+ - diff for merges currently takes only the first parent
+
+ - investigate how to speed up for large repo (ie linux kernel)
+
+ - highlight search string in the lists (revision and file lists)  
