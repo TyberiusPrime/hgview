@@ -313,6 +313,7 @@ class HgViewApp(object):
         return
 
     def get_short_log( self, log ):
+        """Compute a short log from the full revision log"""
         lines = log.strip().splitlines()
         if lines:
             text = lines[0].strip()
@@ -321,6 +322,7 @@ class HgViewApp(object):
         return text
 
     def read_node( self, node ):
+        """Gather revision information from mercurial"""
         nodeinfo = self.changelog_cache
         if node in nodeinfo:
             return nodeinfo[node]
@@ -384,7 +386,8 @@ class HgViewApp(object):
         buf.insert( eob, "Revision: %d\n" % changelog.rev(node) )
         author_id = self.changelog_cache[node][2]
         buf.insert( eob, "Author: %s\n" %  self.authors[author_id] )
-
+        buf.create_mark( "begdesc", buf.get_start_iter() )
+        
         for p in changelog.parents(node):
             if p == nullid:
                 continue
@@ -416,7 +419,7 @@ class HgViewApp(object):
         textwidget = self.xml.get_widget( "textview_status" )
         text_buffer = textwidget.get_buffer()
         text_buffer.set_text( "" )
-        text_buffer.create_mark( "begdesc", text_buffer.get_start_iter() )
+
         textwidget.freeze_child_notify()
         try:
             self.set_revlog_header( text_buffer, node )
