@@ -609,4 +609,8 @@ def main():
 
 
 if __name__ == "__main__":
+    # remove current dir from sys.path
+    if sys.path.count('.'):
+        sys.path.remove('.')
+        print 'removed'
     main()
