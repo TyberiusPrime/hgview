@@ -114,7 +114,10 @@ class HgViewApp(object):
     def __init__(self, repodir, filerex = None ):
         self.xml = load_glade()
         self.xml.signal_autoconnect( self )
-        self.statusbar = self.xml.get_widget("statusbar1")
+        statusbar = self.xml.get_widget("statusbar1")
+        self.progressbar = gtk.ProgressBar()
+        self.progressbar.hide()
+        statusbar.pack_start( self.progressbar )
         self.dir = repodir
         self.ui = ui.ui()
         self.repo = hg.repository( self.ui, repodir )
@@ -303,9 +306,7 @@ class HgViewApp(object):
         print "done in", time.clock()-t1
 
         self.revisions.clear()
-        self.progressbar = gtk.ProgressBar()
         self.progressbar.show()
-        self.statusbar.pack_start( self.progressbar )
         self.last_node = 0
         self.graph = graph
         gobject.idle_add( self.idle_fill_model )
@@ -320,11 +321,11 @@ class HgViewApp(object):
         return text
 
     def read_node( self, node ):
-        NCOLORS = len(COLORS)
         nodeinfo = self.changelog_cache
-        changelog = self.repo.changelog
         if node in nodeinfo:
             return nodeinfo[node]
+        NCOLORS = len(COLORS)
+        changelog = self.repo.changelog
         _, author, date, filelist, log, _ = changelog.read( node )
         rev = changelog.rev( node )
         aid = len(self.authors)
@@ -371,8 +372,8 @@ class HgViewApp(object):
         if self.last_node == len(rowselected):
             self.graph = None
             self.rowselected = None
-            gtk.Container.remove(self.statusbar, self.progressbar )
-            self.progressbar = None
+##             gtk.Container.remove(self.statusbar, self.progressbar )
+            self.progressbar.hide()
             return False
         return True
 
@@ -458,6 +459,12 @@ class HgViewApp(object):
                     tag = "blue"
                 else:
                     tag = "black"
+                try:
+                    test = unicode( l, "utf-8" )
+                except UnicodeError:
+                    print "warning encoding:", repr(l)
+                    uni = unicode( l, "iso-8859-1", 'ignore' )
+                    l = uni.encode("utf-8")
                 text_buffer.insert_with_tags_by_name(eob, l + "\n", tag )
         finally:
             textwidget.thaw_child_notify()
