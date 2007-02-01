@@ -59,7 +59,7 @@ for k,v in info.items():
     s_id+=4
     s_authors+=len(author)
     s_date+=len(date)
-    s_filelist+=sum( len(f) for f in filelist )
+    s_filelist+=sum( [len(f) for f in filelist] )
     s_log += len(log)
     if author not in authors:
         authors[author] = uid
@@ -79,8 +79,8 @@ print "LOG=", s_log/1000000.
 print "Unique authors", len(authors)
 print "Unique files", len(fileset)
 
-print "Saved by indexing filenames", (s_filelist-s_id-sum( 4+len(f) for f in fileset.keys() )) / 1000000.
-print "Saved by indexing authors", (s_authors-s_id-sum( 4+len(f) for f in authors.keys() )) / 1000000.
+print "Saved by indexing filenames", (s_filelist-s_id-sum( [4+len(f) for f in fileset.keys()] )) / 1000000.
+print "Saved by indexing authors", (s_authors-s_id-sum( [4+len(f) for f in authors.keys()] )) / 1000000.
 
 # linx-2.6-hg
 # test rev 17 :

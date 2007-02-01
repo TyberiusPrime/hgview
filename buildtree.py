@@ -15,6 +15,11 @@
 from mercurial import hg, ui
 from mercurial.node import hex as binhex
 from itertools import *
+try:
+    set()
+except NameError:
+    from sets import Set  as set
+
 nullid = "\x00"*20
 
 def parents_of(repo, node):

@@ -46,7 +46,7 @@ def load_glade():
 
     raise ImportError("Couldn't find %s in (%s)" %
                       (GLADE_FILE_NAME,
-                       ",".join( "'%s'" % f for f in test_dirs ) )
+                       ",".join(["'%s'" % f for f in test_dirs]) )
                        )
 
 def find_repository(path):
@@ -282,7 +282,6 @@ class HgViewApp(object):
         tree.set_model( self.filelist )
 
 
-    @timeit
     def read_nodes(self):
         """Read the nodes of the changelog"""
         changelog = self.repo.changelog
@@ -292,7 +291,8 @@ class HgViewApp(object):
         self.authors = []
         self.colors = []
         self.authors_dict = {}
-
+    read_nodes = timeit(read_nodes)
+        
     def refresh_tree(self):
         """Starts the process of filling the ListStore model"""
         self.read_nodes()
