@@ -26,12 +26,13 @@ def parents_of(repo, node):
     return [ p for p in repo.changelog.parents(node) if p != nullid ]
 
 # TODO : make it work with a partial set of nodes ?
+COLORS = [ "blue", "darkgreen", "red", "green", "darkblue", "purple",
+           "cyan", "magenta" ]
 
 class RevGraph(object):
-    
     def __init__(self, repo, nodes, allnodes):
         self.repo = repo
-
+        self.nextcolor = 0
         start = repo.heads()
         ncleft = {} # number of children left to do for a given node
         self.x = {} # for a given node
@@ -97,13 +98,29 @@ class RevGraph(object):
         self.datemode = False
         
         self.todo = todo
+        self.colors = {}
+        for p in todo:
+            self.assigncolor(p)
         self.rowno = rowno
         self.level = level
         self.parents = parents
         self.ncleft = ncleft
         self.linestarty = linestarty
         self.nullentry = nullentry
-        
+
+
+    def assigncolor(self, p, color=None):
+        if p in self.colors:
+            return
+        if color is None:
+            n = self.nextcolor
+            color = COLORS[n]
+            n+=1
+            if n==len(COLORS):
+                n=0
+            self.nextcolor = n
+        self.colors[p] = color
+    
     def build(self, NMAX=500 ):
         datemode = self.datemode
         todo = self.todo
@@ -126,6 +143,8 @@ class RevGraph(object):
             self.rows[rowno] = id
             actualparents = parents[id]
 
+            # for each parent reduce the number of
+            # childs not handled by 1
             for p in actualparents:
                 ncleft[p] -= 1
 
@@ -139,7 +158,7 @@ class RevGraph(object):
                 # add line from (x, linestarty[level]) to (x, rowno)
                 # XXX: shouldn't we have added the ones <rowno already ??
                 for r in xrange(level_linestart, rowno+1 ):
-                    self.rowlines[r].add( (level,level_linestart,level,rowno) )
+                    self.rowlines[r].add( (id,level,level_linestart,level,rowno) )
             linestarty[level] = rowno # starting a new line
 
             # if only one parent and last child,
@@ -148,6 +167,7 @@ class RevGraph(object):
                 p = actualparents[0]
                 if (ncleft[p] == 0) and (p not in todo):
                     todo[level] = p
+                    self.assigncolor(p, self.colors[id] )
                     continue
 
             # otherwise obliterate a sensible gap choice
@@ -177,7 +197,7 @@ class RevGraph(object):
             i = level
             for p in actualparents:
                 if p not in todo:
-                    #assigncolor(p)
+                    self.assigncolor(p)
                     todo.insert(i,p)
                     if nullentry >= i:
                         nullentry += 1
@@ -253,7 +273,7 @@ class RevGraph(object):
                 (x1,y1) = coords[0]
                 for (x2,y2) in coords[1:]:
                     for r in xrange(min(y1,y2),max(y1,y2)+1):
-                        self.rowlines[r].add((x1,y1,x2,y2))
+                        self.rowlines[r].add((dst,x1,y1,x2,y2))
                     (x1,y1) = (x2,y2)
 
                 if j not in linestarty:

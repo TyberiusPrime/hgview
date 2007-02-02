@@ -249,6 +249,7 @@ class HgViewApp(object):
         tree.append_column( col )
 
         rend = RevGraphRenderer()
+        self.graph_rend = rend
         col = gtk.TreeViewColumn("Log", rend, nodex=M_NODEX, edges=M_EDGES,
                                  text=M_SHORTDESC,
                                  tags=M_TAGS)
@@ -303,6 +304,7 @@ class HgViewApp(object):
         else:
             todo_nodes = self.nodes
         graph = RevGraph( self.repo, todo_nodes, self.nodes )
+        self.graph_rend.colors = graph.colors
         print "done in", time.clock()-t1
 
         self.revisions.clear()

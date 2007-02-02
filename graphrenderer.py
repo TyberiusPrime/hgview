@@ -31,6 +31,8 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
         self.yellowcolor = None
         self.tag_layout = None
         self.text_layout = None
+        self.line_pens = {}
+        self.colors = {}
 
     def do_get_property( self, propname ):
         return getattr( self, propname.name )
@@ -75,6 +77,19 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
         else:
             return self.pengc
 
+    def get_line_pen( self, widget, window, node ):
+        txtcolor = self.colors.get(node,"black")
+        pen = self.line_pens.get(txtcolor)
+        if pen is None:
+            fgc = widget.style.fg_gc[gtk.STATE_NORMAL]
+            pen = gtk.gdk.GC( window )
+            pen.copy( fgc )
+            cmap = widget.get_colormap()
+            color = cmap.alloc_color(txtcolor)
+            pen.set_foreground( color )
+            self.line_pens[txtcolor] = pen
+        return pen
+
     def on_render(self, window, widget, background_area,
                   cell_area, expose_area, flags ):
         x, y, w, h = cell_area
@@ -92,9 +107,10 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
         pen.set_clip_rectangle( (x,y-1,w,h+2) )
         xmax = X
         lines,n = self.edges
-        for x1,y1,x2,y2 in lines:
+        for node,x1,y1,x2,y2 in lines:
             y1-=n
             y2-=n
+            pen = self.get_line_pen(widget,window,node)
             window.draw_line( pen,
                               x + (2*x1+1)*W/2, y+(2*y1+1)*h/2,
                               x + (2*x2+1)*W/2, y+(2*y2+1)*h/2 )
