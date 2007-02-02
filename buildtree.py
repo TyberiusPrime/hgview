@@ -15,10 +15,6 @@
 from mercurial import hg, ui
 from mercurial.node import hex as binhex
 from itertools import *
-try:
-    set()
-except NameError:
-    from sets import Set  as set
 
 nullid = "\x00"*20
 
@@ -26,7 +22,7 @@ def parents_of(repo, node):
     return [ p for p in repo.changelog.parents(node) if p != nullid ]
 
 # TODO : make it work with a partial set of nodes ?
-COLORS = [ "blue", "darkgreen", "red", "green", "darkblue", "purple",
+COLORS = [ "blue", "darkgreen", "darkred", "green", "darkblue", "purple",
            "cyan", "magenta" ]
 
 class RevGraph(object):
@@ -46,12 +42,20 @@ class RevGraph(object):
         ncleft[nullid] = 0
 
         _parents = {}
+        self.children = children = {}
         for p in allnodes:
-            _parents[p] = parents_of(repo,p)
+            _parents[p] = _p = parents_of(repo,p)
+            for n in _p:
+                lst = children.setdefault(n,[])
+                if p not in lst:
+                    lst.append(p)
+        for p in start:
+            children[p] = []
         if len(nodes)==len(allnodes):
             todo = start[:] # None is a blank column
             parents = _parents
         else:
+            # this path is ... approximative at best
             children = {}
             parents = {}
             todo = allnodes
@@ -99,19 +103,21 @@ class RevGraph(object):
         
         self.todo = todo
         self.colors = {}
-        for p in todo:
-            self.assigncolor(p)
         self.rowno = rowno
         self.level = level
         self.parents = parents
         self.ncleft = ncleft
         self.linestarty = linestarty
         self.nullentry = nullentry
-
+        print "START", [binhex(n) for n in todo]
 
     def assigncolor(self, p, color=None):
+        while len(self.children[p])==1:
+            p = self.children[p][0]
+            if len(self.parents[p])!=1:
+                break
         if p in self.colors:
-            return
+            return p
         if color is None:
             n = self.nextcolor
             color = COLORS[n]
@@ -120,6 +126,7 @@ class RevGraph(object):
                 n=0
             self.nextcolor = n
         self.colors[p] = color
+        return p
     
     def build(self, NMAX=500 ):
         datemode = self.datemode
@@ -141,6 +148,7 @@ class RevGraph(object):
             id = todo[level]
             self.idrow[id] = rowno
             self.rows[rowno] = id
+            idcolor = self.assigncolor(id)
             actualparents = parents[id]
 
             # for each parent reduce the number of
@@ -158,7 +166,7 @@ class RevGraph(object):
                 # add line from (x, linestarty[level]) to (x, rowno)
                 # XXX: shouldn't we have added the ones <rowno already ??
                 for r in xrange(level_linestart, rowno+1 ):
-                    self.rowlines[r].add( (id,level,level_linestart,level,rowno) )
+                    self.rowlines[r].add( (idcolor,level,level_linestart,level,rowno) )
             linestarty[level] = rowno # starting a new line
 
             # if only one parent and last child,
@@ -167,7 +175,6 @@ class RevGraph(object):
                 p = actualparents[0]
                 if (ncleft[p] == 0) and (p not in todo):
                     todo[level] = p
-                    self.assigncolor(p, self.colors[id] )
                     continue
 
             # otherwise obliterate a sensible gap choice
@@ -197,7 +204,6 @@ class RevGraph(object):
             i = level
             for p in actualparents:
                 if p not in todo:
-                    self.assigncolor(p)
                     todo.insert(i,p)
                     if nullentry >= i:
                         nullentry += 1
@@ -254,6 +260,7 @@ class RevGraph(object):
             # i is x at the top of a horizontalish
             for (i,dst) in lines:
                 j = todo.index(dst)
+                colordst = self.assigncolor( dst )
                 if i == j:
                     if i in oldstarty:
                         linestarty[i] = oldstarty[i]
@@ -273,7 +280,7 @@ class RevGraph(object):
                 (x1,y1) = coords[0]
                 for (x2,y2) in coords[1:]:
                     for r in xrange(min(y1,y2),max(y1,y2)+1):
-                        self.rowlines[r].add((dst,x1,y1,x2,y2))
+                        self.rowlines[r].add((colordst,x1,y1,x2,y2))
                     (x1,y1) = (x2,y2)
 
                 if j not in linestarty:

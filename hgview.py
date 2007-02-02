@@ -8,6 +8,7 @@
 """
 Main gtk application for hgview
 """
+import fixes
 import gtk
 import gtk.glade
 import gobject
@@ -23,14 +24,10 @@ import re
 from buildtree import RevGraph
 from graphrenderer import RevGraphRenderer
 
+
 GLADE_FILE_NAME = "hgview.glade"
 GLADE_FILE_LOCATIONS = [ '/usr/share/hgview' ]
 
-def tolocal(s):
-    """monkeypatch hg.util.tolocal since we really want utf-8 for gtk"""
-    return s
-import mercurial.util
-mercurial.util.tolocal = tolocal
 
 def load_glade():
     """Try several paths in which the glade file might be found"""
@@ -249,6 +246,7 @@ class HgViewApp(object):
         tree.append_column( col )
 
         rend = RevGraphRenderer()
+        #rend.connect( "activated", self.cell_activated )
         self.graph_rend = rend
         col = gtk.TreeViewColumn("Log", rend, nodex=M_NODEX, edges=M_EDGES,
                                  text=M_SHORTDESC,
@@ -282,6 +280,8 @@ class HgViewApp(object):
 
         tree.set_model( self.filelist )
 
+    def cell_activated(self, *args):
+        print "nudge"
 
     def read_nodes(self):
         """Read the nodes of the changelog"""
@@ -304,7 +304,7 @@ class HgViewApp(object):
         else:
             todo_nodes = self.nodes
         graph = RevGraph( self.repo, todo_nodes, self.nodes )
-        self.graph_rend.colors = graph.colors
+        self.graph_rend.set_colors( graph.colors )
         print "done in", time.clock()-t1
 
         self.revisions.clear()

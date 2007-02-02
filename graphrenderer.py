@@ -19,6 +19,10 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
                    gobject.PARAM_READWRITE ),
         }
 
+    __gsignals__ = {
+        'activated': (gobject.SIGNAL_RUN_FIRST, gobject.TYPE_NONE,
+                     (gobject.TYPE_STRING, gobject.TYPE_INT))
+        }
 
     def __init__(self):
         self.__gobject_init__()
@@ -32,7 +36,13 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
         self.tag_layout = None
         self.text_layout = None
         self.line_pens = {}
-        self.colors = {}
+        self.colors = { }
+        self.selected_node = None
+        self.set_property( "mode", gtk.CELL_RENDERER_MODE_ACTIVATABLE )
+
+    def set_colors( self, colors ):
+        self.colors = colors
+        self.colors["activated"] = "red"
 
     def do_get_property( self, propname ):
         return getattr( self, propname.name )
@@ -113,6 +123,8 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
         for node,x1,y1,x2,y2 in lines:
             y1-=n
             y2-=n
+            if node==self.selected_node:
+                node = "activated"
             pen = self.get_line_pen(widget,window,node)
             pen.set_clip_rectangle( (x,y-1,w,h+2) )
             window.draw_line( pen,
@@ -153,5 +165,37 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
         size = 0, 0, (self.nodex+1)*(self.r+2)+tw, max(self.r*2,th)
         return size
 
+    def on_activate( self, event, widget, path, bg_area, cell_area, flags ):
+        x, y, w, h = cell_area
+        cx, cy = event.get_coords()
+        m_x = cx - x
+        m_y = cy - y
+        fz = 1 # fuzziness allowed
+        # check if a line was clicked
+        h+=3 # this is needed probably because of padding
+        y-=1
+        W = self.r+2
+        R = self.r
+        X = self.nodex
+        lines,n = self.edges
+        for node,x1,y1,x2,y2 in lines:
+            y1-=n
+            y2-=n
+            lx1 = (2*x1+1)*W/2 - fz
+            lx2 = (2*x2+1)*W/2 + fz
+            ly1 = (2*y1+1)*h/2 - fz
+            ly2 = (2*y2+1)*h/2 + fz
+            #print lx1,"<", m_x, "<",lx2,"&&",ly1,"<",m_y,"<",ly2 
+            if lx1 <= m_x <= lx2 and ly1 <= m_y <= ly2 :
+                break
+                
+        else: # to tell that no active part has been selected
+            if self.selected_node is not None:
+                widget.queue_draw()
+            self.selected_node = None
+            return
+        if self.selected_node!=node:
+            widget.queue_draw()
+        self.selected_node = node
 
 gobject.type_register( RevGraphRenderer )
