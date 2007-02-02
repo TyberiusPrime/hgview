@@ -132,7 +132,7 @@ class HgViewApp(object):
         self.logs = []
         self.files = []
         self.colors = []
-        # The strings are stored as PYOBJECT when they contain zeros and
+        # The strings are stored as PYOBJECT when they contain zeros and also
         # to save memory when they are used by the custom renderer
         self.revisions = gtk.ListStore( gobject.TYPE_INT, # Revision
                                         gobject.TYPE_PYOBJECT, # node
@@ -249,6 +249,7 @@ class HgViewApp(object):
         tree.append_column( col )
 
         rend = RevGraphRenderer()
+        self.graph_rend = rend
         col = gtk.TreeViewColumn("Log", rend, nodex=M_NODEX, edges=M_EDGES,
                                  text=M_SHORTDESC,
                                  tags=M_TAGS)
@@ -292,7 +293,7 @@ class HgViewApp(object):
         self.colors = []
         self.authors_dict = {}
     read_nodes = timeit(read_nodes)
-        
+
     def refresh_tree(self):
         """Starts the process of filling the ListStore model"""
         self.read_nodes()
@@ -303,6 +304,7 @@ class HgViewApp(object):
         else:
             todo_nodes = self.nodes
         graph = RevGraph( self.repo, todo_nodes, self.nodes )
+        self.graph_rend.colors = graph.colors
         print "done in", time.clock()-t1
 
         self.revisions.clear()
@@ -503,6 +505,8 @@ class HgViewApp(object):
         tw.scroll_to_mark( mark, .2, use_align=True, xalign=1., yalign=0. )
 
     def find_next_row( self, iter, stop_iter=None ):
+        """Find the next revision row based on the content of
+        the 'entry_find' widget"""
         txt = self.xml.get_widget( "entry_find" ).get_text()
         rexp = re.compile( txt )
         while iter != stop_iter and iter!=None:
@@ -548,6 +552,10 @@ class HgViewApp(object):
         return model, it
 
     def on_button_find_clicked( self, *args ):
+        """callback: clicking on the find button
+        makes the search start at the row after the
+        next row
+        """
         model, it = self.get_selected_rev()
         it = self.revisions.iter_next( it )
         start_it = it
@@ -556,6 +564,9 @@ class HgViewApp(object):
             self.find_next_row( self.revisions.get_iter_first(), start_it )
 
     def on_entry_find_changed( self, *args ):
+        """callback: each keypress triggers a lookup
+        starting at the current row which allows the
+        highlight string to grow without changing rows"""
         model, it = self.get_selected_rev()
         start_it = it
         res = self.find_next_row( it )
@@ -563,6 +574,8 @@ class HgViewApp(object):
             self.find_next_row( self.revisions.get_iter_first(), start_it )
 
     def on_entry_find_activate( self, *args ):
+        """Pressing enter in the entry_find field does the
+        same as clicking on the Find button"""
         self.on_button_find_clicked()
 
 
