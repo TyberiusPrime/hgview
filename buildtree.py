@@ -42,15 +42,8 @@ class RevGraph(object):
         ncleft[nullid] = 0
 
         _parents = {}
-        self.children = children = {}
         for p in allnodes:
             _parents[p] = _p = parents_of(repo,p)
-            for n in _p:
-                lst = children.setdefault(n,[])
-                if p not in lst:
-                    lst.append(p)
-        for p in start:
-            children[p] = []
         if len(nodes)==len(allnodes):
             todo = start[:] # None is a blank column
             parents = _parents
@@ -107,14 +100,15 @@ class RevGraph(object):
         self.level = level
         self.parents = parents
         self.ncleft = ncleft
+        self.nchildren = ncleft.copy()
         self.linestarty = linestarty
         self.nullentry = nullentry
         print "START", [binhex(n) for n in todo]
 
     def assigncolor(self, p, color=None):
-        while len(self.children[p])==1:
-            p = self.children[p][0]
-            if len(self.parents[p])!=1:
+        while len(self.parents[p])==1:
+            p = self.parents[p][0]
+            if self.nchildren[p]!=1:
                 break
         if p in self.colors:
             return p
