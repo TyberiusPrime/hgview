@@ -87,6 +87,9 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
             cmap = widget.get_colormap()
             color = cmap.alloc_color(txtcolor)
             pen.set_foreground( color )
+            pen.set_line_attributes( 2, gtk.gdk.LINE_SOLID,
+                                     gtk.gdk.CAP_ROUND,
+                                     gtk.gdk.JOIN_BEVEL )
             self.line_pens[txtcolor] = pen
         return pen
 
@@ -111,6 +114,7 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
             y1-=n
             y2-=n
             pen = self.get_line_pen(widget,window,node)
+            pen.set_clip_rectangle( (x,y-1,w,h+2) )
             window.draw_line( pen,
                               x + (2*x1+1)*W/2, y+(2*y1+1)*h/2,
                               x + (2*x2+1)*W/2, y+(2*y2+1)*h/2 )
