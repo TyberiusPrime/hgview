@@ -81,7 +81,10 @@ def make_texttag( name, **kwargs ):
     tag = gtk.TextTag(name)
     for key, value in kwargs.items():
         key = key.replace("_","-")
-        tag.set_property( key, value )
+        try:
+            tag.set_property( key, value )
+        except TypeError:
+            print "Warning the property %s is unsupported in this version of pygtk" % key
     return tag
 
 def timeit( f ):
