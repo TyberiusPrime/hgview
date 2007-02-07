@@ -121,6 +121,7 @@ class HgViewApp(object):
         self.dir = repodir
         self.ui = ui.ui()
         self.repo = hg.repository( self.ui, repodir )
+        self.filerex = filerex
         if filerex:
             self.filter_files = re.compile( filerex )
         else:
@@ -592,7 +593,7 @@ class HgViewApp(object):
 
         cnt = self.repo.changelog.count()
         if self.filter_files:
-            file_filter.set_text( self.filter_files )
+            file_filter.set_text( self.filerex )
         node_low.set_range(0, cnt+1 )
         node_high.set_range(0, cnt+1 )
         node_low.set_value( 0 )
