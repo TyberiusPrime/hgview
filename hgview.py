@@ -23,7 +23,7 @@ import textwrap
 import re
 from buildtree import RevGraph
 from graphrenderer import RevGraphRenderer
-
+from optparse import OptionParser
 
 GLADE_FILE_NAME = "hgview.glade"
 GLADE_FILE_LOCATIONS = [ '/usr/share/hgview' ]
@@ -609,22 +609,31 @@ class HgViewApp(object):
 
 
 def main():
-    # TODO: either do proper option handling or make
-    # this an hg extension
+    parser = OptionParser()
+    parser.add_option( '-R', '--repository', dest='repo',
+                       help='location of the repository to explore' )
+    parser.add_option( '-f', '--file', dest='filename',
+                       help='filter revisions which touch FILE', metavar="FILE")
+    parser.add_option( '-g', '--regexp', dest='filerex',
+                       help='filter revisions which touch FILE matching regexp')
+    
+    opt, args = parser.parse_args()
     dir_ = None
-    if len(sys.argv)>1:
-        dir_ = sys.argv[1]
+    if opt.repo:
+        dir_ = opt.repo
     else:
         dir_ = find_repository(os.getcwd())
         if dir_ == None:
             print "You are not in a repo, are you ?"
             sys.exit(1)
 
-    filrex = None
-    if len(sys.argv)>2:
-        filrex = sys.argv[2]
+    filerex = None
+    if opt.filename:
+        filerex = "^" + re.escape( opt.filename ) + "$"
+    elif opt.filerex:
+        filerex = opt.filerex
 
-    app = HgViewApp( dir_, filrex )
+    app = HgViewApp( dir_, filerex )
     gtk.main()
 
 
