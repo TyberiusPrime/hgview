@@ -280,14 +280,15 @@ class HgViewApp(object):
         tree.set_rules_hint( 1 )
         tree.get_selection().connect("changed", self.fileselection_changed )
 
-        rend = DiffStatRenderer()
-        col = gtk.TreeViewColumn("Diff Stat", rend, stats=2 )
-        tree.append_column( col )
-
         rend = gtk.CellRendererText()
         col = gtk.TreeViewColumn("Files", rend, text=0 )
+        col.set_reorderable(True)
         tree.append_column( col )
 
+        rend = DiffStatRenderer()
+        col = gtk.TreeViewColumn("Diff Stat", rend, stats=2 )
+        col.set_reorderable(True)
+        tree.append_column( col )
 
         tree.set_model( self.filelist )
 
