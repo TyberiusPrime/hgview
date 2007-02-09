@@ -1,3 +1,4 @@
+"""A special renderer to draw a DAG of nodes in front of the labels"""
 
 import gtk
 import gobject

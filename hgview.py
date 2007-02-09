@@ -23,6 +23,7 @@ import textwrap
 import re
 from buildtree import RevGraph
 from graphrenderer import RevGraphRenderer
+from diffstatrenderer import DiffStatRenderer
 from optparse import OptionParser
 
 GLADE_FILE_NAME = "hgview.glade"
@@ -147,7 +148,8 @@ class HgViewApp(object):
                                         )
 
         self.filelist = gtk.ListStore( gobject.TYPE_STRING, # filename
-                                       gobject.TYPE_STRING  # markname
+                                       gobject.TYPE_STRING,  # markname
+                                       gobject.TYPE_PYOBJECT, # diffstat
                                        )
 
         self.setup_tags()
@@ -278,9 +280,14 @@ class HgViewApp(object):
         tree.set_rules_hint( 1 )
         tree.get_selection().connect("changed", self.fileselection_changed )
 
+        rend = DiffStatRenderer()
+        col = gtk.TreeViewColumn("Diff Stat", rend, stats=2 )
+        tree.append_column( col )
+
         rend = gtk.CellRendererText()
         col = gtk.TreeViewColumn("Files", rend, text=0 )
         tree.append_column( col )
+
 
         tree.set_model( self.filelist )
 
@@ -427,6 +434,8 @@ class HgViewApp(object):
             else:
                 tags.append( [name, offset, offset+length] )
         print "DIFF:", len(difflines)
+        stats = [0,0]
+        statmax = 0
         for i,l in enumerate(difflines):
             if l.startswith("diff"):
                 f = l.split()[-1]
@@ -435,7 +444,9 @@ class HgViewApp(object):
                 outlines.append(txt)
                 markname = "file%d" % idx
                 idx += 1
-                filespos.append(( f, markname, offset ))
+                statmax = max( statmax, stats[0]+stats[1] )
+                stats = [0,0]
+                filespos.append(( f, markname, offset, stats ))
                 offset += len(txt)
                 continue
             elif l.startswith("+++"):
@@ -444,7 +455,9 @@ class HgViewApp(object):
                 continue
             elif l.startswith("+"):
                 tag = "green"
+                stats[0] += 1
             elif l.startswith("-"):
+                stats[1] += 1
                 tag = "red"
             elif l.startswith("@@"):
                 tag = "blue"
@@ -455,7 +468,8 @@ class HgViewApp(object):
             addtag( tag, offset, length )
             outlines.append( l )
             offset += length
-        return filespos, tags, outlines
+        statmax = max( statmax, stats[0]+stats[1] )
+        return filespos, tags, outlines, statmax
 
     def selection_changed( self, selection ):
         model, it = selection.get_selected()
@@ -478,7 +492,7 @@ class HgViewApp(object):
             enddesc = text_buffer.get_end_iter()
             enddesc.backward_line()
             text_buffer.create_mark( "enddesc", enddesc )
-            self.filelist.append( ("Content", "begdesc" ) )
+            self.filelist.append( ("Content", "begdesc", None ) )
             out = StringIO()
             patch.diff(self.repo, node1=parent, node2=node,
                        files=filelist, fp=out)
@@ -486,7 +500,6 @@ class HgViewApp(object):
             try:
                 buff = unicode( buff, "utf-8" )
             except UnicodeError:
-                print "warning not utf-8 in diff"
                 # XXX use a default encoding from config
                 buff = unicode( buff, "iso-8859-1", 'ignore' )
             difflines = buff.splitlines()
@@ -494,10 +507,12 @@ class HgViewApp(object):
             eob = text_buffer.get_end_iter()
             
             offset = eob.get_offset()
-            fileoffsets, tags, lines = self.prepare_diff( difflines, offset )
+            fileoffsets, tags, lines, statmax = self.prepare_diff( difflines, offset )
             txt = u"".join(lines)
-            
+
+            # XXX debug : sometime gtk complains it's not valid utf-8 !!!
             text_buffer.insert( eob, txt.encode('utf-8') )
+
             # inserts the tags
             for name, p0, p1 in tags:
                 i0 = text_buffer.get_iter_at_offset( p0 )
@@ -506,10 +521,10 @@ class HgViewApp(object):
                 text_buffer.apply_tag_by_name( name, i0, i1 )
                 
             # inserts the marks
-            for f, mark,offset in fileoffsets:
+            for f, mark,offset, stats in fileoffsets:
                 pos = text_buffer.get_iter_at_offset( offset )
                 text_buffer.create_mark( mark, pos )
-                self.filelist.append( (f, mark) )
+                self.filelist.append( (f, mark, (stats[0],stats[1],statmax) ) )
         finally:
             textwidget.thaw_child_notify()
         sob, eob = text_buffer.get_bounds()
