@@ -440,9 +440,19 @@ class HgViewApp(object):
             out = StringIO()
             patch.diff(self.repo, node1=parent, node2=node,
                        files=filelist, fp=out)
-            it = iter(out.getvalue().splitlines())
+            buff = out.getvalue()
+            try:
+                test = unicode( buff, "utf-8" )
+            except UnicodeError:
+                print "warning not utf-8 in diff"
+                # XXX use a default encoding from config
+                uni = unicode( buff, "iso-8859-1", 'ignore' )
+                buff = uni.encode("utf-8")
+            difflines = buff.splitlines()
+            del buff, out
             idx = 0
-            for l in it:
+            print "DIFF:", len(difflines)
+            for l in difflines:
                 if l.startswith("diff"):
                     f = l.split()[-1]
                     text_buffer.insert_with_tags_by_name(eob,
@@ -468,12 +478,6 @@ class HgViewApp(object):
                     tag = "blue"
                 else:
                     tag = "black"
-                try:
-                    test = unicode( l, "utf-8" )
-                except UnicodeError:
-                    print "warning encoding:", repr(l)
-                    uni = unicode( l, "iso-8859-1", 'ignore' )
-                    l = uni.encode("utf-8")
                 text_buffer.insert_with_tags_by_name(eob, l + "\n", tag )
         finally:
             textwidget.thaw_child_notify()
