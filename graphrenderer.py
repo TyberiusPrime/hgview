@@ -12,11 +12,8 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
         'edges' : ( gobject.TYPE_PYOBJECT,
                         'edges', 'list of edges',
                         gobject.PARAM_READWRITE ),
-        'text' : ( gobject.TYPE_PYOBJECT,
-                   'edges', 'list of edges',
-                   gobject.PARAM_READWRITE ),
-        'tags' : ( gobject.TYPE_STRING,
-                   'tags', 'tags to display', "",
+        'node' : ( gobject.TYPE_PYOBJECT,
+                   'node', 'the node object',
                    gobject.PARAM_READWRITE ),
         }
 
@@ -30,8 +27,7 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
         self.r = 6
         self.nodex = 0
         self.edges = []
-        self.text = ""
-        self.tags = ""
+        self.node = None
         self.pengc = None
         self.yellowcolor = None
         self.tag_layout = None
@@ -142,9 +138,9 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
         window.draw_arc( fgc, False, x_ + (W-R)/2, y_+(W-R)/2, R, R, 0, 360*64 )
 
         offset = 0
-        if self.tags:
+        if self.node.tags:
             layout = self.get_tag_layout(widget)
-            layout.set_text( self.tags )
+            layout.set_text( self.node.tags )
             w_,h_ = layout.get_size()
             d_= (h-h_/pango.SCALE)/2
             offset = w_/pango.SCALE + 3
@@ -152,14 +148,14 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
                                 background=self.get_yellow_color(widget) )
 
         layout = self.get_text_layout(widget)
-        layout.set_text( self.text )
+        layout.set_text( self.node.short )
         w_,h_ = layout.get_size()
         d_ = (h-h_/pango.SCALE)/2
         window.draw_layout( fgc, x + offset + W*(xmax+2), y+d_, layout )
 
     def on_get_size(self, widget, cell_area):
         layout = self.get_text_layout(widget)
-        layout.set_text( self.text )
+        layout.set_text( self.node.short )
         tw, th = layout.get_size()
         tw /= pango.SCALE
         th /= pango.SCALE
