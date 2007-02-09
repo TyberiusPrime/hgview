@@ -415,6 +415,48 @@ class HgViewApp(object):
 
         buf.insert( eob, "\n" )
 
+
+    def prepare_diff( self, difflines, offset ):
+        idx = 0
+        outlines = []
+        tags = []
+        filespos = []
+        def addtag( name, offset, length ):
+            if tags and tags[-1][0] == name and tags[-1][2]==offset:
+                tags[-1][2] += length
+            else:
+                tags.append( [name, offset, offset+length] )
+        print "DIFF:", len(difflines)
+        for i,l in enumerate(difflines):
+            if l.startswith("diff"):
+                f = l.split()[-1]
+                txt = DIFFHDR % f
+                addtag( "greybg", offset, len(txt) )
+                outlines.append(txt)
+                markname = "file%d" % idx
+                idx += 1
+                filespos.append(( f, markname, offset ))
+                offset += len(txt)
+                continue
+            elif l.startswith("+++"):
+                continue
+            elif l.startswith("---"):
+                continue
+            elif l.startswith("+"):
+                tag = "green"
+            elif l.startswith("-"):
+                tag = "red"
+            elif l.startswith("@@"):
+                tag = "blue"
+            else:
+                tag = "black"
+            l = l+"\n"
+            length = len(l)
+            addtag( tag, offset, length )
+            outlines.append( l )
+            offset += length
+        return filespos, tags, outlines
+
     def selection_changed( self, selection ):
         model, it = selection.get_selected()
         if it is None:
@@ -424,9 +466,9 @@ class HgViewApp(object):
         fulltext = self.changelog_cache[node][4]
         textwidget = self.xml.get_widget( "textview_status" )
         text_buffer = textwidget.get_buffer()
+        textwidget.freeze_child_notify()
         text_buffer.set_text( "" )
 
-        textwidget.freeze_child_notify()
         try:
             self.set_revlog_header( text_buffer, node )
             eob = text_buffer.get_end_iter()
@@ -442,43 +484,32 @@ class HgViewApp(object):
                        files=filelist, fp=out)
             buff = out.getvalue()
             try:
-                test = unicode( buff, "utf-8" )
+                buff = unicode( buff, "utf-8" )
             except UnicodeError:
                 print "warning not utf-8 in diff"
                 # XXX use a default encoding from config
-                uni = unicode( buff, "iso-8859-1", 'ignore' )
-                buff = uni.encode("utf-8")
+                buff = unicode( buff, "iso-8859-1", 'ignore' )
             difflines = buff.splitlines()
             del buff, out
-            idx = 0
-            print "DIFF:", len(difflines)
-            for l in difflines:
-                if l.startswith("diff"):
-                    f = l.split()[-1]
-                    text_buffer.insert_with_tags_by_name(eob,
-                                                         DIFFHDR % f,
-                                                         "greybg")
-                    pos = eob.copy()
-                    pos.backward_line()
-                    markname = "file%d" % idx
-                    idx += 1
-                    mark = text_buffer.create_mark( markname, pos )
-                    self.filelist.append( (f, markname) )
-                    # XXX handle binary diffs
-                    continue
-                elif l.startswith("+++"):
-                    continue
-                elif l.startswith("---"):
-                    continue
-                elif l.startswith("+"):
-                    tag = "green"
-                elif l.startswith("-"):
-                    tag = "red"
-                elif l.startswith("@@"):
-                    tag = "blue"
-                else:
-                    tag = "black"
-                text_buffer.insert_with_tags_by_name(eob, l + "\n", tag )
+            eob = text_buffer.get_end_iter()
+            
+            offset = eob.get_offset()
+            fileoffsets, tags, lines = self.prepare_diff( difflines, offset )
+            txt = u"".join(lines)
+            
+            text_buffer.insert( eob, txt.encode('utf-8') )
+            # inserts the tags
+            for name, p0, p1 in tags:
+                i0 = text_buffer.get_iter_at_offset( p0 )
+                i1 = text_buffer.get_iter_at_offset( p1 )
+                txt = text_buffer.get_text( i0, i1 )
+                text_buffer.apply_tag_by_name( name, i0, i1 )
+                
+            # inserts the marks
+            for f, mark,offset in fileoffsets:
+                pos = text_buffer.get_iter_at_offset( offset )
+                text_buffer.create_mark( mark, pos )
+                self.filelist.append( (f, mark) )
         finally:
             textwidget.thaw_child_notify()
         sob, eob = text_buffer.get_bounds()
