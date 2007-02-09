@@ -313,13 +313,13 @@ class HgViewApp(object):
             short = short_hex(p)
             buf.insert( eob, "Parent: %d:" % pnode.rev )
             buf.insert_with_tags_by_name( eob, short, "link" )
-            buf.insert(eob, "(%s)\n" % pnode.desc)
+            buf.insert(eob, "(%s)\n" % pnode.short)
         for p in repo.children(node):
             pnode = repo.read_node(p)
             short = short_hex(p)
             buf.insert( eob, "Child:  %d:" % pnode.rev )
             buf.insert_with_tags_by_name( eob, short, "link" )
-            buf.insert(eob, "(%s)\n" % pnode.desc)
+            buf.insert(eob, "(%s)\n" % pnode.short)
 
         buf.insert( eob, "\n" )
 
