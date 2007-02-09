@@ -8,6 +8,81 @@ from StringIO import StringIO
 import textwrap
 import time
 
+
+class RevNode(object):
+    __slots__ = "rev author_id desc gmtime files tags".split()
+    def __init__(self,rev, author_id, desc, date,
+                 files, tags):
+        self.rev = rev
+        self.author_id = author_id
+        self.desc = desc.strip()+"\n"
+        self.gmtime = date
+        self.files = tuple(files)
+        self.tags = tags
+
+    def get_short_log( self ):
+        """Compute a short log from the full revision log"""
+        offs = self.desc.find('\n')
+        if offs>0:
+            text = self.desc[:offs]
+        else:
+            text = "*** no log"
+        return text
+    short = property(get_short_log)
+
+    def get_date( self ):
+        date_ = time.strftime( "%F %H:%M", self.gmtime )
+        return date_
+    date = property(get_date)
+
+class Repository(object):
+    """Abstract interface for a repository"""
+    def __init__(self, path):
+        """path : path of repository"""
+        self.dir = self.find_repository( path )
+        # The list of authors names
+        self.authors = []
+        # colors for the authors (need to get out of here)
+        self.colors = []
+        # the list of nodes
+        self.nodes = []
+
+    def find_repository(cls, path):
+        """finds the root repository or raises
+        its a class method so one can use it to find
+        the best (closest to path) repo for a given
+        type of repository
+        """
+        raise NotImplementedError()
+    find_repository = classmethod( find_repository )
+
+
+    def read_node( self, nodeid ):
+        """Returns the node's attributes as RevNode instance"""
+        raise NotImplementedError()
+
+    def parents( self, node ):
+        """Returns a list of parents' ids for the node"""
+        raise NotImplementedError()
+
+    def children( self, node ):
+        """Returns a list of children's ids for the node"""
+        raise NotImplementedError()
+
+    def diff( self, node1, node2, files ):
+        """Returns a diff between node1 and node2 for the
+        files listed in files"""
+        raise NotImplementedError()
+
+    def count( self ):
+        """Returns the number of nodes"""
+        raise NotImplementedError()
+
+    def graph( self, nodes ):
+        """Returns a graph object allowing representation
+        of the tree of revisions reduced to 'nodes'
+        """
+
 # A default changelog_cache node
 EMPTY_NODE = (-1,  # REV num
               "",  # short desc
@@ -42,12 +117,7 @@ class HgHLRepo(object):
         self.ui = ui.ui()
         self.repo = hg.repository( self.ui, self.dir )
         # cache and indexing of changelog
-        self.changelog_cache = {}
-        self.authors = []
-        self.logs = []
-        self.files = []
-        self.colors = []
-        self.nodes = []
+        self._cache = {}
 
     def find_repository(self, path):
         """returns <path>'s mercurial repository
@@ -61,31 +131,23 @@ class HgHLRepo(object):
             if path == oldpath:
                 return None
         return path
-
+    find_repository = classmethod( find_repository )
 
     def read_nodes(self):
         """Read the nodes of the changelog"""
         changelog = self.repo.changelog
         cnt = changelog.count()
         self.nodes = [ changelog.node(i) for i in xrange(cnt) ]
-        self.changelog_cache = {}
+        self._cache = {}
         self.authors = []
         self.colors = []
         self.authors_dict = {}
     read_nodes = timeit(read_nodes)
 
-    def get_short_log( self, log ):
-        """Compute a short log from the full revision log"""
-        lines = log.strip().splitlines()
-        if lines:
-            text = lines[0].strip()
-        else:
-            text = "*** no log"
-        return text
 
     def read_node( self, node ):
         """Gather revision information from mercurial"""
-        nodeinfo = self.changelog_cache
+        nodeinfo = self._cache
         if node in nodeinfo:
             return nodeinfo[node]
         NCOLORS = len(COLORS)
@@ -98,12 +160,10 @@ class HgHLRepo(object):
             self.authors.append( author )
             self.colors.append( COLORS[aid%NCOLORS] )
         filelist = [ intern(f) for f in filelist ]
-        text = self.get_short_log( log )
-        date_ = time.strftime( "%F %H:%M", time.gmtime(date[0]) )
+        date_ = time.gmtime(date[0])
         taglist = self.repo.nodetags(node)
         tags = ", ".join(taglist)
-        filelist = tuple(filelist)
-        _node = (rev, text, author_id, date_, log, filelist, tags)
+        _node = RevNode(rev, author_id, log, date_, filelist, tags)
         nodeinfo[node] = _node
         return _node
 
@@ -111,10 +171,14 @@ class HgHLRepo(object):
         return RevGraph( self.repo, todo_nodes, self.nodes )
 
     def parents( self, node ):
-        return [ n for n in self.repo.changelog.parents(node) if n!=nullid ]
+        parents = [ n for n in self.repo.changelog.parents(node) if n!=nullid ]
+        if not parents:
+            parents = [nullid]
+        return parents
 
     def children( self, node ):
         return [ n for n in self.repo.changelog.children( node ) if n!=nullid ]
+    
     def diff( self, node1, node2, files ):
         out = StringIO()
         patch.diff( self.repo, node1=node1,

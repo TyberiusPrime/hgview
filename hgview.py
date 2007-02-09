@@ -46,15 +46,10 @@ def load_glade():
 #PROF = hotshot.Profile("/tmp/hgview.prof")
 
 DIFFHDR = "=== %s ===\n"
-
+M_ID = 0
 M_NODE = 1
-M_SHORTDESC = 2
-M_AUTHOR = 3
-M_DATE = 4
-M_FILELIST = 5
-M_NODEX = 6
-M_EDGES = 7
-M_TAGS = 8
+M_NODEX = 2
+M_EDGES = 3
 
 
 def make_texttag( name, **kwargs ):
@@ -86,15 +81,10 @@ class HgViewApp(object):
         self.filter_noderange = None
         # The strings are stored as PYOBJECT when they contain zeros and also
         # to save memory when they are used by the custom renderer
-        self.revisions = gtk.ListStore( gobject.TYPE_INT, # Revision
+        self.revisions = gtk.ListStore( gobject.TYPE_PYOBJECT, # node id
                                         gobject.TYPE_PYOBJECT, # node
-                                        gobject.TYPE_PYOBJECT, # short desc
-                                        gobject.TYPE_INT,      # author
-                                        gobject.TYPE_STRING,   # date
-                                        gobject.TYPE_PYOBJECT, # file list
                                         gobject.TYPE_PYOBJECT, # x for the node
                                         gobject.TYPE_PYOBJECT, # lines to draw
-                                        gobject.TYPE_STRING,   # tag
                                         )
 
         self.filelist = gtk.ListStore( gobject.TYPE_STRING, # filename
@@ -117,9 +107,9 @@ class HgViewApp(object):
         frex = self.filter_files
         noderange = self.filter_noderange or set(range(len(nodes)))
         for n in nodes:
-            rev, text, author_id, date_, log_, filelist, tags = self.read_node( n )
-            if rev in noderange:
-                for f in filelist:
+            node = self.repo.read_node(n)
+            if node.rev in noderange:
+                for f in node.files:
                     if frex.search(f):
                         keepnodes.append( n )
                         break
@@ -186,9 +176,21 @@ class HgViewApp(object):
     def author_data_func( self, column, cell, model, iter_, user_data=None ):
         """A Cell datafunction used to provide the author's name and
         foreground color"""
-        author_id = model.get_value( iter_, M_AUTHOR )
-        cell.set_property( "text", self.repo.authors[author_id] )
-        cell.set_property( "foreground", self.repo.colors[author_id] )
+        node = model.get_value( iter_, M_NODE )
+        cell.set_property( "text", self.repo.authors[node.author_id] )
+        cell.set_property( "foreground", self.repo.colors[node.author_id] )
+
+    def rev_data_func( self, column, cell, model, iter_, user_data=None ):
+        """A Cell datafunction used to provide the author's name and
+        foreground color"""
+        node = model.get_value( iter_, M_NODE )
+        cell.set_property( "text", str(node.rev) )
+
+    def date_data_func( self, column, cell, model, iter_, user_data=None ):
+        """A Cell datafunction used to provide the author's name and
+        foreground color"""
+        node = model.get_value( iter_, M_NODE )
+        cell.set_property( "text", node.date )
 
     def setup_tree(self):
         """Configure the 2 gtk.TreeView"""
@@ -197,7 +199,8 @@ class HgViewApp(object):
         tree.get_selection().connect("changed", self.selection_changed )
 
         rend = gtk.CellRendererText()
-        col = gtk.TreeViewColumn("ID", rend, text=0 )
+        col = gtk.TreeViewColumn("ID", rend )
+        col.set_cell_data_func( rend, self.rev_data_func )
         col.set_resizable(True)
         tree.append_column( col )
 
@@ -205,8 +208,7 @@ class HgViewApp(object):
         #rend.connect( "activated", self.cell_activated )
         self.graph_rend = rend
         col = gtk.TreeViewColumn("Log", rend, nodex=M_NODEX, edges=M_EDGES,
-                                 text=M_SHORTDESC,
-                                 tags=M_TAGS)
+                                 node=M_NODE)
         col.set_resizable(True)
         col.set_sizing( gtk.TREE_VIEW_COLUMN_FIXED )
         col.set_fixed_width( 400 )
@@ -219,7 +221,8 @@ class HgViewApp(object):
         tree.append_column( col )
 
         rend = gtk.CellRendererText()
-        col = gtk.TreeViewColumn("Date", rend, text=4 )
+        col = gtk.TreeViewColumn("Date", rend )
+        col.set_cell_data_func( rend, self.date_data_func )
         col.set_resizable(True)
         tree.append_column( col )
 
@@ -281,10 +284,9 @@ class HgViewApp(object):
             node = rowselected[n]
             if node is None:
                 continue
-            rev, text, author_id, date_, log_, filelist, tags = self.repo.read_node(node)
+            rnode = self.repo.read_node( node )
             lines = graph.rowlines[n]
-            add_rev( (rev, node, text, author_id, date_, filelist,
-                      graph.x[node], (lines,n), tags ) )
+            add_rev( (node, rnode, graph.x[node], (lines,n) ) )
         self.last_node = last_node
         tree.thaw_notify()
         self.progressbar.set_fraction( float(self.last_node) / len(rowselected) )
@@ -298,27 +300,26 @@ class HgViewApp(object):
             return False
         return True
 
-    def set_revlog_header( self, buf, node ):
+    def set_revlog_header( self, buf, node, rnode ):
         """Put the revision log header in the TextBuffer"""
         repo = self.repo
         eob = buf.get_end_iter()
-        rev, text, author_id, date_, log_, filelist, tags = repo.read_node(node)
-        buf.insert( eob, "Revision: %d\n" % rev )
-        buf.insert( eob, "Author: %s\n" %  repo.authors[author_id] )
+        buf.insert( eob, "Revision: %d\n" % rnode.rev )
+        buf.insert( eob, "Author: %s\n" %  repo.authors[rnode.author_id] )
         buf.create_mark( "begdesc", buf.get_start_iter() )
         
         for p in repo.parents(node):
-            rev, desc, author_id, date_, log_, filelist, tags = repo.read_node(p)
+            pnode = repo.read_node(p)
             short = short_hex(p)
-            buf.insert( eob, "Parent: %d:" % rev )
+            buf.insert( eob, "Parent: %d:" % pnode.rev )
             buf.insert_with_tags_by_name( eob, short, "link" )
-            buf.insert(eob, "(%s)\n" % desc)
+            buf.insert(eob, "(%s)\n" % pnode.desc)
         for p in repo.children(node):
-            rev, desc, author_id, date_, log_, filelist, tags = repo.read_node(p)
+            pnode = repo.read_node(p)
             short = short_hex(p)
-            buf.insert( eob, "Child:  %d:" % rev )
+            buf.insert( eob, "Child:  %d:" % pnode.rev )
             buf.insert_with_tags_by_name( eob, short, "link" )
-            buf.insert(eob, "(%s)\n" % desc)
+            buf.insert(eob, "(%s)\n" % pnode.desc)
 
         buf.insert( eob, "\n" )
 
@@ -375,25 +376,23 @@ class HgViewApp(object):
         model, it = selection.get_selected()
         if it is None:
             return
-        node, filelist = model.get( it, M_NODE,
-                                    M_FILELIST )
-        fulltext = self.repo.read_node(node)[4]
+        node, rnode = model.get( it, M_ID, M_NODE )
         textwidget = self.xml.get_widget( "textview_status" )
         text_buffer = textwidget.get_buffer()
         textwidget.freeze_child_notify()
         text_buffer.set_text( "" )
 
         try:
-            self.set_revlog_header( text_buffer, node )
+            self.set_revlog_header( text_buffer, node, rnode )
             eob = text_buffer.get_end_iter()
-            text_buffer.insert( eob, fulltext+"\n\n" )
+            text_buffer.insert( eob, rnode.desc+"\n\n" )
             parent = self.repo.parents(node)[0]
             self.filelist.clear()
             enddesc = text_buffer.get_end_iter()
             enddesc.backward_line()
             text_buffer.create_mark( "enddesc", enddesc )
             self.filelist.append( ("Content", "begdesc", None ) )
-            buff = self.repo.diff( parent, node, filelist )
+            buff = self.repo.diff( parent, node, rnode.files )
             try:
                 buff = unicode( buff, "utf-8" )
             except UnicodeError:
