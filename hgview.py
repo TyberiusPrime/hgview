@@ -568,9 +568,6 @@ def main():
         dir_ = opt.repo
     else:
         dir_ = os.getcwd()
-        if dir_ == None:
-            print "You are not in a repo, are you ?"
-            sys.exit(1)
 
     filerex = None
     if opt.filename:
@@ -578,7 +575,12 @@ def main():
     elif opt.filerex:
         filerex = opt.filerex
 
-    repo = HgHLRepo( dir_ )
+    try:
+        repo = HgHLRepo( dir_ )
+    except:
+        print "You are not in a repo, are you ?"
+        sys.exit(1)
+
     app = HgViewApp( repo, filerex )
     gtk.main()
 
