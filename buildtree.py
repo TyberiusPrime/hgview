@@ -103,7 +103,7 @@ class RevGraph(object):
         self.nchildren = ncleft.copy()
         self.linestarty = linestarty
         self.nullentry = nullentry
-        print "START", [binhex(n) for n in todo]
+        #print "START", [binhex(n) for n in todo]
 
     def assigncolor(self, p, color=None):
         while len(self.parents[p])==1:
