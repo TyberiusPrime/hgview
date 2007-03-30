@@ -10,15 +10,17 @@ import time
 
 
 class RevNode(object):
-    __slots__ = "rev author_id desc gmtime files tags".split()
+    __slots__ = "rev author_id desc gmtime files tags node log".split()
     def __init__(self,rev, author_id, desc, date,
-                 files, tags):
+                 files, tags, node, log):
         self.rev = rev
         self.author_id = author_id
         self.desc = desc.strip()+"\n"
         self.gmtime = date
         self.files = tuple(files)
         self.tags = tags
+        self.node = node
+        self.log = log
 
     def get_short_log( self ):
         """Compute a short log from the full revision log"""
@@ -34,6 +36,9 @@ class RevNode(object):
         date_ = time.strftime( "%F %H:%M", self.gmtime )
         return date_
     date = property(get_date)
+
+    def __str__(self):
+        return self.node
 
 class Repository(object):
     """Abstract interface for a repository"""
@@ -102,7 +107,7 @@ def timeit( f ):
         res = f(*args, **kwargs)
         t3 = time.clock()
         t4 = time.time()
-        print f.func_name, t3 - t2, t4 - t1
+        #print f.func_name, t3 - t2, t4 - t1
         return res
     return timefunc
 
@@ -150,6 +155,7 @@ class HgHLRepo(object):
         nodeinfo = self._cache
         if node in nodeinfo:
             return nodeinfo[node]
+        node = str(node)
         NCOLORS = len(COLORS)
         changelog = self.repo.changelog
         _, author, date, filelist, log, _ = changelog.read( node )
@@ -163,7 +169,7 @@ class HgHLRepo(object):
         date_ = time.gmtime(date[0])
         taglist = self.repo.nodetags(node)
         tags = ", ".join(taglist)
-        _node = RevNode(rev, author_id, log, date_, filelist, tags)
+        _node = RevNode(rev, author_id, log, date_, filelist, tags, node, log)
         nodeinfo[node] = _node
         return _node
 

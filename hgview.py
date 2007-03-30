@@ -251,7 +251,7 @@ class HgViewApp(object):
     def refresh_tree(self):
         """Starts the process of filling the ListStore model"""
         self.repo.read_nodes()
-        print "Computing graph..."
+        #print "Computing graph..."
         t1 = time.clock()
         if self.filter_files or self.filter_noderange:
             todo_nodes = self.filter_nodes()
@@ -259,7 +259,7 @@ class HgViewApp(object):
             todo_nodes = self.repo.nodes
         graph = self.repo.graph( todo_nodes )
         self.graph_rend.set_colors( graph.colors )
-        print "done in", time.clock()-t1
+        #print "done in", time.clock()-t1
 
         self.revisions.clear()
         self.progressbar.show()
@@ -291,7 +291,7 @@ class HgViewApp(object):
         tree.thaw_notify()
         self.progressbar.set_fraction( float(self.last_node) / len(rowselected) )
         #print "batch: %09.6f" % (time.time()-t1)
-        print self.last_node, "/", len(rowselected)
+        #print self.last_node, "/", len(rowselected)
         if self.last_node == len(rowselected):
             self.graph = None
             self.rowselected = None
@@ -334,7 +334,7 @@ class HgViewApp(object):
                 tags[-1][2] += length
             else:
                 tags.append( [name, offset, offset+length] )
-        print "DIFF:", len(difflines)
+        #print "DIFF:", len(difflines)
         stats = [0,0]
         statmax = 0
         for i,l in enumerate(difflines):
@@ -460,13 +460,14 @@ class HgViewApp(object):
         txt = self.xml.get_widget( "entry_find" ).get_text()
         rexp = re.compile( txt )
         while iter != stop_iter and iter!=None:
-            node = self.revisions.get( iter, M_NODE )
-            rev, text, author_id, date_, log, files, tags = self.repo.read_node( node )
-            author = self.repo.authors[author_id]
+            node = self.revisions.get( iter, M_NODE ) [0]
+            revnode = self.repo.read_node( node )
+            # author_id, log, files
+            author = self.repo.authors[revnode.author_id]
             if ( rexp.search( author ) or
-                 rexp.search( log ) ):
+                 rexp.search( revnode.log ) ):
                 break
-            for f in files:
+            for f in revnode.files:
                 if rexp.search( f ):
                     break
             else:
