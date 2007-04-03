@@ -386,13 +386,12 @@ class HgViewApp(object):
             self.set_revlog_header( text_buffer, node, rnode )
             eob = text_buffer.get_end_iter()
             text_buffer.insert( eob, rnode.desc+"\n\n" )
-            parent = self.repo.parents(node)[0]
             self.filelist.clear()
             enddesc = text_buffer.get_end_iter()
             enddesc.backward_line()
             text_buffer.create_mark( "enddesc", enddesc )
             self.filelist.append( ("Content", "begdesc", None ) )
-            buff = self.repo.diff( parent, node, rnode.files )
+            buff = self.repo.diff( self.repo.parents(node), node, rnode.files )
             try:
                 buff = unicode( buff, "utf-8" )
             except UnicodeError:
