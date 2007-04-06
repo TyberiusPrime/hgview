@@ -7,6 +7,7 @@ from buildtree import RevGraph
 from StringIO import StringIO
 import textwrap
 import time
+import mercurial.commands
 
 
 class RevNode(object):
@@ -88,6 +89,9 @@ class Repository(object):
         of the tree of revisions reduced to 'nodes'
         """
 
+    def add_tag( self, rev, label ):
+        pass
+
 # A default changelog_cache node
 EMPTY_NODE = (-1,  # REV num
               "",  # short desc
@@ -123,6 +127,9 @@ class HgHLRepo(object):
         self.repo = hg.repository( self.ui, self.dir )
         # cache and indexing of changelog
         self._cache = {}
+
+    def refresh(self):
+        self.repo = hg.repository( self.ui, self.dir )
 
     def find_repository(self, path):
         """returns <path>'s mercurial repository
@@ -285,3 +292,8 @@ class HgHLRepo(object):
         for t in ops[i+1:]:
             t[2]+=delta
         
+    def add_tag( self, rev, label ):
+        #self.repo.tag(name, r, message, opts['local'], opts['user'], opts['date'])
+        mercurial.commands.tag( self.ui, self.repo, label,
+                                rev=1, message="hop",
+                                local=True, user=None, date=None )
