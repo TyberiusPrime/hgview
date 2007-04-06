@@ -92,6 +92,7 @@ class HgViewApp(object):
                                        gobject.TYPE_PYOBJECT, # diffstat
                                        )
 
+        self.create_revision_popup()
         self.setup_tags()
         self.graph = None
         self.setup_tree()
@@ -99,7 +100,36 @@ class HgViewApp(object):
         self.refresh_tree()
         self.find_text = None
 
+    def create_revision_popup(self):
+        self.revpopup_path = None, None
+        tree = self.xml.get_widget( "treeview_revisions" )
+        self.revpopup = gtk.Menu()
+        self.revpopup.attach_to_widget( tree, None)
+        m1 = gtk.MenuItem("Add tag...")
+        m1.show()
+        m1.connect("activate", self.revpopup_add_tag )
+        self.revpopup.attach(m1, 0, 1, 0, 1)
+        m2 = gtk.MenuItem("Update")
+        m2.show()
+        m2.connect("activate", self.revpopup_update )
+        self.revpopup.attach(m2, 0, 1, 1, 2)
 
+    def revpopup_add_tag(self, item):
+        path, col = self.revpopup_path
+        if path is None or col is None:
+            return
+        print "ADD TAG", path, col
+        self.revisions
+        self.repo.add_tag( 2, "toto" )
+        
+    def revpopup_update(self, item):
+        print "UPDATE"
+
+    def on_refresh_activate(self, arg):
+        #print "REFRESH", arg
+        self.repo.refresh()
+        self.refresh_tree()
+        
     def filter_nodes(self):
         """Filter the nodes according to filter_files and filter_nodes"""
         keepnodes = []
@@ -251,7 +281,7 @@ class HgViewApp(object):
     def refresh_tree(self):
         """Starts the process of filling the ListStore model"""
         self.repo.read_nodes()
-        print "Computing graph..."
+        #print "Computing graph..."
         t1 = time.clock()
         if self.filter_files or self.filter_noderange:
             todo_nodes = self.filter_nodes()
@@ -259,7 +289,7 @@ class HgViewApp(object):
             todo_nodes = self.repo.nodes
         graph = self.repo.graph( todo_nodes )
         self.graph_rend.set_colors( graph.colors )
-        print "done in", time.clock()-t1
+        #print "done in", time.clock()-t1
 
         self.revisions.clear()
         self.progressbar.show()
@@ -267,6 +297,20 @@ class HgViewApp(object):
         self.graph = graph
         gobject.idle_add( self.idle_fill_model )
         return
+
+    def on_treeview_revisions_button_press_event(self, treeview, event):
+        if event.button==3:
+            x = int(event.x)
+            y = int(event.y)
+            time = event.time
+            pthinfo = treeview.get_path_at_pos(x, y)
+            if pthinfo is not None:
+                path, col, cellx, celly = pthinfo
+                treeview.grab_focus()
+                treeview.set_cursor( path, col, 0)
+                self.revpopup_path = path, col
+                self.revpopup.popup( None, None, None, event.button, time)
+            return 1
 
     def idle_fill_model(self):
         """Idle task filling the ListStore model chunks by chunks"""
@@ -291,7 +335,7 @@ class HgViewApp(object):
         tree.thaw_notify()
         self.progressbar.set_fraction( float(self.last_node) / len(rowselected) )
         #print "batch: %09.6f" % (time.time()-t1)
-        print self.last_node, "/", len(rowselected)
+        #print self.last_node, "/", len(rowselected)
         if self.last_node == len(rowselected):
             self.graph = None
             self.rowselected = None
@@ -334,7 +378,7 @@ class HgViewApp(object):
                 tags[-1][2] += length
             else:
                 tags.append( [name, offset, offset+length] )
-        print "DIFF:", len(difflines)
+        #print "DIFF:", len(difflines)
         stats = [0,0]
         statmax = 0
         for i,l in enumerate(difflines):
@@ -386,13 +430,12 @@ class HgViewApp(object):
             self.set_revlog_header( text_buffer, node, rnode )
             eob = text_buffer.get_end_iter()
             text_buffer.insert( eob, rnode.desc+"\n\n" )
-            parent = self.repo.parents(node)[0]
             self.filelist.clear()
             enddesc = text_buffer.get_end_iter()
             enddesc.backward_line()
             text_buffer.create_mark( "enddesc", enddesc )
             self.filelist.append( ("Content", "begdesc", None ) )
-            buff = self.repo.diff( parent, node, rnode.files )
+            buff = self.repo.diff( self.repo.parents(node), node, rnode.files )
             try:
                 buff = unicode( buff, "utf-8" )
             except UnicodeError:
@@ -460,13 +503,14 @@ class HgViewApp(object):
         txt = self.xml.get_widget( "entry_find" ).get_text()
         rexp = re.compile( txt )
         while iter != stop_iter and iter!=None:
-            node = self.revisions.get( iter, M_NODE )
-            rev, text, author_id, date_, log, files, tags = self.repo.read_node( node )
-            author = self.repo.authors[author_id]
+            node = self.revisions.get( iter, M_NODE ) [0]
+            revnode = self.repo.read_node( node )
+            # author_id, log, files
+            author = self.repo.authors[revnode.author_id]
             if ( rexp.search( author ) or
-                 rexp.search( log ) ):
+                 rexp.search( revnode.log ) ):
                 break
-            for f in files:
+            for f in revnode.files:
                 if rexp.search( f ):
                     break
             else:
@@ -568,9 +612,6 @@ def main():
         dir_ = opt.repo
     else:
         dir_ = os.getcwd()
-        if dir_ == None:
-            print "You are not in a repo, are you ?"
-            sys.exit(1)
 
     filerex = None
     if opt.filename:
@@ -578,7 +619,12 @@ def main():
     elif opt.filerex:
         filerex = opt.filerex
 
-    repo = HgHLRepo( dir_ )
+    try:
+        repo = HgHLRepo( dir_ )
+    except:
+        print "You are not in a repo, are you ?"
+        sys.exit(1)
+
     app = HgViewApp( repo, filerex )
     gtk.main()
 
