@@ -7,6 +7,11 @@ from ConfigParser import SafeConfigParser
 
 HGVIEWRC = '.hgviewrc'
 
+DEFAULT_CONFIG = {
+    'windowsize' : (800,600),
+    'windowpos' : (0,0),
+    }
+
 def get_home_dir():
     return os.path.expanduser('~')
 
@@ -45,14 +50,68 @@ def write_config( fwhere, config ):
 
 def read_config( repo_dir ):
     frepo, fhome = get_hgviewrc_names( repo_dir )
-    config = {}
-    load_config( fhome, config )
-    load_config( frepo, config )
+    config = DEFAULT_CONFIG.copy()
     return config
 
 
+class Config(object):
+    def __init__(self):
+        self._configs = [ {}, {}, DEFAULT_CONFIG ]
+
+    def load_configs(self, repo_dir):
+        frepo, fhome = get_hgviewrc_names( repo_dir )
+        load_config( fhome, self._configs[1] )
+        load_config( frepo, self._configs[0] )
+
+    def save_configs(self, repo_dir):
+        frepo, fhome = get_hgviewrc_names( repo_dir )
+        write_config( fhome, self._configs[1] )
+        write_config( frepo, self._configs[0] )
+
+    def __getattr__(self, name):
+        for c in self._configs:
+            if name in c:
+                return c[name]
+        raise AttributeError('unknown config option %s' % name )
+
+    def __setattr__(self, name, value):
+        """Setattr only works on existing values"""
+        if name.startswith("_"):
+            self.__dict__[name] = value
+            return
+        for c in self._configs:
+            if name in c:
+                c[name] = value
+                return
+        raise AttributeError('unknown config option %s' % name )
+
+    def set_in_repo(self, name, value):
+        self._configs[0][name] = value
+
+    def set_in_home(self, name, value):
+        self._configs[1][name] = value
+
+    def keys(self):
+        s = set()
+        for c in self._configs:
+            s.update( c.keys() )
+        return list(s)
+
+    def where(self, k):
+        WHERE = ['repo','home','default']
+        for i,c in enumerate(self._configs):
+            if k in c:
+                return WHERE[i]
+                
+    def dump(self):
+        for k in self.keys():
+            print k, getattr(self,k), self.where(k)
+            
 if __name__ == "__main__":
     print "Home dir:", get_home_dir()
     print "hgviewrc:", get_hgviewrc_names( os.getcwd() )
     print "hgviewrc:", get_hgviewrc( os.getcwd() )
-    print "config:", read_config( os.getcwd() )
+    config = Config()
+    config.load_configs( os.getcwd() )
+    config.dump()
+

@@ -92,6 +92,7 @@ class HgViewApp(object):
                                        gobject.TYPE_PYOBJECT, # diffstat
                                        )
 
+        self.create_revision_popup()
         self.setup_tags()
         self.graph = None
         self.setup_tree()
@@ -99,7 +100,36 @@ class HgViewApp(object):
         self.refresh_tree()
         self.find_text = None
 
+    def create_revision_popup(self):
+        self.revpopup_path = None, None
+        tree = self.xml.get_widget( "treeview_revisions" )
+        self.revpopup = gtk.Menu()
+        self.revpopup.attach_to_widget( tree, None)
+        m1 = gtk.MenuItem("Add tag...")
+        m1.show()
+        m1.connect("activate", self.revpopup_add_tag )
+        self.revpopup.attach(m1, 0, 1, 0, 1)
+        m2 = gtk.MenuItem("Update")
+        m2.show()
+        m2.connect("activate", self.revpopup_update )
+        self.revpopup.attach(m2, 0, 1, 1, 2)
 
+    def revpopup_add_tag(self, item):
+        path, col = self.revpopup_path
+        if path is None or col is None:
+            return
+        print "ADD TAG", path, col
+        self.revisions
+        self.repo.add_tag( 2, "toto" )
+        
+    def revpopup_update(self, item):
+        print "UPDATE"
+
+    def on_refresh_activate(self, arg):
+        #print "REFRESH", arg
+        self.repo.refresh()
+        self.refresh_tree()
+        
     def filter_nodes(self):
         """Filter the nodes according to filter_files and filter_nodes"""
         keepnodes = []
@@ -266,6 +296,20 @@ class HgViewApp(object):
         gobject.idle_add( self.idle_fill_model )
         return
 
+    def on_treeview_revisions_button_press_event(self, treeview, event):
+        if event.button==3:
+            x = int(event.x)
+            y = int(event.y)
+            time = event.time
+            pthinfo = treeview.get_path_at_pos(x, y)
+            if pthinfo is not None:
+                path, col, cellx, celly = pthinfo
+                treeview.grab_focus()
+                treeview.set_cursor( path, col, 0)
+                self.revpopup_path = path, col
+                self.revpopup.popup( None, None, None, event.button, time)
+            return 1
+
     def idle_fill_model(self):
         """Idle task filling the ListStore model chunks by chunks"""
         #t1 = time.time()
@@ -311,13 +355,13 @@ class HgViewApp(object):
             short = short_hex(p)
             buf.insert( eob, "Parent: %d:" % pnode.rev )
             buf.insert_with_tags_by_name( eob, short, "link" )
-            buf.insert(eob, "(%s)\n" % pnode.desc)
+            buf.insert(eob, "(%s)\n" % pnode.short)
         for p in repo.children(node):
             pnode = repo.read_node(p)
             short = short_hex(p)
             buf.insert( eob, "Child:  %d:" % pnode.rev )
             buf.insert_with_tags_by_name( eob, short, "link" )
-            buf.insert(eob, "(%s)\n" % pnode.desc)
+            buf.insert(eob, "(%s)\n" % pnode.short)
 
         buf.insert( eob, "\n" )
 
@@ -384,13 +428,12 @@ class HgViewApp(object):
             self.set_revlog_header( text_buffer, node, rnode )
             eob = text_buffer.get_end_iter()
             text_buffer.insert( eob, rnode.desc+"\n\n" )
-            parent = self.repo.parents(node)[0]
             self.filelist.clear()
             enddesc = text_buffer.get_end_iter()
             enddesc.backward_line()
             text_buffer.create_mark( "enddesc", enddesc )
             self.filelist.append( ("Content", "begdesc", None ) )
-            buff = self.repo.diff( parent, node, rnode.files )
+            buff = self.repo.diff( self.repo.parents(node), node, rnode.files )
             try:
                 buff = unicode( buff, "utf-8" )
             except UnicodeError:

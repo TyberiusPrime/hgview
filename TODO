@@ -10,3 +10,11 @@ temporary TODO list :
  - investigate how to speed up for large repo (ie linux kernel)
 
  - highlight search string in the lists (revision and file lists)  
+
+
+
+The 3-way diff algorithm in hgk
+
+find gca of the parents of the merge revision (uses hg debug-merge-base)
+
+get tree diff (hg debug-diff-tree -r)
