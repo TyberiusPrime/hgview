@@ -181,14 +181,12 @@ class HgViewApp(object):
         cell.set_property( "foreground", self.repo.colors[node.author_id] )
 
     def rev_data_func( self, column, cell, model, iter_, user_data=None ):
-        """A Cell datafunction used to provide the author's name and
-        foreground color"""
+        """A Cell datafunction used to provide the revnode's text"""
         node = model.get_value( iter_, M_NODE )
         cell.set_property( "text", str(node.rev) )
 
     def date_data_func( self, column, cell, model, iter_, user_data=None ):
-        """A Cell datafunction used to provide the author's name and
-        foreground color"""
+        """A Cell datafunction used to provide the date"""
         node = model.get_value( iter_, M_NODE )
         cell.set_property( "text", node.date )
 
