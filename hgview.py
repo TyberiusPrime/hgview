@@ -501,12 +501,11 @@ class HgViewApp(object):
         txt = self.xml.get_widget( "entry_find" ).get_text()
         rexp = re.compile( txt )
         while iter != stop_iter and iter!=None:
-            node = self.revisions.get( iter, M_NODE ) [0]
-            revnode = self.repo.read_node( node )
+            revnode = self.revisions.get( iter, M_NODE ) [0]
             # author_id, log, files
             author = self.repo.authors[revnode.author_id]
             if ( rexp.search( author ) or
-                 rexp.search( revnode.log ) ):
+                 rexp.search( revnode.desc ) ):
                 break
             for f in revnode.files:
                 if rexp.search( f ):

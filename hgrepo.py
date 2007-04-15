@@ -12,16 +12,13 @@ import mercurial.commands
 
 class RevNode(object):
     __slots__ = "rev author_id desc gmtime files tags node log".split()
-    def __init__(self,rev, author_id, desc, date,
-                 files, tags, node, log):
+    def __init__(self, rev, author_id, desc, date, files, tags):
         self.rev = rev
         self.author_id = author_id
         self.desc = desc.strip()+"\n"
         self.gmtime = date
         self.files = tuple(files)
         self.tags = tags
-        self.node = node
-        self.log = log
 
     def get_short_log( self ):
         """Compute a short log from the full revision log"""
@@ -37,9 +34,6 @@ class RevNode(object):
         date_ = time.strftime( "%F %H:%M", self.gmtime )
         return date_
     date = property(get_date)
-
-    def __str__(self):
-        return self.node
 
 class Repository(object):
     """Abstract interface for a repository"""
@@ -162,7 +156,6 @@ class HgHLRepo(object):
         nodeinfo = self._cache
         if node in nodeinfo:
             return nodeinfo[node]
-        node = str(node)
         NCOLORS = len(COLORS)
         changelog = self.repo.changelog
         _, author, date, filelist, log, _ = changelog.read( node )
@@ -176,7 +169,7 @@ class HgHLRepo(object):
         date_ = time.gmtime(date[0])
         taglist = self.repo.nodetags(node)
         tags = ", ".join(taglist)
-        _node = RevNode(rev, author_id, log, date_, filelist, tags, node, log)
+        _node = RevNode(rev, author_id, log, date_, filelist, tags)
         nodeinfo[node] = _node
         return _node
 
@@ -196,7 +189,8 @@ class HgHLRepo(object):
         if len(parents)==1:
             return self.single_diff( parents[0], node2, files )
         else:
-            return self.merge_diff( parents, node2, files )
+#            return self.merge_diff( parents, node2, files )
+            return self.single_diff( parents[0], node2, files )
 
     def single_diff( self, node1, node2, files ):
         out = StringIO()
