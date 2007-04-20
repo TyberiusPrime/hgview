@@ -189,7 +189,7 @@ class HgViewApp(object):
 
         it = self.revisions.get_iter_first()
         while it:
-            node = self.revisions.get_value( it, M_NODE )
+            node = self.revisions.get_value( it, M_ID )
             hhex = short_hex(node)
             if hhex == text:
                 break
