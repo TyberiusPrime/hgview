@@ -1,0 +1,46 @@
+.\" To view:
+.\" man -l hgview.1
+.TH HGVIEW 1
+.SH NAME
+hgview \- A revision history browser for mercurial repositories
+.SH SYNOPSIS
+.ll +8
+.B hgview
+.RB [ \-h ]
+.RB [ \-R repo ]
+.RB [ \-f file | \-g filerex ]
+.ll -8
+.SH DESCRIPTION
+.B hgview
+is a GUI application usually invoked from the command line. The simplest 
+way to use it is to call it from a mercurial repository.
+.SH OPTIONS
+.HP
+\fB\-R\fR \fIREPO\fR, \fB--repository\fR=\fIREPO\fR
+.IP
+Specify the repository to use on the command line instead of using the
+current working directory.
+.HP
+\fB\-f\fR \fIFILE\fR, \fB--file\fR=\fIFILE\fR
+.IP
+Display only the revisions which touch \fIFILE\fR.
+.I FILE
+is a part of the filename
+.HP
+\fB\-g\fR \fIFILEREX\fR, \fB\-\-regexp\fR=\fIFILEREX\fR
+.IP
+Same as
+.B \-f
+except you can specify any standard (Python) Regexp as a
+filter
+.SH FILES
+.I $HOME/.hgviewrc
+.RS
+global configuration file
+.RE
+.I $REPO/.hgviewrc
+.RS
+repository local configuration file
+.SH SEE ALSO
+hg(1), gitk(1)
+.PP
