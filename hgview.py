@@ -346,7 +346,9 @@ class HgViewApp(object):
         """Put the revision log header in the TextBuffer"""
         repo = self.repo
         eob = buf.get_end_iter()
-        buf.insert( eob, "Revision: %d\n" % rnode.rev )
+        buf.insert( eob, "Revision: %d:" % rnode.rev )
+        buf.insert_with_tags_by_name( eob, short_hex(node), "link" )
+        buf.insert( eob, "\n" )
         buf.insert( eob, "Author: %s\n" %  repo.authors[rnode.author_id] )
         buf.create_mark( "begdesc", buf.get_start_iter() )
         
