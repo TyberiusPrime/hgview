@@ -1,4 +1,5 @@
 include ChangeLog
+include COPYING
 include TODO
 include bin/hgview
 include bin/hgview.bat

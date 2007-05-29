@@ -1,0 +1,66 @@
+#!/usr/bin/make -f
+# Sample debian/rules that uses debhelper.
+# GNU copyright 1997 to 1999 by Joey Hess.
+#
+# adapted by Logilab for automatic generation by debianize
+# (part of the devtools project, http://www.logilab.org/projects/devtools)
+#
+# Copyright (c) 2003-2005 LOGILAB S.A. (Paris, FRANCE).
+# http://www.logilab.fr/ -- mailto:contact@logilab.fr
+
+# Uncomment this to turn on verbose mode.
+#export DH_VERBOSE=1
+
+# This is the debhelper compatability version to use.
+export DH_COMPAT=5
+
+
+build: build-stamp
+build-stamp: 
+	dh_testdir
+	python setup.py -q build 
+	touch build-stamp
+
+clean: 
+	dh_testdir
+	dh_testroot
+	rm -f build-stamp configure-stamp
+	rm -rf build
+	find . -name "*.pyc" | xargs rm -f
+	rm -f changelog.gz
+	dh_clean
+
+install: build
+	dh_testdir
+	dh_testroot
+	dh_clean -k
+	dh_installdirs
+	python setup.py -q install --prefix=debian/hgview/usr
+	rm -rf debian/hgview/usr/lib/python*/site-packages/hgview/test
+
+
+# Build architecture-independent files here.
+binary-indep: build install
+	dh_testdir 
+	dh_testroot 
+	dh_install -i
+	dh_pycentral -i
+	dh_python -i
+	gzip -9 -c ChangeLog > changelog.gz
+	dh_installchangelogs -i
+	dh_installexamples -i
+	dh_installdocs -i changelog.gz
+	dh_installman -i
+	dh_link -i
+	dh_compress -i -X.py -X.ini -X.xml -Xtest
+	dh_fixperms -i
+	dh_installdeb -i
+	dh_gencontrol -i 
+	dh_md5sums -i
+	dh_builddeb -i
+
+
+
+binary: binary-indep
+.PHONY: build clean binary binary-indep
+
