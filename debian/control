@@ -1,7 +1,7 @@
 Source: hgview
 Section: python
 Priority: optional
-Maintainer: Logilab <devel@logilab.org>
+Maintainer: David Douard <david.douard@logilab.fr>
 Uploaders: Alexandre Fayolle <afayolle@debian.org>
 Build-Depends: debhelper (>= 5.0.38)
 Build-Depends-Indep: python (>=2.3.5-7),  python-central (>= 0.5.6)
