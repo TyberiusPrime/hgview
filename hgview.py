@@ -1,3 +1,4 @@
+# -*- coding: iso-8859-1 -*-
 #!/usr/bin/env python
 # hgview.py - gtk-based hgk
 #
@@ -27,7 +28,7 @@ from hgrepo import HgHLRepo, short_hex, short_bin
 
 GLADE_FILE_NAME = "hgview.glade"
 
-def load_glade():
+def load_glade(root=""):
     """Try several paths in which the glade file might be found"""
     for _path in [dirname(__file__),
                   join(sys.exec_prefix, 'share/hgview'),
@@ -41,7 +42,7 @@ def load_glade():
     else:
         raise ValueError("Unable to find hgview.glade."
                          "Check your installation.")
-    return gtk.glade.XML(glade_file)
+    return gtk.glade.XML(glade_file, root)
 
 #import hotshot
 #PROF = hotshot.Profile("/tmp/hgview.prof")
@@ -67,7 +68,7 @@ def make_texttag( name, **kwargs ):
 class HgViewApp(object):
     """Main hg view application"""
     def __init__(self, repo, filerex = None ):
-        self.xml = load_glade()
+        self.xml = load_glade("window_main")
         self.xml.signal_autoconnect( self )
         statusbar = self.xml.get_widget("statusbar1")
         self.progressbar = gtk.ProgressBar()
@@ -153,6 +154,20 @@ class HgViewApp(object):
     def on_quit1_activate( self, *args ):
         """Bye"""
         gtk.main_quit()
+
+    def on_about_activate(self, *args):
+        """ Display about dialog """
+        dlg=gtk.AboutDialog()
+        dlg.set_authors([u'Ludovic Aubry, Logilab',
+                         u'David Douard, Logilab',
+                         u'Aurélien Campéas, Logilab'])
+        from __pkginfo__ import modname, version, short_desc, long_desc
+        dlg.set_comments(short_desc)
+        dlg.set_name(modname)
+        dlg.set_version(version)
+        #dlg.set_logo(pixbuf)
+        dlg.run()
+        dlg.destroy()
 
     def setup_tags(self):
         """Creates the tags to be used inside the TextView"""

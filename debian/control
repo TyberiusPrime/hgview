@@ -1,13 +1,14 @@
 Source: hgview
 Section: python
 Priority: optional
-Maintainer: Alexandre Fayolle <afayolle@debian.org>
+Maintainer: Logilab <devel@logilab.org>
+Uploaders: Alexandre Fayolle <afayolle@debian.org>
 Build-Depends: debhelper (>= 5.0.37.1), python-dev (>=2.3.5-7), python (>=2.3.5-7),  python-glade2 (>2.10.4-2), python-central
 XS-Python-Version: current
-Standards-Version: 0.1.0
+Standards-Version: 3.7.2
 
-Package: pyqonsole
-Architecture: any
+Package: hgview
+Architecture: all
 Depends: ${shlibs:Depends}, ${misc:Depends}, ${python:Depends}, python-gtk2
 XB-Python-Version: ${python:Versions}
 Description: mercurial ang git interactive history viewer

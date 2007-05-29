@@ -1,0 +1,6 @@
+hgview (0.14.0-1) unstable; urgency=low
+
+  * first Debian package
+
+ -- David.Douard <david@crater.logilab.fr>  Tue, 29 May 2007 11:42:58 +0200
+
