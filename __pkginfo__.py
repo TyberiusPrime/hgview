@@ -46,8 +46,7 @@ from os.path import join
 scripts = [join('bin', filename)
            for filename in ('hgview',)]
 
-data_files = [('share/hgview/', ['hgview.glade']),
-              ('share/doc/hgview/', ['README','TODO','Changelog']),]
+data_files = [('share/hgview/', ['hgview.glade']),]
 
 ## include_dirs = [join('test', 'input'),
 ##                 join('test', 'messages'),
