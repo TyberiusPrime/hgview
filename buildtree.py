@@ -103,6 +103,7 @@ class RevGraph(object):
         self.nchildren = ncleft.copy()
         self.linestarty = linestarty
         self.nullentry = nullentry
+        self.done = False
         #print "START", [binhex(n) for n in todo]
 
     def assigncolor(self, p, color=None):
@@ -293,3 +294,153 @@ if __name__ == '__main__':
     repo = hg.repository(ui.ui())
 
     revlog = RevGraph(repo)
+
+
+
+
+def dfs( g ): # recursive version
+    """g : dict node->deps"""
+    d = {} # discovery time
+    f = {} # finishing time
+    pi = {}
+    topo_sort = []
+    dfs_color = {}
+    for u in g:
+        dfs_color[u] = 0
+    time = [0]
+    def dfs_visit( u ):
+        dfs_color[u] = 1
+        time[0] += 1
+        d[u] = time[0]
+        for v in g[u]:
+            if dfs_color[v] == 0:
+                pi[v] = u
+                dfs_visit(v)
+        dfs_color[u] = 2
+        time[0] += 1
+        f[u] = time[0]
+        topo_sort.append( u )
+
+    for u in g:
+        if dfs_color[u] == 0:
+            dfs_visit( u )
+    return pi,d,f,topo_sort
+
+def dfs( g ):
+    """g : dict node->deps"""
+    d = {} # discovery time
+    f = {} # finishing time
+    pi = {}
+    topo_sort = []
+    dfs_color = {}
+    for u in g:
+        dfs_color[u] = 0
+    time = [0]
+
+    def dfs_visit( todo ):
+        while todo:
+            u = todo[-1]
+            color = dfs_color[u]
+            if color == 0:
+                dfs_color[u] = 1
+                time[0] += 1
+                d[u] = time[0]
+                for v in g[u]:
+                    if dfs_color[v] == 0:
+                        pi[v] = u
+                        todo.append(v)
+            elif color==1:
+                todo.pop(-1)
+                dfs_color[u] = 2
+                time[0] += 1
+                f[u] = time[0]
+                topo_sort.append( u )
+            else:
+                todo.pop(-1) # ignore, visited already
+
+    dfs_visit(g.keys())
+    return pi,d,f,topo_sort
+
+
+
+
+
+class RevGraph2(RevGraph):
+    def build(self, NMAX=500 ):
+        if self.done:
+            return
+        parents = self.parents
+        pi,d,f,topo_sort = dfs(parents)
+
+        self.rows = topo_sort
+        self.x = X = {}
+        Y = {}
+        self.rowlines = []
+        s = set()
+        K=0
+        links = {}
+        for yc,n in enumerate(topo_sort):
+            lines = set()
+            self.rowlines.append( lines )
+            for p in parents[n]:
+                if p in s:
+                    s.remove(p)
+            X[n] = len(s)
+
+            for p in parents[n]:
+                colordst = self.assigncolor( n )
+                if p in parents[n]:
+                    # add a line from parent to here
+                    y1 = Y[p]
+                    y2 = yc
+                    x1 = X[p]
+                    x2 = X[n]
+                    if y2-y1>1:
+                        links[ (p,n) ] = (x1,y1,x2,y2)
+                    else:
+                        ly = self.rowlines[y1]
+                        ly.add( (colordst,x1,y1,x2,y2) )
+                        ly = self.rowlines[y2]
+                        ly.add( (colordst,x1,y1,x2,y2) )
+                        
+##                     for y in xrange(y1,yc+1):
+##                         ly = self.rowlines[y]
+##                         ly.add( (colordst,x1,y1,x2,y2) )
+
+            Y[n] = yc
+            s.add(n)
+            if yc%20==0:
+                print yc
+
+        POS = [ set() for i in xrange(len(topo_sort)) ]
+        for (p,n),(x1,y1,x2,y2) in links.items():
+            pass
+        
+        self.done = True
+        return
+        #from pprint import pprint
+        #pprint( zip([ binhex(n) for n in topo_sort], X) )
+
+        
+        
+        return _RevGraph.build(self, NMAX)
+
+
+
+class RevGraph3(RevGraph):
+    def build(self, NMAX=500 ):
+        datemode = self.datemode
+        todo = self.todo
+        rowno = self.rowno
+        level = self.level
+        parents = self.parents
+        ncleft = self.ncleft
+        linestarty = self.linestarty
+        nullentry = self.nullentry
+
+        rowmax = rowno+NMAX
+        # each node is treated only once
+        while todo:
+            pass
+#_RevGraph = RevGraph
+#RevGraph = RevGraph2
