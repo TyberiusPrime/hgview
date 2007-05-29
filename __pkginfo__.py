@@ -18,7 +18,7 @@
 
 modname = 'hgview'
 
-numversion = (0, 14, 0)
+numversion = (0, 2, 0)
 version = '.'.join([str(num) for num in numversion])
 
 license = 'GPL'
@@ -26,7 +26,7 @@ copyright = '''Copyright (c) 2003-2007 Ludovic Aubry (ludovic.aubry@logilab.fr).
 Copyright (c) 2003-2007 LOGILAB S.A. (Paris, FRANCE).
 http://www.logilab.fr/ -- mailto:contact@logilab.fr'''
 
-short_desc = "A mercurial and git interactive history viewer, written in PyGTK"
+short_desc = "a mercurial and git interactive history viewer, written in PyGTK"
 long_desc = """\
  Hgview is a mercurial ang git interactive history viewer, written in
  Python/GTK Its purpose is similar to the hgk tool of mercurial and
@@ -46,7 +46,8 @@ from os.path import join
 scripts = [join('bin', filename)
            for filename in ('hgview',)]
 
-data_files = [('share/hgview/', ['hgview.glade'])]
+data_files = [('share/hgview/', ['hgview.glade']),
+              ('share/doc/hgview/', ['README','TODO','Changelog']),]
 
 ## include_dirs = [join('test', 'input'),
 ##                 join('test', 'messages'),
