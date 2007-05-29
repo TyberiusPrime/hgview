@@ -8,39 +8,40 @@
 """
 Main gtk application for hgview
 """
-import fixes
+import sys, os
+import time
+import re
+from optparse import OptionParser
+from os.path import dirname, join, isfile
+
 import gtk
 import gtk.glade
 import gobject
 import pango
-import sys, os
-import time
-import re
+
+import fixes
+
 from graphrenderer import RevGraphRenderer
 from diffstatrenderer import DiffStatRenderer
-from optparse import OptionParser
 from hgrepo import HgHLRepo, short_hex, short_bin
 
 GLADE_FILE_NAME = "hgview.glade"
-GLADE_FILE_LOCATIONS = [ '/usr/share/hgview' ]
-
 
 def load_glade():
     """Try several paths in which the glade file might be found"""
-    mod = sys.modules[__name__]
-    # Try this module's dir first (dev case)
-    _basedir = os.path.dirname(mod.__file__)
-
-    test_dirs = [_basedir] + GLADE_FILE_LOCATIONS
-    for _dir in test_dirs:
-        glade_file = os.path.join(_dir, GLADE_FILE_NAME)
-        if os.path.exists(glade_file):
-            return gtk.glade.XML( glade_file )
-
-    raise ImportError("Couldn't find %s in (%s)" %
-                      (GLADE_FILE_NAME,
-                       ",".join(["'%s'" % f for f in test_dirs]) )
-                       )
+    for _path in [dirname(__file__),
+                  join(sys.exec_prefix, 'share/hgview'),
+                  join(dirname(__file__), "../../../../share/hgview"),
+                  join(dirname(__file__), "../../../share/hgview/ "),
+                  #os.environ.get('HGVIEW_GLADE_DIR', './'),
+                  ]:
+        glade_file = join(_path, GLADE_FILE_NAME)
+        if isfile(glade_file):
+            break
+    else:
+        raise ValueError("Unable to find hgview.glade."
+                         "Check your installation.")
+    return gtk.glade.XML(glade_file)
 
 #import hotshot
 #PROF = hotshot.Profile("/tmp/hgview.prof")
