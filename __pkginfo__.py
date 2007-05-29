@@ -57,13 +57,3 @@ pyversions = ["2.3", "2.4", "2.5"]
 
 debian_uploader = 'Alexandre Fayolle <afayolle@debian.org>'
 
-classifiers =  ['Development Status :: 4 - Beta',
-                'Environment :: GTK',
-                'Intended Audience :: Developers',
-                'License :: OSI Approved :: GNU General Public License (GPL)',
-                'Operating System :: OS Independent',
-                'Programming Language :: Python',
-                'Topic :: Software Development :: Debuggers',
-                'Topic :: Software Development :: Quality Assurance',
-                'Topic :: Software Development :: Testing',
-                ]

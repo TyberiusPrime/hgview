@@ -30,7 +30,7 @@ from os.path import isdir, exists, join, walk
 
 # import required features
 from __pkginfo__ import modname, version, license, short_desc, long_desc, \
-     web, author, author_email, classifiers
+     web, author, author_email
 # import optional features
 try:
     from __pkginfo__ import distname
@@ -174,7 +174,6 @@ def install(**kwargs):
                  author = author,
                  author_email = author_email,
                  url = web,
-                 classifiers = classifiers,
                  scripts = ensure_scripts(scripts),
                  data_files=data_files,
                  ext_modules=ext_modules,
