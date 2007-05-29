@@ -1,3 +1,4 @@
+# -*- coding: iso-8859-1 -*-
 #!/usr/bin/env python
 # hgview.py - gtk-based hgk
 #
@@ -8,39 +9,40 @@
 """
 Main gtk application for hgview
 """
-import fixes
+import sys, os
+import time
+import re
+from optparse import OptionParser
+from os.path import dirname, join, isfile
+
 import gtk
 import gtk.glade
 import gobject
 import pango
-import sys, os
-import time
-import re
+
+import fixes
+
 from graphrenderer import RevGraphRenderer
 from diffstatrenderer import DiffStatRenderer
-from optparse import OptionParser
 from hgrepo import HgHLRepo, short_hex, short_bin
 
 GLADE_FILE_NAME = "hgview.glade"
-GLADE_FILE_LOCATIONS = [ '/usr/share/hgview' ]
 
-
-def load_glade():
+def load_glade(root=""):
     """Try several paths in which the glade file might be found"""
-    mod = sys.modules[__name__]
-    # Try this module's dir first (dev case)
-    _basedir = os.path.dirname(mod.__file__)
-
-    test_dirs = [_basedir] + GLADE_FILE_LOCATIONS
-    for _dir in test_dirs:
-        glade_file = os.path.join(_dir, GLADE_FILE_NAME)
-        if os.path.exists(glade_file):
-            return gtk.glade.XML( glade_file )
-
-    raise ImportError("Couldn't find %s in (%s)" %
-                      (GLADE_FILE_NAME,
-                       ",".join(["'%s'" % f for f in test_dirs]) )
-                       )
+    for _path in [dirname(__file__),
+                  join(sys.exec_prefix, 'share/hgview'),
+                  join(dirname(__file__), "../../../../share/hgview"),
+                  join(dirname(__file__), "../../../share/hgview/ "),
+                  #os.environ.get('HGVIEW_GLADE_DIR', './'),
+                  ]:
+        glade_file = join(_path, GLADE_FILE_NAME)
+        if isfile(glade_file):
+            break
+    else:
+        raise ValueError("Unable to find hgview.glade."
+                         "Check your installation.")
+    return gtk.glade.XML(glade_file, root)
 
 #import hotshot
 #PROF = hotshot.Profile("/tmp/hgview.prof")
@@ -66,7 +68,7 @@ def make_texttag( name, **kwargs ):
 class HgViewApp(object):
     """Main hg view application"""
     def __init__(self, repo, filerex = None ):
-        self.xml = load_glade()
+        self.xml = load_glade("window_main")
         self.xml.signal_autoconnect( self )
         statusbar = self.xml.get_widget("statusbar1")
         self.progressbar = gtk.ProgressBar()
@@ -152,6 +154,20 @@ class HgViewApp(object):
     def on_quit1_activate( self, *args ):
         """Bye"""
         gtk.main_quit()
+
+    def on_about_activate(self, *args):
+        """ Display about dialog """
+        dlg=gtk.AboutDialog()
+        dlg.set_authors([u'Ludovic Aubry, Logilab',
+                         u'David Douard, Logilab',
+                         u'Aurélien Campéas, Logilab'])
+        from __pkginfo__ import modname, version, short_desc, long_desc
+        dlg.set_comments(short_desc)
+        dlg.set_name(modname)
+        dlg.set_version(version)
+        #dlg.set_logo(pixbuf)
+        dlg.run()
+        dlg.destroy()
 
     def setup_tags(self):
         """Creates the tags to be used inside the TextView"""
@@ -346,7 +362,9 @@ class HgViewApp(object):
         """Put the revision log header in the TextBuffer"""
         repo = self.repo
         eob = buf.get_end_iter()
-        buf.insert( eob, "Revision: %d\n" % rnode.rev )
+        buf.insert( eob, "Revision: %d:" % rnode.rev )
+        buf.insert_with_tags_by_name( eob, short_hex(node), "link" )
+        buf.insert( eob, "\n" )
         buf.insert( eob, "Author: %s\n" %  repo.authors[rnode.author_id] )
         buf.create_mark( "begdesc", buf.get_start_iter() )
         

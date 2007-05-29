@@ -20,6 +20,9 @@ class RevNode(object):
         self.files = tuple(files)
         self.tags = tags
 
+    def __getitem__(self, pos):
+        return self.node.__getitem__(pos)
+
     def get_short_log( self ):
         """Compute a short log from the full revision log"""
         offs = self.desc.find('\n')
@@ -202,33 +205,33 @@ class HgHLRepo(object):
         s = ""
         assert len(parents)==2
         ancestor = self.repo.changelog.ancestor( parents[0], parents[1] )
-        print short_hex(ancestor)
+        #print short_hex(ancestor)
         for f in files:
-            print "***", f
+            #print "***", f
             d0 = self.single_diff( parents[0], node2, [f] )
             d1 = self.single_diff( parents[1], node2, [f] )
             p0 = self.single_diff( ancestor, parents[0], [f] )
             p1 = self.single_diff( ancestor, parents[1], [f] )
             op0 = self.get_ops( p0 )
             od0 = self.get_ops( d0 )
-            for l, ob, nb in op0:
-                print "%5d %5d %s" % (ob,nb,l)
+##             for l, ob, nb in op0:
+##                 print "%5d %5d %s" % (ob,nb,l)
             for op in od0:
-                print "---"
-                print "%5d %5d %s" % (op[1],op[2],op[0])
-                print ":"
+##                 print "---"
+##                 print "%5d %5d %s" % (op[1],op[2],op[0])
+##                 print ":"
                 self.apply_ops( op0, *op )
-                for l, ob, nb in op0:
-                    print "%5d %5d %s" % (ob,nb,l)
-                print "---"
+##                 for l, ob, nb in op0:
+##                     print "%5d %5d %s" % (ob,nb,l)
+##                 print "---"
                 
             op1 = self.get_ops( p1 )
             od1 = self.get_ops( d1 )
             for op in od1:
                 self.apply_ops( op1, *op )
-            for opl,opr in zip( op0, op1 ):
-                print "L:%5d %5d %s" % (opl[1],opl[2],opl[0])
-                print "R:%5d %5d %s" % (opr[1],opr[2],opr[0])
+##             for opl,opr in zip( op0, op1 ):
+##                 print "L:%5d %5d %s" % (opl[1],opl[2],opl[0])
+##                 print "R:%5d %5d %s" % (opr[1],opr[2],opr[0])
             
         return s
 
@@ -239,7 +242,7 @@ class HgHLRepo(object):
         hunk = None
         ops = []
         for l in udiff.splitlines():
-            print l
+            #print l
             if l.startswith("diff"):
                 hunk = None
                 continue

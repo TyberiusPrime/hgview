@@ -1,0 +1,21 @@
+Source: hgview
+Section: python
+Priority: optional
+Maintainer: Logilab <devel@logilab.org>
+Uploaders: Alexandre Fayolle <afayolle@debian.org>
+Build-Depends: debhelper (>= 5.0.38)
+Build-Depends-Indep: python (>=2.3.5-7),  python-central (>= 0.5.6)
+XS-Python-Version: current
+Standards-Version: 3.7.2
+
+Package: hgview
+Architecture: all
+Depends: python, python-gtk2, python-glade2
+XB-Python-Version: ${python:Versions}
+Description: mercurial ang git interactive history viewer
+ Its purpose is similar to the hgk tool of mercurial and
+ git, but is written in GTK instead of Tk, and it has been written
+ with efficiency in mind when dealing with big repositories (it can
+ happily be used to browse Linux kernel source code repository). 
+ .
+ homepage: http://www.logilab.org/Project/name/hgview
