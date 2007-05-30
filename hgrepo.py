@@ -11,7 +11,7 @@ import mercurial.commands
 
 
 class RevNode(object):
-    __slots__ = "rev author_id desc gmtime files tags node log".split()
+    __slots__ = "rev author_id desc gmtime files tags".split()
     def __init__(self, rev, author_id, desc, date, files, tags):
         self.rev = rev
         self.author_id = author_id
