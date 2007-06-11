@@ -52,10 +52,10 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
                 lines = self.graph.rowlines[row]
 
                 xmax = self.graph.rownlines[row]
-                w = (xmax)*(2*self.dot_radius + 2) + 2
+                w = (xmax)*(1*self.dot_radius + 0) + 2
                 h = 30 # ? how to get it
                 
-                dot_x = (2*self.dot_radius + 2) * node_x + self.dot_radius/2
+                dot_x = (1*self.dot_radius + 0) * node_x + self.dot_radius/2
                 dot_y = (h/2)-self.dot_radius/2
                 tags = rev_node.tags
                 if isinstance(tags, (list, tuple)):
@@ -84,8 +84,8 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
                     lpen = QtGui.QPen(pen)
                     lpen.setColor(QtGui.QColor(color))
                     painter.setPen(lpen)
-                    x1 = (2*self.dot_radius + 2) * x1  + self.dot_radius
-                    x2 = (2*self.dot_radius + 2) * x2  + self.dot_radius
+                    x1 = (1*self.dot_radius + 0) * x1  + self.dot_radius
+                    x2 = (1*self.dot_radius + 0) * x2  + self.dot_radius
                     y1 = (y1 - row)*h + h/2
                     y2 = (y2 - row)*h + h/2
                     painter.drawLine(x1, y1, x2, y2)
