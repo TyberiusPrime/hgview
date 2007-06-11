@@ -159,6 +159,8 @@ class HgFileListModel(QtCore.QAbstractTableModel):
         QtCore.QAbstractTableModel.__init__(self,parent)
         self.repo = repo
         self.graph = graph
+        self.stats = [] # list of couples (n_line_added, n_line_removed),
+                        # one for each file 
         self.current_node = None
         self.connect(self, QtCore.SIGNAL("dataChanged(const QModelIndex & , const QModelIndex & )"),
                      self.datachangedcalled)
@@ -179,20 +181,37 @@ class HgFileListModel(QtCore.QAbstractTableModel):
     def columnCount(self, parent):
         return 2
 
-    def setSelectedNode(self, node):
+    def setSelectedNode(self, node, stats):
         self.current_node = node
+        #assert len(self.repo.read_node(node).files) == len(stats)
+        self.stats = stats
+        self.statssums = [sum(x) for x in self.stats]
+        if self.stats:
+            self.statmax = max(self.statssums)
+        else:
+            self.statmax = 0
+        
         self.emit(QtCore.SIGNAL("layoutChanged()"))
-    
+
     def data(self, index, role):
         if not index.isValid() or index.row()>len(self):
             return QtCore.QVariant()
-
-        if index.column() == 0 and role == QtCore.Qt.DisplayRole:
-            if self.current_node:
-                if index.row() == 0:
+        row = index.row()
+        column = index.column()
+        if role == QtCore.Qt.DisplayRole and self.current_node:
+            if column == 0:
+                if row == 0:
                     return QtCore.QVariant("Content")
                 else:
                     return QtCore.QVariant(self.repo.read_node(self.current_node).files[index.row()-1])
+            elif column == 1 and len(self.stats)>0:
+                if row == 0:
+                    return QtCore.QVariant()
+                stats = self.stats[row-1]
+                np = int(20.0*stats[0]/self.statmax)
+                nm = int(20.0*stats[1]/self.statmax)
+                nd = 20-np-nm
+                return QtCore.QVariant('['+'+'*np+'-'*nm+'.'*nd+']')
         return QtCore.QVariant()
 
     def headerData(self, section, orientation, role):

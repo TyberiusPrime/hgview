@@ -196,18 +196,21 @@ class HgMainWindow(QtGui.QMainWindow):
         #rev = index.model().getData(row, 0)
         if self.repomodel.graph:
             node = self.repomodel.graph.rows[row]
-            self.filelistmodel.setSelectedNode(node)
             rev_node = self.repo.read_node(node)
             if rev_node.files:
-                buff = self.get_revlog_header(node, rev_node)
-                buff += self.get_diff_richtext(node, rev_node) 
+                buff, stats = self.get_diff_richtext(node, rev_node)
+                buff = self.get_revlog_header(node, rev_node) + buff
             else:
                 buff = ""
+                stats = []
+            self.filelistmodel.setSelectedNode(node, stats)
             self.textview_status.setHtml(buff)
             if buff:
                 self.tableView_filelist.selectRow(0)
+                self.filelistmodel.stats = stats
                 self.file_selected(self.filelistmodel.createIndex(0,0,None), None)
-
+                
+                
     def file_selected(self, index, index_from):
         node = self.filelistmodel.current_node
         if node is None:
@@ -263,7 +266,7 @@ class HgMainWindow(QtGui.QMainWindow):
         else:
             todo_nodes = self.repo.nodes
         graph = self.repo.graph( todo_nodes )
-        self.filelistmodel.setSelectedNode(None)
+        self.filelistmodel.setSelectedNode(None, [])
         self.repomodel.clear()        
         self.repomodel.graph = graph
         self.last_node = 0
@@ -303,7 +306,11 @@ class HgMainWindow(QtGui.QMainWindow):
         difflines = [ (m.start(), m.end()) for m in regsplit.finditer(diff)]
         reg = re.compile(r'^diff *-r *(?P<from>[a-fA-F0-9]*) *-r *(?P<to>[a-fA-F0-9]*) *(?P<file>.*) *$')        
 
+        added_line_reg = re.compile(r"^[+][^+].*$", re.M)
+        rem_line_reg = re.compile(r"^-[^-].*$", re.M)
+        
         buf = ""
+        stats = []
         for i, (st, end) in enumerate(difflines):
             m = reg.match(diff[st:end])
             diff_file = m.group('file')
@@ -321,7 +328,9 @@ class HgMainWindow(QtGui.QMainWindow):
                                       self.difflexer,
                                       self.htmlformatter)
             buf += '<br/>\n'
-        return buf
+            stats.append((len(added_line_reg.findall(diff_content)),
+                          len(rem_line_reg.findall(diff_content))))
+        return buf, stats
             
         
     def get_revlog_header(self, node, rnode):
