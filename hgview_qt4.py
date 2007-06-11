@@ -1,13 +1,13 @@
 # -*- coding: iso-8859-1 -*-
 #!/usr/bin/env python
-# hgview.py - gtk-based hgk
+# hgview_qt4.py - qt4-based hgk
 #
 # Copyright (C) 2007 Logilab. All rights reserved.
 #
 # This software may be used and distributed according to the terms
 # of the GNU General Public License, incorporated herein by reference.
 """
-Main gtk application for hgview
+Main Qt4 application for hgview
 """
 import sys, os
 import time
@@ -139,6 +139,8 @@ class HgMainWindow(QtGui.QMainWindow):
                      self.refresh_revision_table)
         self.connect(self.actionAbout, QtCore.SIGNAL('triggered ()'),
                      self.on_about)
+        self.connect(self.actionQuit, QtCore.SIGNAL('triggered ()'),
+                     self.close)
 
     def setup_revision_table(self):
         self.repomodel = HgRepoListModel(self.repo)
@@ -243,14 +245,6 @@ class HgMainWindow(QtGui.QMainWindow):
                         keepnodes.append( n )
                         break
         return keepnodes
-
-    def on_window_main_delete_event( self, win, evt ):
-        """Bye"""
-        gtk.main_quit()
-
-    def on_quit1_activate( self, *args ):
-        """Bye"""
-        gtk.main_quit()
 
     def on_about(self, *args):
         """ Display about dialog """
