@@ -1,3 +1,12 @@
+# -*- coding: iso-8859-1 -*-
+#!/usr/bin/env python
+# hgview.py - gtk-based hgk
+#
+# Copyright (C) 2007 Logilab. All rights reserved.
+#
+# This software may be used and distributed according to the terms
+# of the GNU General Public License, incorporated herein by reference.
+
 """A special renderer to draw a DAG of nodes in front of the labels"""
 
 import gtk
@@ -25,14 +34,17 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
     def __init__(self):
         self.__gobject_init__()
         self.r = 6
+
         self.nodex = 0
         self.edges = []
         self.node = None
+
         self.pengc = None
         self.yellowcolor = None
         self.tag_layout = None
         self.text_layout = None
         self.line_pens = {}
+
         self.colors = { }
         self.selected_node = None
         self.set_property( "mode", gtk.CELL_RENDERER_MODE_ACTIVATABLE )
@@ -66,23 +78,21 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
         return self.text_layout
 
     def get_yellow_color( self, widget ):
-        if not self.yellowcolor:
-            cmap = widget.get_colormap()
-            color = cmap.alloc_color("yellow")
-            self.yellowcolor = color
-            return color
-        else:
+        if self.yellowcolor:
             return self.yellowcolor
+        cmap = widget.get_colormap()
+        color = cmap.alloc_color("yellow")
+        self.yellowcolor = color
+        return color
 
     def get_pen_gc( self, widget, window ):
-        if not self.pengc:
-            fgc = widget.style.fg_gc[gtk.STATE_NORMAL]
-            pen = gtk.gdk.GC( window )
-            pen.copy( fgc )
-            self.pengc = pen
-            return pen
-        else:
+        if self.pengc:
             return self.pengc
+        fgc = widget.style.fg_gc[gtk.STATE_NORMAL]
+        pen = gtk.gdk.GC( window )
+        pen.copy( fgc )
+        self.pengc = pen
+        return pen
 
     def get_line_pen( self, widget, window, node ):
         txtcolor = self.colors.get(node,"black")
@@ -113,6 +123,9 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
         x_ = x + W*X
         y_ = y + (h-W)/2
 
+        # draw lines representing the graph
+        # Hg gave us a set of tuple (node, x1, y1, x2, y2)
+        # where x & y are expressed in terms of row/column numbers
         pen = self.get_pen_gc( widget, window )
         pen.set_clip_rectangle( (x,y-1,w,h+2) )
         xmax = X
@@ -122,6 +135,7 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
             y2-=n
             if node==self.selected_node:
                 node = "activated"
+            # choose the right pen (line color) for the line 
             pen = self.get_line_pen(widget,window,node)
             pen.set_clip_rectangle( (x,y-1,w,h+2) )
             window.draw_line( pen,
@@ -133,10 +147,11 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
             if x2>xmax and (y2==0 or x1==x2):
                 xmax = x2
 
-
+        # draw 2 circles (empty & filled) to display the current node
         window.draw_arc( bgc, True, x_ + (W-R)/2, y_+(W-R)/2, R, R, 0, 360*64 )
         window.draw_arc( fgc, False, x_ + (W-R)/2, y_+(W-R)/2, R, R, 0, 360*64 )
 
+        # if required, display a nice "post-it" with tags in it
         offset = 0
         if self.node.tags:
             layout = self.get_tag_layout(widget)
