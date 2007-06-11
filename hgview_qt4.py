@@ -17,6 +17,9 @@ from os.path import dirname, join, isfile
 
 from PyQt4 import QtCore, QtGui, uic
 
+import pygments
+from pygments import lexers, formatters
+
 import fixes
 
 from hgrepomodel import HgRepoListModel, HgFileListModel
@@ -24,6 +27,74 @@ from hgrepomodel import HgRepoListModel, HgFileListModel
 #from diffstatrenderer import DiffStatRenderer
 from hgrepo import HgHLRepo, short_hex, short_bin
 
+default_CSS = """
+.label { font-weight: bold }
+.diff_title {
+  background-color: #f0f0f0;
+  margin: 5px;
+  padding-left: 40px;
+  font-weight: bold;
+  }
+
+td.linenos { background-color: #f0f0f0; padding-right: 10px; }
+.c { color: #008800; font-style: italic } /* Comment */
+.err { border: 1px solid #FF0000 } /* Error */
+.k { color: #AA22FF; font-weight: bold } /* Keyword */
+.o { color: #666666 } /* Operator */
+.cm { color: #008800; font-style: italic } /* Comment.Multiline */
+.cp { color: #008800 } /* Comment.Preproc */
+.c1 { color: #008800; font-style: italic } /* Comment.Single */
+.gd { color: #A00000 } /* Generic.Deleted */
+.ge { font-style: italic } /* Generic.Emph */
+.gr { color: #FF0000 } /* Generic.Error */
+.gh { color: #000080; font-weight: bold } /* Generic.Heading */
+.gi { color: #00A000 } /* Generic.Inserted */
+.go { color: #808080 } /* Generic.Output */
+.gp { color: #000080; font-weight: bold } /* Generic.Prompt */
+.gs { font-weight: bold } /* Generic.Strong */
+.gu { color: #800080; font-weight: bold } /* Generic.Subheading */
+.gt { color: #0040D0 } /* Generic.Traceback */
+.kc { color: #AA22FF; font-weight: bold } /* Keyword.Constant */
+.kd { color: #AA22FF; font-weight: bold } /* Keyword.Declaration */
+.kp { color: #AA22FF } /* Keyword.Pseudo */
+.kr { color: #AA22FF; font-weight: bold } /* Keyword.Reserved */
+.kt { color: #AA22FF; font-weight: bold } /* Keyword.Type */
+.m { color: #666666 } /* Literal.Number */
+.s { color: #BB4444 } /* Literal.String */
+.na { color: #BB4444 } /* Name.Attribute */
+.nb { color: #AA22FF } /* Name.Builtin */
+.nc { color: #0000FF } /* Name.Class */
+.no { color: #880000 } /* Name.Constant */
+.nd { color: #AA22FF } /* Name.Decorator */
+.ni { color: #999999; font-weight: bold } /* Name.Entity */
+.ne { color: #D2413A; font-weight: bold } /* Name.Exception */
+.nf { color: #00A000 } /* Name.Function */
+.nl { color: #A0A000 } /* Name.Label */
+.nn { color: #0000FF; font-weight: bold } /* Name.Namespace */
+.nt { color: #008000; font-weight: bold } /* Name.Tag */
+.nv { color: #B8860B } /* Name.Variable */
+.ow { color: #AA22FF; font-weight: bold } /* Operator.Word */
+.mf { color: #666666 } /* Literal.Number.Float */
+.mh { color: #666666 } /* Literal.Number.Hex */
+.mi { color: #666666 } /* Literal.Number.Integer */
+.mo { color: #666666 } /* Literal.Number.Oct */
+.sb { color: #BB4444 } /* Literal.String.Backtick */
+.sc { color: #BB4444 } /* Literal.String.Char */
+.sd { color: #BB4444; font-style: italic } /* Literal.String.Doc */
+.s2 { color: #BB4444 } /* Literal.String.Double */
+.se { color: #BB6622; font-weight: bold } /* Literal.String.Escape */
+.sh { color: #BB4444 } /* Literal.String.Heredoc */
+.si { color: #BB6688; font-weight: bold } /* Literal.String.Interpol */
+.sx { color: #008000 } /* Literal.String.Other */
+.sr { color: #BB6688 } /* Literal.String.Regex */
+.s1 { color: #BB4444 } /* Literal.String.Single */
+.ss { color: #B8860B } /* Literal.String.Symbol */
+.bp { color: #AA22FF } /* Name.Builtin.Pseudo */
+.vc { color: #B8860B } /* Name.Variable.Class */
+.vg { color: #B8860B } /* Name.Variable.Global */
+.vi { color: #B8860B } /* Name.Variable.Instance */
+.il { color: #666666 } /* Literal.Number.Integer.Long */
+"""
 
 class HgMainWindow(QtGui.QMainWindow):
     """Main hg view application"""
@@ -40,6 +111,9 @@ class HgMainWindow(QtGui.QMainWindow):
         else:
             self.filter_files = None
         self.filter_noderange = None
+
+        self.difflexer = lexers.get_lexer_by_name('diff')
+        self.htmlformatter = formatters.HtmlFormatter(full=False)
 
         self.pb = QtGui.QProgressBar(self.statusBar())
         self.pb.setTextVisible(False)
@@ -96,11 +170,8 @@ class HgMainWindow(QtGui.QMainWindow):
                      self.revision_selected)
 
     def setup_diff_textview(self):
-        font = QtGui.QFont()
-        font.setFamily("Courier")
-        font.setFixedPitch(True)
-        font.setPointSize(10)
-        self.textview_status.setFont(font)
+        doc = self.textview_status.document()
+        doc.setDefaultStyleSheet(default_CSS)
         self.textview_status.setReadOnly(True)
         self.connect(self.textview_status,
                      QtCore.SIGNAL('anchorClicked( const QUrl &)'),
@@ -124,16 +195,15 @@ class HgMainWindow(QtGui.QMainWindow):
 
     def file_selected(self, index, index_from):
         node = self.filelistmodel.current_node
-        #self.diff_text_document = QtGui.QTextDocument()
-        #self.textview_status.setDocument(self.diff_text_document)
         if node is None:
             return
         rev_node = self.repo.read_node(node)
         try:
             sel_file = rev_node.files[index.row()]
             
-            buff = self.get_revlog_header(node, rev_node) + self.repo.diff(self.repo.parents(node), node, rev_node.files )
-        except IndexError:
+            buff = self.get_revlog_header(node, rev_node)
+            buff += self.get_diff_richtext(node, rev_node) 
+        except IndexError, e:
             buff = ""
         self.textview_status.setHtml(buff)
         
@@ -147,11 +217,6 @@ class HgMainWindow(QtGui.QMainWindow):
         
     def revpopup_update(self, item):
         print "UPDATE"
-
-    def on_refresh_activate(self, arg):
-        #print "REFRESH", arg
-        self.repo.refresh()
-        self.refresh_tree()
         
     def filter_nodes(self):
         """Filter the nodes according to filter_files and filter_nodes"""
@@ -186,6 +251,7 @@ class HgMainWindow(QtGui.QMainWindow):
 
     def refresh_revision_table(self):
         """Starts the process of filling the HgModel"""
+        self.repo.refresh()
         self.repo.read_nodes()
         if self.filter_files or self.filter_noderange:
             todo_nodes = self.filter_nodes()
@@ -225,21 +291,33 @@ class HgMainWindow(QtGui.QMainWindow):
         return True
 
 
-    def on_treeview_revisions_button_press_event(self, treeview, event):
-        if event.button==3:
-            x = int(event.x)
-            y = int(event.y)
-            time = event.time
-            pthinfo = treeview.get_path_at_pos(x, y)
-            if pthinfo is not None:
-                path, col, cellx, celly = pthinfo
-                treeview.grab_focus()
-                treeview.set_cursor( path, col, 0)
-                self.revpopup_path = path, col
-                self.revpopup.popup( None, None, None, event.button, time)
-            return 1
+    def get_diff_richtext(self, node, rev_node):
+        diff = self.repo.diff(self.repo.parents(node), node, rev_node.files)
 
+        regsplit =  re.compile('^diff.*$', re.M)
+        difflines = [ (m.start(), m.end()) for m in regsplit.finditer(diff)]
+        reg = re.compile(r'^diff *-r *(?P<from>[a-fA-F0-9]*) *-r *(?P<to>[a-fA-F0-9]*) *(?P<file>.*) *$')        
 
+        buf = ""
+        for i, (st, end) in enumerate(difflines):
+            m = reg.match(diff[st:end])
+            diff_file = m.group('file') 
+            buf += '<p class="diff_title" name="%s">== %s ==</p>\n' % (diff_file, diff_file)
+            
+            diff_st = end+1
+            try:
+                diff_end = difflines[i+1][0]
+            except:
+                diff_end = -1
+            diff_content = diff[diff_st:diff_end]
+
+            buf += pygments.highlight(diff_content,
+                                      self.difflexer,
+                                      self.htmlformatter)
+            buf += '<br/>\n'
+        return buf
+            
+        
     def get_revlog_header(self, node, rnode):
         """Build the revision log header"""
         repo = self.repo
@@ -275,107 +353,6 @@ class HgMainWindow(QtGui.QMainWindow):
         buf += "</table><br/>\n"
         return buf
 
-
-    def prepare_diff( self, difflines, offset ):
-        idx = 0
-        outlines = []
-        tags = []
-        filespos = []
-        def addtag( name, offset, length ):
-            if tags and tags[-1][0] == name and tags[-1][2]==offset:
-                tags[-1][2] += length
-            else:
-                tags.append( [name, offset, offset+length] )
-        #print "DIFF:", len(difflines)
-        stats = [0,0]
-        statmax = 0
-        for i,l in enumerate(difflines):
-            if l.startswith("diff"):
-                f = l.split()[-1]
-                txt = DIFFHDR % f
-                addtag( "greybg", offset, len(txt) )
-                outlines.append(txt)
-                markname = "file%d" % idx
-                idx += 1
-                statmax = max( statmax, stats[0]+stats[1] )
-                stats = [0,0]
-                filespos.append(( f, markname, offset, stats ))
-                offset += len(txt)
-                continue
-            elif l.startswith("+++"):
-                continue
-            elif l.startswith("---"):
-                continue
-            elif l.startswith("+"):
-                tag = "green"
-                stats[0] += 1
-            elif l.startswith("-"):
-                stats[1] += 1
-                tag = "red"
-            elif l.startswith("@@"):
-                tag = "blue"
-            else:
-                tag = "black"
-            l = l+"\n"
-            length = len(l)
-            addtag( tag, offset, length )
-            outlines.append( l )
-            offset += length
-        statmax = max( statmax, stats[0]+stats[1] )
-        return filespos, tags, outlines, statmax
-
-    def selection_changed( self, selection ):
-        model, it = selection.get_selected()
-        if it is None:
-            return
-        node, rnode = model.get( it, M_ID, M_NODE )
-        textwidget = self.xml.get_widget( "textview_status" )
-        text_buffer = textwidget.get_buffer()
-        textwidget.freeze_child_notify()
-        text_buffer.set_text( "" )
-
-        try:
-            self.get_revlog_header( text_buffer, node, rnode )
-            eob = text_buffer.get_end_iter()
-            text_buffer.insert( eob, rnode.desc+"\n\n" )
-            self.filelist.clear()
-            enddesc = text_buffer.get_end_iter()
-            enddesc.backward_line()
-            text_buffer.create_mark( "enddesc", enddesc )
-            self.filelist.append( ("Content", "begdesc", None ) )
-            buff = self.repo.diff( self.repo.parents(node), node, rnode.files )
-            try:
-                buff = unicode( buff, "utf-8" )
-            except UnicodeError:
-                # XXX use a default encoding from config
-                buff = unicode( buff, "iso-8859-1", 'ignore' )
-            difflines = buff.splitlines()
-            del buff
-            eob = text_buffer.get_end_iter()
-            
-            offset = eob.get_offset()
-            fileoffsets, tags, lines, statmax = self.prepare_diff( difflines, offset )
-            txt = u"".join(lines)
-
-            # XXX debug : sometime gtk complains it's not valid utf-8 !!!
-            text_buffer.insert( eob, txt.encode('utf-8') )
-
-            # inserts the tags
-            for name, p0, p1 in tags:
-                i0 = text_buffer.get_iter_at_offset( p0 )
-                i1 = text_buffer.get_iter_at_offset( p1 )
-                txt = text_buffer.get_text( i0, i1 )
-                text_buffer.apply_tag_by_name( name, i0, i1 )
-                
-            # inserts the marks
-            for f, mark,offset, stats in fileoffsets:
-                pos = text_buffer.get_iter_at_offset( offset )
-                text_buffer.create_mark( mark, pos )
-                self.filelist.append( (f, mark, (stats[0],stats[1],statmax) ) )
-        finally:
-            textwidget.thaw_child_notify()
-        sob, eob = text_buffer.get_bounds()
-        text_buffer.apply_tag_by_name( "mono", sob, eob )
 
     def hilight_search_string( self ):
         # Highlight the search string
@@ -429,55 +406,6 @@ class HgMainWindow(QtGui.QMainWindow):
         self.select_row( iter )
         self.hilight_search_string()
         return iter
-
-    def select_row( self, itr ):
-        if itr is None:
-            self.find_text = None
-            return
-        else:
-            self.find_text = self.xml.get_widget( "entry_find" ).get_text()
-
-        tree = self.xml.get_widget( "treeview_revisions" )
-        sel = tree.get_selection()
-        sel.select_iter( itr )
-        path = self.revisions.get_path( itr )
-        tree.scroll_to_cell( path, use_align=True, row_align=0.2 )
-
-
-    def get_selected_rev(self):
-        sel = self.xml.get_widget( "treeview_revisions" ).get_selection()
-        model, it = sel.get_selected()
-        if it is None:
-            it = model.get_iter_first()
-        return model, it
-
-    def on_button_find_clicked( self, *args ):
-        """callback: clicking on the find button
-        makes the search start at the row after the
-        next row
-        """
-        model, it = self.get_selected_rev()
-        it = self.revisions.iter_next( it )
-        start_it = it
-        res = self.find_next_row( it )
-        if res is None:
-            self.find_next_row( self.revisions.get_iter_first(), start_it )
-
-    def on_entry_find_changed( self, *args ):
-        """callback: each keypress triggers a lookup
-        starting at the current row which allows the
-        highlight string to grow without changing rows"""
-        model, it = self.get_selected_rev()
-        start_it = it
-        res = self.find_next_row( it )
-        if res is None:
-            self.find_next_row( self.revisions.get_iter_first(), start_it )
-
-    def on_entry_find_activate( self, *args ):
-        """Pressing enter in the entry_find field does the
-        same as clicking on the Find button"""
-        self.on_button_find_clicked()
-
 
     def on_filter1_activate( self, *args ):
         self.filter_dialog.show()
