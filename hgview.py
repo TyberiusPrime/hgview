@@ -500,7 +500,7 @@ class HgViewApp(object):
         #txt = text_buffer.get_slice(sob, enddesc, True )
         txt = text_buffer.get_slice(sob, eob)
         m = rexp.search( txt )
-        while m:
+        while m: # FIXME wrong coloring in diff body
             _b = text_buffer.get_iter_at_offset( m.start() )
             _e = text_buffer.get_iter_at_offset( m.end() )
             text_buffer.apply_tag_by_name("yellowbg", _b, _e )
