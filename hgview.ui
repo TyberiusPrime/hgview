@@ -32,7 +32,7 @@
       </widget>
       <widget class="QFrame" name="frame_2" >
        <property name="frameShape" >
-        <enum>QFrame::StyledPanel</enum>
+        <enum>QFrame::NoFrame</enum>
        </property>
        <property name="frameShadow" >
         <enum>QFrame::Sunken</enum>
@@ -42,25 +42,36 @@
        </property>
        <layout class="QVBoxLayout" >
         <property name="margin" >
-         <number>9</number>
+         <number>0</number>
         </property>
         <property name="spacing" >
-         <number>6</number>
+         <number>0</number>
         </property>
         <item>
          <widget class="QFrame" name="frame" >
+          <property name="sizePolicy" >
+           <sizepolicy>
+            <hsizetype>5</hsizetype>
+            <vsizetype>1</vsizetype>
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
           <property name="frameShape" >
            <enum>QFrame::NoFrame</enum>
           </property>
           <property name="frameShadow" >
            <enum>QFrame::Plain</enum>
           </property>
+          <property name="lineWidth" >
+           <number>0</number>
+          </property>
           <layout class="QGridLayout" >
            <property name="margin" >
             <number>0</number>
            </property>
            <property name="spacing" >
-            <number>1</number>
+            <number>0</number>
            </property>
            <item row="3" column="1" >
             <layout class="QHBoxLayout" >
@@ -144,18 +155,26 @@
         </item>
         <item>
          <widget class="QFrame" name="frame_3" >
+          <property name="sizePolicy" >
+           <sizepolicy>
+            <hsizetype>5</hsizetype>
+            <vsizetype>7</vsizetype>
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
           <property name="frameShape" >
-           <enum>QFrame::StyledPanel</enum>
+           <enum>QFrame::NoFrame</enum>
           </property>
           <property name="frameShadow" >
-           <enum>QFrame::Raised</enum>
+           <enum>QFrame::Plain</enum>
           </property>
           <layout class="QVBoxLayout" >
            <property name="margin" >
-            <number>9</number>
+            <number>0</number>
            </property>
            <property name="spacing" >
-            <number>6</number>
+            <number>0</number>
            </property>
            <item>
             <widget class="QSplitter" name="splitter_2" >
