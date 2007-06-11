@@ -12,6 +12,7 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
         QtCore.QAbstractTableModel.__init__(self,parent)
         self.repo = data
         self.graph = None
+        self.__cache = {} 
         #self.graph = self.repo.graph(self.repo.nodes)
         #self.graph.build()
         self.dot_radius = 8
@@ -33,21 +34,29 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
         row = index.row()
         column = index.column()
         node = self.graph.rows[row]
+        
         if node is None:
             return  QtCore.QVariant()
+        idx = (row, column, role)
+        if idx in self.__cache:
+            return self.__cache[idx]
+
         rev_node = self.repo.read_node(node)
 
         if role == QtCore.Qt.DisplayRole:
-            item = self.getData(row, index.column())
-            return QtCore.QVariant(item)
+            item = QtCore.QVariant(self.getData(row, index.column()))
+            self.__cache[idx] = item
+            return item
         elif role == QtCore.Qt.ForegroundRole:
             if column == 2: #author
                 color = self.repo.colors[rev_node.author_id]
-                color = QtGui.QColor(color)
-                return QtCore.QVariant(color)
+                color = QtCore.QVariant(QtGui.QColor(color))
+                self.__cache[idx]=color
+                return color
             
         elif role == QtCore.Qt.DecorationRole:
             if column == 1:
+                
                 node_x = self.graph.x[node]
                 lines = self.graph.rowlines[row]
 
@@ -101,7 +110,9 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
                     painter.drawText(w+2, tag_h-1, tags)
                 
                 painter.end()
-                return QtCore.QVariant(pix)
+                ret = QtCore.QVariant(pix)
+                self.__cache[idx] = ret
+                return ret
         return QtCore.QVariant()
 
     def headerData(self, section, orientation, role):
@@ -134,6 +145,7 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
     def clear(self):
         """empty the list"""
         self.graph = None
+        self.__cache = {}
         self.notify_data_changed()
 
     def notify_data_changed(self):
