@@ -203,14 +203,16 @@ class HgMainWindow(QtGui.QMainWindow):
 
     def idle_fill_model(self):
         """Idle task filling the ListStore model chunks by chunks"""
-        NMAX = 300  # Max number of entries we process each time
+        NMAX = 200  # Max number of entries we process each time
         graph = self.graph
         N = self.last_node
         graph.build(NMAX)
+        QtGui.qApp.processEvents()
         rowselected = self.graph.rows
         last_node = min(len(rowselected), N + NMAX)
         self.last_node = last_node
         self.repomodel.notify_data_changed()
+        QtGui.qApp.processEvents()
         self.tableView_revisions.resizeColumnsToContents()
 
         self.pb.setValue(self.last_node)
