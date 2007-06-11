@@ -20,9 +20,6 @@ class RevNode(object):
         self.files = tuple(files)
         self.tags = tags
 
-    def __getitem__(self, pos):
-        return self.node.__getitem__(pos)
-
     def get_short_log( self ):
         """Compute a short log from the full revision log"""
         offs = self.desc.find('\n')
