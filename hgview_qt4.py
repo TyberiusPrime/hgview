@@ -190,25 +190,33 @@ class HgMainWindow(QtGui.QMainWindow):
         else:
             print "CANNOT find row for node ", self.repo.read_node(node).rev, node
     def revision_selected(self, index, index_from):
-        rev = index.model().getData(index.row(), 0)
+        row = index.row()
+        #rev = index.model().getData(row, 0)
         if self.repomodel.graph:
-            self.filelistmodel.setSelectedNode(self.repomodel.graph.rows[index.row()])
-            self.tableView_filelist.selectRow(0)
-            self.file_selected(self.filelistmodel.createIndex(0,0,None), None)
+            node = self.repomodel.graph.rows[row]
+            self.filelistmodel.setSelectedNode(node)
+            rev_node = self.repo.read_node(node)
+            if rev_node.files:
+                buff = self.get_revlog_header(node, rev_node)
+                buff += self.get_diff_richtext(node, rev_node) 
+            else:
+                buff = ""
+            self.textview_status.setHtml(buff)
+            if buff:
+                self.tableView_filelist.selectRow(0)
+                self.file_selected(self.filelistmodel.createIndex(0,0,None), None)
 
     def file_selected(self, index, index_from):
         node = self.filelistmodel.current_node
         if node is None:
             return
         rev_node = self.repo.read_node(node)
-        try:
-            sel_file = rev_node.files[index.row()]
-            
-            buff = self.get_revlog_header(node, rev_node)
-            buff += self.get_diff_richtext(node, rev_node) 
-        except IndexError, e:
-            buff = ""
-        self.textview_status.setHtml(buff)
+        row = index.row()
+        if row == 0:
+            self.textview_status.setSource(QtCore.QUrl(""))#home()
+        else:
+            sel_file = rev_node.files[row-1]
+            self.textview_status.setSource(QtCore.QUrl("#%s"%sel_file))
         
     def revpopup_add_tag(self, item):
         path, col = self.revpopup_path
@@ -216,7 +224,7 @@ class HgMainWindow(QtGui.QMainWindow):
             return
         print "ADD TAG", path, col
         self.revisions
-        self.repo.add_tag( 2, "toto" )
+        #self.repo.add_tag( 2, "toto" )
         
     def revpopup_update(self, item):
         print "UPDATE"
@@ -304,8 +312,9 @@ class HgMainWindow(QtGui.QMainWindow):
         buf = ""
         for i, (st, end) in enumerate(difflines):
             m = reg.match(diff[st:end])
-            diff_file = m.group('file') 
-            buf += '<p class="diff_title" name="%s">== %s ==</p>\n' % (diff_file, diff_file)
+            diff_file = m.group('file')
+            buf += '<a name="%s"></a>' % diff_file
+            buf += '<p class="diff_title">== %s ==</p>\n' % (diff_file)
             
             diff_st = end+1
             try:
