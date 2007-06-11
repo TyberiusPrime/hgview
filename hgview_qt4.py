@@ -337,7 +337,7 @@ class HgMainWindow(QtGui.QMainWindow):
                '<td class="auth_id">%s</td></tr>'\
                '\n' %  repo.authors[rnode.author_id] 
         #buf.create_mark( "begdesc", buf.get_start_iter() )
-        
+
         for p in repo.parents(node):
             pnode = repo.read_node(p)
             short = short_hex(p)
@@ -356,7 +356,8 @@ class HgMainWindow(QtGui.QMainWindow):
                    '<span class="short_desc">(%s)</span></td></tr>'\
                    '\n' % (pnode.rev, pnode.rev, short, pnode.short)
 
-        buf += "</table><br/>\n"
+        buf += "</table>\n"
+        buf += '<div class="diff_desc"><p>%s</p></div>\n' % rnode.desc
         return buf
 
 
