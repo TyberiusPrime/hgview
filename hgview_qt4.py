@@ -115,6 +115,9 @@ class HgMainWindow(QtGui.QMainWindow):
         self.difflexer = lexers.get_lexer_by_name('diff')
         self.htmlformatter = formatters.HtmlFormatter(full=False)
 
+        self.splitter_2.setStretchFactor(0, 2)
+        self.splitter_2.setStretchFactor(1, 1)
+
         self.pb = QtGui.QProgressBar(self.statusBar())
         self.pb.setTextVisible(False)
         self.pb.hide()
