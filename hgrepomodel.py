@@ -194,24 +194,48 @@ class HgFileListModel(QtCore.QAbstractTableModel):
         self.emit(QtCore.SIGNAL("layoutChanged()"))
 
     def data(self, index, role):
-        if not index.isValid() or index.row()>len(self):
+        if not index.isValid() or index.row()>len(self) or not self.current_node:
             return QtCore.QVariant()
         row = index.row()
         column = index.column()
-        if role == QtCore.Qt.DisplayRole and self.current_node:
+
+        if role == QtCore.Qt.DisplayRole:
             if column == 0:
                 if row == 0:
                     return QtCore.QVariant("Content")
                 else:
                     return QtCore.QVariant(self.repo.read_node(self.current_node).files[index.row()-1])
-            elif column == 1 and len(self.stats)>0:
+        if role == QtCore.Qt.DecorationRole:
+            if column == 1 and len(self.stats)>0:
                 if row == 0:
                     return QtCore.QVariant()
                 stats = self.stats[row-1]
-                np = int(20.0*stats[0]/self.statmax)
-                nm = int(20.0*stats[1]/self.statmax)
-                nd = 20-np-nm
-                return QtCore.QVariant('['+'+'*np+'-'*nm+'.'*nd+']')
+
+                w = 100 # ? how to get it
+                h = 20 
+
+                np = int(w*stats[0]/self.statmax)
+                nm = int(w*stats[1]/self.statmax)
+                nd = w-np-nm
+
+                pix = QtGui.QPixmap(w+10, h)
+                pix.fill(QtGui.QColor(0,0,0,0))
+                painter = QtGui.QPainter(pix)
+                #painter.setRenderHint(QtGui.QPainter.Antialiasing)
+
+                for x0,w0, color in ((0,nm, 'red'), (nm,np, 'green'),
+                                    (nm+np, nd, 'gray')):
+                    color = QtGui.QColor(color)
+                    painter.setBrush(color)
+                    painter.setPen(color)
+                    painter.drawRect(x0+5,5,w0, h-5)
+                painter.setBrush(QtGui.QColor(0,0,0,0))
+                pen = QtGui.QPen(QtCore.Qt.black)
+                pen.setWidth(0)
+                painter.setPen(pen)
+                painter.drawRect(5,5,w+2,h-6)
+                painter.end()
+                return QtCore.QVariant(pix)
         return QtCore.QVariant()
 
     def headerData(self, section, orientation, role):
