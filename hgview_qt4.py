@@ -144,6 +144,11 @@ class HgMainWindow(QtGui.QMainWindow):
         self.connect(self.actionQuit, QtCore.SIGNAL('triggered ()'),
                      self.close)
 
+    def resizeEvent(self, event):
+        QtGui.QMainWindow.resizeEvent(self, event)
+        self.resize_revisiontable_columns()
+        self.resize_filelist_columns()        
+        
     def setup_revision_table(self):
         self.repomodel = HgRepoListModel(self.repo)
         repotable = self.tableView_revisions
@@ -156,7 +161,7 @@ class HgMainWindow(QtGui.QMainWindow):
         repotable.setModel(self.repomodel)
         
         repotable.show()
-        repotable.resizeColumnsToContents()
+        self.resize_revisiontable_columns()
 
     def setup_filelist_treeview(self):
         self.filelistmodel = HgFileListModel(self.repo, self.repomodel.graph)
@@ -302,7 +307,7 @@ class HgMainWindow(QtGui.QMainWindow):
         self.last_node = last_node
         self.repomodel.notify_data_changed()
         QtGui.qApp.processEvents()
-        self.tableView_revisions.resizeColumnsToContents()
+        self.resize_revisiontable_columns()
 
         self.pb.setValue(self.last_node)
         if self.last_node == len(rowselected):
@@ -310,7 +315,6 @@ class HgMainWindow(QtGui.QMainWindow):
             self.rowselected = None
             self.timer.stop()
             self.pb.hide()
-            self.resize_revisiontable_columns()
             return False
         return True
 
