@@ -1,8 +1,6 @@
 import sys
 from PyQt4 import QtCore, QtGui
-from hgrepo import HgHLRepo, short_hex, short_bin
 connect = QtCore.QObject.connect
-
     
 class HgRepoListModel(QtCore.QAbstractTableModel):
     def __init__(self, data, parent=None):
@@ -246,6 +244,7 @@ class HgFileListModel(QtCore.QAbstractTableModel):
 
         
 if __name__ == "__main__":
+    from hgview.hgrepo import HgHLRepo
     app = QtGui.QApplication(sys.argv)
 
     repo = HgHLRepo(".")

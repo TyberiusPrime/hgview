@@ -20,12 +20,12 @@ from PyQt4 import QtCore, QtGui, uic
 import pygments
 from pygments import lexers, formatters
 
-import fixes
+import hgview.fixes
 
 from hgrepomodel import HgRepoListModel, HgFileListModel
 
 #from diffstatrenderer import DiffStatRenderer
-from hgrepo import HgHLRepo, short_hex, short_bin
+from hgview.hgrepo import HgHLRepo, short_hex, short_bin
 
 default_CSS = """
 .label { font-weight: bold }
@@ -101,7 +101,8 @@ class HgMainWindow(QtGui.QMainWindow):
     def __init__(self, repo, filerex = None ):
 
         QtGui.QMainWindow.__init__(self)
-        self.ui = uic.loadUi('hgview.ui', self)
+        uifile = os.path.join(os.path.dirname(__file__), 'hgview.ui')
+        self.ui = uic.loadUi(uifile, self)
         
         self.repo = repo
 

@@ -1,6 +1,45 @@
 #!/usr/bin/env python
 
-from hgview import hgview
+import sys, os
+
+use_gtk=False
+use_qt = False
+
+if '--gtk' in sys.argv:
+    use_gtk = True
+    sys.argv.remove('--gtk')
+if '--qt' in sys.argv:
+    use_qt = True
+    sys.argv.remove('--qt')
+
+if use_gtk and use_qt:
+    print "Cannot use both gtk and Qt!"
+    sys.exit(1)
+
+if not (use_gtk or use_qt):
+    if os.path.isfile(os.path.join(os.environ['HOME'], '.hgviewrc')):
+        try:
+            d = open(os.path.join(os.environ['HOME'], '.hgviewrc')).readlines()
+        except:
+            print "Can't access to your .hgviewrc file! "
+            print "Check permissions or specify your desired backend with '--gtk' or '--qt'"
+            sys.exit(1)
+        else:
+            for l in d:
+                if l.startswith('backend'):
+                    backend = l.split('=')[1].strip()
+                    use_gtk = 'gtk' in backend
+                    use_qt = 'qt' in backend
+                    
+if not (use_gtk or use_qt):
+    print "You must select a backend (--gtk or --qt)"
+    sys.exit(1)
+
+
+if use_qt:
+    from hgview.qt4 import hgview_qt4 as hgview
+elif use_gtk:    
+    from hgview.gtk import hgview_gtk as hgview
 
 hgview.main()
 

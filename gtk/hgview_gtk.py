@@ -20,11 +20,11 @@ import gtk.glade
 import gobject
 import pango
 
-import fixes
+import hgview.fixes
 
 from graphrenderer import RevGraphRenderer
 from diffstatrenderer import DiffStatRenderer
-from hgrepo import HgHLRepo, short_hex, short_bin
+from hgview.hgrepo import HgHLRepo, short_hex, short_bin
 
 GLADE_FILE_NAME = "hgview.glade"
 
