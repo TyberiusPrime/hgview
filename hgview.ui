@@ -15,10 +15,10 @@
   <widget class="QWidget" name="centralwidget" >
    <layout class="QVBoxLayout" >
     <property name="margin" >
-     <number>9</number>
+     <number>2</number>
     </property>
     <property name="spacing" >
-     <number>6</number>
+     <number>2</number>
     </property>
     <item>
      <widget class="QSplitter" name="splitter" >
