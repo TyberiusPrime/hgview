@@ -135,7 +135,6 @@ class HgMainWindow(QtGui.QMainWindow):
         self.setup_revision_table()
         self.setup_filelist_treeview()
         #self.init_filter()
-        self.refresh_revision_table()
         #self.find_text = None
         self.connect(self.actionRefresh, QtCore.SIGNAL('triggered ()'),
                      self.refresh_revision_table)
@@ -143,11 +142,14 @@ class HgMainWindow(QtGui.QMainWindow):
                      self.on_about)
         self.connect(self.actionQuit, QtCore.SIGNAL('triggered ()'),
                      self.close)
+        QtGui.qApp.flush()        
+        self.refresh_revision_table()
 
     def resizeEvent(self, event):
         QtGui.QMainWindow.resizeEvent(self, event)
-        self.resize_revisiontable_columns()
-        self.resize_filelist_columns()        
+        if self.graph is None: # do not resize if we are loading a reporsitory
+            self.resize_revisiontable_columns()
+            self.resize_filelist_columns()        
         
     def setup_revision_table(self):
         self.repomodel = HgRepoListModel(self.repo)
@@ -229,7 +231,6 @@ class HgMainWindow(QtGui.QMainWindow):
             self.tableView_revisions.resizeColumnToContents(c)
             col1_width -= self.tableView_revisions.columnWidth(c)
         self.tableView_revisions.setColumnWidth(1, col1_width)
-
                 
     def file_selected(self, index, index_from):
         node = self.filelistmodel.current_node
@@ -293,21 +294,23 @@ class HgMainWindow(QtGui.QMainWindow):
         self.graph = graph
         self.pb.setRange(0,len(self.graph.rows))
         self.pb.show()
+        QtGui.qApp.flush()        
         self.timer.start()
 
     def idle_fill_model(self):
         """Idle task filling the ListStore model chunks by chunks"""
-        NMAX = 200  # Max number of entries we process each time
+        NMAX = 100  # Max number of entries we process each time
         graph = self.graph
         N = self.last_node
         graph.build(NMAX)
-        QtGui.qApp.processEvents()
+        #QtGui.qApp.processEvents()
         rowselected = self.graph.rows
         last_node = min(len(rowselected), N + NMAX)
         self.last_node = last_node
         self.repomodel.notify_data_changed()
         QtGui.qApp.processEvents()
         self.resize_revisiontable_columns()
+        QtGui.qApp.processEvents()
 
         self.pb.setValue(self.last_node)
         if self.last_node == len(rowselected):
@@ -498,6 +501,12 @@ def main():
         sys.exit(1)
 
     app = QtGui.QApplication(sys.argv)
+    preferred_styles = ['Cleanlooks', 'Plastique', 'Motif','CDE','Windows']
+    available_styles = [str(x) for x in QtGui.QStyleFactory.keys()]
+    for style in preferred_styles:
+        if style in available_styles:
+            app.setStyle(style)
+            break
     mainwindow = HgMainWindow(repo, filerex)
     mainwindow.show()
     sys.exit(app.exec_())
