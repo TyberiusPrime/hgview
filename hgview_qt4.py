@@ -30,7 +30,7 @@ from hgrepo import HgHLRepo, short_hex, short_bin
 default_CSS = """
 .label { font-weight: bold }
 .diff_title {
-  background-color: #f0f0f0;
+  background-color: #e0e0e0;
   margin: 5px;
   padding-left: 40px;
   font-weight: bold;
