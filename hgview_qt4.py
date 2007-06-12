@@ -366,7 +366,8 @@ class HgMainWindow(QtGui.QMainWindow):
                    '\n' % (pnode.rev, pnode.rev, short, pnode.short)
 
         buf += "</table>\n"
-        buf += '<div class="diff_desc"><p>%s</p></div>\n' % rnode.desc
+
+        buf += '<div class="diff_desc"><p>%s</p></div>\n' % rnode.desc.replace('\n', '<br/>\n')
         return buf
 
 
