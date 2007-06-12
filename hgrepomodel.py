@@ -185,9 +185,8 @@ class HgFileListModel(QtCore.QAbstractTableModel):
         self.current_node = node
         #assert len(self.repo.read_node(node).files) == len(stats)
         self.stats = stats
-        self.statssums = [sum(x) for x in self.stats]
         if self.stats:
-            self.statmax = max(self.statssums)
+            self.statmax = max([sum(x) for x in self.stats.values()])
         else:
             self.statmax = 0
         
@@ -199,17 +198,18 @@ class HgFileListModel(QtCore.QAbstractTableModel):
         row = index.row()
         column = index.column()
 
+        current_file = self.repo.read_node(self.current_node).files[index.row()-1]
         if role == QtCore.Qt.DisplayRole:
             if column == 0:
                 if row == 0:
                     return QtCore.QVariant("Content")
                 else:
-                    return QtCore.QVariant(self.repo.read_node(self.current_node).files[index.row()-1])
+                    return QtCore.QVariant(current_file)
         if role == QtCore.Qt.DecorationRole:
-            if column == 1 and len(self.stats)>0:
-                if row == 0:
+            if column == 1:
+                stats = self.stats.get(current_file)
+                if row == 0 or stats is None:
                     return QtCore.QVariant()
-                stats = self.stats[row-1]
 
                 w = 100 # ? how to get it
                 h = 20 

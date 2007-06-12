@@ -117,7 +117,9 @@ class HgMainWindow(QtGui.QMainWindow):
 
         self.splitter_2.setStretchFactor(0, 2)
         self.splitter_2.setStretchFactor(1, 1)
-
+        self.connect(self.splitter_2, QtCore.SIGNAL('splitterMoved ( int, int)'),
+                     self.resize_filelist_columns)
+        
         self.pb = QtGui.QProgressBar(self.statusBar())
         self.pb.setTextVisible(False)
         self.pb.hide()
@@ -209,7 +211,20 @@ class HgMainWindow(QtGui.QMainWindow):
                 self.tableView_filelist.selectRow(0)
                 self.filelistmodel.stats = stats
                 self.file_selected(self.filelistmodel.createIndex(0,0,None), None)
-                
+                self.resize_filelist_columns()
+
+    def resize_filelist_columns(self, *args):
+        self.tableView_filelist.resizeColumnToContents(1)
+        vp_width = self.tableView_filelist.viewport().width()
+        self.tableView_filelist.setColumnWidth(0, vp_width-self.tableView_filelist.columnWidth(1))
+
+    def resize_revisiontable_columns(self, *args):
+        col1_width = self.tableView_revisions.viewport().width()
+        for c in [0,2,3]:
+            self.tableView_revisions.resizeColumnToContents(c)
+            col1_width -= self.tableView_revisions.columnWidth(c)
+        self.tableView_revisions.setColumnWidth(1, col1_width)
+
                 
     def file_selected(self, index, index_from):
         node = self.filelistmodel.current_node
@@ -295,6 +310,7 @@ class HgMainWindow(QtGui.QMainWindow):
             self.rowselected = None
             self.timer.stop()
             self.pb.hide()
+            self.resize_revisiontable_columns()
             return False
         return True
 
@@ -310,7 +326,7 @@ class HgMainWindow(QtGui.QMainWindow):
         rem_line_reg = re.compile(r"^-[^-].*$", re.M)
         
         buf = ""
-        stats = []
+        stats = {}
         for i, (st, end) in enumerate(difflines):
             m = reg.match(diff[st:end])
             diff_file = m.group('file')
@@ -328,8 +344,8 @@ class HgMainWindow(QtGui.QMainWindow):
                                       self.difflexer,
                                       self.htmlformatter)
             buf += '<br/>\n'
-            stats.append((len(added_line_reg.findall(diff_content)),
-                          len(rem_line_reg.findall(diff_content))))
+            stats[diff_file] = (len(added_line_reg.findall(diff_content)),
+                                len(rem_line_reg.findall(diff_content)))
         return buf, stats
             
         
