@@ -17,14 +17,10 @@ from os.path import dirname, join, isfile
 
 from PyQt4 import QtCore, QtGui, uic
 
-import pygments
-from pygments import lexers, formatters
-
 import hgview.fixes
 
 from hgrepomodel import HgRepoListModel, HgFileListModel
 
-#from diffstatrenderer import DiffStatRenderer
 from hgview.hgrepo import HgHLRepo, short_hex, short_bin
 
 import time
@@ -33,77 +29,18 @@ tot_count = 0
 def timeit(display=True):
     global time0
     if display:
-        print "elapsed = %.3fms"%(1000.0*(time.time() - time0))
+        print "%.3fms"%(1000.0*(time.time() - time0))
     time0 = time.time()
-    
-default_CSS = """
-.label { font-weight: bold }
-.diff_title {
-  background-color: #e0e0e0;
-  margin: 5px;
-  padding-left: 40px;
-  font-weight: bold;
-  }
 
-td.linenos { background-color: #f0f0f0; padding-right: 10px; }
-.c { color: #008800; font-style: italic } /* Comment */
-.err { border: 1px solid #FF0000 } /* Error */
-.k { color: #AA22FF; font-weight: bold } /* Keyword */
-.o { color: #666666 } /* Operator */
-.cm { color: #008800; font-style: italic } /* Comment.Multiline */
-.cp { color: #008800 } /* Comment.Preproc */
-.c1 { color: #008800; font-style: italic } /* Comment.Single */
-.gd { color: #A00000 } /* Generic.Deleted */
-.ge { font-style: italic } /* Generic.Emph */
-.gr { color: #FF0000 } /* Generic.Error */
-.gh { color: #000080; font-weight: bold } /* Generic.Heading */
-.gi { color: #00A000 } /* Generic.Inserted */
-.go { color: #808080 } /* Generic.Output */
-.gp { color: #000080; font-weight: bold } /* Generic.Prompt */
-.gs { font-weight: bold } /* Generic.Strong */
-.gu { color: #800080; font-weight: bold } /* Generic.Subheading */
-.gt { color: #0040D0 } /* Generic.Traceback */
-.kc { color: #AA22FF; font-weight: bold } /* Keyword.Constant */
-.kd { color: #AA22FF; font-weight: bold } /* Keyword.Declaration */
-.kp { color: #AA22FF } /* Keyword.Pseudo */
-.kr { color: #AA22FF; font-weight: bold } /* Keyword.Reserved */
-.kt { color: #AA22FF; font-weight: bold } /* Keyword.Type */
-.m { color: #666666 } /* Literal.Number */
-.s { color: #BB4444 } /* Literal.String */
-.na { color: #BB4444 } /* Name.Attribute */
-.nb { color: #AA22FF } /* Name.Builtin */
-.nc { color: #0000FF } /* Name.Class */
-.no { color: #880000 } /* Name.Constant */
-.nd { color: #AA22FF } /* Name.Decorator */
-.ni { color: #999999; font-weight: bold } /* Name.Entity */
-.ne { color: #D2413A; font-weight: bold } /* Name.Exception */
-.nf { color: #00A000 } /* Name.Function */
-.nl { color: #A0A000 } /* Name.Label */
-.nn { color: #0000FF; font-weight: bold } /* Name.Namespace */
-.nt { color: #008000; font-weight: bold } /* Name.Tag */
-.nv { color: #B8860B } /* Name.Variable */
-.ow { color: #AA22FF; font-weight: bold } /* Operator.Word */
-.mf { color: #666666 } /* Literal.Number.Float */
-.mh { color: #666666 } /* Literal.Number.Hex */
-.mi { color: #666666 } /* Literal.Number.Integer */
-.mo { color: #666666 } /* Literal.Number.Oct */
-.sb { color: #BB4444 } /* Literal.String.Backtick */
-.sc { color: #BB4444 } /* Literal.String.Char */
-.sd { color: #BB4444; font-style: italic } /* Literal.String.Doc */
-.s2 { color: #BB4444 } /* Literal.String.Double */
-.se { color: #BB6622; font-weight: bold } /* Literal.String.Escape */
-.sh { color: #BB4444 } /* Literal.String.Heredoc */
-.si { color: #BB6688; font-weight: bold } /* Literal.String.Interpol */
-.sx { color: #008000 } /* Literal.String.Other */
-.sr { color: #BB6688 } /* Literal.String.Regex */
-.s1 { color: #BB4444 } /* Literal.String.Single */
-.ss { color: #B8860B } /* Literal.String.Symbol */
-.bp { color: #AA22FF } /* Name.Builtin.Pseudo */
-.vc { color: #B8860B } /* Name.Variable.Class */
-.vg { color: #B8860B } /* Name.Variable.Global */
-.vi { color: #B8860B } /* Name.Variable.Instance */
-.il { color: #666666 } /* Literal.Number.Integer.Long */
-"""
+Qt = QtCore.Qt
+bold = QtGui.QFont.Bold
+normal = QtGui.QFont.Normal
+
+diff_styles = {'+': (normal, Qt.green),
+               '-': (normal, Qt.red),
+               '@': (bold, Qt.blue),
+               }
+               
 
 class HgMainWindow(QtGui.QMainWindow):
     """Main hg view application"""
@@ -121,9 +58,6 @@ class HgMainWindow(QtGui.QMainWindow):
         else:
             self.filter_files_reg = None
         self.filter_noderange = None
-
-        self.difflexer = lexers.get_lexer_by_name('diff')
-        self.htmlformatter = formatters.HtmlFormatter(full=False)
 
         self.splitter_2.setStretchFactor(0, 2)
         self.splitter_2.setStretchFactor(1, 1)
@@ -200,10 +134,34 @@ class HgMainWindow(QtGui.QMainWindow):
                      self.revision_selected)
 
     def setup_diff_textview(self):
-        doc = self.textview_status.document()
-        doc.setDefaultStyleSheet(default_CSS)
-        self.textview_status.setReadOnly(True)
-        self.connect(self.textview_status,
+        editor = self.textview_status
+        font = QtGui.QFont()
+        font.setFamily("Monospace")
+        font.setFixedPitch(True)
+        font.setPointSize(10)
+        self.font = font
+        d = {'+': QtGui.QTextCharFormat(),
+             '-': QtGui.QTextCharFormat(),
+             '@': QtGui.QTextCharFormat(),
+             }
+        for k, v in d.items():
+            v.setFont(self.font)
+            v.setFontWeight(diff_styles[k][0])
+            v.setForeground(diff_styles[k][1])
+            
+        self.diff_formats = d
+        self.default_diff_format = QtGui.QTextCharFormat()
+        self.default_diff_format.setFont(self.font)
+
+        self.header_diff_format = QtGui.QTextCharFormat()
+        self.header_diff_format.setFont(self.font)
+        self.header_diff_format.setFontWeight(bold)
+        self.header_diff_format.setForeground(Qt.black)
+        self.header_diff_format.setBackground(Qt.gray)
+        
+        editor.setFont(font)
+        editor.setReadOnly(True)
+        self.connect(editor,
                      QtCore.SIGNAL('anchorClicked( const QUrl &)'),
                      self.on_anchor_clicked)
         
@@ -216,27 +174,28 @@ class HgMainWindow(QtGui.QMainWindow):
             self.tableView_revisions.selectRow(row)
         else:
             print "CANNOT find row for node ", self.repo.read_node(node).rev, node
+
     def revision_selected(self, index, index_from):
         row = index.row()
         #rev = index.model().getData(row, 0)
         if self.repomodel.graph:
             node = self.repomodel.graph.rows[row]
             rev_node = self.repo.read_node(node)
+            doc = QtGui.QTextDocument(self.textview_status)
+            
             if rev_node.files:
-                buff, stats = self.get_diff_richtext(node, rev_node)
-                buff = self.get_revlog_header(node, rev_node) + buff
+                self.fill_revlog_header(node, rev_node, doc)
+                
+                #timeit(0)
+                stats = self.fill_diff_richtext2(node, rev_node, doc)
+                #print "diff rendering took", 
+                #timeit()
             else:
-                buff = u""
                 stats = []
+            self.textview_status.setDocument(doc)
             self.filelistmodel.setSelectedNode(node, stats)
-            timeit(0)
-            self.textview_status.setHtml(buff)
-            print "Html rendering:"
-            timeit()
-            #open('/tmp/diff.html', 'w').write(buff.encode('iso-8859-15'))
-            #open('/tmp/diff.css', 'w').write(default_CSS)
 
-            if buff:
+            if stats:
                 self.tableView_filelist.selectRow(0)
                 self.filelistmodel.stats = stats
                 self.file_selected(self.filelistmodel.createIndex(0,0,None), None)
@@ -248,15 +207,12 @@ class HgMainWindow(QtGui.QMainWindow):
         self.tableView_filelist.setColumnWidth(0, vp_width-self.tableView_filelist.columnWidth(1))
 
     def resize_revisiontable_columns(self, *args):
-        global tot_count
-        tot_count += 1
-        print "total col resize = ", tot_count
         col1_width = self.tableView_revisions.viewport().width()
         for c in [0,2,3]:
             self.tableView_revisions.resizeColumnToContents(c)
             col1_width -= self.tableView_revisions.columnWidth(c)
         self.tableView_revisions.setColumnWidth(1, col1_width)
-        print "over"
+
     def file_selected(self, index, index_from):
         node = self.filelistmodel.current_node
         if node is None:
@@ -267,6 +223,8 @@ class HgMainWindow(QtGui.QMainWindow):
             self.textview_status.setSource(QtCore.QUrl(""))#home()
         else:
             sel_file = rev_node.files[row-1]
+            #print "going to anchor", sel_file
+            #self.textview_status.scrollToAnchor("#%s"%sel_file)
             self.textview_status.setSource(QtCore.QUrl("#%s"%sel_file))
         
     def revpopup_add_tag(self, item):
@@ -324,7 +282,6 @@ class HgMainWindow(QtGui.QMainWindow):
 
     def idle_fill_model(self):
         """Idle task filling the ListStore model chunks by chunks"""
-        print "Step 2.1"
         NMAX = 100  # Max number of entries we process each time
         graph = self.graph
         N = self.last_node
@@ -350,13 +307,67 @@ class HgMainWindow(QtGui.QMainWindow):
         return True
 
 
-    def get_diff_richtext(self, node, rev_node):
+    def fill_diff_richtext2(self, node, rev_node, doc):
         diff = self.repo.diff(self.repo.parents(node), node, rev_node.files)
+        
         try:
             diff = unicode(diff, "utf-8")
         except UnicodeError:
             # XXX use a default encoding from config
             diff = unicode(diff, "iso-8859-15", 'ignore')
+
+        
+        cursor = QtGui.QTextCursor(doc)#self.textview_status.document())        
+        cursor.movePosition(QtGui.QTextCursor.End, QtGui.QTextCursor.MoveAnchor) 
+
+        diff_formats = self.diff_formats
+        default_diff_fmt = self.default_diff_format
+        
+        diff_file = None
+        stats = {}
+        for i,l in enumerate(diff.splitlines()):
+            if l.startswith('+++') or l.startswith('---'):
+                continue
+            if l.startswith('diff'):
+                if diff_file:
+                    stats[diff_file] = (l_p, l_m)
+                    
+                diff_file = l.strip().split(' ',5)[-1]
+                cursor.insertHtml(u'\n<a name="%s"></a>\n' % diff_file)
+                cursor.insertText(u'\n === %s === \n' % (diff_file),
+                                  self.header_diff_format)
+                l_p = 0
+                l_m = 0
+            else:
+                l0 = l[0]
+                cursor.insertText(l+'\n', diff_formats.get(l0, default_diff_fmt))
+                if l0 == "+":
+                    l_p += 1
+                elif l0 == "-":
+                    l_m += 1
+                
+        if diff_file:
+            stats[diff_file] = (l_p, l_m)
+        return stats
+    
+    def fill_diff_richtext(self, node, rev_node, doc):
+        diff = self.repo.diff(self.repo.parents(node), node, rev_node.files)
+        
+        try:
+            diff = unicode(diff, "utf-8")
+        except UnicodeError:
+            # XXX use a default encoding from config
+            diff = unicode(diff, "iso-8859-15", 'ignore')
+
+
+        cursor = QtGui.QTextCursor(doc)
+        cursor.movePosition(QtGui.QTextCursor.End, QtGui.QTextCursor.MoveAnchor) 
+
+        diff_formats = self.diff_formats
+        default_diff_fmt = self.default_diff_format
+        
+        diff_file = None
+        stats = {}
 
         regsplit =  re.compile('^diff.*$', re.M)
         difflines = [ (m.start(), m.end()) for m in regsplit.finditer(diff)]
@@ -366,8 +377,9 @@ class HgMainWindow(QtGui.QMainWindow):
         rem_line_reg = re.compile(r"^-[^-].*$", re.M)
 
         diffsize = diff.count('\n')
-        buf = u""
-        stats = {}
+
+        diff_formats = self.diff_formats
+        default_diff_fmt = self.default_diff_format
         for i, (st, end) in enumerate(difflines):
             m = reg.match(diff[st:end])
             diff_file = m.group('file')
@@ -381,22 +393,24 @@ class HgMainWindow(QtGui.QMainWindow):
             stats[diff_file] = (len(added_line_reg.findall(diff_content)),
                                 len(rem_line_reg.findall(diff_content)))
 
-            buf += u'<a name="%s"></a>' % diff_file
-            buf += u'<p class="diff_title">== %s [+%s -%s] ==</p>\n' % (diff_file, stats[diff_file][0],stats[diff_file][1] )
-            if 0 and diff_content.count(u'\n')>300:
-                print "too big! uncolorized "
-                #buf += diff_content.replace(u'\n', u'<br/>\n')
-                buf += "\n".join([u"<span>%s</span>"%x for x in diff_content.splitlines()])
-            else:
-                buf += pygments.highlight(diff_content,
-                                          self.difflexer,
-                                          self.htmlformatter)
-            buf += u'<br/>\n'
-        return buf, stats
+            cursor.insertHtml(u'\n<a name="%s"></a>\n' % diff_file)
+            cursor.insertText(u'\n === %s [+%s -%s] === \n' % (diff_file, stats[diff_file][0],stats[diff_file][1] ),
+                              self.header_diff_format)
+            
+            for l in diff_content.splitlines():
+                if l.startswith('+++') or l.startswith('---'):
+                    continue
+                cursor.insertText(l+'\n', diff_formats.get(l[0], default_diff_fmt))
+
+            cursor.insertText('\n')
+            
+        return stats
             
         
-    def get_revlog_header(self, node, rnode):
+    def fill_revlog_header(self, node, rnode, doc):
         """Build the revision log header"""
+        cursor = QtGui.QTextCursor(doc)
+        cursor.movePosition(QtGui.QTextCursor.End, QtGui.QTextCursor.MoveAnchor) 
         repo = self.repo
         buf = "<table>\n"
         buf += '<tr><td class="label">Revision:</td>'\
@@ -430,7 +444,7 @@ class HgMainWindow(QtGui.QMainWindow):
         buf += "</table>\n"
 
         buf += '<div class="diff_desc"><p>%s</p></div>\n' % rnode.desc.replace('\n', '<br/>\n')
-        return buf
+        cursor.insertHtml(buf)
 
 
     def hilight_search_string( self ):
