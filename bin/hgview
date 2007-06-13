@@ -40,7 +40,7 @@ try:
     import hgview
     print hgview.__file__
 except:
-    sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../.."))
+    sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 
 if use_qt:
     from hgview.qt4 import hgview_qt4 as hgview
