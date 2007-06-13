@@ -10,15 +10,26 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
         QtCore.QAbstractTableModel.__init__(self,parent)
         self.repo = data
         self.graph = None
+        self.__len = 0
         self.__cache = {} 
-        #self.graph = self.repo.graph(self.repo.nodes)
-        #self.graph.build()
         self.dot_radius = 8
+
+    def set_graph(self, graph):
+        self.graph = graph
+        self.compute_len()
         
+    def compute_len(self):
+        if self.graph:
+            self.__len = len(filter(None, self.graph.rows))
+        else:
+            self.__len = 0
+
     def __len__(self):
         if self.graph:
-            return len(self.graph.rows)
+            return len(filter(None, self.graph.rows))
         return 0
+        print "len = ", self.__len
+        return self.__len
     
     def rowCount(self, parent):
         return len(self)
@@ -143,10 +154,12 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
     def clear(self):
         """empty the list"""
         self.graph = None
+        self.__len = 0
         self.__cache = {}
         self.notify_data_changed()
 
     def notify_data_changed(self):
+        self.compute_len()
         self.emit(QtCore.SIGNAL("layoutChanged()"))
 
 class HgFileListModel(QtCore.QAbstractTableModel):
@@ -156,7 +169,6 @@ class HgFileListModel(QtCore.QAbstractTableModel):
         """
         QtCore.QAbstractTableModel.__init__(self,parent)
         self.repo = repo
-        self.graph = graph
         self.stats = [] # list of couples (n_line_added, n_line_removed),
                         # one for each file 
         self.current_node = None
@@ -197,15 +209,21 @@ class HgFileListModel(QtCore.QAbstractTableModel):
         column = index.column()
 
         current_file = self.repo.read_node(self.current_node).files[index.row()-1]
+        stats = self.stats.get(current_file)
         if role == QtCore.Qt.DisplayRole:
             if column == 0:
                 if row == 0:
                     return QtCore.QVariant("Content")
                 else:
                     return QtCore.QVariant(current_file)
+            elif column == 1:
+                if row == 0 or stats is None:
+                    return QtCore.QVariant("")
+                else:
+                    return QtCore.QVariant("+%s | -%s"%tuple(stats))
+                
         if role == QtCore.Qt.DecorationRole:
             if column == 1:
-                stats = self.stats.get(current_file)
                 if row == 0 or stats is None:
                     return QtCore.QVariant()
 

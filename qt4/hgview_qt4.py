@@ -27,6 +27,15 @@ from hgrepomodel import HgRepoListModel, HgFileListModel
 #from diffstatrenderer import DiffStatRenderer
 from hgview.hgrepo import HgHLRepo, short_hex, short_bin
 
+import time
+time0 = time.time()
+tot_count = 0
+def timeit(display=True):
+    global time0
+    if display:
+        print "elapsed = %.3fms"%(1000.0*(time.time() - time0))
+    time0 = time.time()
+    
 default_CSS = """
 .label { font-weight: bold }
 .diff_title {
@@ -108,9 +117,9 @@ class HgMainWindow(QtGui.QMainWindow):
 
         self.filerex = filerex
         if filerex:
-            self.filter_files = re.compile( filerex )
+            self.filter_files_reg = re.compile( filerex )
         else:
-            self.filter_files = None
+            self.filter_files_reg = None
         self.filter_noderange = None
 
         self.difflexer = lexers.get_lexer_by_name('diff')
@@ -135,14 +144,20 @@ class HgMainWindow(QtGui.QMainWindow):
         self.setup_diff_textview()
         self.setup_revision_table()
         self.setup_filelist_treeview()
-        #self.init_filter()
-        #self.find_text = None
+        self.init_filter()
+        self.find_text = None
         self.connect(self.actionRefresh, QtCore.SIGNAL('triggered ()'),
                      self.refresh_revision_table)
         self.connect(self.actionAbout, QtCore.SIGNAL('triggered ()'),
                      self.on_about)
         self.connect(self.actionQuit, QtCore.SIGNAL('triggered ()'),
                      self.close)
+
+        self.connect(self.button_filter, QtCore.SIGNAL('clicked ()'),
+                     self.on_filter)
+        self.connect(self.button_find, QtCore.SIGNAL('clicked ()'),
+                     self.on_find)
+        
         QtGui.qApp.flush()        
         self.refresh_revision_table()
 
@@ -211,10 +226,16 @@ class HgMainWindow(QtGui.QMainWindow):
                 buff, stats = self.get_diff_richtext(node, rev_node)
                 buff = self.get_revlog_header(node, rev_node) + buff
             else:
-                buff = ""
+                buff = u""
                 stats = []
             self.filelistmodel.setSelectedNode(node, stats)
+            timeit(0)
             self.textview_status.setHtml(buff)
+            print "Html rendering:"
+            timeit()
+            #open('/tmp/diff.html', 'w').write(buff.encode('iso-8859-15'))
+            #open('/tmp/diff.css', 'w').write(default_CSS)
+
             if buff:
                 self.tableView_filelist.selectRow(0)
                 self.filelistmodel.stats = stats
@@ -227,12 +248,15 @@ class HgMainWindow(QtGui.QMainWindow):
         self.tableView_filelist.setColumnWidth(0, vp_width-self.tableView_filelist.columnWidth(1))
 
     def resize_revisiontable_columns(self, *args):
+        global tot_count
+        tot_count += 1
+        print "total col resize = ", tot_count
         col1_width = self.tableView_revisions.viewport().width()
         for c in [0,2,3]:
             self.tableView_revisions.resizeColumnToContents(c)
             col1_width -= self.tableView_revisions.columnWidth(c)
         self.tableView_revisions.setColumnWidth(1, col1_width)
-                
+        print "over"
     def file_selected(self, index, index_from):
         node = self.filelistmodel.current_node
         if node is None:
@@ -260,7 +284,7 @@ class HgMainWindow(QtGui.QMainWindow):
         """Filter the nodes according to filter_files and filter_nodes"""
         keepnodes = []
         nodes = self.repo.nodes
-        frex = self.filter_files
+        frex = self.filter_files_reg
         noderange = self.filter_noderange or set(range(len(nodes)))
         for n in nodes:
             node = self.repo.read_node(n)
@@ -283,14 +307,14 @@ class HgMainWindow(QtGui.QMainWindow):
         """Starts the process of filling the HgModel"""
         self.repo.refresh()
         self.repo.read_nodes()
-        if self.filter_files or self.filter_noderange:
+        if self.filter_files_reg or self.filter_noderange:
             todo_nodes = self.filter_nodes()
         else:
             todo_nodes = self.repo.nodes
-        graph = self.repo.graph( todo_nodes )
+        graph = self.repo.graph(todo_nodes)
         self.filelistmodel.setSelectedNode(None, [])
         self.repomodel.clear()        
-        self.repomodel.graph = graph
+        self.repomodel.set_graph(graph)
         self.last_node = 0
         self.graph = graph
         self.pb.setRange(0,len(self.graph.rows))
@@ -300,6 +324,7 @@ class HgMainWindow(QtGui.QMainWindow):
 
     def idle_fill_model(self):
         """Idle task filling the ListStore model chunks by chunks"""
+        print "Step 2.1"
         NMAX = 100  # Max number of entries we process each time
         graph = self.graph
         N = self.last_node
@@ -309,9 +334,11 @@ class HgMainWindow(QtGui.QMainWindow):
         last_node = min(len(rowselected), N + NMAX)
         self.last_node = last_node
         self.repomodel.notify_data_changed()
-        QtGui.qApp.processEvents()
+        #QtGui.qApp.processEvents()
+        QtGui.qApp.flush()
         self.resize_revisiontable_columns()
-        QtGui.qApp.processEvents()
+        #QtGui.qApp.processEvents()
+        QtGui.qApp.flush()
 
         self.pb.setValue(self.last_node)
         if self.last_node == len(rowselected):
@@ -325,6 +352,11 @@ class HgMainWindow(QtGui.QMainWindow):
 
     def get_diff_richtext(self, node, rev_node):
         diff = self.repo.diff(self.repo.parents(node), node, rev_node.files)
+        try:
+            diff = unicode(diff, "utf-8")
+        except UnicodeError:
+            # XXX use a default encoding from config
+            diff = unicode(diff, "iso-8859-15", 'ignore')
 
         regsplit =  re.compile('^diff.*$', re.M)
         difflines = [ (m.start(), m.end()) for m in regsplit.finditer(diff)]
@@ -332,14 +364,13 @@ class HgMainWindow(QtGui.QMainWindow):
 
         added_line_reg = re.compile(r"^[+][^+].*$", re.M)
         rem_line_reg = re.compile(r"^-[^-].*$", re.M)
-        
-        buf = ""
+
+        diffsize = diff.count('\n')
+        buf = u""
         stats = {}
         for i, (st, end) in enumerate(difflines):
             m = reg.match(diff[st:end])
             diff_file = m.group('file')
-            buf += '<a name="%s"></a>' % diff_file
-            buf += '<p class="diff_title">== %s ==</p>\n' % (diff_file)
             
             diff_st = end+1
             try:
@@ -347,13 +378,20 @@ class HgMainWindow(QtGui.QMainWindow):
             except:
                 diff_end = -1
             diff_content = diff[diff_st:diff_end]
-
-            buf += pygments.highlight(diff_content,
-                                      self.difflexer,
-                                      self.htmlformatter)
-            buf += '<br/>\n'
             stats[diff_file] = (len(added_line_reg.findall(diff_content)),
                                 len(rem_line_reg.findall(diff_content)))
+
+            buf += u'<a name="%s"></a>' % diff_file
+            buf += u'<p class="diff_title">== %s [+%s -%s] ==</p>\n' % (diff_file, stats[diff_file][0],stats[diff_file][1] )
+            if 0 and diff_content.count(u'\n')>300:
+                print "too big! uncolorized "
+                #buf += diff_content.replace(u'\n', u'<br/>\n')
+                buf += "\n".join([u"<span>%s</span>"%x for x in diff_content.splitlines()])
+            else:
+                buf += pygments.highlight(diff_content,
+                                          self.difflexer,
+                                          self.htmlformatter)
+            buf += u'<br/>\n'
         return buf, stats
             
         
@@ -414,7 +452,7 @@ class HgMainWindow(QtGui.QMainWindow):
             text_buffer.apply_tag_by_name("yellowbg", _b, _e )
             m = rexp.search( txt, m.end() )
 
-    def fileselection_changed( self, selection ):
+    def fileselection_changed(self, selection):
         model, it = selection.get_selected()
         if it is None:
             return
@@ -452,26 +490,29 @@ class HgMainWindow(QtGui.QMainWindow):
         self.filter_dialog.show()
 
     def init_filter(self):
-        file_filter = self.xml.get_widget("entry_file_filter")
-        node_low = self.xml.get_widget("spinbutton_rev_low")
-        node_high = self.xml.get_widget("spinbutton_rev_high")
+        file_filter = self.entry_file_filter
+        node_low = self.spinbutton_rev_low
+        node_high = self.spinbutton_rev_high
 
         cnt = self.repo.count()
-        if self.filter_files:
-            file_filter.set_text( self.filerex )
-        node_low.set_range(0, cnt+1 )
-        node_high.set_range(0, cnt+1 )
-        node_low.set_value( 0 )
-        node_high.set_value( cnt )
+        if self.filter_files_reg:
+            file_filter.setText(self.filerex)
+        node_low.setRange(0, cnt+1)
+        node_high.setRange(0, cnt+1)
+        node_low.setValue(0)
+        node_high.setValue(cnt)
 
-    def on_button_filter_apply_clicked( self, *args ):
-        file_filter = self.xml.get_widget("entry_file_filter")
-        node_low = self.xml.get_widget("spinbutton_rev_low")
-        node_high = self.xml.get_widget("spinbutton_rev_high")
-        self.filter_files = re.compile(file_filter.get_text())
-        self.filter_noderange = set(range( node_low.get_value_as_int(), node_high.get_value_as_int() ))
-        self.refresh_tree()
+    def on_filter(self, *args):
+        file_filter = self.entry_file_filter
+        node_low = self.spinbutton_rev_low
+        node_high = self.spinbutton_rev_high
+        self.filter_files_reg = re.compile(str(file_filter.text()))
+        self.filter_noderange = set(range(node_low.value(), node_high.value()))
+        self.refresh_revision_table()
 
+    def on_find(self, *args):
+        print "find"
+        
 
 def main():
     parser = OptionParser()
@@ -502,12 +543,12 @@ def main():
         sys.exit(1)
 
     app = QtGui.QApplication(sys.argv)
-    preferred_styles = ['Cleanlooks', 'Plastique', 'Motif','CDE','Windows']
-    available_styles = [str(x) for x in QtGui.QStyleFactory.keys()]
-    for style in preferred_styles:
-        if style in available_styles:
-            app.setStyle(style)
-            break
+##     preferred_styles = ['Cleanlooks', 'Plastique', 'Motif','CDE','Windows']
+##     available_styles = [str(x) for x in QtGui.QStyleFactory.keys()]
+##     for style in preferred_styles:
+##         if style in available_styles:
+##             app.setStyle(style)
+##             break
     mainwindow = HgMainWindow(repo, filerex)
     mainwindow.show()
     sys.exit(app.exec_())
