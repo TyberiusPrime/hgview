@@ -96,6 +96,7 @@ class HgMainWindow(QtGui.QMainWindow):
         self.refresh_revision_table()
 
     def resizeEvent(self, event):
+        # we catch this event to resize tables' columns
         QtGui.QMainWindow.resizeEvent(self, event)
         if self.graph is None: # do not resize if we are loading a reporsitory
             self.resize_revisiontable_columns()
@@ -129,10 +130,26 @@ class HgMainWindow(QtGui.QMainWindow):
         self.connect(self.tableView_filelist.selectionModel(),
                      QtCore.SIGNAL('currentRowChanged ( const QModelIndex & , const QModelIndex &  )'),
                      self.file_selected)
+        self.connect(self.tableView_filelist,
+                     QtCore.SIGNAL('doubleClicked ( const QModelIndex & )'),
+                     self.file_activated)
         self.connect(self.tableView_revisions.selectionModel(),
                      QtCore.SIGNAL('currentRowChanged ( const QModelIndex & , const QModelIndex &  )'),
                      self.revision_selected)
 
+    def file_activated(self, index):
+        print 'activated file at ', index.row(), index.column()
+        if index.row() == 0:
+            return
+        
+        node = self.current_node
+        rnode = self.repo.read_node(node)
+        sel_file = rnode.files[index.row()-1]
+        patch = self.current_diff_contents[index.row()-1]
+
+        print "should reverse apply", patch
+        
+        
     def setup_diff_textview(self):
         editor = self.textview_status
         font = QtGui.QFont()
@@ -166,8 +183,15 @@ class HgMainWindow(QtGui.QMainWindow):
                      self.on_anchor_clicked)
         
     def on_anchor_clicked(self, qurl):
+        """
+        Callback called when a link is clicked in the text browser
+        displaying the diffs
+        """
         rev = int(qurl.toString())
-        self.textview_status.setSource(QtCore.QUrl('')) # forbid Qt to look for a real document at URL
+
+        # forbid Qt to look for a real document at URL
+        self.textview_status.setSource(QtCore.QUrl(''))
+
         node = self.repo.repo.changelog.node(rev)
         row = self.repomodel.row_from_node(node)
         if row is not None:
@@ -176,18 +200,26 @@ class HgMainWindow(QtGui.QMainWindow):
             print "CANNOT find row for node ", self.repo.read_node(node).rev, node
 
     def revision_selected(self, index, index_from):
+        """
+        Callback called when a revision os selected in the revisions table
+        """
         row = index.row()
-        #rev = index.model().getData(row, 0)
         if self.repomodel.graph:
             node = self.repomodel.graph.rows[row]
+            self.current_node = node
             rev_node = self.repo.read_node(node)
+            # We *need* to use a new document, since rendering in a displayed
+            # QTextDocument (in a QTextEdit or so) is soooo sloooow
+            # Note that set the QTextDocument's parent argument to the
+            # QTextEdit widget to which it will be rattached afterward seems
+            # mandatory, or a crash occur :-(
             doc = QtGui.QTextDocument(self.textview_status)
             
             if rev_node.files:
                 self.fill_revlog_header(node, rev_node, doc)
                 
                 #timeit(0)
-                stats = self.fill_diff_richtext2(node, rev_node, doc)
+                stats = self.fill_diff_richtext(node, rev_node, doc)
                 #print "diff rendering took", 
                 #timeit()
             else:
@@ -202,11 +234,15 @@ class HgMainWindow(QtGui.QMainWindow):
                 self.resize_filelist_columns()
 
     def resize_filelist_columns(self, *args):
+        # resize columns the smart way: the diffstat column is resized
+        # according to its content, the one holding file names being
+        # resized according to the widget size.
         self.tableView_filelist.resizeColumnToContents(1)
         vp_width = self.tableView_filelist.viewport().width()
         self.tableView_filelist.setColumnWidth(0, vp_width-self.tableView_filelist.columnWidth(1))
 
     def resize_revisiontable_columns(self, *args):
+        # same as before, but for the "Log" column
         col1_width = self.tableView_revisions.viewport().width()
         for c in [0,2,3]:
             self.tableView_revisions.resizeColumnToContents(c)
@@ -214,17 +250,21 @@ class HgMainWindow(QtGui.QMainWindow):
         self.tableView_revisions.setColumnWidth(1, col1_width)
 
     def file_selected(self, index, index_from):
+        """
+        Callback called when a filename is selected in the file list
+        """
         node = self.filelistmodel.current_node
         if node is None:
             return
         rev_node = self.repo.read_node(node)
         row = index.row()
         if row == 0:
-            self.textview_status.setSource(QtCore.QUrl(""))#home()
+            self.textview_status.setSource(QtCore.QUrl("")) # go home
         else:
             sel_file = rev_node.files[row-1]
-            #print "going to anchor", sel_file
+            # don't know why this does not work...
             #self.textview_status.scrollToAnchor("#%s"%sel_file)
+            # but this works fine!
             self.textview_status.setSource(QtCore.QUrl("#%s"%sel_file))
         
     def revpopup_add_tag(self, item):
@@ -278,6 +318,9 @@ class HgMainWindow(QtGui.QMainWindow):
         self.pb.setRange(0,len(self.graph.rows))
         self.pb.show()
         QtGui.qApp.flush()        
+        # we use a QTimer with no delay time, so
+        # it the repo loading process will let the application
+        # react and the window update its content quite smoothly
         self.timer.start()
 
     def idle_fill_model(self):
@@ -286,15 +329,11 @@ class HgMainWindow(QtGui.QMainWindow):
         graph = self.graph
         N = self.last_node
         graph.build(NMAX)
-        #QtGui.qApp.processEvents()
         rowselected = self.graph.rows
         last_node = min(len(rowselected), N + NMAX)
         self.last_node = last_node
         self.repomodel.notify_data_changed()
-        #QtGui.qApp.processEvents()
-        QtGui.qApp.flush()
         self.resize_revisiontable_columns()
-        #QtGui.qApp.processEvents()
         QtGui.qApp.flush()
 
         self.pb.setValue(self.last_node)
@@ -378,18 +417,21 @@ class HgMainWindow(QtGui.QMainWindow):
 
         diffsize = diff.count('\n')
 
+        self.current_diff_contents = []        
+
         diff_formats = self.diff_formats
         default_diff_fmt = self.default_diff_format
         for i, (st, end) in enumerate(difflines):
             m = reg.match(diff[st:end])
             diff_file = m.group('file')
-            
             diff_st = end+1
             try:
                 diff_end = difflines[i+1][0]
             except:
                 diff_end = -1
             diff_content = diff[diff_st:diff_end]
+            self.current_diff_contents.append(diff_content)
+
             stats[diff_file] = (len(added_line_reg.findall(diff_content)),
                                 len(rem_line_reg.findall(diff_content)))
 
@@ -466,40 +508,6 @@ class HgMainWindow(QtGui.QMainWindow):
             text_buffer.apply_tag_by_name("yellowbg", _b, _e )
             m = rexp.search( txt, m.end() )
 
-    def fileselection_changed(self, selection):
-        model, it = selection.get_selected()
-        if it is None:
-            return
-        markname = model.get_value( it, 1 )
-        tw = self.xml.get_widget("textview_status" )
-        mark = tw.get_buffer().get_mark( markname )
-        tw.scroll_to_mark( mark, .2, use_align=True, xalign=1., yalign=0. )
-
-    def find_next_row( self, iter, stop_iter=None ):
-        """Find the next revision row based on the content of
-        the 'entry_find' widget"""
-        txt = self.xml.get_widget( "entry_find" ).get_text()
-        rexp = re.compile( txt )
-        while iter != stop_iter and iter!=None:
-            revnode = self.revisions.get( iter, M_NODE ) [0]
-            # author_id, log, files
-            author = self.repo.authors[revnode.author_id]
-            if ( rexp.search( author ) or
-                 rexp.search( revnode.desc ) ):
-                break
-            for f in revnode.files:
-                if rexp.search( f ):
-                    break
-            else:
-                iter = self.revisions.iter_next( iter )
-                continue
-            break
-        if iter==stop_iter or iter is None:
-            return None
-        self.select_row( iter )
-        self.hilight_search_string()
-        return iter
-
     def on_filter1_activate( self, *args ):
         self.filter_dialog.show()
 
@@ -553,16 +561,10 @@ def main():
     try:
         repo = HgHLRepo( dir_ )
     except:
-        print "You are not in a repo, are you ?"
+        print "You are not in a repo, are you?"
         sys.exit(1)
 
     app = QtGui.QApplication(sys.argv)
-##     preferred_styles = ['Cleanlooks', 'Plastique', 'Motif','CDE','Windows']
-##     available_styles = [str(x) for x in QtGui.QStyleFactory.keys()]
-##     for style in preferred_styles:
-##         if style in available_styles:
-##             app.setStyle(style)
-##             break
     mainwindow = HgMainWindow(repo, filerex)
     mainwindow.show()
     sys.exit(app.exec_())
