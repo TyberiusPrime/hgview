@@ -36,7 +36,7 @@ Qt = QtCore.Qt
 bold = QtGui.QFont.Bold
 normal = QtGui.QFont.Normal
 
-diff_styles = {'+': (normal, Qt.green),
+diff_styles = {'+': (normal, Qt.darkGreen),
                '-': (normal, Qt.red),
                '@': (bold, Qt.blue),
                }
