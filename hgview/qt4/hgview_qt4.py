@@ -47,7 +47,19 @@ class HgMainWindow(QtGui.QMainWindow):
     def __init__(self, repo, filerex = None ):
 
         QtGui.QMainWindow.__init__(self)
-        uifile = os.path.join(os.path.dirname(__file__), 'hgview.ui')
+        for _path in [dirname(__file__),
+                      join(sys.exec_prefix, 'share/hgview'),
+                      join(dirname(__file__), "../../../../share/hgview"),
+                      join(dirname(__file__), "../../../share/hgview/ "),
+                      ]:
+            ui_file = join(_path, 'hgview.ui')
+            if isfile(ui_file):
+                break
+            else:
+                raise ValueError("Unable to find hgview.ui."
+                                 "Check your installation.")
+        
+        uifile = os.path.join(os.path.dirname(__file__), ui_file)
         self.ui = uic.loadUi(uifile, self)
         
         self.repo = repo
