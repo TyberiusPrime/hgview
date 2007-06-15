@@ -2,17 +2,27 @@ hgview intallation notes
 ========================
 
 
-This is still a development version but already useable
+This is still a development version but already useable.
 
-It is very simple to use and install from the hg repository :
+It is very simple to use ``hgview`` from the hg repository::
 
-hg clone http://www.logilab.org/hgview
+  hg clone http://www.logilab.org/hgview
 
-cd <ANY_HG_REPO>
-python $PATH_TO_HGVIEW_DIR/hgview.py
+  cd <ANY_HG_REPO>
+  $PATH_TO_HGVIEW_DIR/bin/hgview
 
+On the other hand, installing ``hgview`` is simply done using usual
+``distutils`` script::
 
-There's already a TODO list of features that I wish to implement
-in TODO.txt.
+  cd $PATH_TO_HGVIEW_DIR
+  python setup.py install
+
+You will then be able to run ``hgview`` simply by typing::
+
+  cd <ANY_HG_REPO>
+  hgview
+  
+There's already a TODO list of features that I wish to implement in
+``TODO.txt``.
 
 
