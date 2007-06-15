@@ -77,6 +77,7 @@ def ensure_scripts(linux_scripts):
 def get_packages(directory, prefix):
     """return a list of subpackages for the given directory
     """
+    print "getting packages in '%s' for '%s'"%(directory, prefix)
     result = []
     for package in os.listdir(directory):
         absfile = join(directory, package)
@@ -88,6 +89,7 @@ def get_packages(directory, prefix):
                 else:
                     result.append(package)
                 result += get_packages(absfile, result[-1])
+    print "  -> ", result
     return result
 
 def export(from_dir, to_dir,
@@ -137,6 +139,7 @@ class MyInstallLib(install_lib.install_lib):
     """
     def run(self):
         """overridden from install_lib class"""
+        print "MyInstallLib.run()"
         install_lib.install_lib.run(self)
         # create Products.__init__.py if needed
         if subpackage_of:
@@ -152,6 +155,7 @@ class MyInstallLib(install_lib.install_lib):
                 base = join(subpackage_of, modname)
             else:
                 base = modname
+            print "  base = ", base
             for directory in include_dirs:
                 dest = join(self.install_dir, base, directory)
                 export(directory, dest)
@@ -163,9 +167,12 @@ def install(**kwargs):
         kwargs['package_dir'] = {package : '.'}
         packages = [package] + get_packages(os.getcwd(), package)
     else:
-        kwargs['package_dir'] = {modname : '.'}
-        packages = [modname] + get_packages(os.getcwd(), modname)
+        kwargs['package_dir'] = {modname : modname}
+        packages = [modname] + get_packages(modname, modname)
+    print "packages = ", packages
     kwargs['packages'] = packages
+    print "data_files=", data_files
+    print "kw=", kwargs
     return setup(name = distname,
                  version = version,
                  license =license,

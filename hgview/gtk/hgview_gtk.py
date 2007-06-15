@@ -32,9 +32,7 @@ def load_glade(root=""):
     """Try several paths in which the glade file might be found"""
     for _path in [dirname(__file__),
                   join(sys.exec_prefix, 'share/hgview'),
-                  join(dirname(__file__), "../../../../share/hgview"),
-                  join(dirname(__file__), "../../../share/hgview/ "),
-                  #os.environ.get('HGVIEW_GLADE_DIR', './'),
+                  join(dirname(__file__), "../../../../../share/hgview"),
                   ]:
         glade_file = join(_path, GLADE_FILE_NAME)
         if isfile(glade_file):

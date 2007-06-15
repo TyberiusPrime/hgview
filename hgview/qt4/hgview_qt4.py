@@ -20,17 +20,7 @@ from PyQt4 import QtCore, QtGui, uic
 import hgview.fixes
 
 from hgrepomodel import HgRepoListModel, HgFileListModel
-
 from hgview.hgrepo import HgHLRepo, short_hex, short_bin
-
-import time
-time0 = time.time()
-tot_count = 0
-def timeit(display=True):
-    global time0
-    if display:
-        print "%.3fms"%(1000.0*(time.time() - time0))
-    time0 = time.time()
 
 Qt = QtCore.Qt
 bold = QtGui.QFont.Bold
@@ -49,15 +39,15 @@ class HgMainWindow(QtGui.QMainWindow):
         QtGui.QMainWindow.__init__(self)
         for _path in [dirname(__file__),
                       join(sys.exec_prefix, 'share/hgview'),
-                      join(dirname(__file__), "../../../../share/hgview"),
-                      join(dirname(__file__), "../../../share/hgview/ "),
+                      join(dirname(__file__), "../../../../../share/hgview"),
                       ]:
             ui_file = join(_path, 'hgview.ui')
+            
             if isfile(ui_file):
                 break
-            else:
-                raise ValueError("Unable to find hgview.ui."
-                                 "Check your installation.")
+        else:
+            raise ValueError("Unable to find hgview.ui\n"
+                             "Check your installation.")
         
         uifile = os.path.join(os.path.dirname(__file__), ui_file)
         self.ui = uic.loadUi(uifile, self)
@@ -230,10 +220,7 @@ class HgMainWindow(QtGui.QMainWindow):
             if rev_node.files:
                 self.fill_revlog_header(node, rev_node, doc)
                 
-                #timeit(0)
                 stats = self.fill_diff_richtext(node, rev_node, doc)
-                #print "diff rendering took", 
-                #timeit()
             else:
                 stats = []
             self.textview_status.setDocument(doc)
