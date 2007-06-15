@@ -492,11 +492,13 @@ class HgViewApp(object):
 
         rexp = re.compile(self.find_text)
         sob, eob = text_buffer.get_bounds()
-        mark = text_buffer.get_mark( "enddesc" )
-        enddesc = text_buffer.get_iter_at_mark(mark)
-        txt = text_buffer.get_slice(sob, enddesc, True )
+        # RESTRICT TO DESCRIPTION PART : should be conditionalized
+        #mark = text_buffer.get_mark( "enddesc" )
+        #enddesc = text_buffer.get_iter_at_mark(mark)
+        #txt = text_buffer.get_slice(sob, enddesc, True )
+        txt = text_buffer.get_slice(sob, eob)
         m = rexp.search( txt )
-        while m:
+        while m: # FIXME wrong coloring in diff body
             _b = text_buffer.get_iter_at_offset( m.start() )
             _e = text_buffer.get_iter_at_offset( m.end() )
             text_buffer.apply_tag_by_name("yellowbg", _b, _e )
@@ -518,11 +520,18 @@ class HgViewApp(object):
         rexp = re.compile( txt )
         while iter != stop_iter and iter!=None:
             revnode = self.revisions.get( iter, M_NODE ) [0]
-            # author_id, log, files
+            # author_id, log
             author = self.repo.authors[revnode.author_id]
             if ( rexp.search( author ) or
                  rexp.search( revnode.desc ) ):
                 break
+            # diff
+            node = self.revisions.get_value(iter, M_ID)
+            rnode = self.repo.read_node(node)
+            diff = self.repo.diff(self.repo.parents(node), node, rnode.files)
+            if rexp.search(diff):
+                break
+            # files
             for f in revnode.files:
                 if rexp.search( f ):
                     break
