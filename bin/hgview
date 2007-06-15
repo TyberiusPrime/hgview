@@ -33,7 +33,8 @@ if not (use_gtk or use_qt):
                     
 if not (use_gtk or use_qt):
     print "You must select a backend (--gtk or --qt)"
-    sys.exit(1)
+    print "defaults to gtk"
+    use_gtk = True
 
 
 try:
