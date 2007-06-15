@@ -10,12 +10,12 @@ Standards-Version: 3.7.2
 
 Package: hgview
 Architecture: all
-Depends: python, python-gtk2 (>=2.4.0), python-glade2
+Depends: python, python-glade2 | python-qt4
 XB-Python-Version: ${python:Versions}
 Description: mercurial interactive history viewer
- Its purpose is similar to the hgk tool of mercurial, but is written
- in GTK instead of Tk, and it has been written with efficiency in mind
- when dealing with big repositories (it can happily be used to browse
- Linux kernel source code repository).
+ Its purpose is similar to the hgk tool of mercurial, and it has been
+ written with efficiency in mind when dealing with big repositories
+ (it can happily be used to browse Linux kernel source code
+ repository).
  .
  homepage: http://www.logilab.org/Project/name/hgview
