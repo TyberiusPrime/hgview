@@ -32,7 +32,7 @@ if not (use_gtk or use_qt):
                     use_qt = 'qt' in backend
                     
 if not (use_gtk or use_qt):
-    print "You must select a backend (--gtk or --qt)"
+    print "You must select a backend (--gtk or --qt on command line of setup your .hgviewrc file)"
     print "defaults to gtk"
     use_gtk = True
 
