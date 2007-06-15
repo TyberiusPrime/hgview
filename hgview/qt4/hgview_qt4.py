@@ -221,6 +221,7 @@ class HgMainWindow(QtGui.QMainWindow):
                 self.fill_revlog_header(node, rev_node, doc)
                 
                 stats = self.fill_diff_richtext(node, rev_node, doc)
+                #timeit()
             else:
                 stats = []
             self.textview_status.setDocument(doc)
@@ -532,7 +533,11 @@ class HgMainWindow(QtGui.QMainWindow):
         self.refresh_revision_table()
 
     def on_find(self, *args):
-        print "find"
+        print "Find not yet implemented... Sorry."
+        QtGui.QMessageBox.warning(self, self.tr("Noy yet implemented"),
+                                  "<p><b>Find</b> functionality has nit yet been implemented... Sorry</p>"
+                                  )
+        
         
 
 def main():
