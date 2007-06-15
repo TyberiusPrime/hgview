@@ -17,7 +17,7 @@
 # You should have received a copy of the GNU General Public License along with
 # this program; if not, write to the Free Software Foundation, Inc.,
 # 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
-""" Generic Setup script, takes package info from __pkginfo__.py file """
+""" Generic Setup script, takes package info from hgview.__pkginfo__.py file """
 
 from __future__ import nested_scopes
 
@@ -29,31 +29,31 @@ from distutils.command import install_lib
 from os.path import isdir, exists, join, walk
 
 # import required features
-from __pkginfo__ import modname, version, license, short_desc, long_desc, \
+from hgview.__pkginfo__ import modname, version, license, short_desc, long_desc, \
      web, author, author_email
 # import optional features
 try:
-    from __pkginfo__ import distname
+    from hgview.__pkginfo__ import distname
 except ImportError:
     distname = modname
 try:
-    from __pkginfo__ import scripts
+    from hgview.__pkginfo__ import scripts
 except ImportError:
     scripts = []
 try:
-    from __pkginfo__ import data_files
+    from hgview.__pkginfo__ import data_files
 except ImportError:
     data_files = None
 try:
-    from __pkginfo__ import subpackage_of
+    from hgview.__pkginfo__ import subpackage_of
 except ImportError:
     subpackage_of = None
 try:
-    from __pkginfo__ import include_dirs
+    from hgview.__pkginfo__ import include_dirs
 except ImportError:
     include_dirs = []
 try:
-    from __pkginfo__ import ext_modules
+    from hgview.__pkginfo__ import ext_modules
 except ImportError:
     ext_modules = None
 
@@ -77,7 +77,6 @@ def ensure_scripts(linux_scripts):
 def get_packages(directory, prefix):
     """return a list of subpackages for the given directory
     """
-    print "getting packages in '%s' for '%s'"%(directory, prefix)
     result = []
     for package in os.listdir(directory):
         absfile = join(directory, package)
@@ -89,7 +88,6 @@ def get_packages(directory, prefix):
                 else:
                     result.append(package)
                 result += get_packages(absfile, result[-1])
-    print "  -> ", result
     return result
 
 def export(from_dir, to_dir,
@@ -139,7 +137,6 @@ class MyInstallLib(install_lib.install_lib):
     """
     def run(self):
         """overridden from install_lib class"""
-        print "MyInstallLib.run()"
         install_lib.install_lib.run(self)
         # create Products.__init__.py if needed
         if subpackage_of:
@@ -155,24 +152,15 @@ class MyInstallLib(install_lib.install_lib):
                 base = join(subpackage_of, modname)
             else:
                 base = modname
-            print "  base = ", base
             for directory in include_dirs:
                 dest = join(self.install_dir, base, directory)
                 export(directory, dest)
         
 def install(**kwargs):
     """setup entry point"""
-    if subpackage_of:
-        package = subpackage_of + '.' + modname
-        kwargs['package_dir'] = {package : '.'}
-        packages = [package] + get_packages(os.getcwd(), package)
-    else:
-        kwargs['package_dir'] = {modname : modname}
-        packages = [modname] + get_packages(modname, modname)
-    print "packages = ", packages
+    kwargs['package_dir'] = {modname : modname}
+    packages = [modname] + get_packages(modname, modname)
     kwargs['packages'] = packages
-    print "data_files=", data_files
-    print "kw=", kwargs
     return setup(name = distname,
                  version = version,
                  license =license,
