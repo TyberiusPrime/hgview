@@ -1,6 +1,10 @@
 ChangeLog for hgview
 --------------------
 
+2007-05-29  --  0.3.0
+    * add a Qt4 version of hgvies
+    * bugfixes
+
 2007-05-29  --  0.2.0
     * creation of changelog
 
