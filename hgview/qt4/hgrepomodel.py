@@ -94,7 +94,7 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
                 pen = QtGui.QPen(QtCore.Qt.blue)
                 pen.setWidth(2)
                 painter.setPen(pen)
-                
+
                 for color_src_node, x1, y1, x2, y2 in lines:
                     # x y are expressed here in terms of colums (in the graph)
                     # and row (in the list)
@@ -102,13 +102,19 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
                     lpen = QtGui.QPen(pen)
                     lpen.setColor(QtGui.QColor(color))
                     painter.setPen(lpen)
+                        
                     x1 = (1*self.dot_radius + 0) * x1  + self.dot_radius
                     x2 = (1*self.dot_radius + 0) * x2  + self.dot_radius
                     y1 = (y1 - row)*h + h/2
                     y2 = (y2 - row)*h + h/2
                     painter.drawLine(x1, y1, x2, y2)
 
-                painter.setBrush(QtGui.QColor(self.graph.colors.get(node, 'black')))
+                if tags:
+                    dot_color = "yellow"
+                else:
+                    dot_color = "gray"
+                    
+                painter.setBrush(QtGui.QColor(dot_color))
                 painter.setPen(QtCore.Qt.black)
                 painter.drawEllipse(dot_x, dot_y, self.dot_radius, self.dot_radius)
                 if tags:
