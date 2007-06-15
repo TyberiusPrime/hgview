@@ -47,7 +47,9 @@ scripts = [join('bin', filename)
            for filename in ('hgview',)]
 
 data_files = [('share/hgview/', ['hgview/gtk/hgview.glade',
-                                 'hgview/qt4/hgview.ui']),]
+                                 'hgview/qt4/hgview.ui']),
+              ('share/man/man1/', ['hgview.1',
+                                 ]),]
 
 ## include_dirs = [join('test', 'input'),
 ##                 join('test', 'messages'),
