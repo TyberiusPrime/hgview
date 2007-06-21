@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import sys, os
+import os.path as pos
 
 use_gtk=False
 use_qt = False
@@ -17,9 +18,9 @@ if use_gtk and use_qt:
     sys.exit(1)
 
 if not (use_gtk or use_qt):
-    if os.path.isfile(os.path.join(os.environ['HOME'], '.hgviewrc')):
+    if pos.isfile(pos.join(os.environ['HOME'], '.hgviewrc')):
         try:
-            d = open(os.path.join(os.environ['HOME'], '.hgviewrc')).readlines()
+            d = open(pos.join(os.environ['HOME'], '.hgviewrc')).readlines()
         except:
             print "Can't access to your .hgviewrc file! "
             print "Check permissions or specify your desired backend with '--gtk' or '--qt'"
@@ -41,7 +42,16 @@ try:
     import hgview
     print hgview.__file__
 except:
-    sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+    import stat
+    exec_path = pos.abspath(__file__)
+    # Resolve symbolic links
+    statinfo = os.lstat(exec_path)
+    if stat.S_ISLNK(statinfo.st_mode):
+        exec_path = pos.abspath(pos.join(pos.dirname(exec_path),
+                                os.readlink(exec_path)))
+    py_path = pos.abspath(pos.join(pos.dirname(exec_path), ".."))
+    print "Inserting:", py_path
+    sys.path.append(py_path)
 
 if use_qt:
     from hgview.qt4 import hgview_qt4 as hgview
