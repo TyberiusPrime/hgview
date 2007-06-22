@@ -31,12 +31,10 @@ if not (use_gtk or use_qt):
                     backend = l.split('=')[1].strip()
                     use_gtk = 'gtk' in backend
                     use_qt = 'qt' in backend
-                    
-if not (use_gtk or use_qt):
-    print "You must select a backend (--gtk or --qt on command line of setup your .hgviewrc file)"
-    print "defaults to gtk"
-    use_gtk = True
 
+    if not (use_gtk or use_qt): # still ...
+        use_gtk = True
+        
 
 try:
     import hgview
@@ -50,7 +48,7 @@ except:
         exec_path = pos.abspath(pos.join(pos.dirname(exec_path),
                                 os.readlink(exec_path)))
     py_path = pos.abspath(pos.join(pos.dirname(exec_path), ".."))
-    print "Inserting:", py_path
+    #print "Inserting:", py_path
     sys.path.append(py_path)
 
 if use_qt:
