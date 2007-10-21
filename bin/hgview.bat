@@ -7,10 +7,12 @@ goto exit
  
 """
 # -------------------- Python section --------------------
-import sys
-from hgview import hgview
+try:
+    from hgview.gtk import hgview_gtk as hgview
+except ImportError:    
+    from PyQt4 import QtCore, QtGui
+    from hgview.qt4 import hgview_qt4 as hgview
 hgview.main()
- 
 
 DosExitLabel = """
 :exit
