@@ -6,7 +6,7 @@ This is still a development version but already useable.
 
 It is very simple to use ``hgview`` from the hg repository::
 
-  hg clone http://www.logilab.org/hgview
+  hg clone http://www.logilab.org/hg/hgview
 
   cd <ANY_HG_REPO>
   $PATH_TO_HGVIEW_DIR/bin/hgview
