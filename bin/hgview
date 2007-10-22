@@ -38,8 +38,8 @@ if not (use_gtk or use_qt):
 
 try:
     import hgview
-    print hgview.__file__
-except:
+    # print hgview.__file__
+except ImportError:
     import stat
     exec_path = pos.abspath(__file__)
     # Resolve symbolic links
