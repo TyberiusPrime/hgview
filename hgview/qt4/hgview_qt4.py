@@ -39,6 +39,7 @@ class HgMainWindow(QtGui.QMainWindow):
         QtGui.QMainWindow.__init__(self)
         for _path in [dirname(__file__),
                       join(sys.exec_prefix, 'share/hgview'),
+                      os.path.expanduser('~/share/hgview'),
                       join(dirname(__file__), "../../../../../share/hgview"),
                       ]:
             ui_file = join(_path, 'hgview.ui')
