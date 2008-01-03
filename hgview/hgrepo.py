@@ -31,7 +31,7 @@ class RevNode(object):
     short = property(get_short_log)
 
     def get_date( self ):
-        date_ = time.strftime( "%F %H:%M", self.gmtime )
+        date_ = time.strftime( "%Y-%m-%d %H:%M", self.gmtime )
         return date_
     date = property(get_date)
 
