@@ -5,8 +5,10 @@ Maintainer: David Douard <david.douard@logilab.fr>
 Uploaders: Alexandre Fayolle <afayolle@debian.org>
 Build-Depends: debhelper (>= 5.0.38)
 Build-Depends-Indep: python (>=2.3.5-7),  python-central (>= 0.5.6)
-XS-Python-Version: current
 Standards-Version: 3.7.2
+XS-Python-Version: current
+Vcs-Hg: http://www.logilab.org/cgi-bin/hgwebdir.cgi/hgview
+Vcs-Browser: http://www.logilab.org/cgi-bin/hgwebdir.cgi/hgview
 
 Package: hgview
 Architecture: all
@@ -18,4 +20,4 @@ Description: mercurial interactive history viewer
  (it can happily be used to browse Linux kernel source code
  repository).
  .
- homepage: http://www.logilab.org/Project/name/hgview
+ homepage: http://www.logilab.org/projects/hgview
