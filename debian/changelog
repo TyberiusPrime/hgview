@@ -1,3 +1,9 @@
+hgview (0.3.1-2) unstable; urgency=low
+
+  * Rebuild with python2.5 as default version
+
+ -- Alexandre.Fayolle <afayolle@debian.org>  Wed, 18 Jun 2008 12:24:47 +0200
+
 hgview (0.3.1-1) unstable; urgency=low
 
   * Bugfixes
