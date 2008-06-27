@@ -1,6 +1,13 @@
 ChangeLog for hgview
 --------------------
 
+2008-05-15  --  0.3.1
+    * added logic to resolve symbolic links to hgview executable
+    * make hgview less verbose
+    * allow home installation
+    * let the diff's scroll window resize when it's packed in the HPaned
+    * fix Windows related bug
+
 2007-05-29  --  0.3.0
     * add a Qt4 version of hgvies
     * bugfixes
