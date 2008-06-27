@@ -54,7 +54,7 @@ class RevGraph(object):
         _parents = {}
         for p in allnodes:
             _parents[p] = _p = parents_of(repo, p)
-        if len(nodes)==len(allnodes):
+        if len(nodes) == len(allnodes):
             todo = start[:] # None is a blank column
             parents = _parents
         else:
@@ -118,24 +118,24 @@ class RevGraph(object):
         self.done = False
         #print "START", [binhex(n) for n in todo]
 
-    def assigncolor(self, p, color=None):
-        while len(self.parents[p])==1:
+    def assigncolor(self, p, color = None):
+        while len(self.parents[p]) == 1:
             p = self.parents[p][0]
-            if self.nchildren[p]!=1:
+            if self.nchildren[p] != 1:
                 break
         if p in self.colors:
             return p
         if color is None:
             n = self.nextcolor
             color = COLORS[n]
-            n+=1
-            if n==len(COLORS):
-                n=0
+            n += 1
+            if n == len(COLORS):
+                n = 0
             self.nextcolor = n
         self.colors[p] = color
         return p
     
-    def build(self, NMAX=500 ):
+    def build(self, NMAX = 500 ):
         datemode = self.datemode
         todo = self.todo
         rowno = self.rowno
@@ -145,10 +145,10 @@ class RevGraph(object):
         linestarty = self.linestarty
         nullentry = self.nullentry
 
-        rowmax = rowno+NMAX
+        rowmax = rowno + NMAX
         # each node is treated only once
         while todo:
-            if rowno==rowmax:
+            if rowno == rowmax:
                 break
             rowno += 1
             self.rownlines[rowno] = len(todo)
@@ -167,12 +167,12 @@ class RevGraph(object):
 
             level_linestart = linestarty.get( level, rowno )
             # linestarty is top of line at each level
-            # and thus should always be <=rowno
-            assert level_linestart<=rowno
+            # and thus should always be <= rowno
+            assert level_linestart <= rowno
             if level_linestart < rowno:
                 # add line from (x, linestarty[level]) to (x, rowno)
                 # XXX: shouldn't we have added the ones <rowno already ??
-                for r in xrange(level_linestart, rowno+1 ):
+                for r in xrange(level_linestart, rowno + 1 ):
                     self.rowlines[r].add( (idcolor, level,
                         level_linestart, level, rowno) )
             linestarty[level] = rowno # starting a new line
@@ -223,7 +223,7 @@ class RevGraph(object):
             level = -1
             latest = None
 
-            for k in xrange(todol-1, -1, -1):
+            for k in xrange(todol -1, -1, -1):
                 p = todo[k]
                 if p is None:
                     continue
@@ -287,7 +287,7 @@ class RevGraph(object):
                 # add line from (x1, y1) to (x2, y2)
                 (x1, y1) = coords[0]
                 for (x2, y2) in coords[1:]:
-                    for r in xrange(min(y1, y2), max(y1, y2)+1):
+                    for r in xrange(min(y1, y2), max(y1, y2) + 1):
                         self.rowlines[r].add((colordst, x1, y1, x2, y2))
                     (x1, y1) = (x2, y2)
 
@@ -362,7 +362,7 @@ def dfs( g ):
                     if dfs_color[v] == 0:
                         pi[v] = u
                         todo.append(v)
-            elif color==1:
+            elif color == 1:
                 todo.pop(-1)
                 dfs_color[u] = 2
                 time[0] += 1
@@ -379,7 +379,7 @@ def dfs( g ):
 
 
 class RevGraph2(RevGraph):
-    def build(self, NMAX=500 ):
+    def build(self, NMAX = 500 ):
         if self.done:
             return
         parents = self.parents
@@ -390,7 +390,7 @@ class RevGraph2(RevGraph):
         Y = {}
         self.rowlines = []
         s = set()
-        K=0
+        K = 0
         links = {}
         for yc, n in enumerate(topo_sort):
             lines = set()
@@ -408,7 +408,7 @@ class RevGraph2(RevGraph):
                     y2 = yc
                     x1 = X[p]
                     x2 = X[n]
-                    if y2-y1>1:
+                    if y2 - y1 > 1:
                         links[ (p, n) ] = (x1, y1, x2, y2)
                     else:
                         ly = self.rowlines[y1]
@@ -416,13 +416,13 @@ class RevGraph2(RevGraph):
                         ly = self.rowlines[y2]
                         ly.add( (colordst, x1, y1, x2, y2) )
                         
-##                     for y in xrange(y1, yc+1):
+##                     for y in xrange(y1, yc + 1):
 ##                         ly = self.rowlines[y]
 ##                         ly.add( (colordst, x1, y1, x2, y2) )
 
             Y[n] = yc
             s.add(n)
-            if yc%20==0:
+            if yc % 20 == 0:
                 print yc
 
         POS = [ set() for i in xrange(len(topo_sort)) ]
@@ -441,7 +441,7 @@ class RevGraph2(RevGraph):
 
 
 class RevGraph3(RevGraph):
-    def build(self, NMAX=500 ):
+    def build(self, NMAX = 500 ):
         datemode = self.datemode
         todo = self.todo
         rowno = self.rowno
@@ -451,7 +451,7 @@ class RevGraph3(RevGraph):
         linestarty = self.linestarty
         nullentry = self.nullentry
 
-        rowmax = rowno+NMAX
+        rowmax = rowno + NMAX
         # each node is treated only once
         while todo:
             pass
