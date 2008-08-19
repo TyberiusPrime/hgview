@@ -337,7 +337,10 @@ class HgViewApp(object):
         add_rev = self.revisions.append
         tree = self.xml.get_widget( "treeview_revisions" )
         tree.freeze_notify()
+
+        # compute the final bound of this run
         last_node = min(len(rowselected), N + NMAX)
+
         for n in xrange(N, last_node ):
             node = rowselected[n]
             if node is None:
@@ -345,6 +348,7 @@ class HgViewApp(object):
             rnode = self.repo.read_node( node )
             lines = graph.rowlines[n]
             add_rev( (node, rnode, graph.x[node], (lines,n) ) )
+
         self.last_node = last_node
         tree.thaw_notify()
         self.progressbar.set_fraction( float(self.last_node) / len(rowselected) )

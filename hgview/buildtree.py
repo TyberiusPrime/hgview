@@ -50,7 +50,8 @@ class RevGraph(object):
         # calculate initial ncleft for each node
         ncleft = dict( izip( nodes, repeat(0) ) )
         ncleft[nullid] = 0
-
+        
+        # build parent mapping
         _parents = {}
         for p in allnodes:
             _parents[p] = _p = parents_of(repo, p)
@@ -101,6 +102,8 @@ class RevGraph(object):
         level = len(todo) - 1 # column of the node being worked with
         # next column to be eradicate when it is determined that one should be
         nullentry = -1 
+
+        todo.reverse()
         
         rowno = -1
         linestarty = {}
