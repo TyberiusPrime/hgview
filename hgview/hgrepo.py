@@ -15,7 +15,8 @@ class RevNode(object):
     def __init__(self, rev, author_id, desc, date, files, tags):
         self.rev = rev
         self.author_id = author_id
-        self.desc = desc.strip()+"\n"
+        #self.desc = desc.strip()+"\n"
+        self.desc = desc
         self.gmtime = date
         self.files = tuple(files)
         self.tags = tags
@@ -34,6 +35,7 @@ class RevNode(object):
         date_ = time.strftime( "%Y-%m-%d %H:%M", self.gmtime )
         return date_
     date = property(get_date)
+    
 
 class Repository(object):
     """Abstract interface for a repository"""
@@ -46,6 +48,8 @@ class Repository(object):
         self.colors = []
         # the list of nodes
         self.nodes = []
+        # the list of logs
+        self.descs = []
 
     def find_repository(cls, path):
         """finds the root repository or raises
@@ -86,6 +90,7 @@ class Repository(object):
     def add_tag( self, rev, label ):
         pass
 
+
 # A default changelog_cache node
 EMPTY_NODE = (-1,  # REV num
               "",  # short desc
@@ -119,6 +124,7 @@ class HgHLRepo(object):
         self.dir = self.find_repository( path )
         self.ui = ui.ui()
         self.repo = hg.repository( self.ui, self.dir )
+        print '///', self.repo
         # cache and indexing of changelog
         self._cache = {}
 
@@ -146,6 +152,7 @@ class HgHLRepo(object):
         self.nodes = [ changelog.node(i) for i in xrange(cnt) ]
         self._cache = {}
         self.authors = []
+        self.descs = []
         self.colors = []
         self.authors_dict = {}
     read_nodes = timeit(read_nodes)
