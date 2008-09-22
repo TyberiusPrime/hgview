@@ -232,16 +232,13 @@ class HgViewApp(object):
         """A Cell datafunction used to provide the description log and
         foreground color"""
         node = model.get_value( iter_, M_NODE )
-        cell.set_property( "text", str(node.desc) )
-        cell.set_property('foreground', 'red')
-       
-        
-       #  if search_string in node.desc:
-#             cell.set_property('foreground', 'red')
-#         else:
-#             cell.set_property( "foreground", "green")
-       
-            
+        cell.set_property( "text", str(node.desc) ) 
+        print  self.on_attach_renderer(),  node.desc 
+        if  self.on_attach_renderer() in node.desc:
+            cell.set_property('foreground', 'green')
+        else:
+            cell.set_property('foreground', 'red')
+     
 
     def rev_data_func( self, column, cell, model, iter_, user_data=None ):
         """A Cell datafunction used to provide the revnode's text"""
@@ -360,7 +357,6 @@ class HgViewApp(object):
         graph = self.graph
         N = self.last_node
         graph.build(NMAX)
-        print '_______N', N
         rowselected = self.graph.rows
         add_rev = self.revisions.append
         tree = self.xml.get_widget( "treeview_revisions" )
@@ -537,7 +533,7 @@ class HgViewApp(object):
         if position > -1:
             print gtk.CellRendererText()
             self.renderer = gtk.CellRendererText()
-            self.on_attach_renderer(self.renderer)
+            self.on_attach_renderer()
             #self.renderer.set_property( "foreground", "cyan")
             #print 'llllllllllllll' ,self.renderer.get_property("text")
             #self.renderer.connect( 'changed', self.value_found, model )
@@ -545,27 +541,38 @@ class HgViewApp(object):
             return False
         return True
 
-#     def on_attach_renderer(self, renderer):
-#         renderer.set_property('foreground', "green")
+    def on_attach_renderer(self):
+        return self.find_entry().get_text()
+       #  tree = self.xml.get_widget( "treeview_revisions" )
+#         find_entry = self.xml.get_widget( "entry_find" )
+#         tree.set_search_entry(find_entry)
+#         text_to_find = tree.get_search_entry()
+#         print "MMMMMMM", text_to_find.get_text()
+#         return text_to_find.get_text()
+   
+        # renderer.set_property('foreground', "green")
+#         print "__rend, color" ,renderer
+#         #renderer.set_property('foreground-gdk',"green")
 #         self._color_normal = renderer.get_property('foreground-gdk')
+    
+
+    
+        self._color_normal = renderer.get_property('foreground-gdk') 
+        print  self._color_normal.to_string()
       
 #     def get_node(self, rev_num):
 #         nodes = self.repo.nodes
 #         node_list =[]
-        
 #         for n in nodes:
 #             node = self.repo.read_node(n)
 #             print node.colors
-                       
 #             if (node.rev == rev_num):
-                
 #                 node_list.append(node)
 #                 print 'oooooooo', self.colors
-
 #         return node_list
   
     def hilight_search_string( self ):
-        # Highlight the search string
+        # Highlight the search string on the tree
         tree = self.xml.get_widget( "treeview_revisions" )
         cell = tree.get_search_column()
         column =  tree.get_columns()
@@ -574,7 +581,6 @@ class HgViewApp(object):
         tree.set_search_column(1)
         column =  tree.get_columns()
         print tree.get_search_column()
-        print 'enable search', tree.get_enable_search()
         rend=gtk.CellRendererText()
         cell = column[1].get_cell_renderers()
         print 'cell',  cell
@@ -582,24 +588,18 @@ class HgViewApp(object):
         print tree.get_selection().get_selected()
         
         column = column[1].get_cell_renderers()[0]
-        
-      
-        
-        find_entry = self.xml.get_widget( "entry_find" )
-        tree.set_search_entry(find_entry)
-        tt = tree.get_search_entry()
-        print 'get_search', tt.get_text()
 
-        
-        
-        #function = tree.set_search_equal_func
+        txt_to_find = self.find_entry()
+        tree.set_search_entry(txt_to_find)
+
+        #apply search 
         tree.set_search_equal_func(self.__search_value)
         print '________', tree.get_selection().get_selected_rows()
         selection = tree.get_selection()
              
-  
+       
                 
-        
+        #Highlight the search string on the text
         textwidget = self.xml.get_widget( "textview_status" )
         text_buffer = textwidget.get_buffer()
         if not self.find_text:
@@ -621,8 +621,12 @@ class HgViewApp(object):
             text_buffer.apply_tag_by_name("yellowbg", _b, _e )
             m = rexp.search( txt, m.end() )
 
-  
+    def find_entry(self):
+        # text to find
+        find_entry = self.xml.get_widget( "entry_find" )
+        return find_entry
        
+    
 
     def fileselection_changed( self, selection ):
         model, it = selection.get_selected()
@@ -704,7 +708,6 @@ class HgViewApp(object):
         highlight string to grow without changing rows"""
         model, it = self.get_selected_rev()
         start_it = it
-        print '______it', it
         res = self.find_next_row( it )
         if res is None:
             self.find_next_row( self.revisions.get_iter_first(), start_it )
