@@ -101,6 +101,7 @@ class HgViewApp(object):
         self.init_filter()
         self.refresh_tree()
         self.find_text = None
+       
 
     def create_revision_popup(self):
         self.revpopup_path = None, None
@@ -140,6 +141,7 @@ class HgViewApp(object):
         noderange = self.filter_noderange or set(range(len(nodes)))
         for n in nodes:
             node = self.repo.read_node(n)
+            
             if node.rev in noderange:
                 for f in node.files:
                     if frex.search(f):
@@ -226,6 +228,21 @@ class HgViewApp(object):
         cell.set_property( "text", self.repo.authors[node.author_id] )
         cell.set_property( "foreground", self.repo.colors[node.author_id] )
 
+    def desc_data_func( self, column, cell, model, iter_, user_data=None ):
+        """A Cell datafunction used to provide the description log and
+        foreground color"""
+        node = model.get_value( iter_, M_NODE )
+        cell.set_property( "text", str(node.desc) )
+        cell.set_property('foreground', 'red')
+       
+        
+       #  if search_string in node.desc:
+#             cell.set_property('foreground', 'red')
+#         else:
+#             cell.set_property( "foreground", "green")
+       
+            
+
     def rev_data_func( self, column, cell, model, iter_, user_data=None ):
         """A Cell datafunction used to provide the revnode's text"""
         node = model.get_value( iter_, M_NODE )
@@ -251,12 +268,22 @@ class HgViewApp(object):
         rend = RevGraphRenderer()
         #rend.connect( "activated", self.cell_activated )
         self.graph_rend = rend
-        col = gtk.TreeViewColumn("Log", rend, nodex=M_NODEX, edges=M_EDGES,
-                                 node=M_NODE)
-        col.set_resizable(True)
+        
+        # col = gtk.TreeViewColumn("Log", rend, nodex=M_NODEX, edges=M_EDGES,
+#                                  node=M_NODE)
+#         col.set_resizable(True)
+#         col.set_sizing( gtk.TREE_VIEW_COLUMN_FIXED )
+#         col.set_fixed_width( 400 )
+#         tree.append_column( col )
+
+        rend = gtk.CellRendererText()
+        col = gtk.TreeViewColumn("Log", rend )
+        col.set_cell_data_func( rend, self.desc_data_func )
         col.set_sizing( gtk.TREE_VIEW_COLUMN_FIXED )
         col.set_fixed_width( 400 )
+        #col.set_resizable(True)
         tree.append_column( col )
+
 
         rend = gtk.CellRendererText()
         col = gtk.TreeViewColumn("Author", rend )
@@ -333,6 +360,7 @@ class HgViewApp(object):
         graph = self.graph
         N = self.last_node
         graph.build(NMAX)
+        print '_______N', N
         rowselected = self.graph.rows
         add_rev = self.revisions.append
         tree = self.xml.get_widget( "treeview_revisions" )
@@ -489,15 +517,98 @@ class HgViewApp(object):
         sob, eob = text_buffer.get_bounds()
         text_buffer.apply_tag_by_name( "mono", sob, eob )
 
+    def __search_value(self, model, col, key, iter,  data=None):
+        print '*'*80
+        print 'searchvalue', model, col, key, iter, data
+        tree = self.xml.get_widget( "treeview_revisions" )
+        column =  tree.get_columns()
+        col_cell = [x.get_cell_renderers() for x in column]
+
+        val = model.get_value(iter, col)
+        print 'val', val
+ 
+        val_desc = val.desc
+        val_rev = val.rev
+        print '____val.rev', val.desc
+
+        position = val_desc.find(key)
+        print position
+
+        if position > -1:
+            print gtk.CellRendererText()
+            self.renderer = gtk.CellRendererText()
+            self.on_attach_renderer(self.renderer)
+            #self.renderer.set_property( "foreground", "cyan")
+            #print 'llllllllllllll' ,self.renderer.get_property("text")
+            #self.renderer.connect( 'changed', self.value_found, model )
+            print val.rev
+            return False
+        return True
+
+#     def on_attach_renderer(self, renderer):
+#         renderer.set_property('foreground', "green")
+#         self._color_normal = renderer.get_property('foreground-gdk')
+      
+#     def get_node(self, rev_num):
+#         nodes = self.repo.nodes
+#         node_list =[]
+        
+#         for n in nodes:
+#             node = self.repo.read_node(n)
+#             print node.colors
+                       
+#             if (node.rev == rev_num):
+                
+#                 node_list.append(node)
+#                 print 'oooooooo', self.colors
+
+#         return node_list
+  
     def hilight_search_string( self ):
         # Highlight the search string
+        tree = self.xml.get_widget( "treeview_revisions" )
+        cell = tree.get_search_column()
+        column =  tree.get_columns()
+        print [x.get_title() for x in column]
+        print [x.get_cell_renderers() for x in column]
+        tree.set_search_column(1)
+        column =  tree.get_columns()
+        print tree.get_search_column()
+        print 'enable search', tree.get_enable_search()
+        rend=gtk.CellRendererText()
+        cell = column[1].get_cell_renderers()
+        print 'cell',  cell
+        
+        print tree.get_selection().get_selected()
+        
+        column = column[1].get_cell_renderers()[0]
+        
+      
+        
+        find_entry = self.xml.get_widget( "entry_find" )
+        tree.set_search_entry(find_entry)
+        tt = tree.get_search_entry()
+        print 'get_search', tt.get_text()
+
+        
+        
+        #function = tree.set_search_equal_func
+        tree.set_search_equal_func(self.__search_value)
+        print '________', tree.get_selection().get_selected_rows()
+        selection = tree.get_selection()
+             
+  
+                
+        
         textwidget = self.xml.get_widget( "textview_status" )
         text_buffer = textwidget.get_buffer()
         if not self.find_text:
             return
 
         rexp = re.compile(self.find_text)
+              
         sob, eob = text_buffer.get_bounds()
+        print '__sob, eob', sob, eob
         # RESTRICT TO DESCRIPTION PART : should be conditionalized
         #mark = text_buffer.get_mark( "enddesc" )
         #enddesc = text_buffer.get_iter_at_mark(mark)
@@ -509,6 +620,9 @@ class HgViewApp(object):
             _e = text_buffer.get_iter_at_offset( m.end() )
             text_buffer.apply_tag_by_name("yellowbg", _b, _e )
             m = rexp.search( txt, m.end() )
+
+  
+       
 
     def fileselection_changed( self, selection ):
         model, it = selection.get_selected()
@@ -590,6 +704,7 @@ class HgViewApp(object):
         highlight string to grow without changing rows"""
         model, it = self.get_selected_rev()
         start_it = it
+        print '______it', it
         res = self.find_next_row( it )
         if res is None:
             self.find_next_row( self.revisions.get_iter_first(), start_it )
