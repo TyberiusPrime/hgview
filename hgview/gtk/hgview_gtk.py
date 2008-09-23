@@ -232,13 +232,23 @@ class HgViewApp(object):
         """A Cell datafunction used to provide the description log and
         foreground color"""
         node = model.get_value( iter_, M_NODE )
-        cell.set_property( "text", str(node.desc) ) 
+
+        txt = self.xml.get_widget( "entry_find" ).get_text()
         
-        if self.find_entry().get_text() and self.find_entry().get_text() in node.desc:
-            cell.set_property('foreground', 'red')
+        if txt !='':
+            try:
+                rexp = re.compile( '(%s)' % txt.replace('&', '&amp;').replace('<', '&lt;') )
+                markup = rexp.sub('<span background="yellow">\\1</span>', str(node.desc).replace('&', '&amp;').replace('<', '&lt;'))
+
+            except:
+                # regexp incorrect
+                markup = str(node.desc).replace('&', '&amp;').replace('<', '&lt;') # FIXME
+            print markup
         else:
-            cell.set_property('foreground', 'black')
-     
+            markup = str(node.desc).replace('&', '&amp;').replace('<', '&lt;')
+        cell.set_property("markup", '<span>%s</span>' % markup)
+        
+       # print cell.get_property('markup')
 
     def rev_data_func( self, column, cell, model, iter_, user_data=None ):
         """A Cell datafunction used to provide the revnode's text"""
@@ -254,12 +264,20 @@ class HgViewApp(object):
         """A Cell datafunction used to provide the files"""
         #print column
         node = model.get_value( iter_, 0 )
-        #cell.set_property( "text", node.files ) 
-        #print 'uuuuu', node
-        if self.find_entry().get_text() and self.find_entry().get_text() in node:
-            cell.set_property('foreground', 'red')
-        else:
-            cell.set_property('foreground', 'black')
+       #  txt = self.xml.get_widget( "entry_find" ).get_text()
+
+#         if txt !='':
+#             try:
+#                 rexp = re.compile( '(%s)' % txt )
+#                 markup = rexp.sub('<span background="yellow">\\1</span>', str(node.desc).replace('&', '&amp;').replace('<', '&lt;'))
+
+#             except:
+#                 # regexp incorrect
+#                 markup = str(node.desc).replace('&', '&amp;').replace('<', '&lt;') # FIXME
+#             print markup
+#         else:
+#             markup = str(node.desc).replace('&', '&amp;').replace('<', '&lt;')
+#         cell.set_property("markup", '<span>%s</span>' % markup)
 
     def setup_tree(self):
         """Configure the 2 gtk.TreeView"""
@@ -528,33 +546,15 @@ class HgViewApp(object):
         text_buffer.apply_tag_by_name( "mono", sob, eob )
 
     def hilight_search_string( self ):
-        # Highlight the search string on the tree
-        tree = self.xml.get_widget( "treeview_revisions" )
-        cell = tree.get_search_column()
-        column =  tree.get_columns()
-        tree.set_search_column(1)
-        column =  tree.get_columns()
-        print tree.get_search_column()
-        rend=gtk.CellRendererText()
-        cell = column[1].get_cell_renderers()
-        column = column[1].get_cell_renderers()[0]
-        txt_to_find = self.find_entry()
-    
-        ##Highlight the search string on the file list
-        tree_files = self.xml.get_widget( "treeview_filelist" )
-        column =  tree_files.get_columns()
-        tree_files.set_search_column(0)
-        tree_files.set_search_entry(txt_to_find)
-        #tree_files.set_search_equal_func(self.__search_file)
-       
-                
         ##Highlight the search string on the text
         textwidget = self.xml.get_widget( "textview_status" )
         text_buffer = textwidget.get_buffer()
         if not self.find_text:
             return
-
-        rexp = re.compile(self.find_text)
+        try:
+            rexp = re.compile(self.find_text)
+        except:
+            return
         sob, eob = text_buffer.get_bounds()
         # RESTRICT TO DESCRIPTION PART : should be conditionalized
         #mark = text_buffer.get_mark( "enddesc" )
@@ -562,12 +562,14 @@ class HgViewApp(object):
         #txt = text_buffer.get_slice(sob, enddesc, True )
         txt = text_buffer.get_slice(sob, eob)
         m = rexp.search( txt )
-        while m: # FIXME wrong coloring in diff body
+        max_search = 50
+        while m and max_search > 0: # FIXME wrong coloring in diff body
             _b = text_buffer.get_iter_at_offset( m.start() )
             _e = text_buffer.get_iter_at_offset( m.end() )
             text_buffer.apply_tag_by_name("yellowbg", _b, _e )
             m = rexp.search( txt, m.end() )
-
+            max_search -= 1
+            
     def find_entry(self):
         # text to find
         find_entry = self.xml.get_widget( "entry_find" )
@@ -646,7 +648,6 @@ class HgViewApp(object):
         it = self.revisions.iter_next( it )
         start_it = it
         res = self.find_next_row( it )
-        print '_______res', res
         if res is None:
             self.find_next_row( self.revisions.get_iter_first(), start_it )
 
