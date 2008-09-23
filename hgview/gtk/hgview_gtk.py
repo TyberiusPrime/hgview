@@ -235,17 +235,16 @@ class HgViewApp(object):
 
         txt = self.xml.get_widget( "entry_find" ).get_text()
         
+        str_node_desc =  str(node.desc).replace('&', '&amp;').replace('<', '&lt;') 
         if txt !='':
             try:
                 rexp = re.compile( '(%s)' % txt.replace('&', '&amp;').replace('<', '&lt;') )
-                markup = rexp.sub('<span background="yellow">\\1</span>', str(node.desc).replace('&', '&amp;').replace('<', '&lt;'))
-
+                markup = rexp.sub('<span background="yellow">\\1</span>', str_node_desc)
             except:
                 # regexp incorrect
-                markup = str(node.desc).replace('&', '&amp;').replace('<', '&lt;') # FIXME
-            print markup
+                markup = str_node_desc
         else:
-            markup = str(node.desc).replace('&', '&amp;').replace('<', '&lt;')
+            markup =str_node_desc
         cell.set_property("markup", '<span>%s</span>' % markup)
         
        # print cell.get_property('markup')
@@ -264,21 +263,20 @@ class HgViewApp(object):
         """A Cell datafunction used to provide the files"""
         #print column
         node = model.get_value( iter_, 0 )
-       #  txt = self.xml.get_widget( "entry_find" ).get_text()
-
-#         if txt !='':
-#             try:
-#                 rexp = re.compile( '(%s)' % txt )
-#                 markup = rexp.sub('<span background="yellow">\\1</span>', str(node.desc).replace('&', '&amp;').replace('<', '&lt;'))
-
-#             except:
-#                 # regexp incorrect
-#                 markup = str(node.desc).replace('&', '&amp;').replace('<', '&lt;') # FIXME
-#             print markup
-#         else:
-#             markup = str(node.desc).replace('&', '&amp;').replace('<', '&lt;')
-#         cell.set_property("markup", '<span>%s</span>' % markup)
-
+        
+        txt = self.xml.get_widget( "entry_find" ).get_text()
+        str_node = str(node).replace('&', '&amp;').replace('<', '&lt;')
+        if txt !='':
+            try:
+                rexp = re.compile( '(%s)' % txt.replace('&', '&amp;').replace('<', '&lt;') )
+                markup = rexp.sub('<span background="yellow">\\1</span>', str_node)
+            except:
+                # regexp incorrect
+                markup = str_node
+        else:
+            markup = str_node
+        cell.set_property("markup", '<span>%s</span>' % markup)
+  
     def setup_tree(self):
         """Configure the 2 gtk.TreeView"""
         # Setup the revisions treeview
@@ -295,19 +293,11 @@ class HgViewApp(object):
         #rend.connect( "activated", self.cell_activated )
         self.graph_rend = rend
         
-        # col = gtk.TreeViewColumn("Log", rend, nodex=M_NODEX, edges=M_EDGES,
-#                                  node=M_NODE)
-#         col.set_resizable(True)
-#         col.set_sizing( gtk.TREE_VIEW_COLUMN_FIXED )
-#         col.set_fixed_width( 400 )
-#         tree.append_column( col )
-
         rend = gtk.CellRendererText()
         col = gtk.TreeViewColumn("Log", rend )
         col.set_cell_data_func( rend, self.desc_data_func )
         col.set_sizing( gtk.TREE_VIEW_COLUMN_FIXED )
         col.set_fixed_width( 400 )
-        #col.set_resizable(True)
         tree.append_column( col )
 
 
