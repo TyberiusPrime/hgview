@@ -1,4 +1,3 @@
-
 import os
 from mercurial import hg, ui, patch
 from mercurial.node import short as short_hex, bin as short_bin
@@ -124,7 +123,7 @@ class HgHLRepo(object):
         self.dir = self.find_repository( path )
         self.ui = ui.ui()
         self.repo = hg.repository( self.ui, self.dir )
-        print '///', self.repo
+        print '///', self
         # cache and indexing of changelog
         self._cache = {}
 
