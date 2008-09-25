@@ -1,6 +1,7 @@
 import os
 from mercurial import hg, ui, patch
 from mercurial.node import short as short_hex, bin as short_bin
+from mercurial.localrepo import localrepository
 from mercurial.node import nullid
 from buildtree import RevGraph
 from StringIO import StringIO
@@ -87,7 +88,11 @@ class Repository(object):
     def add_tag( self, rev, label ):
         pass
 
-
+    def get_branch(self):
+        """
+        return branches
+        """
+  
 # A default changelog_cache node
 EMPTY_NODE = (-1,  # REV num
               "",  # short desc
@@ -127,6 +132,10 @@ class HgHLRepo(object):
 
     def refresh(self):
         self.repo = hg.repository( self.ui, self.dir )
+        
+    def get_branch(self):
+        return self.repo.branchtags().keys()
+
 
     def find_repository(self, path):
         """returns <path>'s mercurial repository
