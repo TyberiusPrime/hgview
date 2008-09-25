@@ -12,6 +12,7 @@
 import gtk
 import gobject
 import pango
+import re
 
 class RevGraphRenderer(gtk.GenericCellRenderer):
     __gproperties__ = {
@@ -31,8 +32,9 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
                      (gobject.TYPE_STRING, gobject.TYPE_INT))
         }
 
-    def __init__(self):
+    def __init__(self, app):
         self.__gobject_init__()
+        self.app = app
         self.r = 6
 
         self.nodex = 0
@@ -44,10 +46,14 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
         self.tag_layout = None
         self.text_layout = None
         self.line_pens = {}
+        self.text_to_yellow = None
 
         self.colors = { }
         self.selected_node = None
         self.set_property( "mode", gtk.CELL_RENDERER_MODE_ACTIVATABLE )
+        #self.set_property("cell-background", "red"
+     
+        
 
     def set_colors( self, colors ):
         self.colors = colors
@@ -57,7 +63,7 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
         return getattr( self, propname.name )
 
     def do_set_property( self, propname, value):
-        setattr(self, propname.name, value)
+        setattr(self, propname.name, value) 
 
     def get_tag_layout(self,widget):
         if self.tag_layout:
@@ -164,6 +170,18 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
 
         layout = self.get_text_layout(widget)
         layout.set_text( self.node.short )
+        searched_text = self.app.find_entry().get_text()
+
+        #search on the string log
+        str_node = layout.get_text().replace('&', '&amp;').replace('<', '&lt;')
+        if searched_text in str_node:
+            rexp = re.compile( '(%s)' % searched_text.replace('&', '&amp;').replace('<', '&lt;') )
+            markup = rexp.sub('<span background="yellow">\\1</span>', str_node)
+            layout.set_markup(markup)
+        else:
+            
+            layout.set_markup('<span>%s</span>'% str_node)
+            
         w_,h_ = layout.get_size()
         d_ = (h-h_/pango.SCALE)/2
         window.draw_layout( fgc, x + offset + W*(xmax+2), y+d_, layout )
