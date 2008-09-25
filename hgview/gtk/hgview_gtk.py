@@ -25,6 +25,7 @@ import hgview.fixes
 from graphrenderer import RevGraphRenderer
 from diffstatrenderer import DiffStatRenderer
 from hgview.hgrepo import HgHLRepo, short_hex, short_bin
+from mercurial.localrepo import localrepository 
 
 GLADE_FILE_NAME = "hgview.glade"
 
@@ -95,6 +96,7 @@ class HgViewApp(object):
                                        )
 
         self.create_revision_popup()
+        self.setup_branch_combo()
         self.setup_tags()
         self.graph = None
         self.setup_tree()
@@ -128,6 +130,21 @@ class HgViewApp(object):
     def revpopup_update(self, item):
         print "UPDATE"
 
+    def setup_branch_combo(self):
+        combo_filter = self.xml.get_widget("branch_combo")
+        self.branch_store = gtk.ListStore( gobject.TYPE_STRING )
+        combo_filter.set_model(self.branch_store)
+        print '_________',  combo_filter.get_model()
+       #  cell = gtk.CellRendererText()
+#         combo_filter.pack_start(cell, True)
+#         combo_filter.add_attribute(cell, 'text', 0)
+
+        i = 0
+        for branch_name in self.repo.get_branch():
+            self.branch_store.append( (branch_name,) )
+            i += 1
+            
+        
     def on_refresh_activate(self, arg):
         #print "REFRESH", arg
         self.repo.refresh()
@@ -658,6 +675,12 @@ class HgViewApp(object):
         node_high = self.xml.get_widget("spinbutton_rev_high")
         self.filter_files = re.compile(file_filter.get_text())
         self.filter_noderange = set(range( node_low.get_value_as_int(), node_high.get_value_as_int() ))
+        self.refresh_tree()
+
+    def on_branch_combo_changed( self, *args ):
+        combo_filter = self.xml.get_widget("branch_combo")
+        active_branch = combo_filter.get_active()
+      
         self.refresh_tree()
 
 
