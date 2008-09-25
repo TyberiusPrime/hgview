@@ -14,8 +14,8 @@ class RevNode(object):
     def __init__(self, rev, author_id, desc, date, files, tags):
         self.rev = rev
         self.author_id = author_id
-        #self.desc = desc.strip()+"\n"
-        self.desc = desc
+        self.desc = desc.strip()+"\n"
+        #self.desc = desc
         self.gmtime = date
         self.files = tuple(files)
         self.tags = tags
@@ -47,8 +47,6 @@ class Repository(object):
         self.colors = []
         # the list of nodes
         self.nodes = []
-        # the list of logs
-        self.descs = []
 
     def find_repository(cls, path):
         """finds the root repository or raises
@@ -151,7 +149,6 @@ class HgHLRepo(object):
         self.nodes = [ changelog.node(i) for i in xrange(cnt) ]
         self._cache = {}
         self.authors = []
-        self.descs = []
         self.colors = []
         self.authors_dict = {}
     read_nodes = timeit(read_nodes)
