@@ -228,26 +228,6 @@ class HgViewApp(object):
         cell.set_property( "text", self.repo.authors[node.author_id] )
         cell.set_property( "foreground", self.repo.colors[node.author_id] )
 
-    def desc_data_func( self, column, cell, model, iter_, user_data=None ):
-        """A Cell datafunction used to provide the description log and
-        foreground color"""
-        node = model.get_value( iter_, M_NODE )
-
-        txt = self.xml.get_widget( "entry_find" ).get_text()
-        
-        str_node_desc =  str(node.desc).replace('&', '&amp;').replace('<', '&lt;') 
-        if txt !='':
-            try:
-                rexp = re.compile( '(%s)' % txt.replace('&', '&amp;').replace('<', '&lt;') )
-                markup = rexp.sub('<span background="yellow">\\1</span>', str_node_desc)
-            except:
-                # regexp incorrect
-                markup = str_node_desc
-        else:
-            markup =str_node_desc
-        cell.set_property("markup", '<span>%s</span>' % markup)
-        
-       # print cell.get_property('markup')
 
     def rev_data_func( self, column, cell, model, iter_, user_data=None ):
         """A Cell datafunction used to provide the revnode's text"""
@@ -288,14 +268,13 @@ class HgViewApp(object):
         col.set_cell_data_func( rend, self.rev_data_func )
         col.set_resizable(True)
         tree.append_column( col )
-
-        rend = RevGraphRenderer()
-        #rend.connect( "activated", self.cell_activated )
+    
+        rend = RevGraphRenderer(self)
+        rend.connect( "activated", self.cell_activated )
         self.graph_rend = rend
-        
-        rend = gtk.CellRendererText()
-        col = gtk.TreeViewColumn("Log", rend )
-        col.set_cell_data_func( rend, self.desc_data_func )
+        col = gtk.TreeViewColumn("Log", rend, nodex=M_NODEX, edges=M_EDGES,
+                                node=M_NODE)
+        col.set_resizable(True)
         col.set_sizing( gtk.TREE_VIEW_COLUMN_FIXED )
         col.set_fixed_width( 400 )
         tree.append_column( col )
