@@ -11,8 +11,8 @@ import mercurial.commands
 
 
 class RevNode(object):
-    __slots__ = "rev author_id desc gmtime files tags".split()
-    def __init__(self, rev, author_id, desc, date, files, tags):
+    __slots__ = "rev author_id desc gmtime files tags branches".split()
+    def __init__(self, rev, author_id, desc, date, files, tags, branches):
         self.rev = rev
         self.author_id = author_id
         self.desc = desc.strip()+"\n"
@@ -20,6 +20,7 @@ class RevNode(object):
         self.gmtime = date
         self.files = tuple(files)
         self.tags = tags
+        self.branches = branches
 
     def get_short_log( self ):
         """Compute a short log from the full revision log"""
@@ -92,6 +93,10 @@ class Repository(object):
         """
         return branches
         """
+    def get_branchcache(self):
+        """
+        return info for all branches
+        """
   
 # A default changelog_cache node
 EMPTY_NODE = (-1,  # REV num
@@ -101,6 +106,7 @@ EMPTY_NODE = (-1,  # REV num
               "",  # Date
               (),  # file list
               [],  # tags
+              [],  # branches
               )
 
 def timeit( f ):
@@ -134,7 +140,10 @@ class HgHLRepo(object):
         self.repo = hg.repository( self.ui, self.dir )
         
     def get_branch(self):
-        return self.repo.branchtags().keys()
+        return self.repo.branchtags()
+
+    def get_branchcache(self):
+        return self.repo._readbranchcache()
 
 
     def find_repository(self, path):
@@ -160,6 +169,7 @@ class HgHLRepo(object):
         self.authors = []
         self.colors = []
         self.authors_dict = {}
+        self.branches = []
     read_nodes = timeit(read_nodes)
 
 
@@ -170,7 +180,8 @@ class HgHLRepo(object):
             return nodeinfo[node]
         NCOLORS = len(COLORS)
         changelog = self.repo.changelog
-        _, author, date, filelist, log, _ = changelog.read( node )
+        _, author, date, filelist, log, branches = changelog.read( node )
+        branches = branches['branch']
         rev = changelog.rev( node )
         aid = len(self.authors)
         author_id = self.authors_dict.setdefault( author, aid )
@@ -181,7 +192,7 @@ class HgHLRepo(object):
         date_ = time.gmtime(date[0])
         taglist = self.repo.nodetags(node)
         tags = ", ".join(taglist)
-        _node = RevNode(rev, author_id, log, date_, filelist, tags)
+        _node = RevNode(rev, author_id, log, date_, filelist, tags, branches)
         nodeinfo[node] = _node
         return _node
 
