@@ -44,9 +44,11 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
         self.pengc = None
         self.yellowcolor = None
         self.tag_layout = None
+        self.branch_layout = None
         self.text_layout = None
         self.line_pens = {}
         self.text_to_yellow = None
+        self.greencolor = None
 
         self.colors = { }
         self.selected_node = None
@@ -72,9 +74,22 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
         desc = ctx.get_font_description()
         desc = desc.copy()
         desc.set_size( int(desc.get_size()*0.8) )
+        
         self.tag_layout = pango.Layout( ctx )
         self.tag_layout.set_font_description( desc )
         return self.tag_layout
+    
+    def get_branch_layout(self,widget):
+        if self.branch_layout:
+            print '________ self.branch_layout',  self.branch_layout
+            return self.branch_layout
+        ctx = widget.get_pango_context()
+        desc = ctx.get_font_description()
+        desc = desc.copy()
+        desc.set_size( int(desc.get_size()*0.8) )
+        self.branch_layout = pango.Layout( ctx )
+        self.branch_layout.set_font_description( desc )
+        return self.branch_layout
 
     def get_text_layout(self,widget):
         if self.text_layout:
@@ -90,6 +105,14 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
         color = cmap.alloc_color("yellow")
         self.yellowcolor = color
         return color
+
+    def get_green_color( self, widget ):
+        if self.greencolor:
+            return self.greencolor
+        cmap = widget.get_colormap()
+        color = cmap.alloc_color("green")
+        self.greencolor = color
+        return color 
 
     def get_pen_gc( self, widget, window ):
         if self.pengc:
@@ -162,7 +185,7 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
         if self.node.tags:
             layout = self.get_tag_layout(widget)
             layout.set_text( self.node.tags )
-            print '___( self.node.tags' ,self.node.tags
+           # print '___( self.node.tags' ,self.node.tags
             w_,h_ = layout.get_size()
             d_= (h-h_/pango.SCALE)/2
             offset = w_/pango.SCALE + 3
@@ -171,7 +194,18 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
 
         if self.node.rev in self.app.get_node_branch().keys():
             rev_from_branch =  self.app.get_node_branch()[self.node.rev]
-            print '___________ rev_from_branch',  rev_from_branch
+            #print '___________ rev_from_branch',  rev_from_branch
+            layout = self.get_branch_layout(widget)
+            layout.set_text(rev_from_branch)
+            w_,h_ = layout.get_size()
+            d_= (h-h_/pango.SCALE)/2
+            offset = w_/pango.SCALE + 3
+            if self.node.tags:
+                x = 60
+            else:
+                x = 48
+            window.draw_layout( fgc, x + W*(xmax+1), y+d_, layout,
+                                background=self.get_green_color(widget) )
             
 
         layout = self.get_text_layout(widget)
