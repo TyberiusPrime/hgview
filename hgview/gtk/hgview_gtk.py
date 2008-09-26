@@ -140,10 +140,21 @@ class HgViewApp(object):
 #         combo_filter.add_attribute(cell, 'text', 0)
 
         i = 0
-        for branch_name in self.repo.get_branch():
+        for branch_name in self.repo.get_branch().keys():
             self.branch_store.append( (branch_name,) )
             i += 1
-            
+
+        #print '**********', self.repo.get_branchcache()
+        #print self.repo._cache
+
+    def get_node_branch(self):
+        branch_nodeRev = { }
+        dic_branch = self.repo.get_branchcache()[0]
+        for branch, node in dic_branch.items():
+            node_info = self.repo.read_node(node)
+            rev = node_info.rev
+            branch_nodeRev[rev] = branch
+        return branch_nodeRev
         
     def on_refresh_activate(self, arg):
         #print "REFRESH", arg

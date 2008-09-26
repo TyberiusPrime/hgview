@@ -81,7 +81,7 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
             return self.text_layout
         ctx = widget.get_pango_context()
         self.text_layout = pango.Layout( ctx )
-        return self.text_layout
+        return self.text_layout 
 
     def get_yellow_color( self, widget ):
         if self.yellowcolor:
@@ -162,11 +162,17 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
         if self.node.tags:
             layout = self.get_tag_layout(widget)
             layout.set_text( self.node.tags )
+            print '___( self.node.tags' ,self.node.tags
             w_,h_ = layout.get_size()
             d_= (h-h_/pango.SCALE)/2
             offset = w_/pango.SCALE + 3
             window.draw_layout( fgc, x + W*(xmax+1), y+d_, layout,
                                 background=self.get_yellow_color(widget) )
+
+        if self.node.rev in self.app.get_node_branch().keys():
+            rev_from_branch =  self.app.get_node_branch()[self.node.rev]
+            print '___________ rev_from_branch',  rev_from_branch
+            
 
         layout = self.get_text_layout(widget)
         layout.set_text( self.node.short )
@@ -179,7 +185,6 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
             markup = rexp.sub('<span background="yellow">\\1</span>', str_node)
             layout.set_markup(markup)
         else:
-            
             layout.set_markup('<span>%s</span>'% str_node)
             
         w_,h_ = layout.get_size()
