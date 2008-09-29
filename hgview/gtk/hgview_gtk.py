@@ -96,7 +96,6 @@ class HgViewApp(object):
                                        )
 
         self.create_revision_popup()
-        self.setup_combo('branch_combo')
         self.setup_combo('branch_highlight_combo')
         self.setup_tags()
         self.graph = None
@@ -141,8 +140,8 @@ class HgViewApp(object):
             self.branch_store.append( ('No one',) )
         for branch_name in self.repo.get_branch().keys():
             self.branch_store.append( (branch_name,) )
-        
-
+        combo_filter.set_active(0)
+ 
     def get_node_branch(self):
         branch_nodeRev = { }
         dic_branch = self.repo.get_branchcache()[0]
@@ -684,11 +683,23 @@ class HgViewApp(object):
         self.filter_noderange = set(range( node_low.get_value_as_int(), node_high.get_value_as_int() ))
         self.refresh_tree()
 
-    def on_branch_combo_changed( self, *args ):
-        combo_filter = self.xml.get_widget("branch_combo")
-        active_branch = combo_filter.get_active()
-      
+    def on_branch_checkbox_toggled( self, *args ):
         self.refresh_tree()
+
+    def on_branch_highlight_combo_changed( self, *args ):
+        if self.xml.get_widget("branch_checkbox").get_active():
+            self.refresh_tree()
+        else:
+            # just have to refresh displayed area
+            pass
+    
+    def get_selected_named_branch(self):
+        """
+        Returns the name of the currently selected named branch in the combo
+        """
+        combo_filter = self.xml.get_widget("branch_highlight_combo")
+        active_branch = combo_filter.get_active_text()
+        return active_branch
 
 
 def main():
