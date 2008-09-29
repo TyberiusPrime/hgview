@@ -54,7 +54,8 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
         self.selected_node = None
         self.set_property( "mode", gtk.CELL_RENDERER_MODE_ACTIVATABLE )
         #self.set_property("cell-background", "red"
-     
+
+        self.selected_branch = "default"
         
 
     def set_colors( self, colors ):
@@ -81,7 +82,6 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
     
     def get_branch_layout(self,widget):
         if self.branch_layout:
-            print '________ self.branch_layout',  self.branch_layout
             return self.branch_layout
         ctx = widget.get_pango_context()
         desc = ctx.get_font_description()
@@ -123,7 +123,7 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
         self.pengc = pen
         return pen
 
-    def get_line_pen( self, widget, window, node ):
+    def get_line_pen( self, widget, window, node, width ):
         txtcolor = self.colors.get(node,"black")
         pen = self.line_pens.get(txtcolor)
         if pen is None:
@@ -133,7 +133,7 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
             cmap = widget.get_colormap()
             color = cmap.alloc_color(txtcolor)
             pen.set_foreground( color )
-            pen.set_line_attributes( 2, gtk.gdk.LINE_SOLID,
+            pen.set_line_attributes( width, gtk.gdk.LINE_SOLID,
                                      gtk.gdk.CAP_ROUND,
                                      gtk.gdk.JOIN_BEVEL )
             self.line_pens[txtcolor] = pen
@@ -164,48 +164,47 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
             y2-=n
             if node==self.selected_node:
                 node = "activated"
-            # choose the right pen (line color) for the line 
-            pen = self.get_line_pen(widget,window,node)
+            # choose the right pen (line color) for the line
+            if self.app.repo.read_node(node).branches['branch'] == 'jquery': 
+                pen = self.get_line_pen(widget,window,node, 4)
+            else:
+                pen = self.get_line_pen(widget,window,node, 2) 
             pen.set_clip_rectangle( (x,y-1,w,h+2) )
             window.draw_line( pen,
                               x + (2*x1+1)*W/2, y+(2*y1+1)*h/2,
-                              x + (2*x2+1)*W/2, y+(2*y2+1)*h/2 )
+                              x + (2*x2+1)*W/2, y+(2*y2+1)*h/2)
+            
             # the 'and' conditions are there to handle diagonal lines properly
             if x1>xmax and (y1==0 or x1==x2):
                 xmax = x1
             if x2>xmax and (y2==0 or x1==x2):
                 xmax = x2
 
-        # draw 2 circles (empty & filled) to display the current node
-        window.draw_arc( bgc, True, x_ + (W-R)/2, y_+(W-R)/2, R, R, 0, 360*64 )
-        window.draw_arc( fgc, False, x_ + (W-R)/2, y_+(W-R)/2, R, R, 0, 360*64 )
+            # draw 2 circles (empty & filled) to display the current node
+            window.draw_arc( bgc, True, x_ + (W-R)/2, y_+(W-R)/2, R, R, 0, 360*64 )
+            window.draw_arc( fgc, False, x_ + (W-R)/2, y_+(W-R)/2, R, R, 0, 360*64 )
 
         # if required, display a nice "post-it" with tags in it
         offset = 0
         if self.node.tags:
             layout = self.get_tag_layout(widget)
             layout.set_text( self.node.tags )
-           # print '___( self.node.tags' ,self.node.tags
             w_,h_ = layout.get_size()
             d_= (h-h_/pango.SCALE)/2
             offset = w_/pango.SCALE + 3
             window.draw_layout( fgc, x + W*(xmax+1), y+d_, layout,
                                 background=self.get_yellow_color(widget) )
 
-        if self.node.rev in self.app.get_node_branch().keys():
-            rev_from_branch =  self.app.get_node_branch()[self.node.rev]
-            #print '___________ rev_from_branch',  rev_from_branch
+        node_branch = self.app.get_node_branch()
+        if self.node.rev in node_branch:
+            rev_from_branch = node_branch[self.node.rev]
             layout = self.get_branch_layout(widget)
             layout.set_text(rev_from_branch)
             w_,h_ = layout.get_size()
             d_= (h-h_/pango.SCALE)/2
-            offset = w_/pango.SCALE + 3
-            if self.node.tags:
-                x = 60
-            else:
-                x = 48
-            window.draw_layout( fgc, x + W*(xmax+1), y+d_, layout,
+            window.draw_layout( fgc, x + offset + W*(xmax+1), y+d_, layout,
                                 background=self.get_green_color(widget) )
+            offset += w_/pango.SCALE + 3
             
 
         layout = self.get_text_layout(widget)
@@ -213,9 +212,11 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
         searched_text = self.app.find_entry().get_text()
 
         #search on the string log
-        str_node = layout.get_text().replace('&', '&amp;').replace('<', '&lt;')
+        from cgi import escape
+
+        str_node = escape(layout.get_text())
         if searched_text in str_node:
-            rexp = re.compile( '(%s)' % searched_text.replace('&', '&amp;').replace('<', '&lt;') )
+            rexp = re.compile( '(%s)' % escape(searched_text))
             markup = rexp.sub('<span background="yellow">\\1</span>', str_node)
             layout.set_markup(markup)
         else:
