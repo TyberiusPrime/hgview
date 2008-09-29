@@ -169,27 +169,52 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
             if node==self.selected_node:
                 node = "activated"
             # choose the right pen (line color) for the line
+            hide_others = self.app.get_value_branch_checkbox()
             active_branch = self.set_selected_branch()
-            if self.app.repo.read_node(node).branches['branch'] == active_branch:
-                pen = self.get_line_pen(widget, window,node, 4)
-            else:
-                pen = self.get_line_pen(widget, window,node, 2)
-            #self.app.refresh_tree()
-            pen.set_clip_rectangle( (x,y-1,w,h+2) )
-            window.draw_line( pen,
-                              x + (2*x1+1)*W/2, y+(2*y1+1)*h/2,
-                              x + (2*x2+1)*W/2, y+(2*y2+1)*h/2)
+            if hide_others == False:
+                if self.app.repo.read_node(node).branches['branch'] == active_branch:
+                    pen = self.get_line_pen(widget, window,node, 4)
+                else:
+                    pen = self.get_line_pen(widget, window,node, 2)
+                        
+                pen.set_clip_rectangle( (x,y-1,w,h+2) )
+                window.draw_line( pen,
+                                  x + (2*x1+1)*W/2, y+(2*y1+1)*h/2,
+                                  x + (2*x2+1)*W/2, y+(2*y2+1)*h/2)
+                # the 'and' conditions are there to handle diagonal lines properly
+                if x1>xmax and (y1==0 or x1==x2):
+                    xmax = x1
+                if x2>xmax and (y2==0 or x1==x2):
+                    xmax = x2
+
+                # draw 2 circles (empty & filled) to display the current node
+                window.draw_arc( bgc, True, x_ + (W-R)/2, y_+(W-R)/2, R, R, 0, 360*64 )
+                window.draw_arc( fgc, False, x_ + (W-R)/2, y_+(W-R)/2, R, R, 0, 360*64 )
             
-            # the 'and' conditions are there to handle diagonal lines properly
-            if x1>xmax and (y1==0 or x1==x2):
-                xmax = x1
-            if x2>xmax and (y2==0 or x1==x2):
-                xmax = x2
+            if hide_others == True:
+                if self.app.repo.read_node(node).branches['branch'] == active_branch:
+                    pen = self.get_line_pen(widget, window,node, 2)
+                        
+                    pen.set_clip_rectangle( (x,y-1,w,h+2) )
+                    window.draw_line( pen,
+                                      x + (2*x1+1)*W/2, y+(2*y1+1)*h/2,
+                                      x + (2*x2+1)*W/2, y+(2*y2+1)*h/2)
+            
+                    # the 'and' conditions are there to handle diagonal lines properly
+                    if x1>xmax and (y1==0 or x1==x2):
+                        xmax = x1
+                    if x2>xmax and (y2==0 or x1==x2):
+                        xmax = x2
 
-            # draw 2 circles (empty & filled) to display the current node
-            window.draw_arc( bgc, True, x_ + (W-R)/2, y_+(W-R)/2, R, R, 0, 360*64 )
-            window.draw_arc( fgc, False, x_ + (W-R)/2, y_+(W-R)/2, R, R, 0, 360*64 )
+                    # draw 2 circles (empty & filled) to display the current node
+                    window.draw_arc( bgc, True, x_ + (W-R)/2, y_+(W-R)/2, R, R, 0, 360*64 )
+                    window.draw_arc( fgc, False, x_ + (W-R)/2, y_+(W-R)/2, R, R, 0, 360*64 )
+                
 
+        self.continue_render(widget, window, node, h, fgc, x,W,xmax,y )
+
+ 
+    def continue_render(self, widget, window, node, h, fgc, x, W, xmax, y):
         # if required, display a nice "post-it" with tags in it
         offset = 0
         if self.node.tags:
