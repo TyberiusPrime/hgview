@@ -31,7 +31,7 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
         'activated': (gobject.SIGNAL_RUN_FIRST, gobject.TYPE_NONE,
                      (gobject.TYPE_STRING, gobject.TYPE_INT))
         }
-
+ 
     def __init__(self, app):
         self.__gobject_init__()
         self.app = app
@@ -55,8 +55,11 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
         self.set_property( "mode", gtk.CELL_RENDERER_MODE_ACTIVATABLE )
         #self.set_property("cell-background", "red"
 
-        self.selected_branch = "default"
-        
+        self.selected_branch = ""
+
+    def set_selected_branch(self):
+        self.selected_branch = self.app.get_selected_named_branch()
+        return self.selected_branch
 
     def set_colors( self, colors ):
         self.colors = colors
@@ -124,7 +127,7 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
         return pen
 
     def get_line_pen( self, widget, window, node, width ):
-        txtcolor = self.colors.get(node,"black")
+        txtcolor = self.colors.get(node, "black")
         pen = self.line_pens.get(txtcolor)
         if pen is None:
             fgc = widget.style.fg_gc[gtk.STATE_NORMAL]
@@ -133,10 +136,11 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
             cmap = widget.get_colormap()
             color = cmap.alloc_color(txtcolor)
             pen.set_foreground( color )
-            pen.set_line_attributes( width, gtk.gdk.LINE_SOLID,
-                                     gtk.gdk.CAP_ROUND,
-                                     gtk.gdk.JOIN_BEVEL )
             self.line_pens[txtcolor] = pen
+
+        pen.set_line_attributes( width, gtk.gdk.LINE_SOLID,
+                                 gtk.gdk.CAP_ROUND,
+                                 gtk.gdk.JOIN_BEVEL )
         return pen
 
     def on_render(self, window, widget, background_area,
@@ -165,10 +169,12 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
             if node==self.selected_node:
                 node = "activated"
             # choose the right pen (line color) for the line
-            if self.app.repo.read_node(node).branches['branch'] == 'jquery': 
-                pen = self.get_line_pen(widget,window,node, 4)
+            active_branch = self.set_selected_branch()
+            if self.app.repo.read_node(node).branches['branch'] == active_branch:
+                pen = self.get_line_pen(widget, window,node, 4)
             else:
-                pen = self.get_line_pen(widget,window,node, 2) 
+                pen = self.get_line_pen(widget, window,node, 2)
+            #self.app.refresh_tree()
             pen.set_clip_rectangle( (x,y-1,w,h+2) )
             window.draw_line( pen,
                               x + (2*x1+1)*W/2, y+(2*y1+1)*h/2,
