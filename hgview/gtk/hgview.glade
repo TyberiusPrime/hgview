@@ -296,28 +296,26 @@
                               <widget class="GtkComboBox" id="branch_highlight_combo">
                                 <property name="visible">True</property>
                                 <property name="items" translatable="yes"></property>
-                                <signal name="changed" handler="on_branch_combo_changed"/>
+                                <signal name="changed" handler="on_branch_highlight_combo_changed"/>
                               </widget>
                               <packing>
                                 <property name="position">6</property>
                               </packing>
                             </child>
                             <child>
-                              <widget class="GtkLabel" id="label1">
+                              <placeholder/>
+                            </child>
+                            <child>
+                              <widget class="GtkCheckButton" id="branch_checkbox">
                                 <property name="visible">True</property>
-                                <property name="label" translatable="yes">Display branch</property>
+                                <property name="can_focus">True</property>
+                                <property name="label" translatable="yes">Hide others</property>
+                                <property name="response_id">0</property>
+                                <property name="draw_indicator">True</property>
+                                <signal name="toggled" handler="on_branch_checkbox_toggled"/>
                               </widget>
                               <packing>
                                 <property name="position">7</property>
-                              </packing>
-                            </child>
-                            <child>
-                              <widget class="GtkComboBox" id="branch_combo">
-                                <property name="visible">True</property>
-                                <property name="items" translatable="yes"></property>
-                              </widget>
-                              <packing>
-                                <property name="position">8</property>
                               </packing>
                             </child>
                           </widget>
