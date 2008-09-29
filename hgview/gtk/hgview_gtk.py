@@ -96,7 +96,8 @@ class HgViewApp(object):
                                        )
 
         self.create_revision_popup()
-        self.setup_branch_combo()
+        self.setup_combo('branch_combo')
+        self.setup_combo('branch_highlight_combo')
         self.setup_tags()
         self.graph = None
         self.setup_tree()
@@ -130,22 +131,17 @@ class HgViewApp(object):
     def revpopup_update(self, item):
         print "UPDATE"
 
-    def setup_branch_combo(self):
-        combo_filter = self.xml.get_widget("branch_combo")
+    def setup_combo(self, combo_name):
+        combo_filter = self.xml.get_widget(combo_name)
         self.branch_store = gtk.ListStore( gobject.TYPE_STRING )
         combo_filter.set_model(self.branch_store)
-        print '_________',  combo_filter.get_model()
-       #  cell = gtk.CellRendererText()
-#         combo_filter.pack_start(cell, True)
-#         combo_filter.add_attribute(cell, 'text', 0)
-
-        i = 0
+        if combo_name == 'branch_combo':
+            self.branch_store.append( ('All',) )
+        elif combo_name == 'branch_highlight_combo':
+            self.branch_store.append( ('No one',) )
         for branch_name in self.repo.get_branch().keys():
             self.branch_store.append( (branch_name,) )
-            i += 1
-
-        #print '**********', self.repo.get_branchcache()
-        #print self.repo._cache
+        
 
     def get_node_branch(self):
         branch_nodeRev = { }
