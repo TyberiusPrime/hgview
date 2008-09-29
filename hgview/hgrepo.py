@@ -167,9 +167,10 @@ class HgHLRepo(object):
         self.nodes = [ changelog.node(i) for i in xrange(cnt) ]
         self._cache = {}
         self.authors = []
+        self.branches =[]
         self.colors = []
         self.authors_dict = {}
-        self.branches = []
+        self.branches_dict = {}
     read_nodes = timeit(read_nodes)
 
 
@@ -181,7 +182,12 @@ class HgHLRepo(object):
         NCOLORS = len(COLORS)
         changelog = self.repo.changelog
         _, author, date, filelist, log, branches = changelog.read( node )
-        branches = branches['branch']
+        bid = len(branches['branch'])
+        branch = branches['branch']
+        branch_id = self.branches_dict.setdefault( branch, bid )
+        if branch_id == bid:
+            self.branches.append( branch )
+            self.colors.append( COLORS[bid%NCOLORS] )
         rev = changelog.rev( node )
         aid = len(self.authors)
         author_id = self.authors_dict.setdefault( author, aid )
