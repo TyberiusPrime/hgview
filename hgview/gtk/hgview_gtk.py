@@ -134,10 +134,8 @@ class HgViewApp(object):
         combo_filter = self.xml.get_widget(combo_name)
         self.branch_store = gtk.ListStore( gobject.TYPE_STRING )
         combo_filter.set_model(self.branch_store)
-        if combo_name == 'branch_combo':
+        if combo_name == 'branch_highlight_combo':
             self.branch_store.append( ('All',) )
-        elif combo_name == 'branch_highlight_combo':
-            self.branch_store.append( ('No one',) )
         for branch_name in self.repo.get_branch().keys():
             self.branch_store.append( (branch_name,) )
         combo_filter.set_active(0)
