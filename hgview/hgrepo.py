@@ -89,13 +89,14 @@ class Repository(object):
     def add_tag( self, rev, label ):
         pass
 
-    def get_branch(self):
+    def get_branches(self):
         """
         return branches
         """
-    def get_branchcache(self):
+
+    def get_branches_heads(self):
         """
-        return info for all branches
+        return branch heads
         """
   
 # A default changelog_cache node
@@ -142,7 +143,7 @@ class HgHLRepo(object):
     def get_branch(self):
         return self.repo.branchtags()
 
-    def get_branchcache(self):
+    def get_branches_heads(self):
         return self.repo._readbranchcache()
 
 
