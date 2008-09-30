@@ -171,7 +171,7 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
             hide_others = self.app.get_value_branch_checkbox()
             curr_branch = self.app.repo.read_node(node).branches['branch']
             if hide_others:
-                if curr_branch == active_branch:
+                if curr_branch == active_branch or active_branch == 'All':
                     pen = self.get_line_pen(widget, window,node, 2)
             else:
                 if curr_branch == active_branch:
@@ -179,9 +179,11 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
                 else:
                     pen = self.get_line_pen(widget, window,node, 2)
 
-            if hide_others and curr_branch != active_branch:
-                print 'X' * 50
-                continue
+            if hide_others and curr_branch != active_branch :
+                if active_branch == 'All' :
+                    pass
+                else:
+                    continue
             pen.set_clip_rectangle( (x,y-1,w,h+2) )
             window.draw_line( pen,
                               x + (2*x1+1)*W/2, y+(2*y1+1)*h/2,
@@ -196,14 +198,21 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
             # draw 2 circles (empty & filled) to display the current node
             window.draw_arc( bgc, True, x_ + (W-R)/2, y_+(W-R)/2, R, R, 0, 360*64 )
             window.draw_arc( fgc, False, x_ + (W-R)/2, y_+(W-R)/2, R, R, 0, 360*64 )
-                
-        self.continue_render(widget, window, node, h, fgc, x,W,xmax,y, show_only=not hide_others and active_branch or None)
+
+        show_only=not hide_others and active_branch or None 
+                      
+        if hide_others and curr_branch == active_branch:
+            self.continue_render(widget, window, node, h, fgc, x,W,xmax,y, show_only=not hide_others and active_branch or None)
+        if not hide_others or active_branch == 'All':
+            self.continue_render(widget, window, node, h, fgc, x,W,xmax,y, show_only=not hide_others and active_branch or None)
 
  
     def continue_render(self, widget, window, node, h, fgc, x, W, xmax, y, show_only=None):
+        print '************************',self.app.repo.read_node(node).branches['branch'] 
         # if required, display a nice "post-it" with tags in it
         offset = 0
         node_branches = self.app.get_node_branches()
+        print 'node_branches', node_branches
         #if node_branch == show_only:
         if self.node.tags:
             layout = self.get_tag_layout(widget)
