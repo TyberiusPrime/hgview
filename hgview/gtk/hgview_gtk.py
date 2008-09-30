@@ -142,9 +142,9 @@ class HgViewApp(object):
             self.branch_store.append( (branch_name,) )
         combo_filter.set_active(0)
  
-    def get_node_branch(self):
-        branch_nodeRev = { }
-        dic_branch = self.repo.get_branchcache()[0]
+    def get_node_branches(self):
+        branch_nodeRev = {}
+        dic_branch, _unknown, _tip_rev = self.repo.get_branches_heads()
         for branch, node in dic_branch.items():
             node_info = self.repo.read_node(node)
             rev = node_info.rev
@@ -417,6 +417,7 @@ class HgViewApp(object):
         buf.insert( eob, "Revision: %d:" % rnode.rev )
         buf.insert_with_tags_by_name( eob, short_hex(node), "link" )
         buf.insert( eob, "\n" )
+        buf.insert( eob, "Branch: %s\n" % self.repo.read_node(node).branches['branch'])
         buf.insert( eob, "Author: %s\n" %  repo.authors[rnode.author_id] )
         buf.create_mark( "begdesc", buf.get_start_iter() )
         
@@ -700,6 +701,12 @@ class HgViewApp(object):
         combo_filter = self.xml.get_widget("branch_highlight_combo")
         active_branch = combo_filter.get_active_text()
         return active_branch
+    
+    def get_value_branch_checkbox(self):
+        """
+        return True or False
+        """
+        return self.xml.get_widget("branch_checkbox").get_active()
 
 
 def main():
