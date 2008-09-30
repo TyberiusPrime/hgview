@@ -57,9 +57,7 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
 
         self.selected_branch = ""
 
-    def set_selected_branch(self):
-        self.selected_branch = self.app.get_selected_named_branch()
-        return self.selected_branch
+        
 
     def set_colors( self, colors ):
         self.colors = colors
@@ -163,60 +161,50 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
         pen.set_clip_rectangle( (x,y-1,w,h+2) )
         xmax = X
         lines,n = self.edges
+        active_branch = self.app.get_selected_named_branch()
         for node,x1,y1,x2,y2 in lines:
             y1-=n
             y2-=n
-            if node==self.selected_node:
+            if node == self.selected_node:
                 node = "activated"
             # choose the right pen (line color) for the line
             hide_others = self.app.get_value_branch_checkbox()
-            active_branch = self.set_selected_branch()
-            if hide_others == False:
-                if self.app.repo.read_node(node).branches['branch'] == active_branch:
+            curr_branch = self.app.repo.read_node(node).branches['branch']
+            if hide_others:
+                if curr_branch == active_branch:
+                    pen = self.get_line_pen(widget, window,node, 2)
+            else:
+                if curr_branch == active_branch:
                     pen = self.get_line_pen(widget, window,node, 4)
                 else:
                     pen = self.get_line_pen(widget, window,node, 2)
-                        
-                pen.set_clip_rectangle( (x,y-1,w,h+2) )
-                window.draw_line( pen,
-                                  x + (2*x1+1)*W/2, y+(2*y1+1)*h/2,
-                                  x + (2*x2+1)*W/2, y+(2*y2+1)*h/2)
-                # the 'and' conditions are there to handle diagonal lines properly
-                if x1>xmax and (y1==0 or x1==x2):
-                    xmax = x1
-                if x2>xmax and (y2==0 or x1==x2):
-                    xmax = x2
 
-                # draw 2 circles (empty & filled) to display the current node
-                window.draw_arc( bgc, True, x_ + (W-R)/2, y_+(W-R)/2, R, R, 0, 360*64 )
-                window.draw_arc( fgc, False, x_ + (W-R)/2, y_+(W-R)/2, R, R, 0, 360*64 )
-            
-            if hide_others == True:
-                if self.app.repo.read_node(node).branches['branch'] == active_branch:
-                    pen = self.get_line_pen(widget, window,node, 2)
-                        
-                    pen.set_clip_rectangle( (x,y-1,w,h+2) )
-                    window.draw_line( pen,
-                                      x + (2*x1+1)*W/2, y+(2*y1+1)*h/2,
-                                      x + (2*x2+1)*W/2, y+(2*y2+1)*h/2)
-            
-                    # the 'and' conditions are there to handle diagonal lines properly
-                    if x1>xmax and (y1==0 or x1==x2):
-                        xmax = x1
-                    if x2>xmax and (y2==0 or x1==x2):
-                        xmax = x2
+            if hide_others and curr_branch != active_branch:
+                print 'X' * 50
+                continue
+            pen.set_clip_rectangle( (x,y-1,w,h+2) )
+            window.draw_line( pen,
+                              x + (2*x1+1)*W/2, y+(2*y1+1)*h/2,
+                              x + (2*x2+1)*W/2, y+(2*y2+1)*h/2)
 
-                    # draw 2 circles (empty & filled) to display the current node
-                    window.draw_arc( bgc, True, x_ + (W-R)/2, y_+(W-R)/2, R, R, 0, 360*64 )
-                    window.draw_arc( fgc, False, x_ + (W-R)/2, y_+(W-R)/2, R, R, 0, 360*64 )
+            # the 'and' conditions are there to handle diagonal lines properly
+            if x1>xmax and (y1==0 or x1==x2):
+                xmax = x1
+            if x2>xmax and (y2==0 or x1==x2):
+                xmax = x2
+
+            # draw 2 circles (empty & filled) to display the current node
+            window.draw_arc( bgc, True, x_ + (W-R)/2, y_+(W-R)/2, R, R, 0, 360*64 )
+            window.draw_arc( fgc, False, x_ + (W-R)/2, y_+(W-R)/2, R, R, 0, 360*64 )
                 
-
-        self.continue_render(widget, window, node, h, fgc, x,W,xmax,y )
+        self.continue_render(widget, window, node, h, fgc, x,W,xmax,y, show_only=not hide_others and active_branch or None)
 
  
-    def continue_render(self, widget, window, node, h, fgc, x, W, xmax, y):
+    def continue_render(self, widget, window, node, h, fgc, x, W, xmax, y, show_only=None):
         # if required, display a nice "post-it" with tags in it
         offset = 0
+        node_branches = self.app.get_node_branches()
+        #if node_branch == show_only:
         if self.node.tags:
             layout = self.get_tag_layout(widget)
             layout.set_text( self.node.tags )
@@ -226,9 +214,8 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
             window.draw_layout( fgc, x + W*(xmax+1), y+d_, layout,
                                 background=self.get_yellow_color(widget) )
 
-        node_branch = self.app.get_node_branch()
-        if self.node.rev in node_branch:
-            rev_from_branch = node_branch[self.node.rev]
+        if self.node.rev in node_branches:
+            rev_from_branch = node_branches[self.node.rev]
             layout = self.get_branch_layout(widget)
             layout.set_text(rev_from_branch)
             w_,h_ = layout.get_size()
@@ -237,7 +224,6 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
                                 background=self.get_green_color(widget) )
             offset += w_/pango.SCALE + 3
             
-
         layout = self.get_text_layout(widget)
         layout.set_text( self.node.short )
         searched_text = self.app.find_entry().get_text()
