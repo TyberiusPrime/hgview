@@ -166,10 +166,13 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
                 node = "activated"
             # choose the right pen (line color) for the line
             hide_others = self.app.get_value_branch_checkbox()
-            curr_branch = self.app.repo.read_node(node).branches['branch']
+            try:
+                curr_branch = self.app.repo.read_node(node).branches['branch']
+            except:
+                curr_branch = None #case empty node 
             if hide_others:
                 if curr_branch == active_branch or active_branch == 'All':
-                    pen = self.get_line_pen(widget, window,node, 2)
+                    pen = self.get_line_pen(widget, window, node, 2)
             else:
                 if curr_branch == active_branch:
                     pen = self.get_line_pen(widget, window,node, 4)
