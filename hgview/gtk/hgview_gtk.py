@@ -678,6 +678,7 @@ class HgViewApp(object):
         node_high.set_range(0, cnt+1 )
         node_low.set_value( 0 )
         node_high.set_value( cnt )
+        self.branch_selected = 'All'
 
     def on_button_filter_apply_clicked( self, *args ):
       
@@ -690,12 +691,14 @@ class HgViewApp(object):
         self.refresh_tree()
 
     def on_branch_checkbox_toggled( self, *args ):
-        self.refresh_tree()
+        if hasattr(self, 'graph'):
+            self.refresh_tree()
 
     def on_branch_highlight_combo_changed( self, *args ):
         if self.get_value_branch_checkbox():
             return self.on_button_filter_apply_clicked()
-        return self.refresh_tree()
+        if hasattr(self, 'graph'):
+            return self.refresh_tree()
 
     def get_selected_named_branch(self):
         """
