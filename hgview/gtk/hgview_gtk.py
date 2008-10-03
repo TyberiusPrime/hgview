@@ -26,7 +26,6 @@ from graphrenderer import RevGraphRenderer
 from diffstatrenderer import DiffStatRenderer
 from hgview.hgrepo import HgHLRepo, short_hex, short_bin
 from mercurial.localrepo import localrepository
-import pdb
 
 GLADE_FILE_NAME = "hgview.glade"
 
@@ -152,7 +151,6 @@ class HgViewApp(object):
         return branch_nodeRev
         
     def on_refresh_activate(self, arg):
-        print "REFRESH", arg
         self.repo.refresh()
         self.refresh_tree()
         
@@ -173,7 +171,7 @@ class HgViewApp(object):
                 if hide_otherbranches:
                     if node.branches['branch'] != branch_selected and branch_selected != 'All':
                         continue
-                if not node.files:
+                if not node.files: 
                     keepnodes.append(n)
                 else:
                     for f in node.files:
@@ -394,7 +392,6 @@ class HgViewApp(object):
 
         # compute the final bound of this run
         last_node = min(len(rowselected), N + NMAX)
-
         for n in xrange(N, last_node ):
             node = rowselected[n]
             if node is None:
@@ -687,25 +684,19 @@ class HgViewApp(object):
         file_filter = self.xml.get_widget("entry_file_filter")
         node_low = self.xml.get_widget("spinbutton_rev_low")
         node_high = self.xml.get_widget("spinbutton_rev_high")
-        print "filter=", file_filter.get_text()
         self.filter_files = re.compile(file_filter.get_text())
         self.filter_noderange = set(range( node_low.get_value_as_int(), node_high.get_value_as_int() ))
         self.branch_selected = self.get_selected_named_branch()
-        print '_______branch_selected', self.branch_selected
-        self.hide_box = self.xml.get_widget("branch_checkbox").get_active()
         self.refresh_tree()
 
     def on_branch_checkbox_toggled( self, *args ):
         self.refresh_tree()
 
     def on_branch_highlight_combo_changed( self, *args ):
-        if self.xml.get_widget("branch_checkbox").get_active():
-            pass
-            #self.refresh_tree()
-        else:
-            # just have to refresh displayed area
-            pass
-    
+        if self.get_value_branch_checkbox():
+            return self.on_button_filter_apply_clicked()
+        return self.refresh_tree()
+
     def get_selected_named_branch(self):
         """
         Returns the name of the currently selected named branch in the combo
