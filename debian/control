@@ -9,6 +9,7 @@ Standards-Version: 3.7.2
 XS-Python-Version: current
 Vcs-Hg: http://www.logilab.org/cgi-bin/hgwebdir.cgi/hgview
 Vcs-Browser: http://www.logilab.org/cgi-bin/hgwebdir.cgi/hgview
+Homepage: http://www.logilab.org/project/hgview
 
 Package: hgview
 Architecture: all
@@ -20,4 +21,3 @@ Description: mercurial interactive history viewer
  (it can happily be used to browse Linux kernel source code
  repository).
  .
- homepage: http://www.logilab.org/projects/hgview
