@@ -69,7 +69,6 @@ class RevGraph(object):
             todo = allnodes
             _nodes = set(nodes)
             while todo:
-                print "*"
                 next = set()
                 for node in todo:
                     par = _parents[node]
