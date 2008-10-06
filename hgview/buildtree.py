@@ -41,10 +41,14 @@ class RevGraph(object):
         self.idrow = {}        
 
         # mapping of row to list of lines
-        self.rowlines = [ set() for i in xrange(len(allnodes)) ] 
-        
-        # mapping of row to number of lines
-        self.rownlines = [None]*len(allnodes) 
+        self.rowlines = [ set() for i in xrange(len(allnodes)) ]
+           
+        # initial depot when it is empty
+        if len(allnodes) == 0:
+            allnodes= [nullid]
+            
+        # mapping of row to number of line       
+        self.rownlines = [None]*len(allnodes)
         self.rows = [None]*len(allnodes)
         
         # calculate initial ncleft for each node
@@ -147,10 +151,11 @@ class RevGraph(object):
         ncleft = self.ncleft
         linestarty = self.linestarty
         nullentry = self.nullentry
-
         rowmax = rowno + NMAX
+        
         # each node is treated only once
         while todo:
+            
             if rowno == rowmax:
                 break
             rowno += 1
@@ -296,7 +301,7 @@ class RevGraph(object):
 
                 if j not in linestarty:
                     linestarty[j] = rowno + 1
-
+    
         self.todo = todo
         self.rowno = rowno
         self.level = level
