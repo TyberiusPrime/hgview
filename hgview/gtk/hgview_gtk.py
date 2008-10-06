@@ -95,16 +95,16 @@ class HgViewApp(object):
                                        gobject.TYPE_STRING,  # markname
                                        gobject.TYPE_PYOBJECT, # diffstat
                                        )
-
-        self.create_revision_popup()
-        self.setup_combo('branch_highlight_combo')
-        self.setup_tags()
         self.graph = None
+        self.find_text = None
+        self._idletask_id = None
+
+        self.setup_tags()
         self.setup_tree()
         self.init_filter()
         self.refresh_tree()
-        self.find_text = None
-       
+        self.create_revision_popup()
+        self.setup_combo('branch_highlight_combo')
 
     def create_revision_popup(self):
         self.revpopup_path = None, None
@@ -352,6 +352,9 @@ class HgViewApp(object):
 
     def refresh_tree(self):
         """Starts the process of filling the ListStore model"""
+        if self._idletask_id is not None:
+            self._idletask_id = None
+            gobject.main_context_default().iteration(True)
         self.repo.read_nodes()
         todo_nodes = self.filter_nodes()
         graph = self.repo.graph( todo_nodes )
@@ -361,7 +364,7 @@ class HgViewApp(object):
         self.progressbar.show()
         self.last_node = 0
         self.graph = graph
-        gobject.idle_add( self.idle_fill_model )
+        self._idletask_id = gobject.idle_add( self.idle_fill_model )
         return
 
     def on_treeview_revisions_button_press_event(self, treeview, event):
@@ -380,7 +383,14 @@ class HgViewApp(object):
 
     def idle_fill_model(self):
         """Idle task filling the ListStore model chunks by chunks"""
-        #t1 = time.time()
+        if self._idletask_id is None:
+            # self._idletask_id has been set to None, which means we
+            # want to cancel the background task of filling the tree
+            # model
+            self.graph = None
+            self.rowselected = None
+            self.progressbar.hide()
+            return False
         NMAX = 300  # Max number of entries we process each time
         graph = self.graph
         N = self.last_node
@@ -403,13 +413,11 @@ class HgViewApp(object):
         self.last_node = last_node
         tree.thaw_notify()
         self.progressbar.set_fraction( float(self.last_node) / len(rowselected) )
-        #print "batch: %09.6f" % (time.time()-t1)
-        #print self.last_node, "/", len(rowselected)
         if self.last_node == len(rowselected):
             self.graph = None
             self.rowselected = None
-##             gtk.Container.remove(self.statusbar, self.progressbar )
             self.progressbar.hide()
+            self._idletask_id = None
             return False
         return True
 
@@ -583,8 +591,6 @@ class HgViewApp(object):
     def find_next_row( self, iter, stop_iter=None ):
         """Find the next revision row based on the content of
         the 'entry_find' widget"""
-        ##import pdb
-        ##pdb.set_trace()
         txt = self.xml.get_widget( "entry_find" ).get_text()
         rexp = re.compile( txt )
         while iter != stop_iter and iter!=None:
@@ -681,23 +687,26 @@ class HgViewApp(object):
         self.branch_selected = 'All'
 
     def on_button_filter_apply_clicked( self, *args ):
-      
         file_filter = self.xml.get_widget("entry_file_filter")
         node_low = self.xml.get_widget("spinbutton_rev_low")
         node_high = self.xml.get_widget("spinbutton_rev_high")
         self.filter_files = re.compile(file_filter.get_text())
         self.filter_noderange = set(range( node_low.get_value_as_int(), node_high.get_value_as_int() ))
-        self.branch_selected = self.get_selected_named_branch()
         self.refresh_tree()
 
     def on_branch_checkbox_toggled( self, *args ):
-        self.refresh_tree()
+        self.on_button_filter_apply_clicked()
 
     def on_branch_highlight_combo_changed( self, *args ):
+        self.branch_selected = self.get_selected_named_branch()
         if self.get_value_branch_checkbox():
+            # if "hide others" is checked in, we really need to
+            # recompute the tree
             return self.on_button_filter_apply_clicked()
-        if hasattr(self, 'graph'):
-            return self.refresh_tree()
+        # if not, we just need to refresh to displayed part of the
+        # graph to update bold lines
+        tree = self.xml.get_widget( "treeview_revisions" )
+        tree.queue_draw()
 
     def get_selected_named_branch(self):
         """
