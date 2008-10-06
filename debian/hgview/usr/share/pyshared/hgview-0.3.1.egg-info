@@ -1,0 +1,15 @@
+Metadata-Version: 1.0
+Name: hgview
+Version: 0.3.1
+Summary: mercurial interactive history viewer
+Home-page: http://www.logilab.org/projects/hgview
+Author: Logilab
+Author-email: devel@logilab.fr
+License: GPL
+Description: 
+        Its purpose is similar to the hgk tool of mercurial, and it has been
+        written with efficiency in mind when dealing with big repositories
+        (it can happily be used to browse Linux kernel source code
+        repository).
+        
+Platform: UNKNOWN

@@ -1,0 +1,24 @@
+[python-package]
+format = 1
+python-version = current
+[pycentral]
+version = 0.6.7
+[files]
+/usr/share/pyshared/hgview=d
+/usr/share/pyshared/hgview/gtk=d
+/usr/share/pyshared/hgview/gtk/__init__.py=f
+/usr/share/pyshared/hgview/gtk/graphrenderer_old.py=f
+/usr/share/pyshared/hgview/gtk/graphrenderer.py=f
+/usr/share/pyshared/hgview/gtk/diffstatrenderer.py=f
+/usr/share/pyshared/hgview/gtk/hgview_gtk.py=f
+/usr/share/pyshared/hgview/qt4=d
+/usr/share/pyshared/hgview/qt4/__init__.py=f
+/usr/share/pyshared/hgview/qt4/hgrepomodel.py=f
+/usr/share/pyshared/hgview/qt4/hgview_qt4.py=f
+/usr/share/pyshared/hgview/__init__.py=f
+/usr/share/pyshared/hgview/hgrepo.py=f
+/usr/share/pyshared/hgview/buildtree.py=f
+/usr/share/pyshared/hgview/hgviewrc.py=f
+/usr/share/pyshared/hgview/fixes.py=f
+/usr/share/pyshared/hgview/__pkginfo__.py=f
+/usr/share/pyshared/hgview-0.3.1.egg-info=f
