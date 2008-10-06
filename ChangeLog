@@ -1,6 +1,9 @@
 ChangeLog for hgview
 --------------------
 
+2008-10-06  --  0.9.0
+    * branch support
+
 2008-05-15  --  0.3.1
     * added logic to resolve symbolic links to hgview executable
     * make hgview less verbose
@@ -9,7 +12,7 @@ ChangeLog for hgview
     * fix Windows related bug
 
 2007-05-29  --  0.3.0
-    * add a Qt4 version of hgvies
+    * add a Qt4 version of hgview
     * bugfixes
 
 2007-05-29  --  0.2.0
