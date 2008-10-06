@@ -14,6 +14,7 @@ import gobject
 import pango
 import re
 
+
 class RevGraphRenderer(gtk.GenericCellRenderer):
     __gproperties__ = {
         'nodex' : ( gobject.TYPE_PYOBJECT,
@@ -49,11 +50,9 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
         self.line_pens = {}
         self.text_to_yellow = None
         self.greencolor = None
-
         self.colors = { }
         self.selected_node = None
         self.set_property( "mode", gtk.CELL_RENDERER_MODE_ACTIVATABLE )
-        #self.set_property("cell-background", "red"
 
     
     def set_colors( self, colors ):
@@ -239,7 +238,11 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
 
     def on_get_size(self, widget, cell_area):
         layout = self.get_text_layout(widget)
-        layout.set_text( self.node.short )
+        try:
+            txt = unicode(self.node.short, "utf-8")
+        except UnicodeError:
+            txt = unicode(self.node.short, "iso-8859-1", 'ignore' ) 
+        layout.set_text(txt)
         tw, th = layout.get_size()
         tw /= pango.SCALE
         th /= pango.SCALE
