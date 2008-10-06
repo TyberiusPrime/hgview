@@ -1,7 +1,7 @@
-
 import os
 from mercurial import hg, ui, patch
 from mercurial.node import short as short_hex, bin as short_bin
+from mercurial.localrepo import localrepository
 from mercurial.node import nullid
 from buildtree import RevGraph
 from StringIO import StringIO
@@ -11,14 +11,16 @@ import mercurial.commands
 
 
 class RevNode(object):
-    __slots__ = "rev author_id desc gmtime files tags".split()
-    def __init__(self, rev, author_id, desc, date, files, tags):
+    __slots__ = "rev author_id desc gmtime files tags branches".split()
+    def __init__(self, rev, author_id, desc, date, files, tags, branches):
         self.rev = rev
         self.author_id = author_id
         self.desc = desc.strip()+"\n"
+        #self.desc = desc
         self.gmtime = date
         self.files = tuple(files)
         self.tags = tags
+        self.branches = branches
 
     def get_short_log( self ):
         """Compute a short log from the full revision log"""
@@ -34,6 +36,7 @@ class RevNode(object):
         date_ = time.strftime( "%Y-%m-%d %H:%M", self.gmtime )
         return date_
     date = property(get_date)
+    
 
 class Repository(object):
     """Abstract interface for a repository"""
@@ -86,6 +89,16 @@ class Repository(object):
     def add_tag( self, rev, label ):
         pass
 
+    def get_branches(self):
+        """
+        return branches
+        """
+
+    def get_branches_heads(self):
+        """
+        return branch heads
+        """
+  
 # A default changelog_cache node
 EMPTY_NODE = (-1,  # REV num
               "",  # short desc
@@ -94,6 +107,7 @@ EMPTY_NODE = (-1,  # REV num
               "",  # Date
               (),  # file list
               [],  # tags
+              [],  # branches
               )
 
 def timeit( f ):
@@ -119,11 +133,19 @@ class HgHLRepo(object):
         self.dir = self.find_repository( path )
         self.ui = ui.ui()
         self.repo = hg.repository( self.ui, self.dir )
+        print '///', self
         # cache and indexing of changelog
         self._cache = {}
 
     def refresh(self):
         self.repo = hg.repository( self.ui, self.dir )
+        
+    def get_branch(self):
+        return self.repo.branchtags()
+
+    def get_branches_heads(self):
+        return self.repo._readbranchcache()
+
 
     def find_repository(self, path):
         """returns <path>'s mercurial repository
@@ -146,8 +168,10 @@ class HgHLRepo(object):
         self.nodes = [ changelog.node(i) for i in xrange(cnt) ]
         self._cache = {}
         self.authors = []
+        self.branches =[]
         self.colors = []
         self.authors_dict = {}
+        self.branches_dict = {}
     read_nodes = timeit(read_nodes)
 
 
@@ -158,7 +182,13 @@ class HgHLRepo(object):
             return nodeinfo[node]
         NCOLORS = len(COLORS)
         changelog = self.repo.changelog
-        _, author, date, filelist, log, _ = changelog.read( node )
+        _, author, date, filelist, log, branches = changelog.read( node )
+        bid = len(branches['branch'])
+        branch = branches['branch']
+        branch_id = self.branches_dict.setdefault( branch, bid )
+        if branch_id == bid:
+            self.branches.append( branch )
+            self.colors.append( COLORS[bid%NCOLORS] )
         rev = changelog.rev( node )
         aid = len(self.authors)
         author_id = self.authors_dict.setdefault( author, aid )
@@ -169,7 +199,7 @@ class HgHLRepo(object):
         date_ = time.gmtime(date[0])
         taglist = self.repo.nodetags(node)
         tags = ", ".join(taglist)
-        _node = RevNode(rev, author_id, log, date_, filelist, tags)
+        _node = RevNode(rev, author_id, log, date_, filelist, tags, branches)
         nodeinfo[node] = _node
         return _node
 

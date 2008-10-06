@@ -12,6 +12,8 @@
 import gtk
 import gobject
 import pango
+import re
+
 
 class RevGraphRenderer(gtk.GenericCellRenderer):
     __gproperties__ = {
@@ -30,9 +32,10 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
         'activated': (gobject.SIGNAL_RUN_FIRST, gobject.TYPE_NONE,
                      (gobject.TYPE_STRING, gobject.TYPE_INT))
         }
-
-    def __init__(self):
+ 
+    def __init__(self, app):
         self.__gobject_init__()
+        self.app = app
         self.r = 6
 
         self.nodex = 0
@@ -42,13 +45,16 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
         self.pengc = None
         self.yellowcolor = None
         self.tag_layout = None
+        self.branch_layout = None
         self.text_layout = None
         self.line_pens = {}
-
+        self.text_to_yellow = None
+        self.greencolor = None
         self.colors = { }
         self.selected_node = None
         self.set_property( "mode", gtk.CELL_RENDERER_MODE_ACTIVATABLE )
 
+    
     def set_colors( self, colors ):
         self.colors = colors
         self.colors["activated"] = "red"
@@ -57,7 +63,7 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
         return getattr( self, propname.name )
 
     def do_set_property( self, propname, value):
-        setattr(self, propname.name, value)
+        setattr(self, propname.name, value) 
 
     def get_tag_layout(self,widget):
         if self.tag_layout:
@@ -66,16 +72,28 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
         desc = ctx.get_font_description()
         desc = desc.copy()
         desc.set_size( int(desc.get_size()*0.8) )
+        
         self.tag_layout = pango.Layout( ctx )
         self.tag_layout.set_font_description( desc )
         return self.tag_layout
+    
+    def get_branch_layout(self,widget):
+        if self.branch_layout:
+            return self.branch_layout
+        ctx = widget.get_pango_context()
+        desc = ctx.get_font_description()
+        desc = desc.copy()
+        desc.set_size( int(desc.get_size()*0.8) )
+        self.branch_layout = pango.Layout( ctx )
+        self.branch_layout.set_font_description( desc )
+        return self.branch_layout
 
     def get_text_layout(self,widget):
         if self.text_layout:
             return self.text_layout
         ctx = widget.get_pango_context()
         self.text_layout = pango.Layout( ctx )
-        return self.text_layout
+        return self.text_layout 
 
     def get_yellow_color( self, widget ):
         if self.yellowcolor:
@@ -84,6 +102,14 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
         color = cmap.alloc_color("yellow")
         self.yellowcolor = color
         return color
+
+    def get_green_color( self, widget ):
+        if self.greencolor:
+            return self.greencolor
+        cmap = widget.get_colormap()
+        color = cmap.alloc_color("green")
+        self.greencolor = color
+        return color 
 
     def get_pen_gc( self, widget, window ):
         if self.pengc:
@@ -94,8 +120,8 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
         self.pengc = pen
         return pen
 
-    def get_line_pen( self, widget, window, node ):
-        txtcolor = self.colors.get(node,"black")
+    def get_line_pen( self, widget, window, node, width ):
+        txtcolor = self.colors.get(node, "black")
         pen = self.line_pens.get(txtcolor)
         if pen is None:
             fgc = widget.style.fg_gc[gtk.STATE_NORMAL]
@@ -104,10 +130,11 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
             cmap = widget.get_colormap()
             color = cmap.alloc_color(txtcolor)
             pen.set_foreground( color )
-            pen.set_line_attributes( 2, gtk.gdk.LINE_SOLID,
-                                     gtk.gdk.CAP_ROUND,
-                                     gtk.gdk.JOIN_BEVEL )
             self.line_pens[txtcolor] = pen
+
+        pen.set_line_attributes( width, gtk.gdk.LINE_SOLID,
+                                 gtk.gdk.CAP_ROUND,
+                                 gtk.gdk.JOIN_BEVEL )
         return pen
 
     def on_render(self, window, widget, background_area,
@@ -130,29 +157,47 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
         pen.set_clip_rectangle( (x,y-1,w,h+2) )
         xmax = X
         lines,n = self.edges
+        active_branch = self.app.get_selected_named_branch()
         for node,x1,y1,x2,y2 in lines:
             y1-=n
             y2-=n
-            if node==self.selected_node:
+            if node == self.selected_node:
                 node = "activated"
-            # choose the right pen (line color) for the line 
-            pen = self.get_line_pen(widget,window,node)
+            # choose the right pen (line color) for the line
+            hide_others = self.app.get_value_branch_checkbox()
+            try:
+                curr_branch = self.app.repo.read_node(node).branches['branch']
+            except:
+                curr_branch = None #case empty node 
+            if hide_others:
+                if curr_branch == active_branch or active_branch == 'All':
+                    pen = self.get_line_pen(widget, window, node, 2)
+            else:
+                if curr_branch == active_branch:
+                    pen = self.get_line_pen(widget, window,node, 4)
+                else:
+                    pen = self.get_line_pen(widget, window,node, 2)
+                    
             pen.set_clip_rectangle( (x,y-1,w,h+2) )
             window.draw_line( pen,
                               x + (2*x1+1)*W/2, y+(2*y1+1)*h/2,
-                              x + (2*x2+1)*W/2, y+(2*y2+1)*h/2 )
+                              x + (2*x2+1)*W/2, y+(2*y2+1)*h/2)
+
             # the 'and' conditions are there to handle diagonal lines properly
             if x1>xmax and (y1==0 or x1==x2):
                 xmax = x1
             if x2>xmax and (y2==0 or x1==x2):
                 xmax = x2
 
-        # draw 2 circles (empty & filled) to display the current node
-        window.draw_arc( bgc, True, x_ + (W-R)/2, y_+(W-R)/2, R, R, 0, 360*64 )
-        window.draw_arc( fgc, False, x_ + (W-R)/2, y_+(W-R)/2, R, R, 0, 360*64 )
-
+            # draw 2 circles (empty & filled) to display the current node
+            window.draw_arc( bgc, True, x_ + (W-R)/2, y_+(W-R)/2, R, R, 0, 360*64 )
+            window.draw_arc( fgc, False, x_ + (W-R)/2, y_+(W-R)/2, R, R, 0, 360*64 )
+              
+       
         # if required, display a nice "post-it" with tags in it
         offset = 0
+        node_branches = self.app.get_node_branches()
+    
         if self.node.tags:
             layout = self.get_tag_layout(widget)
             layout.set_text( self.node.tags )
@@ -162,15 +207,42 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
             window.draw_layout( fgc, x + W*(xmax+1), y+d_, layout,
                                 background=self.get_yellow_color(widget) )
 
+        if self.node.rev in node_branches:
+            rev_from_branch = node_branches[self.node.rev]
+            layout = self.get_branch_layout(widget)
+            layout.set_text(rev_from_branch)
+            w_,h_ = layout.get_size()
+            d_= (h-h_/pango.SCALE)/2
+            window.draw_layout( fgc, x + offset + W*(xmax+1), y+d_, layout,
+                                background=self.get_green_color(widget) )
+            offset += w_/pango.SCALE + 3
+            
         layout = self.get_text_layout(widget)
         layout.set_text( self.node.short )
+        searched_text = self.app.find_entry().get_text()
+
+        #search on the string log
+        from cgi import escape
+
+        str_node = escape(layout.get_text())
+        if searched_text in str_node:
+            rexp = re.compile( '(%s)' % escape(searched_text))
+            markup = rexp.sub('<span background="yellow">\\1</span>', str_node)
+            layout.set_markup(markup)
+        else:
+            layout.set_markup('<span>%s</span>'% str_node)
+            
         w_,h_ = layout.get_size()
         d_ = (h-h_/pango.SCALE)/2
         window.draw_layout( fgc, x + offset + W*(xmax+2), y+d_, layout )
 
     def on_get_size(self, widget, cell_area):
         layout = self.get_text_layout(widget)
-        layout.set_text( self.node.short )
+        try:
+            txt = unicode(self.node.short, "utf-8")
+        except UnicodeError:
+            txt = unicode(self.node.short, "iso-8859-1", 'ignore' ) 
+        layout.set_text(txt)
         tw, th = layout.get_size()
         tw /= pango.SCALE
         th /= pango.SCALE

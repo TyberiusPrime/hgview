@@ -25,6 +25,7 @@ import hgview.fixes
 from graphrenderer import RevGraphRenderer
 from diffstatrenderer import DiffStatRenderer
 from hgview.hgrepo import HgHLRepo, short_hex, short_bin
+from mercurial.localrepo import localrepository
 
 GLADE_FILE_NAME = "hgview.glade"
 
@@ -81,6 +82,7 @@ class HgViewApp(object):
         else:
             self.filter_files = None
         self.filter_noderange = None
+        self.branch_selected = None
         # The strings are stored as PYOBJECT when they contain zeros and also
         # to save memory when they are used by the custom renderer
         self.revisions = gtk.ListStore( gobject.TYPE_PYOBJECT, # node id
@@ -93,14 +95,16 @@ class HgViewApp(object):
                                        gobject.TYPE_STRING,  # markname
                                        gobject.TYPE_PYOBJECT, # diffstat
                                        )
-
-        self.create_revision_popup()
-        self.setup_tags()
         self.graph = None
+        self.find_text = None
+        self._idletask_id = None
+
+        self.setup_tags()
         self.setup_tree()
         self.init_filter()
         self.refresh_tree()
-        self.find_text = None
+        self.create_revision_popup()
+        self.setup_combo('branch_highlight_combo')
 
     def create_revision_popup(self):
         self.revpopup_path = None, None
@@ -127,24 +131,54 @@ class HgViewApp(object):
     def revpopup_update(self, item):
         print "UPDATE"
 
+    def setup_combo(self, combo_name):
+        combo_filter = self.xml.get_widget(combo_name)
+        self.branch_store = gtk.ListStore( gobject.TYPE_STRING )
+        combo_filter.set_model(self.branch_store)
+        if combo_name == 'branch_highlight_combo':
+            self.branch_store.append( ('All',) )
+        for branch_name in self.repo.get_branch().keys():
+            self.branch_store.append( (branch_name,) )
+        combo_filter.set_active(0)
+ 
+    def get_node_branches(self):
+        branch_nodeRev = {}
+        dic_branch, _unknown, _tip_rev = self.repo.get_branches_heads()
+        for branch, node in dic_branch.items():
+            node_info = self.repo.read_node(node)
+            rev = node_info.rev
+            branch_nodeRev[rev] = branch
+        return branch_nodeRev
+        
     def on_refresh_activate(self, arg):
-        #print "REFRESH", arg
         self.repo.refresh()
         self.refresh_tree()
         
     def filter_nodes(self):
         """Filter the nodes according to filter_files and filter_nodes"""
+        if not self.filter_files and not self.filter_noderange:
+            return self.repo.nodes
+        
         keepnodes = []
         nodes = self.repo.nodes
         frex = self.filter_files
         noderange = self.filter_noderange or set(range(len(nodes)))
+        hide_otherbranches = self.xml.get_widget("branch_checkbox").get_active()
+        branch_selected = self.branch_selected
         for n in nodes:
             node = self.repo.read_node(n)
             if node.rev in noderange:
-                for f in node.files:
-                    if frex.search(f):
-                        keepnodes.append( n )
-                        break
+                if hide_otherbranches:
+                    if node.branches['branch'] != branch_selected and branch_selected != 'All':
+                        continue
+                if not node.files: 
+                    keepnodes.append(n)
+                else:
+                    for f in node.files:
+                        if frex.search(f):
+                            keepnodes.append( n )
+                            break
+                        
         return keepnodes
 
     def on_window_main_delete_event( self, win, evt ):
@@ -223,8 +257,11 @@ class HgViewApp(object):
         """A Cell datafunction used to provide the author's name and
         foreground color"""
         node = model.get_value( iter_, M_NODE )
+        branch = node.branches['branch']
+        activ_branch = self.get_selected_named_branch()
         cell.set_property( "text", self.repo.authors[node.author_id] )
         cell.set_property( "foreground", self.repo.colors[node.author_id] )
+
 
     def rev_data_func( self, column, cell, model, iter_, user_data=None ):
         """A Cell datafunction used to provide the revnode's text"""
@@ -235,7 +272,25 @@ class HgViewApp(object):
         """A Cell datafunction used to provide the date"""
         node = model.get_value( iter_, M_NODE )
         cell.set_property( "text", node.date )
-
+        
+    def files_data_func( self, column, cell, model, iter_, user_data=None ):
+        """A Cell datafunction used to provide the files"""
+        #print column
+        node = model.get_value( iter_, 0 )
+        
+        txt = self.xml.get_widget( "entry_find" ).get_text()
+        str_node = str(node).replace('&', '&amp;').replace('<', '&lt;')
+        if txt !='':
+            try:
+                rexp = re.compile( '(%s)' % txt.replace('&', '&amp;').replace('<', '&lt;') )
+                markup = rexp.sub('<span background="yellow">\\1</span>', str_node)
+            except:
+                # regexp incorrect
+                markup = str_node
+        else:
+            markup = str_node
+        cell.set_property("markup", '<span>%s</span>' % markup)
+  
     def setup_tree(self):
         """Configure the 2 gtk.TreeView"""
         # Setup the revisions treeview
@@ -247,9 +302,9 @@ class HgViewApp(object):
         col.set_cell_data_func( rend, self.rev_data_func )
         col.set_resizable(True)
         tree.append_column( col )
-
-        rend = RevGraphRenderer()
-        #rend.connect( "activated", self.cell_activated )
+    
+        rend = RevGraphRenderer(self)
+        rend.connect( "activated", self.cell_activated )
         self.graph_rend = rend
         col = gtk.TreeViewColumn("Log", rend, nodex=M_NODEX, edges=M_EDGES,
                                  node=M_NODE)
@@ -273,43 +328,43 @@ class HgViewApp(object):
         tree.set_model( self.revisions )
 
         # Setup the filelist treeview
-        tree = self.xml.get_widget( "treeview_filelist" )
-        tree.set_rules_hint( 1 )
-        tree.get_selection().connect("changed", self.fileselection_changed )
+        tree_files = self.xml.get_widget( "treeview_filelist" )
+        #tree_files.set_rules_hint( 1 )
+        tree_files.get_selection().connect("changed", self.fileselection_changed )
 
         rend = gtk.CellRendererText()
-        col = gtk.TreeViewColumn("Files", rend, text=0 )
+        col = gtk.TreeViewColumn("Files", rend,  text=0)
+        col.set_cell_data_func( rend, self.files_data_func )
         col.set_reorderable(True)
-        tree.append_column( col )
-
+        col.set_resizable(True)
+        tree_files.append_column( col )
+        tree_files.set_model( self.filelist )
+       
         rend = DiffStatRenderer()
         col = gtk.TreeViewColumn("Diff Stat", rend, stats=2 )
         col.set_reorderable(True)
-        tree.append_column( col )
+        tree_files.append_column( col )
 
-        tree.set_model( self.filelist )
+        tree_files.set_model( self.filelist )
 
     def cell_activated(self, *args):
         print "nudge"
 
     def refresh_tree(self):
         """Starts the process of filling the ListStore model"""
+        if self._idletask_id is not None:
+            self._idletask_id = None
+            gobject.main_context_default().iteration(True)
         self.repo.read_nodes()
-        #print "Computing graph..."
-        t1 = time.clock()
-        if self.filter_files or self.filter_noderange:
-            todo_nodes = self.filter_nodes()
-        else:
-            todo_nodes = self.repo.nodes
+        todo_nodes = self.filter_nodes()
         graph = self.repo.graph( todo_nodes )
         self.graph_rend.set_colors( graph.colors )
-        #print "done in", time.clock()-t1
 
         self.revisions.clear()
         self.progressbar.show()
         self.last_node = 0
         self.graph = graph
-        gobject.idle_add( self.idle_fill_model )
+        self._idletask_id = gobject.idle_add( self.idle_fill_model )
         return
 
     def on_treeview_revisions_button_press_event(self, treeview, event):
@@ -328,7 +383,14 @@ class HgViewApp(object):
 
     def idle_fill_model(self):
         """Idle task filling the ListStore model chunks by chunks"""
-        #t1 = time.time()
+        if self._idletask_id is None:
+            # self._idletask_id has been set to None, which means we
+            # want to cancel the background task of filling the tree
+            # model
+            self.graph = None
+            self.rowselected = None
+            self.progressbar.hide()
+            return False
         NMAX = 300  # Max number of entries we process each time
         graph = self.graph
         N = self.last_node
@@ -337,6 +399,8 @@ class HgViewApp(object):
         add_rev = self.revisions.append
         tree = self.xml.get_widget( "treeview_revisions" )
         tree.freeze_notify()
+
+        # compute the final bound of this run
         last_node = min(len(rowselected), N + NMAX)
         for n in xrange(N, last_node ):
             node = rowselected[n]
@@ -345,16 +409,15 @@ class HgViewApp(object):
             rnode = self.repo.read_node( node )
             lines = graph.rowlines[n]
             add_rev( (node, rnode, graph.x[node], (lines,n) ) )
+
         self.last_node = last_node
         tree.thaw_notify()
         self.progressbar.set_fraction( float(self.last_node) / len(rowselected) )
-        #print "batch: %09.6f" % (time.time()-t1)
-        #print self.last_node, "/", len(rowselected)
         if self.last_node == len(rowselected):
             self.graph = None
             self.rowselected = None
-##             gtk.Container.remove(self.statusbar, self.progressbar )
             self.progressbar.hide()
+            self._idletask_id = None
             return False
         return True
 
@@ -365,6 +428,7 @@ class HgViewApp(object):
         buf.insert( eob, "Revision: %d:" % rnode.rev )
         buf.insert_with_tags_by_name( eob, short_hex(node), "link" )
         buf.insert( eob, "\n" )
+        buf.insert( eob, "Branch: %s\n" % self.repo.read_node(node).branches['branch'])
         buf.insert( eob, "Author: %s\n" %  repo.authors[rnode.author_id] )
         buf.create_mark( "begdesc", buf.get_start_iter() )
         
@@ -486,13 +550,15 @@ class HgViewApp(object):
         text_buffer.apply_tag_by_name( "mono", sob, eob )
 
     def hilight_search_string( self ):
-        # Highlight the search string
+        ##Highlight the search string on the text
         textwidget = self.xml.get_widget( "textview_status" )
         text_buffer = textwidget.get_buffer()
         if not self.find_text:
             return
-
-        rexp = re.compile(self.find_text)
+        try:
+            rexp = re.compile(self.find_text)
+        except:
+            return
         sob, eob = text_buffer.get_bounds()
         # RESTRICT TO DESCRIPTION PART : should be conditionalized
         #mark = text_buffer.get_mark( "enddesc" )
@@ -500,11 +566,18 @@ class HgViewApp(object):
         #txt = text_buffer.get_slice(sob, enddesc, True )
         txt = text_buffer.get_slice(sob, eob)
         m = rexp.search( txt )
-        while m: # FIXME wrong coloring in diff body
+        max_search = 50
+        while m and max_search > 0: # FIXME wrong coloring in diff body
             _b = text_buffer.get_iter_at_offset( m.start() )
             _e = text_buffer.get_iter_at_offset( m.end() )
             text_buffer.apply_tag_by_name("yellowbg", _b, _e )
             m = rexp.search( txt, m.end() )
+            max_search -= 1
+            
+    def find_entry(self):
+        # text to find
+        find_entry = self.xml.get_widget( "entry_find" )
+        return find_entry
 
     def fileselection_changed( self, selection ):
         model, it = selection.get_selected()
@@ -611,6 +684,7 @@ class HgViewApp(object):
         node_high.set_range(0, cnt+1 )
         node_low.set_value( 0 )
         node_high.set_value( cnt )
+        self.branch_selected = 'All'
 
     def on_button_filter_apply_clicked( self, *args ):
         file_filter = self.xml.get_widget("entry_file_filter")
@@ -619,6 +693,34 @@ class HgViewApp(object):
         self.filter_files = re.compile(file_filter.get_text())
         self.filter_noderange = set(range( node_low.get_value_as_int(), node_high.get_value_as_int() ))
         self.refresh_tree()
+
+    def on_branch_checkbox_toggled( self, *args ):
+        self.on_button_filter_apply_clicked()
+
+    def on_branch_highlight_combo_changed( self, *args ):
+        self.branch_selected = self.get_selected_named_branch()
+        if self.get_value_branch_checkbox():
+            # if "hide others" is checked in, we really need to
+            # recompute the tree
+            return self.on_button_filter_apply_clicked()
+        # if not, we just need to refresh to displayed part of the
+        # graph to update bold lines
+        tree = self.xml.get_widget( "treeview_revisions" )
+        tree.queue_draw()
+
+    def get_selected_named_branch(self):
+        """
+        Returns the name of the currently selected named branch in the combo
+        """
+        combo_filter = self.xml.get_widget("branch_highlight_combo")
+        active_branch = combo_filter.get_active_text()
+        return active_branch
+    
+    def get_value_branch_checkbox(self):
+        """
+        return True or False
+        """
+        return self.xml.get_widget("branch_checkbox").get_active()
 
 
 def main():

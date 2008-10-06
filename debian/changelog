@@ -1,3 +1,9 @@
+hgview (0.9.0-1) unstable; urgency=low
+
+  * Replace homepage
+
+ -- Graziella.Toutoungis <graziella.toutoungis@logilab.fr>  Mon, 06 Oct 2008 15:24:47 +0200
+
 hgview (0.3.1-2) unstable; urgency=low
 
   * Rebuild with python2.5 as default version
