@@ -691,8 +691,7 @@ class HgViewApp(object):
         self.refresh_tree()
 
     def on_branch_checkbox_toggled( self, *args ):
-        if hasattr(self, 'graph'):
-            self.refresh_tree()
+        self.refresh_tree()
 
     def on_branch_highlight_combo_changed( self, *args ):
         if self.get_value_branch_checkbox():
