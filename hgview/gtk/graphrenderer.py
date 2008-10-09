@@ -224,13 +224,19 @@ class RevGraphRenderer(gtk.GenericCellRenderer):
         #search on the string log
         from cgi import escape
 
-        str_node = escape(layout.get_text())
-        if searched_text in str_node:
+        txt = escape(layout.get_text())
+        try:
+            str_node = unicode(txt, "utf-8")
+        except UnicodeError:
+            str_node = unicode(txt, "iso-8859-1", 'ignore' ) 
+        
+        if searched_text and searched_text in str_node :
             rexp = re.compile( '(%s)' % escape(searched_text))
             markup = rexp.sub('<span background="yellow">\\1</span>', str_node)
             layout.set_markup(markup)
         else:
-            layout.set_markup('<span>%s</span>'% str_node)
+            markup = str_node
+            layout.set_markup('<span>%s</span>' % markup)
             
         w_,h_ = layout.get_size()
         d_ = (h-h_/pango.SCALE)/2
