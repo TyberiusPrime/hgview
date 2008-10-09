@@ -133,7 +133,6 @@ class HgHLRepo(object):
         self.dir = self.find_repository( path )
         self.ui = ui.ui()
         self.repo = hg.repository( self.ui, self.dir )
-        print '///', self
         # cache and indexing of changelog
         self._cache = {}
 
