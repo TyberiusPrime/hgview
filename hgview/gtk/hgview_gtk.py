@@ -192,10 +192,12 @@ class HgViewApp(object):
     def on_about_activate(self, *args):
         """ Display about dialog """
         dlg=gtk.AboutDialog()
-        dlg.set_authors([u'Ludovic Aubry, Logilab',
-                         u'David Douard, Logilab',
-                         u'Aurélien Campéas, Logilab'])
-        from __pkginfo__ import modname, version, short_desc, long_desc
+        dlg.set_authors([u'Ludovic Aubry',
+                         u'Aurélien Campéas',
+                         u'David Douard',
+                         u'Graziella Toutoungis',
+                         ])
+        from hgview.__pkginfo__ import modname, version, short_desc, long_desc
         dlg.set_comments(short_desc)
         dlg.set_name(modname)
         dlg.set_version(version)
