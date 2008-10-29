@@ -296,7 +296,7 @@ class HgMainWindow(QtGui.QMainWindow):
 
     def on_about(self, *args):
         """ Display about dialog """
-        from __pkginfo__ import modname, version, short_desc, long_desc
+        from hgview.__pkginfo__ import modname, version, short_desc, long_desc
         QtGui.QMessageBox.about(self, self.tr("About hgview_qt4"),
                                 "<h2>About hgview_qt4 %s</h2>" % version + 
                                 "<p><i>%s</i></p>" % short_desc.capitalize() +
