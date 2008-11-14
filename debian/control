@@ -10,7 +10,7 @@ Standards-Version: 3.8.0
 XS-Python-Version: current
 Vcs-Hg: http://www.logilab.org/cgi-bin/hgwebdir.cgi/hgview
 Vcs-Browser: http://www.logilab.org/cgi-bin/hgwebdir.cgi/hgview
-Homepage: http://www.logilab.org/projects/hgview
+Homepage: http://www.logilab.org/project/hgview
 
 Package: hgview
 Architecture: all

@@ -1,8 +1,12 @@
 ChangeLog for hgview
 --------------------
+2008-10-28  --  0.9.1
+    * fix a format bug and clean code
 
 2008-10-06  --  0.9.0
-    * branch support
+    * support branches
+    * make filter text search on files and log description tree.
+    * bugfixes
 
 2008-05-15  --  0.3.1
     * added logic to resolve symbolic links to hgview executable
