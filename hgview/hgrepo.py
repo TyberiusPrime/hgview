@@ -11,13 +11,13 @@ import mercurial.commands
 
 
 class RevNode(object):
-    __slots__ = "rev author_id desc gmtime files tags branches".split()
+    __slots__ = "rev author_id desc localtime files tags branches".split()
     def __init__(self, rev, author_id, desc, date, files, tags, branches):
         self.rev = rev
         self.author_id = author_id
         self.desc = desc.strip()+"\n"
         #self.desc = desc
-        self.gmtime = date
+        self.localtime = date
         self.files = tuple(files)
         self.tags = tags
         self.branches = branches
@@ -33,7 +33,7 @@ class RevNode(object):
     short = property(get_short_log)
 
     def get_date( self ):
-        date_ = time.strftime( "%Y-%m-%d %H:%M", self.gmtime )
+        date_ = time.strftime( "%Y-%m-%d %H:%M", self.localtime )
         return date_
     date = property(get_date)
     
@@ -195,7 +195,7 @@ class HgHLRepo(object):
             self.authors.append( author )
             self.colors.append( COLORS[aid%NCOLORS] )
         filelist = [ intern(f) for f in filelist ]
-        date_ = time.gmtime(date[0])
+        date_ = time.localtime(date[0])
         taglist = self.repo.nodetags(node)
         tags = ", ".join(taglist)
         _node = RevNode(rev, author_id, log, date_, filelist, tags, branches)
