@@ -53,7 +53,11 @@ M_ID = 0
 M_NODE = 1
 M_NODEX = 2
 M_EDGES = 3
-
+M_DATE = 4
+M_GRAPHORDER = 5
+M_AUTH = 6
+M_AUTHCOLOR = 7
+M_REV = 8
 
 def make_texttag( name, **kwargs ):
     """Helper function generating a TextTag"""
@@ -89,6 +93,11 @@ class HgViewApp(object):
                                         gobject.TYPE_PYOBJECT, # node
                                         gobject.TYPE_PYOBJECT, # x for the node
                                         gobject.TYPE_PYOBJECT, # lines to draw
+                                        gobject.TYPE_FLOAT, # date
+                                        gobject.TYPE_INT64, # natural order
+                                        gobject.TYPE_STRING, # author
+                                        gobject.TYPE_STRING, # author color
+                                        gobject.TYPE_INT64, # node id
                                         )
 
         self.filelist = gtk.ListStore( gobject.TYPE_STRING, # filename
@@ -125,7 +134,6 @@ class HgViewApp(object):
         if path is None or col is None:
             return
         print "ADD TAG", path, col
-        self.revisions
         self.repo.add_tag( 2, "toto" )
         
     def revpopup_update(self, item):
@@ -260,7 +268,6 @@ class HgViewApp(object):
         foreground color"""
         node = model.get_value( iter_, M_NODE )
         branch = node.branches['branch']
-        activ_branch = self.get_selected_named_branch()
         cell.set_property( "text", self.repo.authors[node.author_id] )
         cell.set_property( "foreground", self.repo.colors[node.author_id] )
 
@@ -269,12 +276,17 @@ class HgViewApp(object):
         """A Cell datafunction used to provide the revnode's text"""
         node = model.get_value( iter_, M_NODE )
         cell.set_property( "text", str(node.rev) )
+        row = model[iter_]
 
     def date_data_func( self, column, cell, model, iter_, user_data=None ):
         """A Cell datafunction used to provide the date"""
         node = model.get_value( iter_, M_NODE )
         cell.set_property( "text", node.date )
-        
+        reversed = column.get_sort_order() == gtk.SORT_DESCENDING
+
+        row = model[iter_]
+   
+         
     def files_data_func( self, column, cell, model, iter_, user_data=None ):
         """A Cell datafunction used to provide the files"""
         #print column
@@ -300,8 +312,9 @@ class HgViewApp(object):
         tree.get_selection().connect("changed", self.selection_changed )
 
         rend = gtk.CellRendererText()
-        col = gtk.TreeViewColumn("ID", rend )
-        col.set_cell_data_func( rend, self.rev_data_func )
+        col = gtk.TreeViewColumn("ID", rend, text=M_REV)
+        #col.set_cell_data_func(rend, self.rev_data_func )
+        col.set_sort_column_id(M_REV)
         col.set_resizable(True)
         tree.append_column( col )
     
@@ -312,23 +325,28 @@ class HgViewApp(object):
                                  node=M_NODE)
         col.set_resizable(True)
         col.set_sizing( gtk.TREE_VIEW_COLUMN_FIXED )
-        col.set_fixed_width( 400 )
-        tree.append_column( col )
+        col.set_fixed_width(400)
+        col.set_sort_column_id(M_GRAPHORDER)
+        tree.append_column(col)
 
         rend = gtk.CellRendererText()
-        col = gtk.TreeViewColumn("Author", rend )
-        col.set_cell_data_func( rend, self.author_data_func )
+        col = gtk.TreeViewColumn("Author", rend, text=M_AUTH, foreground=M_AUTHCOLOR)
+        #col.set_cell_data_func( rend, self.author_data_func )
         col.set_resizable(True)
-        tree.append_column( col )
+        col.set_sort_column_id(M_AUTH)
+        tree.append_column(col)
 
         rend = gtk.CellRendererText()
         col = gtk.TreeViewColumn("Date", rend )
         col.set_cell_data_func( rend, self.date_data_func )
         col.set_resizable(True)
+        col.set_sort_column_id(M_DATE)
         tree.append_column( col )
 
-        tree.set_model( self.revisions )
-
+        tree.set_model(self.revisions )
+        #self.revisions.set_sort_column_id(3, gtk.SORT_ASCENDING)
+        tree.set_reorderable(True)
+       
         # Setup the filelist treeview
         tree_files = self.xml.get_widget( "treeview_filelist" )
         #tree_files.set_rules_hint( 1 )
@@ -410,7 +428,10 @@ class HgViewApp(object):
                 continue
             rnode = self.repo.read_node( node )
             lines = graph.rowlines[n]
-            add_rev( (node, rnode, graph.x[node], (lines,n) ) )
+            auth = self.repo.authors[rnode.author_id] 
+            authcolor = self.repo.colors[rnode.author_id] 
+            rev = int(rnode.rev)
+            add_rev( (node, rnode, graph.x[node], (lines,n), time.mktime(rnode.localtime), n, auth, authcolor, rev) )
 
         self.last_node = last_node
         tree.thaw_notify()
