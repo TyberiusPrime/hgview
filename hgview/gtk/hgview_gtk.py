@@ -29,6 +29,7 @@ from mercurial.localrepo import localrepository
 
 GLADE_FILE_NAME = "hgview.glade"
 
+
 def load_glade(root=""):
     """Try several paths in which the glade file might be found"""
     for _path in [dirname(__file__),
@@ -59,6 +60,8 @@ M_AUTH = 6
 M_AUTHCOLOR = 7
 M_REV = 8
 
+
+
 def make_texttag( name, **kwargs ):
     """Helper function generating a TextTag"""
     tag = gtk.TextTag(name)
@@ -87,6 +90,7 @@ class HgViewApp(object):
             self.filter_files = None
         self.filter_noderange = None
         self.branch_selected = None
+        self.SHOW_GRAPH = True
         # The strings are stored as PYOBJECT when they contain zeros and also
         # to save memory when they are used by the custom renderer
         self.revisions = gtk.ListStore( gobject.TYPE_PYOBJECT, # node id
@@ -305,7 +309,7 @@ class HgViewApp(object):
             markup = str_node
         cell.set_property("markup", '<span>%s</span>' % markup)
   
-    def setup_tree(self):
+    def setup_tree(self ):
         """Configure the 2 gtk.TreeView"""
         # Setup the revisions treeview
         tree = self.xml.get_widget( "treeview_revisions" )
@@ -316,8 +320,9 @@ class HgViewApp(object):
         #col.set_cell_data_func(rend, self.rev_data_func )
         col.set_sort_column_id(M_REV)
         col.set_resizable(True)
+        col.connect("clicked", self.sort_on_id)
         tree.append_column( col )
-    
+
         rend = RevGraphRenderer(self)
         rend.connect( "activated", self.cell_activated )
         self.graph_rend = rend
@@ -327,6 +332,7 @@ class HgViewApp(object):
         col.set_sizing( gtk.TREE_VIEW_COLUMN_FIXED )
         col.set_fixed_width(400)
         col.set_sort_column_id(M_GRAPHORDER)
+        col.connect("clicked", self.sort_on_id)
         tree.append_column(col)
 
         rend = gtk.CellRendererText()
@@ -334,6 +340,7 @@ class HgViewApp(object):
         #col.set_cell_data_func( rend, self.author_data_func )
         col.set_resizable(True)
         col.set_sort_column_id(M_AUTH)
+        col.connect("clicked", self.sort_on_id)
         tree.append_column(col)
 
         rend = gtk.CellRendererText()
@@ -341,13 +348,14 @@ class HgViewApp(object):
         col.set_cell_data_func( rend, self.date_data_func )
         col.set_resizable(True)
         col.set_sort_column_id(M_DATE)
+        col.connect("clicked", self.sort_on_id)
         tree.append_column( col )
 
         tree.set_model(self.revisions )
-        #self.revisions.set_sort_column_id(3, gtk.SORT_ASCENDING)
-        tree.set_reorderable(True)
+        #tree.set_reorderable(True)
+     
        
-        # Setup the filelist treeview
+        ##Setup the filelist treeview
         tree_files = self.xml.get_widget( "treeview_filelist" )
         #tree_files.set_rules_hint( 1 )
         tree_files.get_selection().connect("changed", self.fileselection_changed )
@@ -366,7 +374,19 @@ class HgViewApp(object):
         tree_files.append_column( col )
 
         tree_files.set_model( self.filelist )
-
+        
+    def sort_on_id(self, *args):
+        sorted_column = args[0].get_sort_column_id()
+        sort_type = args[0].get_sort_order().value_nick
+        if sort_type == 'ascending':
+            if sorted_column == 5:
+                self.SHOW_GRAPH = True
+            else:
+                self.SHOW_GRAPH = False 
+        else:
+            self.SHOW_GRAPH = False
+        return self.SHOW_GRAPH 
+              
     def cell_activated(self, *args):
         print "nudge"
 
@@ -387,6 +407,7 @@ class HgViewApp(object):
         self._idletask_id = gobject.idle_add( self.idle_fill_model )
         return
 
+  
     def on_treeview_revisions_button_press_event(self, treeview, event):
         if event.button==3:
             x = int(event.x)
