@@ -222,7 +222,8 @@ class HgViewApp(object):
         textwidget = self.xml.get_widget( "textview_status" )
         text_buffer = textwidget.get_buffer()
         tag_table = text_buffer.get_tag_table()
-
+        print 'tag_table',tag_table, tag_table.__dict__
+        
         tag_table.add( make_texttag( "mono", family="Monospace" ))
         tag_table.add( make_texttag( "blue", foreground='blue' ))
         tag_table.add( make_texttag( "red", foreground='red' ))
@@ -492,59 +493,91 @@ class HgViewApp(object):
         buf.insert( eob, "\n" )
 
 
-    def prepare_diff( self, difflines, offset ):
-        idx = 0
-        outlines = []
-        tags = []
-        filespos = []
-        def addtag( name, offset, length ):
-            if tags and tags[-1][0] == name and tags[-1][2]==offset:
-                tags[-1][2] += length
-            else:
-                tags.append( [name, offset, offset+length] )
-        #print "DIFF:", len(difflines)
-        stats = [0,0]
-        statmax = 0
-        for i,l in enumerate(difflines):
-            if l.startswith("diff"):
-                f = l.split()[-1]
-                txt = DIFFHDR % f
-                addtag( "greybg", offset, len(txt) )
-                outlines.append(txt)
-                markname = "file%d" % idx
-                idx += 1
-                statmax = max( statmax, stats[0]+stats[1] )
-                stats = [0,0]
-                filespos.append(( f, markname, offset, stats ))
-                offset += len(txt)
-                continue
-            elif l.startswith("+++"):
-                continue
-            elif l.startswith("---"):
-                continue
-            elif l.startswith("+"):
-                tag = "green"
-                stats[0] += 1
-            elif l.startswith("-"):
-                stats[1] += 1
-                tag = "red"
-            elif l.startswith("@@"):
-                tag = "blue"
-            else:
-                tag = "black"
-            l = l+"\n"
-            length = len(l)
-            addtag( tag, offset, length )
-            outlines.append( l )
-            offset += length
+    def prepare_diff( self, difflines, offset ,changes):
+        if changes[2] and  changes[1]: #remove file
+            file_remove = changes[2][0]
+            file_added  = changes[1][0]
+            print '////',file_remove , file_added
+            idx = 0
+            outlines = []
+            tags = []
+            filespos = []
+            def addtag( name, offset, length ):
+                if tags and tags[-1][0] == name and tags[-1][2]==offset:
+                    tags[-1][2] += length
+                else:
+                    tags.append( [name, offset, offset+length] )
+                #print "DIFF:", len(difflines)
+            stats = [0,0]
+            statmax = 0
+            DIFFHDR = "rename from === %s ===\nrename to === %s ===\n"
+            txt = DIFFHDR % (file_remove, file_added)
+            addtag( "greybg", offset, len(txt) )
+            outlines.append(txt)
+            markname = "file%d" % idx
+            idx += 1
+            statmax = max( statmax, stats[0]+stats[1] )
+            stats = [0,0]
+            filespos.append(( file_added , markname, offset, stats ))
+            filespos.append(( file_remove , markname, offset, stats ))
+            offset += len(txt) 
+        else:
+            idx = 0
+            outlines = []
+            tags = []
+            filespos = []
+            def addtag( name, offset, length ):
+                if tags and tags[-1][0] == name and tags[-1][2]==offset:
+                    tags[-1][2] += length
+                else:
+                    tags.append( [name, offset, offset+length] )
+                #print "DIFF:", len(difflines)
+            stats = [0,0]
+            statmax = 0
+            for i,l in enumerate(difflines):
+                if l.startswith("diff"):
+                    f = l.split()[-1]
+                    DIFFHDR = "=== %s ===\n"
+                    txt = DIFFHDR % f
+                    addtag( "greybg", offset, len(txt) )
+                    outlines.append(txt)
+                    markname = "file%d" % idx
+                    idx += 1
+                    statmax = max( statmax, stats[0]+stats[1] )
+                    stats = [0,0]
+                    filespos.append(( f, markname, offset, stats ))
+                    offset += len(txt)
+                    continue
+                elif l.startswith("+++"):
+                    continue
+                elif l.startswith("---"):
+                    continue
+                elif l.startswith("+"):
+                    tag = "green"
+                    stats[0] += 1
+                elif l.startswith("-"):
+                    stats[1] += 1
+                    tag = "red"
+                elif l.startswith("@@"):
+                    tag = "blue"
+                else:
+                    tag = "black"
+                l = l+"\n"
+                length = len(l)
+                addtag( tag, offset, length )
+                outlines.append( l )
+                offset += length
         statmax = max( statmax, stats[0]+stats[1] )
         return filespos, tags, outlines, statmax
 
     def selection_changed( self, selection ):
+        #import pdb
+        #pdb.set_trace()
         model, it = selection.get_selected()
         if it is None:
             return
-        node, rnode = model.get( it, M_ID, M_NODE )
+        node, rnode = model.get(
+            it, M_ID, M_NODE )
         textwidget = self.xml.get_widget( "textview_status" )
         text_buffer = textwidget.get_buffer()
         textwidget.freeze_child_notify()
@@ -559,7 +592,8 @@ class HgViewApp(object):
             enddesc.backward_line()
             text_buffer.create_mark( "enddesc", enddesc )
             self.filelist.append( ("Content", "begdesc", None ) )
-            buff = self.repo.diff( self.repo.parents(node), node, rnode.files )
+            buff, changes = self.repo.diff(self.repo.parents(node), node, rnode.files)
+            print '*********changes', changes
             try:
                 buff = unicode( buff, "utf-8" )
             except UnicodeError:
@@ -570,7 +604,7 @@ class HgViewApp(object):
             eob = text_buffer.get_end_iter()
             
             offset = eob.get_offset()
-            fileoffsets, tags, lines, statmax = self.prepare_diff( difflines, offset )
+            fileoffsets, tags, lines, statmax = self.prepare_diff( difflines, offset, changes )
             txt = u"".join(lines)
 
             # XXX debug : sometime gtk complains it's not valid utf-8 !!!

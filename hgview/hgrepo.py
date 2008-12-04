@@ -1,6 +1,6 @@
 import os
-from mercurial import hg, ui, patch
-from mercurial.node import short as short_hex, bin as short_bin
+from mercurial import hg, ui, patch, cmdutil
+from mercurial.node import hex, short as short_hex, bin as short_bin
 from mercurial.localrepo import localrepository
 from mercurial.node import nullid
 from buildtree import RevGraph
@@ -8,6 +8,7 @@ from StringIO import StringIO
 import textwrap
 import time
 import mercurial.commands
+import re
 
 
 class RevNode(object):
@@ -215,14 +216,39 @@ class HgHLRepo(object):
     def children( self, node ):
         return [ n for n in self.repo.changelog.children( node ) if n!=nullid ]
     
-    def diff( self, parents, node2, files ):
-        if len(parents)==1:
-            return self.single_diff( parents[0], node2, files )
-        else:
-#            return self.merge_diff( parents, node2, files )
-            return self.single_diff( parents[0], node2, files )
+    def diff(self, parents, node2, files, match=True):
+        changes = self.repo.status(parents[0], node2, files)[:4]            
+        modified, added, removed, deleted = changes
+        # find renamed files
 
-    def single_diff( self, node1, node2, files ):
+        files = list(files[:])
+        print "files=", files
+        print "added files=", added
+        print "node2 = ", self.read_node(node2).rev
+        print "parents = ", [self.read_node(p).rev for p in parents]
+
+        diffmsg = ""
+        ctx = self.repo.changectx(node2)
+        for f in added:
+            print "check if %s has been renamed"%f
+##             for src, abs, rel, exact in cmdutil.walk(self.repo, (f,), {},
+##                                                      ctx.node()):
+            fctx = ctx.filectx(f)
+            m = fctx.filelog().renamed(fctx.filenode())
+            if m:
+                diffmsg += "%s renamed from %s:%s\n" % (f, m[0], hex(m[1]))
+                files.remove(f)
+                files.remove(m[0])
+        print "diffmsg = ", diffmsg
+        print "files=",  files
+        if len(parents)==1:
+            print self.single_diff(parents[0], node2, files)
+            return diffmsg + self.single_diff(parents[0], node2, files), changes
+        else:
+#           return self.merge_diff( parents, node2, files )
+            return diffmsg + self.single_diff(parents[0], node2, files), changes
+
+    def single_diff( self, node1, node2, files):
         out = StringIO()
         patch.diff( self.repo, node1=node1,
                     node2=node2, files=files, fp=out )
@@ -321,3 +347,9 @@ class HgHLRepo(object):
         mercurial.commands.tag( self.ui, self.repo, label,
                                 rev=1, message="hop",
                                 local=True, user=None, date=None )
+
+
+if __name__ == "__main__":
+    import sys
+    rep = HgHLRepo(sys.argv[1])
+    
