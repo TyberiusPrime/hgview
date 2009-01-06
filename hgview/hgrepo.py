@@ -24,7 +24,7 @@ class RevNode(object):
         self.tags = tags
         self.branches = branches
 
-    def get_short_log( self ):
+    def get_short_log(self):
         """Compute a short log from the full revision log"""
         offs = self.desc.find('\n')
         if offs>0:
@@ -34,8 +34,8 @@ class RevNode(object):
         return text
     short = property(get_short_log)
 
-    def get_date( self ):
-        date_ = time.strftime( "%Y-%m-%d %H:%M", self.localtime )
+    def get_date(self):
+        date_ = time.strftime("%Y-%m-%d %H:%M", self.localtime)
         return date_
     date = property(get_date)
     
@@ -44,7 +44,7 @@ class Repository(object):
     """Abstract interface for a repository"""
     def __init__(self, path):
         """path : path of repository"""
-        self.dir = self.find_repository( path )
+        self.dir = self.find_repository(path)
         # The list of authors names
         self.authors = []
         # colors for the authors (need to get out of here)
@@ -59,36 +59,36 @@ class Repository(object):
         type of repository
         """
         raise NotImplementedError()
-    find_repository = classmethod( find_repository )
+    find_repository = classmethod(find_repository)
 
 
-    def read_node( self, nodeid ):
+    def read_node(self, nodeid):
         """Returns the node's attributes as RevNode instance"""
         raise NotImplementedError()
 
-    def parents( self, node ):
+    def parents(self, node):
         """Returns a list of parents' ids for the node"""
         raise NotImplementedError()
 
-    def children( self, node ):
+    def children(self, node):
         """Returns a list of children's ids for the node"""
         raise NotImplementedError()
 
-    def diff( self, node1, node2, files ):
+    def diff(self, node1, node2, files):
         """Returns a diff between node1 and node2 for the
         files listed in files"""
         raise NotImplementedError()
 
-    def count( self ):
+    def count(self):
         """Returns the number of nodes"""
         raise NotImplementedError()
 
-    def graph( self, nodes ):
+    def graph(self, nodes):
         """Returns a graph object allowing representation
         of the tree of revisions reduced to 'nodes'
         """
 
-    def add_tag( self, rev, label ):
+    def add_tag(self, rev, label):
         pass
 
     def get_branches(self):
@@ -110,11 +110,11 @@ EMPTY_NODE = (-1,  # REV num
               (),  # file list
               [],  # tags
               [],  # branches
-              )
+             )
 
-def timeit( f ):
+def timeit(f):
     """Decorator used to time the execution of a function"""
-    def timefunc( *args, **kwargs ):
+    def timefunc(*args, **kwargs):
         """wrapper"""
         t1 = time.time()
         t2 = time.clock()
@@ -132,21 +132,20 @@ class HgHLRepo(object):
     """high level operation on a mercurial repo
     """
     def __init__(self, path):
-        self.dir = self.find_repository( path )
+        self.dir = self.find_repository(path)
         self.ui = ui.ui()
-        self.repo = hg.repository( self.ui, self.dir )
+        self.refresh()
         # cache and indexing of changelog
         self._cache = {}
 
     def refresh(self):
-        self.repo = hg.repository( self.ui, self.dir )
+        self.repo = hg.repository(self.ui, self.dir)
         
     def get_branch(self):
         return self.repo.branchtags()
 
     def get_branches_heads(self):
         return self.repo._readbranchcache()
-
 
     def find_repository(self, path):
         """returns <path>'s mercurial repository
@@ -160,42 +159,42 @@ class HgHLRepo(object):
             if path == oldpath:
                 return None
         return path
-    find_repository = classmethod( find_repository )
+    find_repository = classmethod(find_repository)
 
     def read_nodes(self):
         """Read the nodes of the changelog"""
         changelog = self.repo.changelog
         cnt = changelog.count()
-        self.nodes = [ changelog.node(i) for i in xrange(cnt) ]
+        self.nodes = [changelog.node(i) for i in xrange(cnt)]
+        self.noderevs = range(cnt)
         self._cache = {}
         self.authors = []
-        self.branches =[]
-        self.colors = []
+        self.branches = []
+        self.colors = [-1]
         self.authors_dict = {}
         self.branches_dict = {}
     read_nodes = timeit(read_nodes)
 
-
-    def read_node( self, node ):
+    def read_node(self, node):
         """Gather revision information from mercurial"""
         nodeinfo = self._cache
         if node in nodeinfo:
             return nodeinfo[node]
         NCOLORS = len(COLORS)
         changelog = self.repo.changelog
-        _, author, date, filelist, log, branches = changelog.read( node )
+        _, author, date, filelist, log, branches = changelog.read(node)
         bid = len(branches['branch'])
         branch = branches['branch']
-        branch_id = self.branches_dict.setdefault( branch, bid )
+        branch_id = self.branches_dict.setdefault(branch, bid)
         if branch_id == bid:
-            self.branches.append( branch )
-            self.colors.append( COLORS[bid%NCOLORS] )
-        rev = changelog.rev( node )
+            self.branches.append(branch)
+            self.colors.append(COLORS[bid%NCOLORS])
+        rev = changelog.rev(node)
         aid = len(self.authors)
-        author_id = self.authors_dict.setdefault( author, aid )
+        author_id = self.authors_dict.setdefault(author, aid)
         if author_id == aid:
-            self.authors.append( author )
-            self.colors.append( COLORS[aid%NCOLORS] )
+            self.authors.append(author)
+            self.colors.append(COLORS[aid%NCOLORS])
         filelist = [ intern(f) for f in filelist ]
         date_ = time.localtime(date[0])
         taglist = self.repo.nodetags(node)
@@ -204,17 +203,17 @@ class HgHLRepo(object):
         nodeinfo[node] = _node
         return _node
 
-    def graph( self, todo_nodes ):
-        return RevGraph( self.repo, todo_nodes, self.nodes )
+    def graph(self, todo_nodes):
+        return RevGraph(self.repo, todo_nodes)
 
-    def parents( self, node ):
-        parents = [ n for n in self.repo.changelog.parents(node) if n!=nullid ]
+    def parents(self, node):
+        parents = [n for n in self.repo.changelog.parents(node) if n!=nullid]
         if not parents:
             parents = [nullid]
         return parents
 
-    def children( self, node ):
-        return [ n for n in self.repo.changelog.children( node ) if n!=nullid ]
+    def children(self, node):
+        return [ n for n in self.repo.changelog.children(node) if n!=nullid ]
     
     def diff(self, parents, node2, files, match=True):
         changes = self.repo.status(parents[0], node2, files)[:4]            
@@ -245,53 +244,53 @@ class HgHLRepo(object):
             print self.single_diff(parents[0], node2, files)
             return diffmsg + self.single_diff(parents[0], node2, files), changes
         else:
-#           return self.merge_diff( parents, node2, files )
+#           return self.merge_diff(parents, node2, files)
             return diffmsg + self.single_diff(parents[0], node2, files), changes
 
-    def single_diff( self, node1, node2, files):
+    def single_diff(self, node1, node2, files):
         out = StringIO()
-        patch.diff( self.repo, node1=node1,
-                    node2=node2, files=files, fp=out )
+        patch.diff(self.repo, node1=node1,
+                    node2=node2, files=files, fp=out)
         return out.getvalue()
 
-    def merge_diff( self, parents, node2, files ):
+    def merge_diff(self, parents, node2, files):
         s = ""
         assert len(parents)==2
-        ancestor = self.repo.changelog.ancestor( parents[0], parents[1] )
+        ancestor = self.repo.changelog.ancestor(parents[0], parents[1])
         #print short_hex(ancestor)
         for f in files:
             #print "***", f
-            d0 = self.single_diff( parents[0], node2, [f] )
-            d1 = self.single_diff( parents[1], node2, [f] )
-            p0 = self.single_diff( ancestor, parents[0], [f] )
-            p1 = self.single_diff( ancestor, parents[1], [f] )
-            op0 = self.get_ops( p0 )
-            od0 = self.get_ops( d0 )
+            d0 = self.single_diff(parents[0], node2, [f])
+            d1 = self.single_diff(parents[1], node2, [f])
+            p0 = self.single_diff(ancestor, parents[0], [f])
+            p1 = self.single_diff(ancestor, parents[1], [f])
+            op0 = self.get_ops(p0)
+            od0 = self.get_ops(d0)
 ##             for l, ob, nb in op0:
 ##                 print "%5d %5d %s" % (ob,nb,l)
             for op in od0:
 ##                 print "---"
 ##                 print "%5d %5d %s" % (op[1],op[2],op[0])
 ##                 print ":"
-                self.apply_ops( op0, *op )
+                self.apply_ops(op0, *op)
 ##                 for l, ob, nb in op0:
 ##                     print "%5d %5d %s" % (ob,nb,l)
 ##                 print "---"
                 
-            op1 = self.get_ops( p1 )
-            od1 = self.get_ops( d1 )
+            op1 = self.get_ops(p1)
+            od1 = self.get_ops(d1)
             for op in od1:
-                self.apply_ops( op1, *op )
-##             for opl,opr in zip( op0, op1 ):
+                self.apply_ops(op1, *op)
+##             for opl,opr in zip(op0, op1):
 ##                 print "L:%5d %5d %s" % (opl[1],opl[2],opl[0])
 ##                 print "R:%5d %5d %s" % (opr[1],opr[2],opr[0])
             
         return s
 
-    def count( self ):
+    def count(self):
         return self.repo.changelog.count()
 
-    def get_ops( self, udiff ):
+    def get_ops(self, udiff):
         hunk = None
         ops = []
         for l in udiff.splitlines():
@@ -309,10 +308,10 @@ class HgHLRepo(object):
                 continue
             ob, ol, nb, nl = hunk
             if l.startswith("+"):
-                ops.append( [l, ob, nb] )
+                ops.append([l, ob, nb])
                 hunk[2]+=1
             elif l.startswith("-"):
-                ops.append( [l, ob, nb] )
+                ops.append([l, ob, nb])
                 hunk[0]+=1
             else:
                 hunk[0]+=1
@@ -320,7 +319,7 @@ class HgHLRepo(object):
 
         return ops
 
-    def apply_ops( self, ops, line, nob, nnb ):
+    def apply_ops(self, ops, line, nob, nnb):
         i = 0
         while i < len(ops):
             if nob>=ops[i][2]:
@@ -334,7 +333,7 @@ class HgHLRepo(object):
         elif 0<i:
             deltaorig = ops[i-1][2]-ops[i-1][1]
 
-        ops.insert(i, [line, nob-deltaorig, nnb-deltaorig] )
+        ops.insert(i, [line, nob-deltaorig, nnb-deltaorig])
         if line[0]=="+":
             delta = +1
         else:
@@ -342,11 +341,11 @@ class HgHLRepo(object):
         for t in ops[i+1:]:
             t[2]+=delta
         
-    def add_tag( self, rev, label ):
+    def add_tag(self, rev, label):
         #self.repo.tag(name, r, message, opts['local'], opts['user'], opts['date'])
-        mercurial.commands.tag( self.ui, self.repo, label,
+        mercurial.commands.tag(self.ui, self.repo, label,
                                 rev=1, message="hop",
-                                local=True, user=None, date=None )
+                                local=True, user=None, date=None)
 
 
 if __name__ == "__main__":
