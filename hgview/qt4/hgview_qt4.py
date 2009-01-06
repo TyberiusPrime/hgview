@@ -2,7 +2,7 @@
 #!/usr/bin/env python
 # hgview_qt4.py - qt4-based hgk
 #
-# Copyright (C) 2007 Logilab. All rights reserved.
+# Copyright (C) 2007-2009 Logilab. All rights reserved.
 #
 # This software may be used and distributed according to the terms
 # of the GNU General Public License, incorporated herein by reference.
@@ -34,7 +34,7 @@ diff_styles = {'+': (normal, Qt.darkGreen),
 
 class HgMainWindow(QtGui.QMainWindow):
     """Main hg view application"""
-    def __init__(self, repo, filerex = None ):
+    def __init__(self, repo, filerex = None):
 
         QtGui.QMainWindow.__init__(self)
         for _path in [dirname(__file__),
@@ -49,22 +49,24 @@ class HgMainWindow(QtGui.QMainWindow):
         else:
             raise ValueError("Unable to find hgview.ui\n"
                              "Check your installation.")
-        
+
+        # load qt designer ui file
         uifile = os.path.join(os.path.dirname(__file__), ui_file)
         self.ui = uic.loadUi(uifile, self)
-        
+
+        # hg repo
         self.repo = repo
 
         self.filerex = filerex
         if filerex:
-            self.filter_files_reg = re.compile( filerex )
+            self.filter_files_reg = re.compile(filerex)
         else:
             self.filter_files_reg = None
         self.filter_noderange = None
 
         self.splitter_2.setStretchFactor(0, 2)
         self.splitter_2.setStretchFactor(1, 1)
-        self.connect(self.splitter_2, QtCore.SIGNAL('splitterMoved ( int, int)'),
+        self.connect(self.splitter_2, QtCore.SIGNAL('splitterMoved (int, int)'),
                      self.resize_filelist_columns)
         
         self.pb = QtGui.QProgressBar(self.statusBar())
@@ -131,13 +133,13 @@ class HgMainWindow(QtGui.QMainWindow):
         filetable.setModel(self.filelistmodel)
 
         self.connect(self.tableView_filelist.selectionModel(),
-                     QtCore.SIGNAL('currentRowChanged ( const QModelIndex & , const QModelIndex &  )'),
+                     QtCore.SIGNAL('currentRowChanged (const QModelIndex & , const QModelIndex & )'),
                      self.file_selected)
         self.connect(self.tableView_filelist,
-                     QtCore.SIGNAL('doubleClicked ( const QModelIndex & )'),
+                     QtCore.SIGNAL('doubleClicked (const QModelIndex &)'),
                      self.file_activated)
         self.connect(self.tableView_revisions.selectionModel(),
-                     QtCore.SIGNAL('currentRowChanged ( const QModelIndex & , const QModelIndex &  )'),
+                     QtCore.SIGNAL('currentRowChanged (const QModelIndex & , const QModelIndex & )'),
                      self.revision_selected)
 
     def file_activated(self, index):
@@ -182,7 +184,7 @@ class HgMainWindow(QtGui.QMainWindow):
         editor.setFont(font)
         editor.setReadOnly(True)
         self.connect(editor,
-                     QtCore.SIGNAL('anchorClicked( const QUrl &)'),
+                     QtCore.SIGNAL('anchorClicked(const QUrl &)'),
                      self.on_anchor_clicked)
         
     def on_anchor_clicked(self, qurl):
@@ -274,7 +276,7 @@ class HgMainWindow(QtGui.QMainWindow):
             return
         print "ADD TAG", path, col
         self.revisions
-        #self.repo.add_tag( 2, "toto" )
+        #self.repo.add_tag(2, "toto")
         
     def revpopup_update(self, item):
         print "UPDATE"
@@ -290,7 +292,7 @@ class HgMainWindow(QtGui.QMainWindow):
             if node.rev in noderange:
                 for f in node.files:
                     if frex.search(f):
-                        keepnodes.append( n )
+                        keepnodes.append(n)
                         break
         return keepnodes
 
@@ -320,7 +322,7 @@ class HgMainWindow(QtGui.QMainWindow):
         self.pb.show()
         QtGui.qApp.flush()        
         # we use a QTimer with no delay time, so
-        # it the repo loading process will let the application
+        # if the repo loading process will let the application
         # react and the window update its content quite smoothly
         self.timer.start()
 
@@ -437,7 +439,7 @@ class HgMainWindow(QtGui.QMainWindow):
                                 len(rem_line_reg.findall(diff_content)))
 
             cursor.insertHtml(u'\n<a name="%s"></a>\n' % diff_file)
-            cursor.insertText(u'\n === %s [+%s -%s] === \n' % (diff_file, stats[diff_file][0],stats[diff_file][1] ),
+            cursor.insertText(u'\n === %s [+%s -%s] === \n' % (diff_file, stats[diff_file][0],stats[diff_file][1]),
                               self.header_diff_format)
             
             for l in diff_content.splitlines():
@@ -460,11 +462,11 @@ class HgMainWindow(QtGui.QMainWindow):
                '<td><span class="rev_number">%d</span>:'\
                '<span class="rev_hash">%s</span></td></tr>'\
                '\n' % (rnode.rev, short_hex(node)) 
-        #buf += short_hex(node) + '\n' #, "link" )
+        #buf += short_hex(node) + '\n' #, "link")
         buf += '<tr><td class="label">Author:</td>'\
                '<td class="auth_id">%s</td></tr>'\
                '\n' %  repo.authors[rnode.author_id] 
-        #buf.create_mark( "begdesc", buf.get_start_iter() )
+        #buf.create_mark("begdesc", buf.get_start_iter())
 
         for p in repo.parents(node):
             pnode = repo.read_node(p)
@@ -474,7 +476,7 @@ class HgMainWindow(QtGui.QMainWindow):
                    '<a href="%s" class="rev_hash">%s</a>&nbsp;'\
                    '<span class="short_desc">(%s)</span></td></tr>'\
                    '\n' % (pnode.rev, pnode.rev, short, pnode.short)
-            #buf += short #, "link" )
+            #buf += short #, "link")
         for p in repo.children(node):
             pnode = repo.read_node(p)
             short = short_hex(p)
@@ -490,26 +492,26 @@ class HgMainWindow(QtGui.QMainWindow):
         cursor.insertHtml(buf)
 
 
-    def hilight_search_string( self ):
+    def hilight_search_string(self):
         # Highlight the search string
-        textwidget = self.xml.get_widget( "textview_status" )
+        textwidget = self.xml.get_widget("textview_status")
         text_buffer = textwidget.get_buffer()
         if not self.find_text:
             return
 
         rexp = re.compile(self.find_text)
         sob, eob = text_buffer.get_bounds()
-        mark = text_buffer.get_mark( "enddesc" )
+        mark = text_buffer.get_mark("enddesc")
         enddesc = text_buffer.get_iter_at_mark(mark)
-        txt = text_buffer.get_slice(sob, enddesc, True )
-        m = rexp.search( txt )
+        txt = text_buffer.get_slice(sob, enddesc, True)
+        m = rexp.search(txt)
         while m:
-            _b = text_buffer.get_iter_at_offset( m.start() )
-            _e = text_buffer.get_iter_at_offset( m.end() )
-            text_buffer.apply_tag_by_name("yellowbg", _b, _e )
-            m = rexp.search( txt, m.end() )
+            _b = text_buffer.get_iter_at_offset(m.start())
+            _e = text_buffer.get_iter_at_offset(m.end())
+            text_buffer.apply_tag_by_name("yellowbg", _b, _e)
+            m = rexp.search(txt, m.end())
 
-    def on_filter1_activate( self, *args ):
+    def on_filter1_activate(self, *args):
         self.filter_dialog.show()
 
     def init_filter(self):
@@ -537,17 +539,17 @@ class HgMainWindow(QtGui.QMainWindow):
         print "Find not yet implemented... Sorry."
         QtGui.QMessageBox.warning(self, self.tr("Noy yet implemented"),
                                   "<p><b>Find</b> functionality has nit yet been implemented... Sorry</p>"
-                                  )
+                                 )
         
         
 
 def main():
     parser = OptionParser()
-    parser.add_option( '-R', '--repository', dest='repo',
-                       help='location of the repository to explore' )
-    parser.add_option( '-f', '--file', dest='filename',
+    parser.add_option('-R', '--repository', dest='repo',
+                       help='location of the repository to explore')
+    parser.add_option('-f', '--file', dest='filename',
                        help='filter revisions which touch FILE', metavar="FILE")
-    parser.add_option( '-g', '--regexp', dest='filerex',
+    parser.add_option('-g', '--regexp', dest='filerex',
                        help='filter revisions which touch FILE matching regexp')
     
     opt, args = parser.parse_args()
@@ -559,12 +561,12 @@ def main():
 
     filerex = None
     if opt.filename:
-        filerex = "^" + re.escape( opt.filename ) + "$"
+        filerex = "^" + re.escape(opt.filename) + "$"
     elif opt.filerex:
         filerex = opt.filerex
 
     try:
-        repo = HgHLRepo( dir_ )
+        repo = HgHLRepo(dir_)
     except:
         print "You are not in a repo, are you?"
         sys.exit(1)

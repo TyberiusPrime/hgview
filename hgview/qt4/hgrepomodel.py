@@ -1,92 +1,93 @@
 import sys
+import mx.DateTime as dt
+import itertools
+
 from PyQt4 import QtCore, QtGui
 connect = QtCore.QObject.connect
+
+COLORS = [ "blue", "darkgreen", "red", "green", "darkblue", "purple",
+           "cyan", "magenta", "darkred", "darkmagenta"]
+
+def get_color(n):
+    return COLORS[n % len(COLORS)]
+
+def cvrt_date(date):
+    date, tzdelay = date
+    return QtCore.QDateTime.fromTime_t(int(date))
+    return dt.DateTimeFromTicks(date) + tzdelay/dt.oneHour
+
     
+
+from hgext.graphlog import revision_grapher, fix_long_right_edges
+from hgext.graphlog import get_nodeline_edges_tail, get_padding_line
+from hgext.graphlog import draw_edges, get_rev_parents
+from mercurial.node import nullrev
+from hgview.hggraph import Graph
+
 class HgRepoListModel(QtCore.QAbstractTableModel):
-    def __init__(self, data, parent=None):
+    _columnmap = [lambda ctx: ctx.rev(),
+                  lambda ctx: ctx.description(),
+                  lambda ctx: ctx.user(),
+                  lambda ctx: cvrt_date(ctx.date()),
+                  lambda ctx: ",".join(ctx.tags()),
+                  lambda ctx: ctx.branch(),
+                  ]
+    def __init__(self, repo, parent=None):
         """
-        data is a HgHLRepo instance
+        repo is a hg repo instance
         """
         QtCore.QAbstractTableModel.__init__(self,parent)
-        self.repo = data
-        self.graph = None
+        self.repo = repo
         self.__len = 0
         self.__cache = {} 
         self.dot_radius = 8
-
-    def set_graph(self, graph):
-        self.graph = graph
-        self.compute_len()
+        self._user_colors = {}
+        self._branch_colors = {}
+        self.graph = Graph(self.repo)
+        self.heads = [self.repo.changectx(x).rev() for x in self.repo.heads()]
         
-    def compute_len(self):
-        if self.graph:
-            self.__len = len(filter(None, self.graph.rows))
-        else:
-            self.__len = 0
+    def user_color(self, user):
+        if user not in self._user_colors:
+            self._user_colors[user] = COLORS[(len(self._user_colors) % len(COLORS))]
+        return self._user_colors[user]
 
-    def __len__(self):
-        if self.graph:
-            return len(filter(None, self.graph.rows))
-        return 0
-        print "len = ", self.__len
-        return self.__len
+    def namedbranch_color(self, branch):
+        if branch not in self._branch_colors:
+            self._branch_colors[branch] = COLORS[(len(self._branch_colors) % len(COLORS))]
+        return self._branch_colors[branch]
     
-    def rowCount(self, parent):
-        return len(self)
+    def rowCount(self, parent=None):
+        return self.repo.changelog.count()
 
-    def columnCount(self, parent):
-        return 4
+    def columnCount(self, parent=None):
+        return 6
+
+    def col2x(self, col):
+        return (1.2*self.dot_radius + 0) * col + self.dot_radius/2 + 3
 
     def data(self, index, role):
-        if not index.isValid() or self.graph is None:
+        if not index.isValid():
             return QtCore.QVariant()
-        row = index.row()
+        row = index.row() + 1
         column = index.column()
-        node = self.graph.rows[row]
-        
-        if node is None:
-            return  QtCore.QVariant()
-        idx = (row, column, role)
-        if idx in self.__cache:
-            return self.__cache[idx]
-
-        rev_node = self.repo.read_node(node)
-
+        gnode = self.graph[row]
+        ctx = self.repo.changectx(gnode.rev)
         if role == QtCore.Qt.DisplayRole:
-            item = QtCore.QVariant(self.getData(row, index.column()))
-            self.__cache[idx] = item
-            return item
+            return QtCore.QVariant(self._columnmap[column](ctx))
         elif role == QtCore.Qt.ForegroundRole:
             if column == 2: #author
-                color = self.repo.colors[rev_node.author_id]
-                color = QtCore.QVariant(QtGui.QColor(color))
-                self.__cache[idx]=color
-                return color
-            
+                return QtCore.QVariant(QtGui.QColor(self.user_color(ctx.user())))
+            if column == 5: #branch
+                return QtCore.QVariant(QtGui.QColor(self.namedbranch_color(ctx.branch())))
         elif role == QtCore.Qt.DecorationRole:
             if column == 1:
-                
-                node_x = self.graph.x[node]
-                lines = self.graph.rowlines[row]
-
-                xmax = self.graph.rownlines[row]
-                w = (xmax)*(1*self.dot_radius + 0) + 2
+                w = (gnode.cols)*(1*self.dot_radius + 0) + 20
                 h = 30 # ? how to get it
-                
-                dot_x = (1*self.dot_radius + 0) * node_x + self.dot_radius/2
-                dot_y = (h/2)-self.dot_radius/2
-                tags = rev_node.tags
-                if isinstance(tags, (list, tuple)):
-                    tags = ", ".join(tags)
-                tags = tags.strip()
-                font = QtGui.QFont()
-                font.setPointSize(font.pointSize()*0.8)
-                fontmetric = QtGui.QFontMetrics(font)
-                tag_rect = fontmetric.boundingRect(tags)
-                tag_w = tag_rect.width()
-                tag_h = tag_rect.height()
-                
-                pix = QtGui.QPixmap(w+tag_w+4, h)
+
+                dot_x = self.col2x(gnode.x) - self.dot_radius/2
+                dot_y = (h/2)
+                                
+                pix = QtGui.QPixmap(w, h)
                 pix.fill(QtGui.QColor(0,0,0,0))
                 painter = QtGui.QPainter(pix)
                 painter.setRenderHint(QtGui.QPainter.Antialiasing)
@@ -95,45 +96,42 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
                 pen.setWidth(2)
                 painter.setPen(pen)
 
-                for color_src_node, x1, y1, x2, y2 in lines:
-                    # x y are expressed here in terms of colums (in the graph)
-                    # and row (in the list)
-                    color = self.graph.colors.get(color_src_node, "black")
+                color = "black"
+                lpen = QtGui.QPen(pen)
+                lpen.setColor(QtGui.QColor(color))
+                painter.setPen(lpen)
+                inc = int(gnode.dx>0)
+                dec = int(gnode.dx<0)
+                    
+                for x1, y1, x2, y2, color in gnode.lines:
                     lpen = QtGui.QPen(pen)
-                    lpen.setColor(QtGui.QColor(color))
+                    lpen.setColor(QtGui.QColor(get_color(color)))
+                    lpen.setWidth(3)
                     painter.setPen(lpen)
-                        
-                    x1 = (1*self.dot_radius + 0) * x1  + self.dot_radius
-                    x2 = (1*self.dot_radius + 0) * x2  + self.dot_radius
-                    y1 = (y1 - row)*h + h/2
-                    y2 = (y2 - row)*h + h/2
-                    painter.drawLine(x1, y1, x2, y2)
 
-                if tags:
+                    x1 = self.col2x(x1)
+                    x2 = self.col2x(x2)                    
+                    painter.drawLine(x1, dot_y + y1*h, x2, dot_y + y2*h)
+ 
+                if gnode.rev in self.heads:
                     dot_color = "yellow"
                 else:
-                    dot_color = "gray"
+                    dot_color = QtGui.QColor(self.namedbranch_color(ctx.branch()))
+
+                dot_y = (h/2)-self.dot_radius/2
                     
                 painter.setBrush(QtGui.QColor(dot_color))
                 painter.setPen(QtCore.Qt.black)
                 painter.drawEllipse(dot_x, dot_y, self.dot_radius, self.dot_radius)
-                if tags:
-                    painter.setBrush(QtCore.Qt.yellow)
-                    painter.drawRect(w, 2, tag_w+4, tag_h+2)
-                    
-                    painter.setFont(font)
-                    painter.drawText(w+2, tag_h-1, tags)
-                
                 painter.end()
                 ret = QtCore.QVariant(pix)
-                self.__cache[idx] = ret
+##                 self.__cache[idx] = ret
                 return ret
         return QtCore.QVariant()
 
     def headerData(self, section, orientation, role):
         if orientation == QtCore.Qt.Horizontal and role == QtCore.Qt.DisplayRole:
-            return QtCore.QVariant(['ID','Log','Author','Date'][section])
-
+            return QtCore.QVariant(['ID','Log','Author','Date','Tags', 'Branch'][section])
         return QtCore.QVariant()
 
     def getData(self, row, column):
@@ -268,12 +266,15 @@ class HgFileListModel(QtCore.QAbstractTableModel):
 
         
 if __name__ == "__main__":
-    from hgview.hgrepo import HgHLRepo
+    from mercurial import ui, hg
+    root = '.'
+    if len(sys.argv)>1:
+        root=sys.argv[1]
+    u = ui.ui()    
+    repo = hg.repository(u, root)
     app = QtGui.QApplication(sys.argv)
-
-    repo = HgHLRepo(".")
     model = HgRepoListModel(repo)
-        
+    
     view = QtGui.QTableView()
     #delegate = GraphDelegate()
     #view.setItemDelegateForColumn(1, delegate)
@@ -286,4 +287,5 @@ if __name__ == "__main__":
     view.show()
     view.setAlternatingRowColors(True)
     view.resizeColumnsToContents()
+    print "number of branches:", len(model.graph.rawgraph) 
     sys.exit(app.exec_())
