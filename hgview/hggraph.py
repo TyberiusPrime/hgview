@@ -1,7 +1,28 @@
 # helper functions to ease hg revision graph building
 from itertools import izip, count as icount
+from StringIO import StringIO
 
 from mercurial.node import nullrev
+from mercurial import patch, util
+
+
+def diff(repo, ctx1, ctx2=None, files=None):
+    out = StringIO()
+    if ctx2 is None:
+        ctx2 = ctx1.parents()[0]
+    if files is None:
+        match = util.always
+    else:
+        def match(fn):
+            return fn in files
+    diff = patch.diff(repo, ctx1.node(), ctx2.node(), match=match, fp=out)
+    diff = out.getvalue()
+    try:
+        diff = unicode(diff, "utf-8")
+    except UnicodeError:
+        # XXX use a default encoding from config
+        diff = unicode(diff, "iso-8859-15", 'ignore')
+    return diff
 
 def revision_grapher(repo, start_rev, stop_rev):
     """incremental revision grapher

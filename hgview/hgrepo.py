@@ -249,6 +249,7 @@ class HgHLRepo(object):
 
     def single_diff(self, node1, node2, files):
         out = StringIO()
+        print "diff ", node1, node2, files
         patch.diff(self.repo, node1=node1,
                     node2=node2, files=files, fp=out)
         return out.getvalue()

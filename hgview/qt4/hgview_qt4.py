@@ -12,6 +12,7 @@ Main Qt4 application for hgview
 import sys, os
 import time
 import re
+
 from optparse import OptionParser
 from os.path import dirname, join, isfile
 
@@ -19,8 +20,11 @@ from PyQt4 import QtCore, QtGui, uic
 
 import hgview.fixes
 
-from hgrepomodel import HgRepoListModel, HgFileListModel
-from hgview.hgrepo import HgHLRepo, short_hex, short_bin
+from mercurial import ui, hg, patch
+from mercurial.node import hex, short as short_hex, bin as short_bin
+
+from hgview.qt4.hgrepomodel import HgRepoListModel, HgFileListModel
+from hgview.hggraph import diff as revdiff
 
 Qt = QtCore.Qt
 bold = QtGui.QFont.Bold
@@ -74,10 +78,10 @@ class HgMainWindow(QtGui.QMainWindow):
         self.pb.hide()
         self.statusBar().addPermanentWidget(self.pb)
 
-        self.timer = QtCore.QTimer()
-        self.timer.setSingleShot(False)
-        self.connect(self.timer, QtCore.SIGNAL("timeout()"),
-                     self.idle_fill_model)        
+##         self.timer = QtCore.QTimer()
+##         self.timer.setSingleShot(False)
+##         self.connect(self.timer, QtCore.SIGNAL("timeout()"),
+##                      self.idle_fill_model)        
 
         self.graph = None
         self.setup_diff_textview()
@@ -141,19 +145,21 @@ class HgMainWindow(QtGui.QMainWindow):
         self.connect(self.tableView_revisions.selectionModel(),
                      QtCore.SIGNAL('currentRowChanged (const QModelIndex & , const QModelIndex & )'),
                      self.revision_selected)
-
+        self.connect(filetable.horizontalHeader(),
+                     QtCore.SIGNAL('sectionResized(int, int, int)'),
+                     self.fileSectionResized)
+        
+    def fileSectionResized(self, idx, oldsize, newsize):
+        if idx == 2:
+            self.filelistmodel.setDiffWidth(newsize)
+        
     def file_activated(self, index):
-        print 'activated file at ', index.row(), index.column()
-        if index.row() == 0:
+        ctx = self.filelistmodel.current_ctx
+        if ctx is None:
             return
-        
-        node = self.current_node
-        rnode = self.repo.read_node(node)
-        sel_file = rnode.files[index.row()-1]
-        patch = self.current_diff_contents[index.row()-1]
-
-        print "should reverse apply", patch
-        
+        row = index.row()
+        sel_file = ctx.files()[row]
+        FileViewer(self.repo, sel_file, rev=ctx.rev()).run()
         
     def setup_diff_textview(self):
         editor = self.textview_status
@@ -208,34 +214,28 @@ class HgMainWindow(QtGui.QMainWindow):
         """
         Callback called when a revision os selected in the revisions table
         """
-        row = index.row()
+        row = index.row() + 1
         if self.repomodel.graph:
-            node = self.repomodel.graph.rows[row]
-            self.current_node = node
-            rev_node = self.repo.read_node(node)
+            gnode = self.repomodel.graph[row]
+            ctx = self.repo.changectx(gnode.rev)
+            self.currentctx = ctx
             # We *need* to use a new document, since rendering in a displayed
             # QTextDocument (in a QTextEdit or so) is soooo sloooow
             # Note that set the QTextDocument's parent argument to the
             # QTextEdit widget to which it will be rattached afterward seems
             # mandatory, or a crash occur :-(
-            doc = QtGui.QTextDocument(self.textview_status)
-            
-            if rev_node.files:
-                self.fill_revlog_header(node, rev_node, doc)
-                
-                stats = self.fill_diff_richtext(node, rev_node, doc)
-                #timeit()
-            else:
-                stats = []
-            self.textview_status.setDocument(doc)
-            self.filelistmodel.setSelectedNode(node, stats)
+            headerdoc = QtGui.QTextDocument(self.textview_header)
+            self.fill_revlog_header(ctx, headerdoc)
+            self.textview_header.setDocument(headerdoc)
+            self.filelistmodel.setSelectedRev(ctx)
 
-            if stats:
+            if len(self.filelistmodel):
                 self.tableView_filelist.selectRow(0)
-                self.filelistmodel.stats = stats
                 self.file_selected(self.filelistmodel.createIndex(0,0,None), None)
-                self.resize_filelist_columns()
-
+                #self.resize_filelist_columns()
+            else:
+                self.textview_status.clear()
+                
     def resize_filelist_columns(self, *args):
         # resize columns the smart way: the diffstat column is resized
         # according to its content, the one holding file names being
@@ -256,19 +256,14 @@ class HgMainWindow(QtGui.QMainWindow):
         """
         Callback called when a filename is selected in the file list
         """
-        node = self.filelistmodel.current_node
-        if node is None:
+        ctx = self.filelistmodel.current_ctx
+        if ctx is None:
             return
-        rev_node = self.repo.read_node(node)
         row = index.row()
-        if row == 0:
-            self.textview_status.setSource(QtCore.QUrl("")) # go home
-        else:
-            sel_file = rev_node.files[row-1]
-            # don't know why this does not work...
-            #self.textview_status.scrollToAnchor("#%s"%sel_file)
-            # but this works fine!
-            self.textview_status.setSource(QtCore.QUrl("#%s"%sel_file))
+        doc = QtGui.QTextDocument(self.textview_status)
+        sel_file = ctx.files()[row]
+        self.fill_diff_richtext(ctx, doc, [sel_file])
+        self.textview_status.setDocument(doc)
         
     def revpopup_add_tag(self, item):
         path, col = self.revpopup_path
@@ -306,8 +301,9 @@ class HgMainWindow(QtGui.QMainWindow):
 
     def refresh_revision_table(self):
         """Starts the process of filling the HgModel"""
-        self.repo.refresh()
-        self.repo.read_nodes()
+        return
+        #self.repo.refresh()
+        #self.repo.read_nodes()
         if self.filter_files_reg or self.filter_noderange:
             todo_nodes = self.filter_nodes()
         else:
@@ -348,60 +344,9 @@ class HgMainWindow(QtGui.QMainWindow):
             return False
         return True
 
-
-    def fill_diff_richtext2(self, node, rev_node, doc):
-        diff = self.repo.diff(self.repo.parents(node), node, rev_node.files)
+    def fill_diff_richtext(self, ctx, doc, files=None):
+        diff = revdiff(self.repo, ctx, files=files)
         
-        try:
-            diff = unicode(diff, "utf-8")
-        except UnicodeError:
-            # XXX use a default encoding from config
-            diff = unicode(diff, "iso-8859-15", 'ignore')
-
-        
-        cursor = QtGui.QTextCursor(doc)#self.textview_status.document())        
-        cursor.movePosition(QtGui.QTextCursor.End, QtGui.QTextCursor.MoveAnchor) 
-
-        diff_formats = self.diff_formats
-        default_diff_fmt = self.default_diff_format
-        
-        diff_file = None
-        stats = {}
-        for i,l in enumerate(diff.splitlines()):
-            if l.startswith('+++') or l.startswith('---'):
-                continue
-            if l.startswith('diff'):
-                if diff_file:
-                    stats[diff_file] = (l_p, l_m)
-                    
-                diff_file = l.strip().split(' ',5)[-1]
-                cursor.insertHtml(u'\n<a name="%s"></a>\n' % diff_file)
-                cursor.insertText(u'\n === %s === \n' % (diff_file),
-                                  self.header_diff_format)
-                l_p = 0
-                l_m = 0
-            else:
-                l0 = l[0]
-                cursor.insertText(l+'\n', diff_formats.get(l0, default_diff_fmt))
-                if l0 == "+":
-                    l_p += 1
-                elif l0 == "-":
-                    l_m += 1
-                
-        if diff_file:
-            stats[diff_file] = (l_p, l_m)
-        return stats
-    
-    def fill_diff_richtext(self, node, rev_node, doc):
-        diff = self.repo.diff(self.repo.parents(node), node, rev_node.files)
-        
-        try:
-            diff = unicode(diff, "utf-8")
-        except UnicodeError:
-            # XXX use a default encoding from config
-            diff = unicode(diff, "iso-8859-15", 'ignore')
-
-
         cursor = QtGui.QTextCursor(doc)
         cursor.movePosition(QtGui.QTextCursor.End, QtGui.QTextCursor.MoveAnchor) 
 
@@ -452,7 +397,7 @@ class HgMainWindow(QtGui.QMainWindow):
         return stats
             
         
-    def fill_revlog_header(self, node, rnode, doc):
+    def fill_revlog_header(self, ctx, doc):
         """Build the revision log header"""
         cursor = QtGui.QTextCursor(doc)
         cursor.movePosition(QtGui.QTextCursor.End, QtGui.QTextCursor.MoveAnchor) 
@@ -461,34 +406,33 @@ class HgMainWindow(QtGui.QMainWindow):
         buf += '<tr><td class="label">Revision:</td>'\
                '<td><span class="rev_number">%d</span>:'\
                '<span class="rev_hash">%s</span></td></tr>'\
-               '\n' % (rnode.rev, short_hex(node)) 
+               '\n' % (ctx.rev(), short_hex(ctx.node())) 
         #buf += short_hex(node) + '\n' #, "link")
         buf += '<tr><td class="label">Author:</td>'\
                '<td class="auth_id">%s</td></tr>'\
-               '\n' %  repo.authors[rnode.author_id] 
+               '\n' %  ctx.user()
         #buf.create_mark("begdesc", buf.get_start_iter())
 
-        for p in repo.parents(node):
-            pnode = repo.read_node(p)
-            short = short_hex(p)
-            buf += '<tr><td class="label">Parent:</td>'\
-                   '<td><span class="rev_number">%d</span>:'\
-                   '<a href="%s" class="rev_hash">%s</a>&nbsp;'\
-                   '<span class="short_desc">(%s)</span></td></tr>'\
-                   '\n' % (pnode.rev, pnode.rev, short, pnode.short)
-            #buf += short #, "link")
-        for p in repo.children(node):
-            pnode = repo.read_node(p)
-            short = short_hex(p)
-            buf += '<tr><td class="label">Child:</td>'\
-                   '<td><span class="rev_number">%d</span>:'\
-                   '<a href="%s" class="rev_hash">%s</a>&nbsp;'\
-                   '<span class="short_desc">(%s)</span></td></tr>'\
-                   '\n' % (pnode.rev, pnode.rev, short, pnode.short)
+        for p in ctx.parents():
+            if p.rev() > -1:
+                short = short_hex(p.node())
+                buf += '<tr><td class="label">Parent:</td>'\
+                       '<td><span class="rev_number">%d</span>:'\
+                       '<a href="%s" class="rev_hash">%s</a>&nbsp;'\
+                       '<span class="short_desc">(%s)</span></td></tr>'\
+                       '\n' % (p.rev(), p.rev(), short, p.description())
+        for p in ctx.children():
+            if p.rev() > -1:
+                short = short_hex(p.node())
+                buf += '<tr><td class="label">Child:</td>'\
+                       '<td><span class="rev_number">%d</span>:'\
+                       '<a href="%s" class="rev_hash">%s</a>&nbsp;'\
+                       '<span class="short_desc">(%s)</span></td></tr>'\
+                       '\n' % (p.rev(), p.rev(), short, p.description())
 
         buf += "</table>\n"
 
-        buf += '<div class="diff_desc"><p>%s</p></div>\n' % rnode.desc.replace('\n', '<br/>\n')
+        buf += '<div class="diff_desc"><p>%s</p></div>\n' % ctx.description().replace('\n', '<br/>\n')
         cursor.insertHtml(buf)
 
 
@@ -519,7 +463,7 @@ class HgMainWindow(QtGui.QMainWindow):
         node_low = self.spinbutton_rev_low
         node_high = self.spinbutton_rev_high
 
-        cnt = self.repo.count()
+        cnt = self.repo.changelog.count()
         if self.filter_files_reg:
             file_filter.setText(self.filerex)
         node_low.setRange(0, cnt+1)
@@ -542,6 +486,18 @@ class HgMainWindow(QtGui.QMainWindow):
                                  )
         
         
+def find_repository(path):
+    """returns <path>'s mercurial repository
+
+    None if <path> is not under hg control
+    """
+    path = os.path.abspath(path)
+    while not os.path.isdir(os.path.join(path, ".hg")):
+        oldpath = path
+        path = os.path.dirname(path)
+        if path == oldpath:
+            return None
+    return path
 
 def main():
     parser = OptionParser()
@@ -558,18 +514,21 @@ def main():
         dir_ = opt.repo
     else:
         dir_ = os.getcwd()
-
+    dir_ = find_repository(dir_)
     filerex = None
     if opt.filename:
         filerex = "^" + re.escape(opt.filename) + "$"
     elif opt.filerex:
         filerex = opt.filerex
 
-    try:
-        repo = HgHLRepo(dir_)
-    except:
-        print "You are not in a repo, are you?"
-        sys.exit(1)
+    #try:
+    if 1:
+        u = ui.ui()
+        repo = hg.repository(u, dir_)
+        #repo = HgHLRepo(dir_)
+    #except:
+    #    print "You are not in a repo, are you?"
+    #    sys.exit(1)
 
     app = QtGui.QApplication(sys.argv)
     mainwindow = HgMainWindow(repo, filerex)
