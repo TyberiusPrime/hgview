@@ -123,7 +123,6 @@ class FileDiffViewer(QtGui.QDialog):
             self.connect(table.selectionModel(),
                          QtCore.SIGNAL('currentRowChanged (const QModelIndex & , const QModelIndex & )'),
                          getattr(self, 'revision_selected_%s'%side))
-                         #lambda index, index2, side=side: self.revision_selected(index, side))
             self.connect(self.viewers[side].verticalScrollBar(),
                          QtCore.SIGNAL('valueChanged(int)'),
                          lambda value, side=side: self.vbar_changed(value, side))
@@ -131,14 +130,13 @@ class FileDiffViewer(QtGui.QDialog):
         QtCore.QTimer.singleShot(1, self.set_init_selections)
 
     def idle_fill_files(self):
-        match = self.compute_match(self._diff)
-        if match is None:
+        if self._diff is None or not self._diff.get_opcodes():
             self._diff = None
             self.timer.stop()
             # hack
             self.resize_columns()
-            return True
-
+            return 
+        match = self.compute_match(self._diff.get_opcodes().pop(0))
         left, right, lm, rm = match
         self.viewers['left'].append('\n'.join(left) + '\n')
         self.viewers['right'].append('\n'.join(right) + '\n')
@@ -154,62 +152,33 @@ class FileDiffViewer(QtGui.QDialog):
                    sys.stderr.write('- %s\n' % (pos+m))
                    sci.SendScintilla(sci.SCI_INDICATORFILLRANGE, pos+m, 1)
         
-        return False
 
-    def compute_match(self, diff):
-        if self._previous is None:
-            try:
-                line = diff.next()
-            except StopIteration:
-                self._previous = None
-                return None
+    def update_diff(self):
+        for side in ['left', 'right']:
+            self.viewers[side].clear()
+        if None not in self.filedata.values():
+            if self.timer.isActive():
+                self.timer.stop()
+            for side in ['left', 'right']:
+                self.viewers[side].setMarginWidth(1, "00%s"%len(self.filedata[side]))
+                
+            self._diff = difflib.SequenceMatcher(None, self.filedata['left'], self.filedata['right'])
+            self.timer.start()
+
+    def compute_match(self, opcode):
+        tag, alo, ahi, blo, bhi = opcode
+        a = self.filedata['left']
+        b = self.filedata['right']
+        if tag == 'replace':
+            return [a[alo:ahi], b[blo:bhi], [], []]
+        elif tag == 'delete':
+            return [a[alo:ahi], [], [], []]
+        elif tag == 'insert':
+            return [[], b[blo:bhi], [], []]
+        elif tag == 'equal':
+            return [a[alo:ahi], b[blo:bhi], [], []]
         else:
-            line = self._previous
-        if line[0] == ' ':
-            lines = [line]
-            # a block of unchanged values
-            for line in diff:
-                if line[0] == ' ':
-                    lines.append(line)
-                else:
-                    self._previous = line
-                    break
-            else:
-                self._previous = None
-            lines = [line[2:] for line in lines]
-            return lines, lines, [], []
-        else:
-            # a block of different values
-            left = []
-            lmarks = []
-            right = []
-            rmarks = []
-            if line[0] == '+':
-                right.append(line[2:])
-            else:
-                left.append(line[2:])
-            prev = line[0]
-            
-            for line in diff:
-                if line[0] == ' ':
-                    self._previous = line
-                    break
-                else:
-                    if line[0] == '+':
-                        right.append(line[2:])
-                        rmarks.append([])
-                        marks = rmarks[-1]
-                    elif line[0] == '-':
-                        left.append(line[2:])
-                        lmarks.append([])
-                        marks = lmarks[-1]
-                    elif line[0] == '?':
-                        for i, c in enumerate(line[2:]):
-                            if c != ' ':
-                                marks.append(i)
-            else:
-                self._previous = None
-            return left, right, lmarks, rmarks
+            raise ValueError, 'unknown tag %r' % (tag,)
         
     def set_init_selections(self):
         QtGui.QApplication.processEvents()
@@ -233,7 +202,8 @@ class FileDiffViewer(QtGui.QDialog):
         self.tableView_revisions_right.setColumnWidth(1, vp_width-colsum)
         
     def vbar_changed(self, value, side):
-        vbar = self.viewer[side].verticalScrollBar()
+        d = {'left':'right', 'right':'left'}
+        vbar = self.viewers[d[side]].verticalScrollBar()
         vbar.setValue(value)
 
     def revision_selected_left(self, index, oldindex):
@@ -248,17 +218,6 @@ class FileDiffViewer(QtGui.QDialog):
         self.filedata[side] = self.filerevmodel.filelog.read(self.filerevmodel.filelog.node(row)).splitlines()
         self.update_diff()
         
-    def update_diff(self):
-        for side in ['left', 'right']:
-            self.viewers[side].clear()
-        if None not in self.filedata.values():
-            if self.timer.isActive():
-                self.timer.stop()
-            for side in ['left', 'right']:
-                self.viewers[side].setMarginWidth(1, "00%s"%len(self.filedata[side]))
-                
-            self._diff = difflib.Differ().compare(self.filedata['left'], self.filedata['right'])
-            self.timer.start()
         
     
 if __name__ == '__main__':
