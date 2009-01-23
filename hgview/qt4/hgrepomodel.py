@@ -14,7 +14,7 @@ def get_color(n):
 
 def cvrt_date(date):
     date, tzdelay = date
-    return QtCore.QDateTime.fromTime_t(int(date))
+    return QtCore.QDateTime.fromTime_t(int(date)).toString(QtCore.Qt.ISODate)
     return dt.DateTimeFromTicks(date) + tzdelay/dt.oneHour
 
 
@@ -23,6 +23,7 @@ from hgext.graphlog import get_nodeline_edges_tail, get_padding_line
 from hgext.graphlog import draw_edges, get_rev_parents
 from mercurial.node import nullrev
 from hgview.hggraph import Graph, diff as revdiff
+from hgview.decorators import timeit
 
 _columnmap = [lambda ctx: ctx.rev(),
               lambda ctx: ctx.description(),
@@ -32,8 +33,16 @@ _columnmap = [lambda ctx: ctx.rev(),
               lambda ctx: ctx.branch(),
               ]
 
+_maxwidth = [lambda r: str(r.changelog.count()),
+             lambda r: None, 
+             lambda r: None, # TODO find a way to find this value (authors)
+             lambda r: cvrt_date(r.changectx(0).date()),
+             lambda r: sorted(r.tags().keys(), cmp=lambda x,y: cmp(len(x), len(y)))[-1],
+             lambda r: sorted(r.branchtags().keys(), cmp=lambda x,y: cmp(len(x), len(y)))[-1],
+             ]
 
 class HgRepoListModel(QtCore.QAbstractTableModel):
+    @timeit
     def __init__(self, repo, parent=None):
         """
         repo is a hg repo instance
@@ -47,6 +56,9 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
         self._branch_colors = {}
         self.graph = Graph(self.repo)
         self.heads = [self.repo.changectx(x).rev() for x in self.repo.heads()]
+
+    def maxWidthValueForColumn(self, column):
+        return _maxwidth[column](self.repo)
         
     def user_color(self, user):
         if user not in self._user_colors:
@@ -136,21 +148,6 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
             return QtCore.QVariant(['ID','Log','Author','Date','Tags', 'Branch'][section])
         return QtCore.QVariant()
 
-    def getData(self, row, column):
-        #print "gatData", row, column
-        rev_node = self.repo.read_node(self.graph.rows[row])
-        if column == 0:
-            data = rev_node.rev
-        elif column == 1:
-            data = rev_node.short
-        elif column == 2:
-            data = self.repo.authors[rev_node.author_id]
-        elif column == 3:
-            data = rev_node.date
-        else:
-            data = ""
-        return data
-
     def row_from_node(self, node):
         try:
             return self.graph.rows.index(node)
@@ -165,7 +162,6 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
         self.notify_data_changed()
 
     def notify_data_changed(self):
-        self.compute_len()
         self.emit(QtCore.SIGNAL("layoutChanged()"))
 
 class FileRevModel(HgRepoListModel):

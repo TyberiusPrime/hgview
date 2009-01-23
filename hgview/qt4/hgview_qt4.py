@@ -24,7 +24,9 @@ from mercurial import ui, hg, patch
 from mercurial.node import hex, short as short_hex, bin as short_bin
 
 from hgview.qt4.hgrepomodel import HgRepoListModel, HgFileListModel
+from hgview.qt4.hgfileviewer import FileViewer, FileDiffViewer
 from hgview.hggraph import diff as revdiff
+from hgview.decorators import timeit
 
 Qt = QtCore.Qt
 bold = QtGui.QFont.Bold
@@ -57,7 +59,7 @@ class HgMainWindow(QtGui.QMainWindow):
         # load qt designer ui file
         uifile = os.path.join(os.path.dirname(__file__), ui_file)
         self.ui = uic.loadUi(uifile, self)
-
+        
         # hg repo
         self.repo = repo
 
@@ -78,15 +80,10 @@ class HgMainWindow(QtGui.QMainWindow):
         self.pb.hide()
         self.statusBar().addPermanentWidget(self.pb)
 
-##         self.timer = QtCore.QTimer()
-##         self.timer.setSingleShot(False)
-##         self.connect(self.timer, QtCore.SIGNAL("timeout()"),
-##                      self.idle_fill_model)        
-
         self.graph = None
         self.setup_diff_textview()
         self.setup_revision_table()
-        self.setup_filelist_treeview()
+        self.setup_filelist_table()
         self.init_filter()
         self.find_text = None
         self.connect(self.actionRefresh, QtCore.SIGNAL('triggered ()'),
@@ -105,15 +102,33 @@ class HgMainWindow(QtGui.QMainWindow):
         self.refresh_revision_table()
 
     def resizeEvent(self, event):
-        # we catch this event to resize tables' columns
+        # we catch this event to resize smartly tables' columns
         QtGui.QMainWindow.resizeEvent(self, event)
         if self.graph is None: # do not resize if we are loading a reporsitory
             self.resize_revisiontable_columns()
             self.resize_filelist_columns()        
-        
+
+    def eventFilter(self, watched, event):
+        if watched == self.tableView_revisions:
+            if event.type() == event.KeyPress:
+                model = self.filelistmodel
+                table = self.tableView_filelist
+                row = table.currentIndex().row()
+                if event.key() == Qt.Key_Left:
+                    table.setCurrentIndex(model.index(max(row-1, 0), 0))
+                    return True
+                elif event.key() == Qt.Key_Right:
+                    table.setCurrentIndex(model.index(min(row+1, model.rowCount()-1), 0))
+                    return True
+                elif event.key() in [Qt.Key_Return, Qt.Key_Enter]:
+                    self.file_activated(table.currentIndex())
+                    return True
+        return QtGui.QMainWindow.eventFilter(self, watched, event)
+    
     def setup_revision_table(self):
         self.repomodel = HgRepoListModel(self.repo)
         repotable = self.tableView_revisions
+        repotable.installEventFilter(self)
         
         repotable.setShowGrid(False)
         repotable.verticalHeader().hide()
@@ -121,11 +136,9 @@ class HgMainWindow(QtGui.QMainWindow):
         repotable.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
         repotable.setAlternatingRowColors(True)
         repotable.setModel(self.repomodel)
-        
         repotable.show()
-        self.resize_revisiontable_columns()
 
-    def setup_filelist_treeview(self):
+    def setup_filelist_table(self):
         self.filelistmodel = HgFileListModel(self.repo, self.repomodel.graph)
 
         filetable = self.tableView_filelist
@@ -159,7 +172,7 @@ class HgMainWindow(QtGui.QMainWindow):
             return
         row = index.row()
         sel_file = ctx.files()[row]
-        FileViewer(self.repo, sel_file, rev=ctx.rev()).run()
+        FileDiffViewer(self.repo, sel_file).exec_()
         
     def setup_diff_textview(self):
         editor = self.textview_status
@@ -247,8 +260,17 @@ class HgMainWindow(QtGui.QMainWindow):
     def resize_revisiontable_columns(self, *args):
         # same as before, but for the "Log" column
         col1_width = self.tableView_revisions.viewport().width()
-        for c in [0,2,3]:
-            self.tableView_revisions.resizeColumnToContents(c)
+        fontm = QtGui.QFontMetrics(self.tableView_revisions.font())
+        for c in range(self.repomodel.columnCount()):
+            if c == 1:
+                continue
+            w = self.repomodel.maxWidthValueForColumn(c)
+            if w is not None:
+                w = fontm.width(unicode(w) + 'w')
+                self.tableView_revisions.setColumnWidth(c, w)
+            else:
+                self.tableView_revisions.setColumnWidth(c, 140)
+                #self.tableView_revisions.resizeColumnToContents(c)
             col1_width -= self.tableView_revisions.columnWidth(c)
         self.tableView_revisions.setColumnWidth(1, col1_width)
 
@@ -321,28 +343,6 @@ class HgMainWindow(QtGui.QMainWindow):
         # if the repo loading process will let the application
         # react and the window update its content quite smoothly
         self.timer.start()
-
-    def idle_fill_model(self):
-        """Idle task filling the ListStore model chunks by chunks"""
-        NMAX = 100  # Max number of entries we process each time
-        graph = self.graph
-        N = self.last_node
-        graph.build(NMAX)
-        rowselected = self.graph.rows
-        last_node = min(len(rowselected), N + NMAX)
-        self.last_node = last_node
-        self.repomodel.notify_data_changed()
-        self.resize_revisiontable_columns()
-        QtGui.qApp.flush()
-
-        self.pb.setValue(self.last_node)
-        if self.last_node == len(rowselected):
-            self.graph = None
-            self.rowselected = None
-            self.timer.stop()
-            self.pb.hide()
-            return False
-        return True
 
     def fill_diff_richtext(self, ctx, doc, files=None):
         diff = revdiff(self.repo, ctx, files=files)

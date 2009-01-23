@@ -4,7 +4,7 @@ from StringIO import StringIO
 
 from mercurial.node import nullrev
 from mercurial import patch, util
-
+from decorators import timeit
 
 def diff(repo, ctx1, ctx2=None, files=None):
     out = StringIO()
@@ -112,6 +112,7 @@ def nodes_of_graph(children, parents):
             revs.append(i)
     return revs
 
+@timeit
 def build_graph(repo=None, children=None, parents=None):
     """
     Extract the revision graph.
@@ -148,6 +149,7 @@ class GraphNode(object):
         self.color = {}
         
 class Graph(object):
+    @timeit
     def __init__(self, repo):
         self.repo = repo
         self.children, self.parents = build_children(self.repo)
@@ -160,11 +162,12 @@ class Graph(object):
         for rev, _, x, edges, ncols, delta in self.graph:
             self.nodes.append(GraphNode(rev, x, edges, ncols, delta))
             self.nodesdict[rev] = self.nodes[-1]
-        self._build_lines()
+        self._brcolor = 0
+        self._built = 0
 
-    def _build_lines(self):
-        brcolor = 0
-        for i in range(1, len(self.nodes)-1):
+    def _build_lines(self, torev=None):
+        torev = min(torev, len(self.nodes)-2)
+        for i in range(self._built+1, torev+1):
             gn0 = self.nodes[i-1]
             gn = self.nodes[i]
             gn1 = self.nodes[i+1]
@@ -174,8 +177,8 @@ class Graph(object):
                     color = gn.color[(col, colnext)]
                 else:
                     if col == gn.x and gn.rev not in self.revrawgraph:
-                        brcolor += 1
-                        color = brcolor
+                        self._brcolor += 1
+                        color = self._brcolor
                     else:
                         for (c1, c2), color2 in gn0.color.items():
                             if c2 == col:
@@ -197,11 +200,15 @@ class Graph(object):
                 elif colnext > gn1.x:
                     gn1.edges.add((colnext, colnext + gn1.dx, None, None))
                     gn1.color[(colnext, colnext + gn1.dx)] = color
+        self._built = torev
 
     def __getitem__(self, idx):
+        if idx > self._built:
+            # build lines by burst of 10 revisions
+            self._build_lines(idx+10)
         return self.nodes[idx]
         
-
+@timeit
 def _build_graph(repo, start_rev=None, stop_rev=0):
     if start_rev is None:
         start_rev = repo.changelog.count()
