@@ -9,6 +9,7 @@ from PyQt4 import QtGui, QtCore, uic, Qsci
 from PyQt4.QtCore import Qt
 from hgrepomodel import FileRevModel
 from blockmatcher import BlockList
+from hgview.config import HgConfig
 
 sides = ('left', 'right')
 otherside = {'left':'right', 'right':'left'}
@@ -108,10 +109,14 @@ class FileDiffViewer(QtGui.QDialog):
 
         # load qt designer ui file
         self.ui = uic.loadUi(ui_file, self)
+        # hg repo
+        self.repo = repo
+        self.filename = filename
+        self.loadConfig()
+        
         self.filedata = {'left': None, 'right': None}
         self._previous = None
         self._invbarchanged=False
-        
         lex = Qsci.QsciLexerPython()
         lex.setDefaultFont(QtGui.QFont('Courier', 10))
 
@@ -153,12 +158,10 @@ class FileDiffViewer(QtGui.QDialog):
         self.connect(self.timer, QtCore.SIGNAL("timeout()"),
                      self.idle_fill_files)        
 
-        # hg repo
-        self.repo = repo
-        self.filename = filename
-        self.filerevmodel = FileRevModel(self.repo, self.filename, noderev, columns=range(4))
+        self.filerevmodel = FileRevModel(self.repo, self.filename, noderev)
         for side in sides:
             table = getattr(self, 'tableView_revisions_%s' % side)
+            table.setTabKeyNavigation(False)
             table.setModel(self.filerevmodel)
             table.verticalHeader().hide()
             self.connect(table.selectionModel(),
@@ -168,9 +171,14 @@ class FileDiffViewer(QtGui.QDialog):
             self.connect(self.viewers[side].verticalScrollBar(),
                          QtCore.SIGNAL('valueChanged(int)'),
                          lambda value, side=side: self.vbar_changed(value, side))
+        self.setTabOrder(table, self.viewers['left']) 
+        self.setTabOrder(self.viewers['left'], self.viewers['right']) 
         QtCore.QTimer.singleShot(10, self.resize_columns)
         QtCore.QTimer.singleShot(1, self.set_init_selections)
         
+    def loadConfig(self):
+        cfg = HgConfig(self.repo.ui)
+        self.users, self.aliases = cfg.getUsers()
         
     def update_page_steps(self):
         for side in sides:

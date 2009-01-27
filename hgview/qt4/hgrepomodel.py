@@ -24,46 +24,65 @@ from hgext.graphlog import draw_edges, get_rev_parents
 from mercurial.node import nullrev
 from hgview.hggraph import Graph, diff as revdiff
 from hgview.decorators import timeit
+from hgview.config import HgConfig
 
-_columnmap = [lambda ctx: ctx.rev(),
-              lambda ctx: ctx.description(),
-              lambda ctx: ctx.user(),
-              lambda ctx: cvrt_date(ctx.date()),
-              lambda ctx: ",".join(ctx.tags()),
-              lambda ctx: ctx.branch(),
-              ]
+# in following lambdas, ctx is a hg changectx 
+_columnmap = {'ID': lambda ctx: ctx.rev(),
+              'Log': lambda ctx: ctx.description(),
+              'Author': lambda ctx: ctx.user(),
+              'Date': lambda ctx: cvrt_date(ctx.date()),
+              'Tags': lambda ctx: ",".join(ctx.tags()),
+              'Branch': lambda ctx: ctx.branch(),
+              }
 
-_maxwidth = [lambda r: str(r.changelog.count()),
-             lambda r: None, 
-             lambda r: None, # TODO find a way to find this value (authors)
-             lambda r: cvrt_date(r.changectx(0).date()),
-             lambda r: sorted(r.tags().keys(), cmp=lambda x,y: cmp(len(x), len(y)))[-1],
-             lambda r: sorted(r.branchtags().keys(), cmp=lambda x,y: cmp(len(x), len(y)))[-1],
-             ]
+# in following lambdas, r is a hg repo 
+_maxwidth = {'ID': lambda r: str(r.changelog.count()),
+             'Date': lambda r: cvrt_date(r.changectx(0).date()),
+             'Tags': lambda r: sorted(r.tags().keys(), cmp=lambda x,y: cmp(len(x), len(y)))[-1],
+             'Branch': lambda r: sorted(r.branchtags().keys(), cmp=lambda x,y: cmp(len(x), len(y)))[-1],
+             }
 
 class HgRepoListModel(QtCore.QAbstractTableModel):
-    @timeit
+    _columns = 'ID','Log','Author','Date','Tags', 'Branch'
+
     def __init__(self, repo, parent=None):
         """
         repo is a hg repo instance
         """
-        QtCore.QAbstractTableModel.__init__(self,parent)
+        QtCore.QAbstractTableModel.__init__(self, parent)
         self.repo = repo
-        self.__len = 0
-        self.__cache = {} 
-        self.dot_radius = 8
+        self.loadConfig()
+        
         self._user_colors = {}
         self._branch_colors = {}
         self.graph = Graph(self.repo)
         self.heads = [self.repo.changectx(x).rev() for x in self.repo.heads()]
 
-    def maxWidthValueForColumn(self, column):
-        return _maxwidth[column](self.repo)
+    def loadConfig(self):
+        cfg = HgConfig(self.repo.ui)
+        self._users, self._aliases = cfg.getUsers()
+        self.dot_radius = cfg.getDotRadius(default=8)
         
+    def maxWidthValueForColumn(self, column):
+        column = self._columns[column]
+        if column in _maxwidth:
+            return _maxwidth[column](self.repo)
+        return None
+    
     def user_color(self, user):
+        if user in self._aliases:
+            user = self._aliases[user]
+        if user in self._users:
+            try:
+                return QtGui.QColor(self._users[user]['color'])
+            except:
+                pass
         if user not in self._user_colors:
             self._user_colors[user] = COLORS[(len(self._user_colors) % len(COLORS))]
         return self._user_colors[user]
+
+    def user_name(self, user):
+        return self._aliases.get(user, user)
 
     def namedbranch_color(self, branch):
         if branch not in self._branch_colors:
@@ -74,7 +93,7 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
         return self.repo.changelog.count()
 
     def columnCount(self, parent=None):
-        return 6
+        return len(self._columns)
 
     def col2x(self, col):
         return (1.2*self.dot_radius + 0) * col + self.dot_radius/2 + 3
@@ -83,18 +102,20 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
         if not index.isValid():
             return QtCore.QVariant()
         row = index.row() + 1
-        column = index.column()
+        column = self._columns[index.column()]
         gnode = self.graph[row]
         ctx = self.repo.changectx(gnode.rev)
         if role == QtCore.Qt.DisplayRole:            
+            if column == 'Author': #author
+                return QtCore.QVariant(self.user_name(_columnmap[column](ctx)))
             return QtCore.QVariant(_columnmap[column](ctx))
         elif role == QtCore.Qt.ForegroundRole:
-            if column == 2: #author
+            if column == 'Author': #author
                 return QtCore.QVariant(QtGui.QColor(self.user_color(ctx.user())))
-            if column == 5: #branch
+            if column == 'Branch': #branch
                 return QtCore.QVariant(QtGui.QColor(self.namedbranch_color(ctx.branch())))
         elif role == QtCore.Qt.DecorationRole:
-            if column == 1:
+            if column == 'Log':
                 w = (gnode.cols)*(1*self.dot_radius + 0) + 20
                 h = 30 # ? how to get it
 
@@ -139,13 +160,12 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
                 painter.drawEllipse(dot_x, dot_y, self.dot_radius, self.dot_radius)
                 painter.end()
                 ret = QtCore.QVariant(pix)
-##                 self.__cache[idx] = ret
                 return ret
         return QtCore.QVariant()
 
     def headerData(self, section, orientation, role):
         if orientation == QtCore.Qt.Horizontal and role == QtCore.Qt.DisplayRole:
-            return QtCore.QVariant(['ID','Log','Author','Date','Tags', 'Branch'][section])
+            return QtCore.QVariant(self._columns[section])
         return QtCore.QVariant()
 
     def row_from_node(self, node):
@@ -157,36 +177,30 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
     def clear(self):
         """empty the list"""
         self.graph = None
-        self.__len = 0
-        self.__cache = {}
         self.notify_data_changed()
 
     def notify_data_changed(self):
         self.emit(QtCore.SIGNAL("layoutChanged()"))
 
 class FileRevModel(HgRepoListModel):
-    def __init__(self, repo, filename, noderev=None, columns=None, parent=None):
+    _columns = ('ID', 'Log', 'Author', 'Date')
+
+    def __init__(self, repo, filename, noderev=None, parent=None):
         """
         data is a HgHLRepo instance
         """
         QtCore.QAbstractTableModel.__init__(self, parent)
-        if columns is None:
-            self._columns = range(6)
-        else:
-            self._columns = columns
         self._user_colors = {}
         self._branch_colors = {}
         self.repo = repo
         self.filename = filename
+        self.loadConfig()
         self.filelog = self.repo.file(filename)
         self.heads = [self.filelog.rev(x) for x in self.filelog.heads()]
         self._ctxcache = {}
         
     def rowCount(self, parent=None):
         return self.filelog.count()
-
-    def columnCount(self, parent=None):
-        return len(self._columns)
 
     def data(self, index, role):
         if not index.isValid():
@@ -200,12 +214,13 @@ class FileRevModel(HgRepoListModel):
             self._ctxcache[row] = ctx
             
         if role == QtCore.Qt.DisplayRole:
-            #print "column = ", column, repr(_columnmap[column](filectx))
+            if column == 'Author': #author
+                return QtCore.QVariant(self.user_name(_columnmap[column](ctx)))
             return QtCore.QVariant(_columnmap[column](ctx))
         elif role == QtCore.Qt.ForegroundRole:
-            if column == 2: #author
+            if column == 'Author': #author
                 return QtCore.QVariant(QtGui.QColor(self.user_color(ctx.user())))
-            if column == 5: #branch
+            if column == 'Branch': #branch
                 return QtCore.QVariant(QtGui.QColor(self.namedbranch_color(ctx.branch())))
         return QtCore.QVariant()
 
