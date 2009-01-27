@@ -265,7 +265,7 @@ class HgFileListModel(QtCore.QAbstractTableModel):
 
     def setSelectedRev(self, ctx):
         self.current_ctx = ctx
-        self.changes = self.repo.status(ctx.node(), ctx.parents()[0].node())[:5]
+        self.changes = self.repo.status(ctx.parents()[0].node(), ctx.node(), )[:5]
         self.emit(QtCore.SIGNAL("layoutChanged()"))
 
     def fileflag(self, fn):        

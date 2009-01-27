@@ -15,7 +15,7 @@ def diff(repo, ctx1, ctx2=None, files=None):
     else:
         def match(fn):
             return fn in files
-    diff = patch.diff(repo, ctx1.node(), ctx2.node(), match=match, fp=out)
+    diff = patch.diff(repo, ctx2.node(), ctx1.node(), match=match, fp=out)
     diff = out.getvalue()
     try:
         diff = unicode(diff, "utf-8")
