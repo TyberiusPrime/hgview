@@ -43,6 +43,9 @@ _maxwidth = {'ID': lambda r: str(r.changelog.count()),
              }
 
 class HgRepoListModel(QtCore.QAbstractTableModel):
+    """
+    Model used for displaying the revisions of a Hg *local* repository
+    """
     _columns = 'ID','Log','Author','Date','Tags', 'Branch'
 
     def __init__(self, repo, parent=None):
@@ -183,6 +186,10 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
         self.emit(QtCore.SIGNAL("layoutChanged()"))
 
 class FileRevModel(HgRepoListModel):
+    """
+    Model used to manage the list of revisions of a file, in file
+    viewer of in diff-file viewer dialogs.
+    """
     _columns = ('ID', 'Log', 'Author', 'Date')
 
     def __init__(self, repo, filename, noderev=None, parent=None):
@@ -228,20 +235,32 @@ replus = re.compile(r'^[+][^+].*', re.M)
 reminus = re.compile(r'^[-][^-].*', re.M)
 
 class HgFileListModel(QtCore.QAbstractTableModel):
+    """
+    Model used for listing (modified) files of a given Hg revision
+    """
     def __init__(self, repo, graph, parent=None):
         """
         data is a HgHLRepo instance
         """
-        QtCore.QAbstractTableModel.__init__(self,parent)
+        QtCore.QAbstractTableModel.__init__(self, parent)
         self.repo = repo
+        self.loadConfig()
         self.stats = [] # list of couples (n_line_added, n_line_removed),
                         # one for each file 
         self.current_ctx = None
         self.connect(self, QtCore.SIGNAL("dataChanged(const QModelIndex & , const QModelIndex & )"),
                      self.datachangedcalled)
-
         self.diffwidth = 100
 
+    def loadConfig(self):
+        cfg = HgConfig(self.repo.ui)
+        self._flagcolor = {}
+        self._flagcolor['M'] = cfg.getFileModifiedColor(default='blue') 
+        self._flagcolor['R'] = cfg.getFileRemovedColor(default='red')
+        self._flagcolor['D'] = cfg.getFileDeletedColor(default='red')
+        self._flagcolor['A'] = cfg.getFileAddedColor(default='green')
+        self._flagcolor['?'] = "black"
+        
     def setDiffWidth(self, w):
         if w != self.diffwidth:
             self.diffwidth = w
@@ -286,6 +305,7 @@ class HgFileListModel(QtCore.QAbstractTableModel):
         stats = None
 
         if column == 2:
+            # graph display of the diff
             diff = revdiff(self.repo, self.current_ctx, files=[current_file])
             fdata = self.current_ctx.filectx(current_file).data()
             add = len(replus.findall(diff))
@@ -326,7 +346,11 @@ class HgFileListModel(QtCore.QAbstractTableModel):
                     return QtCore.QVariant(current_file)
                 elif column == 1:
                     return QtCore.QVariant(self.fileflag(current_file))
-                
+            elif role == QtCore.Qt.ForegroundRole:
+                if column == 0:
+                    color = self._flagcolor[self.fileflag(current_file)]
+                    if color is not None:
+                        return QtCore.QVariant(QtGui.QColor(color))
         return QtCore.QVariant()
 
     def headerData(self, section, orientation, role):

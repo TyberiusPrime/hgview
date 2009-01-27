@@ -65,4 +65,15 @@ class _HgConfig(object):
                     users[currid][cmd] = val
         return users, aliases
 
-    
+    @cached
+    def getFileModifiedColor(self, default='blue'):
+        return self.ui.config(self.section, 'filemodifiedcolor', default)        
+    @cached
+    def getFileRemovedColor(self, default='red'):
+        return self.ui.config(self.section, 'fileremovededcolor', default)        
+    @cached
+    def getFileDeletedColor(self, default='darkred'):
+        return self.ui.config(self.section, 'filedeletedcolor', default)        
+    @cached
+    def getFileAddedColor(self, default='green'):
+        return self.ui.config(self.section, 'fileaddedcolor', default)        
