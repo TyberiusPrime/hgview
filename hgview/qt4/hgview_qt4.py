@@ -16,7 +16,7 @@ import re
 from optparse import OptionParser
 from os.path import dirname, join, isfile
 
-from PyQt4 import QtCore, QtGui, uic
+from PyQt4 import QtCore, QtGui, Qsci, uic
 
 import hgview.fixes
 
@@ -61,6 +61,11 @@ class HgMainWindow(QtGui.QMainWindow):
         uifile = os.path.join(os.path.dirname(__file__), ui_file)
         self.ui = uic.loadUi(uifile, self)
 
+        # hg repo
+        self.graph = None
+        self.repo = repo
+        self.loadConfig()
+
         self.actionQuit.setShortcuts([self.actionQuit.shortcut(), Qt.Key_Escape])
         self.filerex = filerex
         if filerex:
@@ -69,6 +74,20 @@ class HgMainWindow(QtGui.QMainWindow):
             self.filter_files_reg = None
         self.filter_noderange = None
 
+        lay = QtGui.QHBoxLayout(self.textview_frame)
+        lay.setSpacing(0)
+        lay.setContentsMargins(0,0,0,0)
+        self.textview_status = Qsci.QsciScintilla(self.textview_frame)
+        lay.addWidget(self.textview_status)
+        self.textview_status.setMarginLineNumbers(1, True)
+        self.textview_status.setReadOnly(True)
+        self.lexers = {"python": Qsci.QsciLexerPython(),
+                       "diff": Qsci.QsciLexerDiff(),
+                       }
+        for lex in self.lexers.values():
+            lex.setDefaultFont(self.font)
+
+        
         self.splitter_2.setStretchFactor(0, 2)
         self.splitter_2.setStretchFactor(1, 1)
         self.connect(self.splitter_2, QtCore.SIGNAL('splitterMoved (int, int)'),
@@ -92,10 +111,6 @@ class HgMainWindow(QtGui.QMainWindow):
         self.connect(self.action_FindNext, QtCore.SIGNAL('triggered()'),
                      self.find_next)
 
-        # hg repo
-        self.graph = None
-        self.repo = repo
-        self.loadConfig()
         self.setup_diff_textview()
         self.setup_revision_table()
         self.setup_filelist_table()
@@ -279,7 +294,6 @@ class HgMainWindow(QtGui.QMainWindow):
             if len(self.filelistmodel):
                 self.tableView_filelist.selectRow(0)
                 self.file_selected(self.filelistmodel.createIndex(0,0,None), None)
-                #self.resize_filelist_columns()
             else:
                 print "empty filelistmodel for", ctx.rev()
                 self.textview_status.clear()
@@ -305,7 +319,6 @@ class HgMainWindow(QtGui.QMainWindow):
                 self.tableView_revisions.setColumnWidth(c, w)
             else:
                 self.tableView_revisions.setColumnWidth(c, 140)
-                #self.tableView_revisions.resizeColumnToContents(c)
             col1_width -= self.tableView_revisions.columnWidth(c)
         self.tableView_revisions.setColumnWidth(1, col1_width)
 
@@ -315,20 +328,34 @@ class HgMainWindow(QtGui.QMainWindow):
         """
         ctx = self.filelistmodel.current_ctx
         if ctx is None:
+            self.textview_status.clear()
             return
         row = index.row()
-        doc = QtGui.QTextDocument(self.textview_status)
         sel_file = ctx.files()[row]
-        self.fill_diff_richtext(ctx, doc, [sel_file])
-        self.textview_status.setDocument(doc)
+        flag = self.filelistmodel.fileflag(sel_file)
+        if flag == "M":
+            self.textview_status.setLexer(self.lexers['diff'])
+            # display the diff
+            doc = QtGui.QTextDocument(self.textview_status)
+            diff = revdiff(self.repo, ctx, files=[sel_file])
+            diff = '\n'.join(diff.splitlines()[3:])
+            self.textview_status.setText(diff)
+            
+            #self.fill_diff_richtext(ctx, doc, [sel_file])
+            #self.textview_status.setDocument(doc)
+        elif flag == "A":
+            self.textview_status.setLexer(self.lexers['python'])
+            # display the whole file
+            data = ctx.filectx(sel_file).data()
+            self.textview_status.setText(data)
+        else:
+            self.textview_status.clear()
         
     def revpopup_add_tag(self, item):
         path, col = self.revpopup_path
         if path is None or col is None:
             return
-        print "ADD TAG", path, col
         self.revisions
-        #self.repo.add_tag(2, "toto")
         
     def revpopup_update(self, item):
         print "UPDATE"

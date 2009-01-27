@@ -147,7 +147,14 @@
             <enum>Qt::Vertical</enum>
            </property>
            <widget class="QTextBrowser" name="textview_header" />
-           <widget class="QTextBrowser" name="textview_status" />
+           <widget class="QFrame" name="textview_frame" >
+            <property name="frameShape" >
+             <enum>QFrame::NoFrame</enum>
+            </property>
+            <property name="frameShadow" >
+             <enum>QFrame::Raised</enum>
+            </property>
+           </widget>
           </widget>
           <widget class="QTableView" name="tableView_filelist" />
          </widget>
