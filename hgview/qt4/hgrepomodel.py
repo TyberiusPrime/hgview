@@ -65,6 +65,7 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
         cfg = HgConfig(self.repo.ui)
         self._users, self._aliases = cfg.getUsers()
         self.dot_radius = cfg.getDotRadius(default=8)
+        self.rowheight = cfg.getRowHeight()
         
     def maxWidthValueForColumn(self, column):
         column = self._columns[column]
@@ -120,7 +121,7 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
         elif role == QtCore.Qt.DecorationRole:
             if column == 'Log':
                 w = (gnode.cols)*(1*self.dot_radius + 0) + 20
-                h = 30 # ? how to get it
+                h = self.rowheight
 
                 dot_x = self.col2x(gnode.x) - self.dot_radius/2
                 dot_y = (h/2)
@@ -176,7 +177,13 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
             return self.graph.rows.index(node)
         except ValueError:
             return None
-    
+
+    def indexFromRev(self, rev):
+        for row, gnode in enumerate(self.graph):
+            if gnode.rev == rev:
+                return self.index(row-1, 0)
+        return None
+                
     def clear(self):
         """empty the list"""
         self.graph = None
@@ -284,16 +291,26 @@ class HgFileListModel(QtCore.QAbstractTableModel):
 
     def setSelectedRev(self, ctx):
         self.current_ctx = ctx
-        self.changes = self.repo.status(ctx.parents()[0].node(), ctx.node(), )[:5]
+        self.changes = self.repo.status(ctx.parents()[0].node(), ctx.node())[:5]
         self.emit(QtCore.SIGNAL("layoutChanged()"))
 
-    def fileflag(self, fn):        
-        modified, added, removed, deleted, unknown = self.changes
+    def fileflag(self, fn, ctx=None):
+        if ctx is not None:
+            changes = self.repo.status(ctx.parents()[0].node(), ctx.node())[:5]
+        else:
+            changes = self.changes
+        modified, added, removed, deleted, unknown = changes
         for fl, lst in zip(["M","A","R","D","?"],
                            [modified, added, removed, deleted, unknown]):
             if fn in lst:
                 return fl
         return ''
+
+    def fileFromIndex(self, index):
+        if not index.isValid() or index.row()>len(self) or not self.current_ctx:
+            return None
+        row = index.row()
+        return self.current_ctx.files()[row]
         
     def data(self, index, role):
         if not index.isValid() or index.row()>len(self) or not self.current_ctx:
@@ -348,7 +365,7 @@ class HgFileListModel(QtCore.QAbstractTableModel):
                     return QtCore.QVariant(self.fileflag(current_file))
             elif role == QtCore.Qt.ForegroundRole:
                 if column == 0:
-                    color = self._flagcolor[self.fileflag(current_file)]
+                    color = self._flagcolor.get(self.fileflag(current_file), 'black')
                     if color is not None:
                         return QtCore.QVariant(QtGui.QColor(color))
         return QtCore.QVariant()

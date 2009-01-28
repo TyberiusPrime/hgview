@@ -43,7 +43,7 @@
          </widget>
         </item>
         <item>
-         <widget class="QFrame" name="frame" >
+         <widget class="QFrame" name="filter_frame" >
           <property name="sizePolicy" >
            <sizepolicy vsizetype="Minimum" hsizetype="Preferred" >
             <horstretch>0</horstretch>
@@ -195,7 +195,7 @@
        <item>
         <widget class="QToolButton" name="button_find" >
          <property name="text" >
-          <string>...</string>
+          <string>Find</string>
          </property>
         </widget>
        </item>
@@ -206,7 +206,7 @@
    <zorder>splitter</zorder>
    <zorder>find_frame</zorder>
    <zorder></zorder>
-   <zorder>frame</zorder>
+   <zorder>filter_frame</zorder>
    <zorder>splitter_2</zorder>
   </widget>
   <widget class="QMenuBar" name="menubar" >

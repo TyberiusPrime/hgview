@@ -1,14 +1,20 @@
 # -*- coding: utf-8 -*-
+"""
+Module for managing configuration parameters of qtview using Hg's configuration system
+"""
 import os
 
+# _HgConfig is instanciated only once (singleton)
+# this 'factory' is used to manage this (not using heavy guns of metaclass or so) 
 _hgconfig = None
-def HgConfig(ui):
+def HgConfig(ui):    
     global _hgconfig
     if _hgconfig is None:
         _hgconfig = _HgConfig(ui)
     return _hgconfig
 
 
+# decorator to cache config values once they are read
 def cached(meth):
     name = meth.func_name
     def wrapper(self, *args, **kw):
@@ -77,3 +83,12 @@ class _HgConfig(object):
     @cached
     def getFileAddedColor(self, default='green'):
         return self.ui.config(self.section, 'fileaddedcolor', default)        
+
+    @cached
+    def getRowHeight(self, default=20):
+        return int(self.ui.config(self.section, 'rowheight', default))
+        
+    @cached
+    def getHideFindDelay(self, default=10000):
+        return int(self.ui.config(self.section, 'hidefindddelay', default))
+    

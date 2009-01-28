@@ -42,8 +42,14 @@ diff_styles = {'+': (normal, Qt.darkGreen),
 class HgMainWindow(QtGui.QMainWindow):
     """Main hg view application"""
     def __init__(self, repo, filerex = None):
-
         QtGui.QMainWindow.__init__(self)
+
+        # hg repo
+        self.graph = None
+        self.repo = repo
+        self.loadConfig()
+
+        # load qt designer ui file
         for _path in [dirname(__file__),
                       join(sys.exec_prefix, 'share/hgview'),
                       os.path.expanduser('~/share/hgview'),
@@ -56,17 +62,51 @@ class HgMainWindow(QtGui.QMainWindow):
         else:
             raise ValueError("Unable to find hgview.ui\n"
                              "Check your installation.")
-
-        # load qt designer ui file
         uifile = os.path.join(os.path.dirname(__file__), ui_file)
         self.ui = uic.loadUi(uifile, self)
-
-        # hg repo
-        self.graph = None
-        self.repo = repo
-        self.loadConfig()
-
+        self.splitter_2.setStretchFactor(0, 2)
+        self.splitter_2.setStretchFactor(1, 1)
+        self.connect(self.splitter_2, QtCore.SIGNAL('splitterMoved (int, int)'),
+                     self.resize_filelist_columns)
+        lay = QtGui.QHBoxLayout(self.textview_frame)
+        lay.setSpacing(0)
+        lay.setContentsMargins(0,0,0,0)
+        # main window actions
+        self.connect(self.actionRefresh, QtCore.SIGNAL('triggered ()'),
+                     self.refresh_revision_table)
+        self.connect(self.actionAbout, QtCore.SIGNAL('triggered ()'),
+                     self.on_about)
+        self.connect(self.actionQuit, QtCore.SIGNAL('triggered ()'),
+                     self.close)
         self.actionQuit.setShortcuts([self.actionQuit.shortcut(), Qt.Key_Escape])
+        
+        # text viewer
+        sci = Qsci.QsciScintilla(self.textview_frame)
+        lay.addWidget(sci)
+        sci.setMarginLineNumbers(1, True)
+        sci.setReadOnly(True)
+        sci.setFont(self.font)
+        self.lexers = {"python": Qsci.QsciLexerPython(),
+                       "diff": Qsci.QsciLexerDiff(),
+                       # ...
+                       }
+        for lex in self.lexers.values():
+            lex.setDefaultFont(self.font)
+        sci.SendScintilla(sci.SCI_INDICSETSTYLE, 8, sci.INDIC_ROUNDBOX)
+        sci.SendScintilla(sci.SCI_INDICSETUNDER, 8, True)
+        sci.SendScintilla(sci.SCI_INDICSETFORE, 8, 0xBBFFFF)
+        sci.SendScintilla(sci.SCI_INDICSETSTYLE, 9, sci.INDIC_PLAIN)
+        sci.SendScintilla(sci.SCI_INDICSETUNDER, 9, False)
+        sci.SendScintilla(sci.SCI_INDICSETFORE, 9, 0x0000FF)
+        self.textview_status = sci
+        
+##         self.pb = QtGui.QProgressBar(self.statusBar())
+##         self.pb.setTextVisible(False)
+##         self.pb.hide()
+##         self.statusBar().addPermanentWidget(self.pb)
+        self.statusBar().hide()
+        # filter frame
+        self.filter_frame.hide() # disabled for now XXX TODO
         self.filerex = filerex
         if filerex:
             self.filter_files_reg = re.compile(filerex)
@@ -74,31 +114,14 @@ class HgMainWindow(QtGui.QMainWindow):
             self.filter_files_reg = None
         self.filter_noderange = None
 
-        lay = QtGui.QHBoxLayout(self.textview_frame)
-        lay.setSpacing(0)
-        lay.setContentsMargins(0,0,0,0)
-        self.textview_status = Qsci.QsciScintilla(self.textview_frame)
-        lay.addWidget(self.textview_status)
-        self.textview_status.setMarginLineNumbers(1, True)
-        self.textview_status.setReadOnly(True)
-        self.lexers = {"python": Qsci.QsciLexerPython(),
-                       "diff": Qsci.QsciLexerDiff(),
-                       }
-        for lex in self.lexers.values():
-            lex.setDefaultFont(self.font)
-
-        
-        self.splitter_2.setStretchFactor(0, 2)
-        self.splitter_2.setStretchFactor(1, 1)
-        self.connect(self.splitter_2, QtCore.SIGNAL('splitterMoved (int, int)'),
-                     self.resize_filelist_columns)
-        
-        self.pb = QtGui.QProgressBar(self.statusBar())
-        self.pb.setTextVisible(False)
-        self.pb.hide()
-        self.statusBar().addPermanentWidget(self.pb)
+        self.init_filter()
+        self.connect(self.button_filter, QtCore.SIGNAL('clicked ()'),
+                     self.on_filter)
 
         # find frame
+        self._cur_find_pos = None
+        self._find_text = None
+        
         self.find_frame.hide()
         self.find_toolButton.setDefaultAction(self.actionCloseFind)
         self.action_Find.setShortcuts([self.action_Find.shortcut(), "Ctrl+F", "/"])
@@ -109,37 +132,24 @@ class HgMainWindow(QtGui.QMainWindow):
         self.connect(self.action_Find, QtCore.SIGNAL('triggered()'),
                      self.show_find_frame)
         self.connect(self.action_FindNext, QtCore.SIGNAL('triggered()'),
-                     self.find_next)
+                     self.on_find)
+        self.connect(self.entry_find, QtCore.SIGNAL('returnPressed()'),
+                     self.on_find)
+        self.connect(self.entry_find, QtCore.SIGNAL('textChanged(const QString &)'),
+                     self.on_find_text_changed)
+        self._find_frame_timer = QtCore.QTimer(self)
+        self._find_frame_timer.setInterval(self.hidefinddelay)
+        self.connect(self._find_frame_timer, QtCore.SIGNAL('timeout()'),
+                     self.find_frame.hide)
 
-        self.setup_diff_textview()
+        # setup tables and views
+        self.setup_header_textview()
         self.setup_revision_table()
         self.setup_filelist_table()
-        self.init_filter()
-        self.find_text = None
-        self.connect(self.actionRefresh, QtCore.SIGNAL('triggered ()'),
-                     self.refresh_revision_table)
-        self.connect(self.actionAbout, QtCore.SIGNAL('triggered ()'),
-                     self.on_about)
-        self.connect(self.actionQuit, QtCore.SIGNAL('triggered ()'),
-                     self.close)
 
-        self.connect(self.button_filter, QtCore.SIGNAL('clicked ()'),
-                     self.on_filter)
-        self.connect(self.button_find, QtCore.SIGNAL('clicked ()'),
-                     self.on_find)
-        
         QtGui.qApp.flush()        
         self.refresh_revision_table()
 
-    def show_find_frame(self, *args):
-        self.find_frame.show()
-        self.entry_find.setFocus()
-        self.entry_find.selectAll()
-
-    def find_next(self, *args):
-        if not self.find_frame.isHidden():
-            print "find_next"
-        
     def loadConfig(self):
         cfg = HgConfig(self.repo.ui)
         fontstr = cfg.getFont()
@@ -154,8 +164,62 @@ class HgMainWindow(QtGui.QMainWindow):
             font.setPointSize(10)
         self.font = font
 
+        self.rowheight = cfg.getRowHeight()
         self.users, self.aliases = cfg.getUsers()
-            
+        self.hidefinddelay = cfg.getHideFindDelay()
+        
+    def setup_revision_table(self):
+        self.repomodel = HgRepoListModel(self.repo)
+        
+        repotable = self.tableView_revisions
+        repotable.installEventFilter(self)
+        repotable.setTabKeyNavigation(False)
+
+        repotable.verticalHeader().setDefaultSectionSize(self.rowheight)
+        repotable.setShowGrid(False)
+        repotable.verticalHeader().hide()
+        repotable.setSelectionMode(QtGui.QAbstractItemView.SingleSelection)
+        repotable.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
+        repotable.setAlternatingRowColors(True)
+        repotable.setModel(self.repomodel)
+        repotable.show()
+
+    def setup_filelist_table(self):
+        self.filelistmodel = HgFileListModel(self.repo, self.repomodel.graph)
+
+        filetable = self.tableView_filelist
+        filetable.verticalHeader().setDefaultSectionSize(self.rowheight)
+        filetable.setTabKeyNavigation(False)
+        filetable.setShowGrid(False)
+        filetable.verticalHeader().hide()
+        filetable.setSelectionMode(QtGui.QAbstractItemView.SingleSelection)
+        filetable.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
+        filetable.setAlternatingRowColors(True)
+        filetable.setModel(self.filelistmodel)
+
+        self.connect(self.tableView_filelist.selectionModel(),
+                     QtCore.SIGNAL('currentRowChanged (const QModelIndex & , const QModelIndex & )'),
+                     self.file_selected)
+        self.connect(self.tableView_filelist,
+                     QtCore.SIGNAL('doubleClicked (const QModelIndex &)'),
+                     self.file_activated)
+        self.connect(self.tableView_revisions.selectionModel(),
+                     QtCore.SIGNAL('currentRowChanged (const QModelIndex & , const QModelIndex & )'),
+                     self.revision_selected)
+        self.connect(filetable.horizontalHeader(),
+                     QtCore.SIGNAL('sectionResized(int, int, int)'),
+                     self.file_section_resized)
+        
+    def setup_header_textview(self):
+        self.header_diff_format = QtGui.QTextCharFormat()
+        self.header_diff_format.setFont(self.font)
+        self.header_diff_format.setFontWeight(bold)
+        self.header_diff_format.setForeground(Qt.black)
+        self.header_diff_format.setBackground(Qt.gray)
+        
+        self.textview_header.setFont(self.font)
+        self.textview_header.setReadOnly(True)
+
     def resizeEvent(self, event):
         # we catch this event to resize smartly tables' columns
         QtGui.QMainWindow.resizeEvent(self, event)
@@ -179,105 +243,7 @@ class HgMainWindow(QtGui.QMainWindow):
                     self.file_activated(table.currentIndex())
                     return True
         return QtGui.QMainWindow.eventFilter(self, watched, event)
-    
-    def setup_revision_table(self):
-        self.repomodel = HgRepoListModel(self.repo)
-        
-        repotable = self.tableView_revisions
-        repotable.installEventFilter(self)
-        repotable.setTabKeyNavigation(False)
-        
-        repotable.setShowGrid(False)
-        repotable.verticalHeader().hide()
-        repotable.setSelectionMode(QtGui.QAbstractItemView.SingleSelection)
-        repotable.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
-        repotable.setAlternatingRowColors(True)
-        repotable.setModel(self.repomodel)
-        repotable.show()
-
-    def setup_filelist_table(self):
-        self.filelistmodel = HgFileListModel(self.repo, self.repomodel.graph)
-
-        filetable = self.tableView_filelist
-        filetable.setTabKeyNavigation(False)
-        filetable.setShowGrid(False)
-        filetable.verticalHeader().hide()
-        filetable.setSelectionMode(QtGui.QAbstractItemView.SingleSelection)
-        filetable.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
-        filetable.setAlternatingRowColors(True)
-        filetable.setModel(self.filelistmodel)
-
-        self.connect(self.tableView_filelist.selectionModel(),
-                     QtCore.SIGNAL('currentRowChanged (const QModelIndex & , const QModelIndex & )'),
-                     self.file_selected)
-        self.connect(self.tableView_filelist,
-                     QtCore.SIGNAL('doubleClicked (const QModelIndex &)'),
-                     self.file_activated)
-        self.connect(self.tableView_revisions.selectionModel(),
-                     QtCore.SIGNAL('currentRowChanged (const QModelIndex & , const QModelIndex & )'),
-                     self.revision_selected)
-        self.connect(filetable.horizontalHeader(),
-                     QtCore.SIGNAL('sectionResized(int, int, int)'),
-                     self.fileSectionResized)
-        
-    def fileSectionResized(self, idx, oldsize, newsize):
-        if idx == 2:
-            self.filelistmodel.setDiffWidth(newsize)
-        
-    def file_activated(self, index):
-        ctx = self.filelistmodel.current_ctx
-        if ctx is None:
-            return
-        row = index.row()
-        sel_file = ctx.files()[row]
-        FileDiffViewer(self.repo, sel_file).exec_()
-        
-    def setup_diff_textview(self):
-        d = {'+': QtGui.QTextCharFormat(),
-             '-': QtGui.QTextCharFormat(),
-             '@': QtGui.QTextCharFormat(),
-             }
-        for k, v in d.items():
-            v.setFont(self.font)
-            v.setFontWeight(diff_styles[k][0])
-            v.setForeground(diff_styles[k][1])
-            
-        self.diff_formats = d
-        self.default_diff_format = QtGui.QTextCharFormat()
-        self.default_diff_format.setFont(self.font)
-
-        self.header_diff_format = QtGui.QTextCharFormat()
-        self.header_diff_format.setFont(self.font)
-        self.header_diff_format.setFontWeight(bold)
-        self.header_diff_format.setForeground(Qt.black)
-        self.header_diff_format.setBackground(Qt.gray)
-        
-        editor = self.textview_status
-        editor.setFont(self.font)
-        editor.setReadOnly(True)
-        self.connect(editor,
-                     QtCore.SIGNAL('anchorClicked(const QUrl &)'),
-                     self.on_anchor_clicked)
-        self.textview_header.setFont(self.font)
-        self.textview_header.setReadOnly(True)
-        
-    def on_anchor_clicked(self, qurl):
-        """
-        Callback called when a link is clicked in the text browser
-        displaying the diffs
-        """
-        rev = int(qurl.toString())
-
-        # forbid Qt to look for a real document at URL
-        self.textview_status.setSource(QtCore.QUrl(''))
-
-        node = self.repo.repo.changelog.node(rev)
-        row = self.repomodel.row_from_node(node)
-        if row is not None:
-            self.tableView_revisions.selectRow(row)
-        else:
-            print "CANNOT find row for node ", self.repo.read_node(node).rev, node
-
+                        
     def revision_selected(self, index, index_from):
         """
         Callback called when a revision os selected in the revisions table
@@ -286,7 +252,7 @@ class HgMainWindow(QtGui.QMainWindow):
         if self.repomodel.graph:
             gnode = self.repomodel.graph[row]
             ctx = self.repo.changectx(gnode.rev)
-            self.currentctx = ctx
+            self.current_ctx = ctx
             header = self.fill_revlog_header(ctx)
             self.textview_header.setHtml(header)
 
@@ -297,7 +263,42 @@ class HgMainWindow(QtGui.QMainWindow):
             else:
                 print "empty filelistmodel for", ctx.rev()
                 self.textview_status.clear()
+
+    def file_selected(self, index=None, index_from=None):
+        """
+        Callback called when a filename is selected in the file list
+        """
+        w = self.textview_status
+        w.clear()
+        ctx = self.filelistmodel.current_ctx
+        if ctx is None:
+            return
+        if index is None:
+            index = self.tableView_filelist.currentIndex()
+        row = index.row()
+        sel_file = ctx.files()[row]
+        flag, data = self.get_file_data(sel_file)
+        
+        if flag == "M":
+            w.setLexer(self.lexers['diff'])
+        elif flag == "A":
+            w.setLexer(self.lexers['python']) # XXX
+        else:
+            w.setLexer(None)
+
+        self.textview_status.setText(data)
+        self.highlight_search_string()
+        self._cur_find_pos = None
+
+    def file_activated(self, index):
+        sel_file = self.filelistmodel.fileFromIndex(index)
+        if sel_file is not None:
+            FileDiffViewer(self.repo, sel_file).exec_()
                 
+    def file_section_resized(self, idx, oldsize, newsize):
+        if idx == 2:
+            self.filelistmodel.setDiffWidth(newsize)
+
     def resize_filelist_columns(self, *args):
         # resize columns the smart way: the diffstat column is resized
         # according to its content, the one holding file names being
@@ -322,144 +323,26 @@ class HgMainWindow(QtGui.QMainWindow):
             col1_width -= self.tableView_revisions.columnWidth(c)
         self.tableView_revisions.setColumnWidth(1, col1_width)
 
-    def file_selected(self, index, index_from):
-        """
-        Callback called when a filename is selected in the file list
-        """
-        ctx = self.filelistmodel.current_ctx
+    def get_file_data(self, filename, ctx=None):
         if ctx is None:
-            self.textview_status.clear()
-            return
-        row = index.row()
-        sel_file = ctx.files()[row]
-        flag = self.filelistmodel.fileflag(sel_file)
+            ctx = self.filelistmodel.current_ctx
+        flag = self.filelistmodel.fileflag(filename, ctx)
         if flag == "M":
-            self.textview_status.setLexer(self.lexers['diff'])
-            # display the diff
-            doc = QtGui.QTextDocument(self.textview_status)
-            diff = revdiff(self.repo, ctx, files=[sel_file])
-            diff = '\n'.join(diff.splitlines()[3:])
-            self.textview_status.setText(diff)
-            
-            #self.fill_diff_richtext(ctx, doc, [sel_file])
-            #self.textview_status.setDocument(doc)
+            # return the diff but the 3 first lines
+            data = revdiff(self.repo, ctx, files=[filename])
+            data = u'\n'.join(data.splitlines()[3:])
         elif flag == "A":
-            self.textview_status.setLexer(self.lexers['python'])
-            # display the whole file
-            data = ctx.filectx(sel_file).data()
-            self.textview_status.setText(data)
+            # return the whole file
+            data = unicode(ctx.filectx(filename).data(), errors='ignore') # XXX
         else:
-            self.textview_status.clear()
-        
-    def revpopup_add_tag(self, item):
-        path, col = self.revpopup_path
-        if path is None or col is None:
-            return
-        self.revisions
-        
-    def revpopup_update(self, item):
-        print "UPDATE"
-        
-    def filter_nodes(self):
-        """Filter the nodes according to filter_files and filter_nodes"""
-        keepnodes = []
-        nodes = self.repo.nodes
-        frex = self.filter_files_reg
-        noderange = self.filter_noderange or set(range(len(nodes)))
-        for n in nodes:
-            node = self.repo.read_node(n)
-            if node.rev in noderange:
-                for f in node.files:
-                    if frex.search(f):
-                        keepnodes.append(n)
-                        break
-        return keepnodes
-
-    def on_about(self, *args):
-        """ Display about dialog """
-        from hgview.__pkginfo__ import modname, version, short_desc, long_desc
-        QtGui.QMessageBox.about(self, self.tr("About hgview_qt4"),
-                                "<h2>About hgview_qt4 %s</h2>" % version + 
-                                "<p><i>%s</i></p>" % short_desc.capitalize() +
-                                "<p>%s</p>" % long_desc)
-
+            data = ""
+        return flag, data
+                    
     def refresh_revision_table(self):
         """Starts the process of filling the HgModel"""
+        # XXX TODO
         self.tableView_revisions.setCurrentIndex(self.tableView_revisions.model().index(0,0))
-        return
-        #self.repo.refresh()
-        #self.repo.read_nodes()
-        if self.filter_files_reg or self.filter_noderange:
-            todo_nodes = self.filter_nodes()
-        else:
-            todo_nodes = self.repo.nodes
-        graph = self.repo.graph(todo_nodes)
-        self.filelistmodel.setSelectedNode(None, [])
-        self.repomodel.clear()        
-        self.repomodel.set_graph(graph)
-        self.last_node = 0
-        self.graph = graph
-        self.pb.setRange(0,len(self.graph.rows))
-        self.pb.show()
-        QtGui.qApp.flush()        
-        # we use a QTimer with no delay time, so
-        # if the repo loading process will let the application
-        # react and the window update its content quite smoothly
-        self.timer.start()
 
-    def fill_diff_richtext(self, ctx, doc, files=None):
-        diff = revdiff(self.repo, ctx, files=files)
-        
-        cursor = QtGui.QTextCursor(doc)
-        cursor.movePosition(QtGui.QTextCursor.End, QtGui.QTextCursor.MoveAnchor) 
-
-        diff_formats = self.diff_formats
-        default_diff_fmt = self.default_diff_format
-        
-        diff_file = None
-        stats = {}
-
-        regsplit =  re.compile('^diff.*$', re.M)
-        difflines = [ (m.start(), m.end()) for m in regsplit.finditer(diff)]
-        reg = re.compile(r'^diff *-r *(?P<from>[a-fA-F0-9]*) *-r *(?P<to>[a-fA-F0-9]*) *(?P<file>.*) *$')        
-
-        added_line_reg = re.compile(r"^[+][^+].*$", re.M)
-        rem_line_reg = re.compile(r"^-[^-].*$", re.M)
-
-        diffsize = diff.count('\n')
-
-        self.current_diff_contents = []        
-
-        diff_formats = self.diff_formats
-        default_diff_fmt = self.default_diff_format
-        for i, (st, end) in enumerate(difflines):
-            m = reg.match(diff[st:end])
-            diff_file = m.group('file')
-            diff_st = end+1
-            try:
-                diff_end = difflines[i+1][0]
-            except:
-                diff_end = -1
-            diff_content = diff[diff_st:diff_end]
-            self.current_diff_contents.append(diff_content)
-
-            stats[diff_file] = (len(added_line_reg.findall(diff_content)),
-                                len(rem_line_reg.findall(diff_content)))
-
-            cursor.insertHtml(u'<a name="%s"></a>' % diff_file)
-            cursor.insertText(u' === %s [+%s -%s] === \n' % (diff_file, stats[diff_file][0],stats[diff_file][1]),
-                              self.header_diff_format)
-            
-            for l in diff_content.splitlines():
-                if l.startswith('+++') or l.startswith('---'):
-                    continue
-                cursor.insertText(l+'\n', diff_formats.get(l[0], default_diff_fmt))
-
-            cursor.insertText('\n')
-            
-        return stats
-            
-        
     def fill_revlog_header(self, ctx):
         """Build the revision log header"""
         repo = self.repo
@@ -496,26 +379,139 @@ class HgMainWindow(QtGui.QMainWindow):
         buf += '<div class="diff_desc"><p>%s</p></div>\n' % ctx.description().replace('\n', '<br/>\n')
         return buf
 
+    def show_find_frame(self, *args):
+        self.find_frame.show()
+        self.entry_find.setFocus()
+        self.entry_find.selectAll()
+        self._find_frame_timer.start()
 
-    def hilight_search_string(self):
-        # Highlight the search string
-        textwidget = self.xml.get_widget("textview_status")
-        text_buffer = textwidget.get_buffer()
-        if not self.find_text:
+    def highlight_search_string(self):
+        if not self.find_frame.isHidden() and self._find_text.strip():
+            w = self.textview_status
+            data = unicode(self.textview_status.text())
+            w.SendScintilla(w.SCI_SETINDICATORCURRENT, 8)
+            pos = data.find(self._find_text)
+            n = len(self._find_text)
+            while pos > -1:
+                w.SendScintilla(w.SCI_INDICATORFILLRANGE, pos, n)
+                pos = data.find(self._find_text, pos+1)
+
+    def clear_highlights(self):
+        w = self.textview_status
+        n = w.length()
+        w.SendScintilla(w.SCI_SETINDICATORCURRENT, 8)
+        w.SendScintilla(w.SCI_INDICATORCLEARRANGE, 0, n)
+        w.SendScintilla(w.SCI_SETINDICATORCURRENT, 9)
+        w.SendScintilla(w.SCI_INDICATORCLEARRANGE, 0, n)
+
+    def find_in_data(self, data, pos, filename=None, rev=None):
+        """
+        Find self._find_text in 'data', from 'pos' 
+        """
+        pos = data.find(self._find_text, pos+1)
+        if pos > -1:
+            if rev is not None:
+                idx = self.repomodel.indexFromRev(rev)
+                if idx is not None:
+                    self.tableView_revisions.setCurrentIndex(idx)
+            if filename is not None:
+                self.tableView_filelist.keyboardSearch(filename)
+            else:
+                filename = self.filelistmodel.fileFromIndex(self.tableView_filelist.currentIndex())
+            w = self.textview_status
+            line = w.SendScintilla(w.SCI_LINEFROMPOSITION, pos)
+            #line, idx = w.lineIndexFromPosition(nextpos)
+            w.ensureLineVisible(line)
+            w.SendScintilla(w.SCI_SETINDICATORCURRENT, 9)
+            w.SendScintilla(w.SCI_INDICATORCLEARRANGE, 0, pos)
+            w.SendScintilla(w.SCI_INDICATORFILLRANGE, pos, len(self._find_text))
+            self._cur_find_pos = filename, pos
+            self._find_frame_timer.start()
+            return True
+        return False
+
+    def find_in_rev(self, rev=None, curfile=None):
+        """
+        Find self._find_text in all files of the revision 'rev' (from file 'curfile' if given)
+        """
+        if rev is None:
+            ctx = self.current_ctx
+        else:
+            ctx = self.repo.changectx(rev)
+        pos = 0
+        files = ctx.files()
+        if curfile is not None:
+            files = files[files.index(curfile)+1:]
+        for filename in files:
+            flag, data = self.get_file_data(filename, ctx)
+            if self.find_in_data(data, pos, filename, rev):
+                return True
+        return False
+        
+    def find_in_repo(self, fromrev):
+        """
+        Find self._find_text in the whole repo from rev 'fromrev'
+        """
+        for rev in xrange(fromrev-1, 0, -1):
+            if self.find_in_rev(rev):
+                return True
+        return False
+    
+    def on_find(self, *args):
+        """
+        callback called when 'Find' button is pushed
+        """
+        self._find_frame_timer.stop()
+        if self._cur_find_pos is not None:
+            curfile, pos = self._cur_find_pos
+        else:
+            curfile = self.filelistmodel.fileFromIndex(self.tableView_filelist.currentIndex())
+            pos = 0
+            self.highlight_search_string()
+        if curfile:
+            flag, data = self.get_file_data(curfile)
+            if self.find_in_data(data, pos):
+                return
+            if self.find_in_rev(self.current_ctx.rev(), curfile):
+                return
+        if self.find_in_repo(self.current_ctx.rev()):
             return
+        self._cur_find_pos = None
+        self._find_frame_timer.start()
+        
+    def on_find_text_changed(self, newtext):
+        """
+        Callback called when the content of the find text entry is changed
+        """
+        newtext = unicode(newtext)
+        if not newtext.strip():
+            self._find_text = None
+            self._cur_find_pos = None
+            self.clear_highlights()            
+        if self._find_text != newtext:
+            self._find_text = newtext
+            self._cur_find_pos = None
+            self.clear_highlights()
+            
+        self._find_frame_timer.start()
+        
+    def on_anchor_clicked(self, qurl):
+        """
+        Callback called when a link is clicked in the text browser
+        displaying the diffs
+        """
+        rev = int(qurl.toString())
 
-        rexp = re.compile(self.find_text)
-        sob, eob = text_buffer.get_bounds()
-        mark = text_buffer.get_mark("enddesc")
-        enddesc = text_buffer.get_iter_at_mark(mark)
-        txt = text_buffer.get_slice(sob, enddesc, True)
-        m = rexp.search(txt)
-        while m:
-            _b = text_buffer.get_iter_at_offset(m.start())
-            _e = text_buffer.get_iter_at_offset(m.end())
-            text_buffer.apply_tag_by_name("yellowbg", _b, _e)
-            m = rexp.search(txt, m.end())
+        # forbid Qt to look for a real document at URL
+        self.textview_status.setSource(QtCore.QUrl(''))
 
+        node = self.repo.repo.changelog.node(rev)
+        row = self.repomodel.row_from_node(node)
+        if row is not None:
+            self.tableView_revisions.selectRow(row)
+        else:
+            print "CANNOT find row for node ", self.repo.read_node(node).rev, node
+            
     def on_filter1_activate(self, *args):
         self.filter_dialog.show()
 
@@ -540,12 +536,37 @@ class HgMainWindow(QtGui.QMainWindow):
         self.filter_noderange = set(range(node_low.value(), node_high.value()))
         self.refresh_revision_table()
 
-    def on_find(self, *args):
-        print "Find not yet implemented... Sorry."
-        QtGui.QMessageBox.warning(self, self.tr("Noy yet implemented"),
-                                  "<p><b>Find</b> functionality has nit yet been implemented... Sorry</p>"
-                                 )
+    def revpopup_add_tag(self, item):
+        path, col = self.revpopup_path
+        if path is None or col is None:
+            return
+        self.revisions
         
+    def revpopup_update(self, item):
+        print "UPDATE"
+        
+    def filter_nodes(self):
+        """Filter the nodes according to filter_files and filter_nodes"""
+        keepnodes = []
+        nodes = self.repo.nodes
+        frex = self.filter_files_reg
+        noderange = self.filter_noderange or set(range(len(nodes)))
+        for n in nodes:
+            node = self.repo.read_node(n)
+            if node.rev in noderange:
+                for f in node.files:
+                    if frex.search(f):
+                        keepnodes.append(n)
+                        break
+        return keepnodes
+
+    def on_about(self, *args):
+        """ Display about dialog """
+        from hgview.__pkginfo__ import modname, version, short_desc, long_desc
+        QtGui.QMessageBox.about(self, self.tr("About hgview_qt4"),
+                                "<h2>About hgview_qt4 %s</h2>" % version + 
+                                "<p><i>%s</i></p>" % short_desc.capitalize() +
+                                "<p>%s</p>" % long_desc)
         
 def find_repository(path):
     """returns <path>'s mercurial repository

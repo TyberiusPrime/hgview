@@ -55,20 +55,25 @@ class FileViewer(QtGui.QDialog):
         # load qt designer ui file
         #uifile = join(ui_file)
         self.ui = uic.loadUi(ui_file, self)
+        # hg repo
+        self.repo = repo
+        self.filename = filename
+        self.loadConfig()
+        
         lay = QtGui.QHBoxLayout(self.frame)
         lay.setSpacing(0)
         lay.setContentsMargins(0,0,0,0)
         self.textBrowser_filecontent = Qsci.QsciScintilla(self.frame)
         self.textBrowser_filecontent.setFrameShape(QtGui.QFrame.NoFrame)
         self.textBrowser_filecontent.setMarginLineNumbers(1, True)
+        self.textBrowser_filecontent.setFont(self.font)
         self.textBrowser_filecontent.setLexer(Qsci.QsciLexerPython())
         self.textBrowser_filecontent.setReadOnly(True)
         self.markerplus = self.textBrowser_filecontent.markerDefine(Qsci.QsciScintilla.Plus)
         self.markerminus = self.textBrowser_filecontent.markerDefine(Qsci.QsciScintilla.Minus)
         lay.addWidget(self.textBrowser_filecontent)
-        # hg repo
-        self.repo = repo
-        self.filename = filename
+
+        self.tableView_revisions.verticalHeader().setDefaultSectionSize(self.rowheight)
         self.filerevmodel = FileRevModel(self.repo, self.filename, noderev)
         self.tableView_revisions.setModel(self.filerevmodel)
         self.connect(self.tableView_revisions.selectionModel(),
@@ -87,6 +92,23 @@ class FileViewer(QtGui.QDialog):
         self.textBrowser_filecontent.markerDeleteAll()
         self.textBrowser_filecontent.markerAdd(1, self.markerplus)
         self.textBrowser_filecontent.markerAdd(2, self.markerminus)
+
+    def loadConfig(self):
+        cfg = HgConfig(self.repo.ui)
+        fontstr = cfg.getFont()
+        font = QtGui.QFont()
+        try:
+            if not font.fromString(fontstr):
+                raise Exception
+        except:
+            print "bad font name '%s'"%fontstr
+            font.setFamily("Monospace")
+            font.setFixedPitch(True)
+            font.setPointSize(10)
+        self.font = font
+
+        self.rowheight = cfg.getRowHeight()
+        self.users, self.aliases = cfg.getUsers()
         
 class FileDiffViewer(QtGui.QDialog):
     """
@@ -129,6 +151,7 @@ class FileDiffViewer(QtGui.QDialog):
         lay.setContentsMargins(0,0,0,0)
         for side, idx  in (('left', 0), ('right', 3)):
             sci = Qsci.QsciScintilla(self.frame)
+            sci.setFont(self.font)
             sci.verticalScrollBar().setFocusPolicy(Qt.StrongFocus)
             sci.setFocusProxy(sci.verticalScrollBar())
             sci.setFrameShape(QtGui.QFrame.NoFrame)
@@ -161,6 +184,7 @@ class FileDiffViewer(QtGui.QDialog):
         self.filerevmodel = FileRevModel(self.repo, self.filename, noderev)
         for side in sides:
             table = getattr(self, 'tableView_revisions_%s' % side)
+            table.verticalHeader().setDefaultSectionSize(self.rowheight)
             table.setTabKeyNavigation(False)
             table.setModel(self.filerevmodel)
             table.verticalHeader().hide()
@@ -178,6 +202,19 @@ class FileDiffViewer(QtGui.QDialog):
         
     def loadConfig(self):
         cfg = HgConfig(self.repo.ui)
+        fontstr = cfg.getFont()
+        font = QtGui.QFont()
+        try:
+            if not font.fromString(fontstr):
+                raise Exception
+        except:
+            print "bad font name '%s'"%fontstr
+            font.setFamily("Monospace")
+            font.setFixedPitch(True)
+            font.setPointSize(10)
+        self.font = font
+
+        self.rowheight = cfg.getRowHeight()
         self.users, self.aliases = cfg.getUsers()
         
     def update_page_steps(self):
