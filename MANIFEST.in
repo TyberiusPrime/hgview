@@ -3,6 +3,5 @@ include COPYING
 include TODO
 include bin/hgview
 include bin/hgview.bat
-include hgview/gtk/hgview.glade
 include hgview/qt4/hgview.ui
 include hgview.1

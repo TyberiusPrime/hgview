@@ -53,8 +53,7 @@ debian_handler = 'python-dep-standalone'
  
 from os.path import join
 include_dirs = [] #join('tests', 'data'), join('tests', 'packages')]
-data_files = [('share/hgview', ['hgview/gtk/hgview.glade',
-                                 'hgview/qt4/hgview.ui']),
+data_files = [('share/hgview', ['hgview/qt4/hgview.ui']),
               ('share/man/man1', ['hgview.1',
                                  ]),]
 
