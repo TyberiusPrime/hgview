@@ -31,12 +31,6 @@ Qt = QtCore.Qt
 bold = QtGui.QFont.Bold
 normal = QtGui.QFont.Normal
 
-diff_styles = {'+': (normal, Qt.darkGreen),
-               '-': (normal, Qt.red),
-               '@': (bold, Qt.blue),
-               }
-               
-
 class HgMainWindow(QtGui.QMainWindow):
     """Main hg view application"""
     def __init__(self, repo, filerex = None):

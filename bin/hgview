@@ -3,42 +3,8 @@
 import sys, os
 import os.path as pos
 
-use_gtk=False
-use_qt = False
-
-if '--gtk' in sys.argv:
-    use_gtk = True
-    sys.argv.remove('--gtk')
-if '--qt' in sys.argv:
-    use_qt = True
-    sys.argv.remove('--qt')
-
-if use_gtk and use_qt:
-    print "Cannot use both gtk and Qt!"
-    sys.exit(1)
-
-if not (use_gtk or use_qt):
-    if pos.isfile(pos.join(os.environ['HOME'], '.hgviewrc')):
-        try:
-            d = open(pos.join(os.environ['HOME'], '.hgviewrc')).readlines()
-        except:
-            print "Can't access to your .hgviewrc file! "
-            print "Check permissions or specify your desired backend with '--gtk' or '--qt'"
-            sys.exit(1)
-        else:
-            for l in d:
-                if l.startswith('backend'):
-                    backend = l.split('=')[1].strip()
-                    use_gtk = 'gtk' in backend
-                    use_qt = 'qt' in backend
-
-    if not (use_gtk or use_qt): # still ...
-        use_gtk = True
-        
-
 try:
     import hgview
-    # print hgview.__file__
 except ImportError:
     import stat
     exec_path = pos.abspath(__file__)
@@ -51,10 +17,7 @@ except ImportError:
     #print "Inserting:", py_path
     sys.path.append(py_path)
 
-if use_qt:
-    from hgview.qt4 import hgview_qt4 as hgview
-elif use_gtk:    
-    from hgview.gtk import hgview_gtk as hgview
+from hgview.qt4 import hgview_qt4 as hgview
 
 hgview.main()
 
