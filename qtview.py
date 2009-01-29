@@ -38,6 +38,7 @@ def start_hgview(ui, repo, *args, **kwargs):
     sys.path.insert(0, os.path.dirname(__file__))
     try:
         from PyQt4 import QtGui
+        import hgview.qt4.hgview_rc
         from hgview.qt4 import hgview_qt4 as hgview
     except ImportError:
         # If we're unable to import Qt4 and qctlib, try to
@@ -45,6 +46,7 @@ def start_hgview(ui, repo, *args, **kwargs):
         # You can specificy it's location in ~/.hgrc via
         #   [qtview]
         #   path=
+        print "ARGHHHH"
         cmd = ui.config("qtview", "path", "qtview") 
         os.system(cmd)
     else:

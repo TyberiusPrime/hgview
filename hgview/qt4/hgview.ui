@@ -33,7 +33,7 @@
       <property name="orientation" >
        <enum>Qt::Vertical</enum>
       </property>
-      <widget class="QWidget" name="" >
+      <widget class="QWidget" name="layoutWidget" >
        <layout class="QVBoxLayout" name="verticalLayout_2" >
         <item>
          <widget class="QTableView" name="tableView_revisions" >
@@ -107,18 +107,15 @@
             </widget>
            </item>
           </layout>
+          <zorder>spinbutton_rev_low</zorder>
+          <zorder>spinbutton_rev_high</zorder>
           <zorder>label_3</zorder>
           <zorder>label_2</zorder>
           <zorder>button_filter</zorder>
           <zorder>entry_file_filter</zorder>
-          <zorder>button_find</zorder>
-          <zorder>line</zorder>
-          <zorder>entry_find</zorder>
-          <zorder>label</zorder>
          </widget>
         </item>
        </layout>
-       <zorder>splitter_2</zorder>
       </widget>
       <widget class="QFrame" name="frame_3" >
        <property name="sizePolicy" >
@@ -176,9 +173,16 @@
         <number>0</number>
        </property>
        <item>
-        <widget class="QToolButton" name="find_toolButton" >
+        <widget class="QPushButton" name="close_find_toolButton" >
          <property name="text" >
-          <string>...</string>
+          <string/>
+         </property>
+         <property name="icon" >
+          <iconset resource="hgview.qrc" >
+           <normaloff>:/icons/close.png</normaloff>:/icons/close.png</iconset>
+         </property>
+         <property name="flat" >
+          <bool>true</bool>
          </property>
         </widget>
        </item>
@@ -195,19 +199,27 @@
        <item>
         <widget class="QToolButton" name="button_find" >
          <property name="text" >
-          <string>Find</string>
+          <string>Find next</string>
          </property>
         </widget>
+       </item>
+       <item>
+        <spacer name="horizontalSpacer" >
+         <property name="orientation" >
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0" >
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
        </item>
       </layout>
      </widget>
     </item>
    </layout>
-   <zorder>splitter</zorder>
-   <zorder>find_frame</zorder>
-   <zorder></zorder>
-   <zorder>filter_frame</zorder>
-   <zorder>splitter_2</zorder>
   </widget>
   <widget class="QMenuBar" name="menubar" >
    <property name="geometry" >
@@ -334,6 +346,10 @@
    </property>
   </action>
   <action name="actionCloseFind" >
+   <property name="icon" >
+    <iconset resource="hgview.qrc" >
+     <normaloff>:/icons/close.png</normaloff>:/icons/close.png</iconset>
+   </property>
    <property name="text" >
     <string>close</string>
    </property>
@@ -344,6 +360,8 @@
    </property>
   </action>
  </widget>
- <resources/>
+ <resources>
+  <include location="hgview.qrc" />
+ </resources>
  <connections/>
 </ui>

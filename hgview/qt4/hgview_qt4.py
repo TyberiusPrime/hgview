@@ -18,8 +18,6 @@ from os.path import dirname, join, isfile
 
 from PyQt4 import QtCore, QtGui, Qsci, uic
 
-import hgview.fixes
-
 from mercurial import ui, hg, patch
 from mercurial.node import hex, short as short_hex, bin as short_bin
 
@@ -64,6 +62,10 @@ class HgMainWindow(QtGui.QMainWindow):
                              "Check your installation.")
         uifile = os.path.join(os.path.dirname(__file__), ui_file)
         self.ui = uic.loadUi(uifile, self)
+        self._icons = {}
+        # for now, status bar is not used
+        self.statusBar().hide()
+
         self.splitter_2.setStretchFactor(0, 2)
         self.splitter_2.setStretchFactor(1, 1)
         self.connect(self.splitter_2, QtCore.SIGNAL('splitterMoved (int, int)'),
@@ -100,11 +102,6 @@ class HgMainWindow(QtGui.QMainWindow):
         sci.SendScintilla(sci.SCI_INDICSETFORE, 9, 0x0000FF)
         self.textview_status = sci
         
-##         self.pb = QtGui.QProgressBar(self.statusBar())
-##         self.pb.setTextVisible(False)
-##         self.pb.hide()
-##         self.statusBar().addPermanentWidget(self.pb)
-        self.statusBar().hide()
         # filter frame
         self.filter_frame.hide() # disabled for now XXX TODO
         self.filerex = filerex
@@ -123,11 +120,15 @@ class HgMainWindow(QtGui.QMainWindow):
         self._find_text = None
         
         self.find_frame.hide()
-        self.find_toolButton.setDefaultAction(self.actionCloseFind)
+        # XXX don't know why I have to do this, the icon is affected
+        # in designer, but it does not work here...
+        self._icons['closefind'] = QtGui.QIcon(':/icons/close.png')
+        self.close_find_toolButton.setIcon(self._icons['closefind'])
         self.action_Find.setShortcuts([self.action_Find.shortcut(), "Ctrl+F", "/"])
-        self.button_find.setDefaultAction(self.action_FindNext)
         self.action_FindNext.setShortcuts([self.action_FindNext.shortcut(), "Ctrl+N"])
         self.connect(self.actionCloseFind, QtCore.SIGNAL('triggered(bool)'),
+                     self.find_frame.hide)
+        self.connect(self.close_find_toolButton, QtCore.SIGNAL('clicked(bool)'),
                      self.find_frame.hide)
         self.connect(self.action_Find, QtCore.SIGNAL('triggered()'),
                      self.show_find_frame)
