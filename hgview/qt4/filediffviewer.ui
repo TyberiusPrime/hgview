@@ -5,8 +5,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>718</width>
-    <height>815</height>
+    <width>620</width>
+    <height>546</height>
    </rect>
   </property>
   <property name="windowTitle" >
@@ -56,20 +56,13 @@
      </widget>
      <widget class="QWidget" name="" >
       <layout class="QHBoxLayout" name="horizontalLayout_2" >
+       <property name="spacing" >
+        <number>0</number>
+       </property>
        <item>
-        <widget class="QFrame" name="frame_left" >
+        <widget class="QFrame" name="frame" >
          <property name="frameShape" >
-          <enum>QFrame::StyledPanel</enum>
-         </property>
-         <property name="frameShadow" >
-          <enum>QFrame::Raised</enum>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QFrame" name="frame_right" >
-         <property name="frameShape" >
-          <enum>QFrame::StyledPanel</enum>
+          <enum>QFrame::NoFrame</enum>
          </property>
          <property name="frameShadow" >
           <enum>QFrame::Raised</enum>
@@ -91,7 +84,17 @@
     </widget>
    </item>
   </layout>
+  <action name="actionClose" >
+   <property name="text" >
+    <string>Close</string>
+   </property>
+  </action>
  </widget>
+ <tabstops>
+  <tabstop>tableView_revisions_left</tabstop>
+  <tabstop>tableView_revisions_right</tabstop>
+  <tabstop>buttonBox</tabstop>
+ </tabstops>
  <resources/>
  <connections>
   <connection>
@@ -102,7 +105,7 @@
    <hints>
     <hint type="sourcelabel" >
      <x>257</x>
-     <y>542</y>
+     <y>805</y>
     </hint>
     <hint type="destinationlabel" >
      <x>157</x>
@@ -118,7 +121,7 @@
    <hints>
     <hint type="sourcelabel" >
      <x>325</x>
-     <y>542</y>
+     <y>805</y>
     </hint>
     <hint type="destinationlabel" >
      <x>286</x>

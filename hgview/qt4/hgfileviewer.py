@@ -121,7 +121,7 @@ class FileDiffViewer(QtGui.QDialog):
                       expanduser('~/share/hgview'),
                       join(dirname(__file__), "../../../../../share/hgview"),
                       ]:
-            ui_file = join(_path, 'filediffviewer3.ui')
+            ui_file = join(_path, 'filediffviewer.ui')
             
             if isfile(ui_file):
                 break
