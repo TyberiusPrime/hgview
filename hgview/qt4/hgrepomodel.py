@@ -17,14 +17,10 @@ def cvrt_date(date):
     return QtCore.QDateTime.fromTime_t(int(date)).toString(QtCore.Qt.ISODate)
     return dt.DateTimeFromTicks(date) + tzdelay/dt.oneHour
 
-
-from hgext.graphlog import revision_grapher, fix_long_right_edges
-from hgext.graphlog import get_nodeline_edges_tail, get_padding_line
-from hgext.graphlog import draw_edges, get_rev_parents
-from mercurial.node import nullrev
 from hgview.hggraph import Graph, diff as revdiff
-from hgview.decorators import timeit
 from hgview.config import HgConfig
+
+from hgview.decorators import timeit
 
 # in following lambdas, ctx is a hg changectx 
 _columnmap = {'ID': lambda ctx: ctx.rev(),
@@ -60,7 +56,23 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
         self._branch_colors = {}
         self.graph = Graph(self.repo)
         self.heads = [self.repo.changectx(x).rev() for x in self.repo.heads()]
+        self.gr_fill_timer = QtCore.QTimer()
+        self._fill_iter = None
+        self.connect(self.gr_fill_timer, QtCore.SIGNAL('timeout()'),
+                     self.fillGraph)
+        QtCore.QTimer.singleShot(0, self.gr_fill_timer.start) 
 
+    def fillGraph(self):
+        if self._fill_iter is None:
+            self.emit(QtCore.SIGNAL('filling(int)'), len(self.graph))
+            self._fill_iter = self.graph.fill()
+        try:
+            self.emit(QtCore.SIGNAL('filled(int)'), self._fill_iter.next())
+        except StopIteration:
+            self.gr_fill_timer.stop()
+            self._fill_iter = None
+            self.emit(QtCore.SIGNAL('fillingover()'))
+        
     def loadConfig(self):
         cfg = HgConfig(self.repo.ui)
         self._users, self._aliases = cfg.getUsers()
@@ -142,18 +154,15 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
                 lpen = QtGui.QPen(pen)
                 lpen.setColor(QtGui.QColor(color))
                 painter.setPen(lpen)
-                inc = int(gnode.dx>0)
-                dec = int(gnode.dx<0)
-                    
-                for x1, y1, x2, y2, color in gnode.lines:
+
+                for start, end, color in gnode.lines:
                     lpen = QtGui.QPen(pen)
                     lpen.setColor(QtGui.QColor(get_color(color)))
-                    lpen.setWidth(3)
+                    lpen.setWidth(2)
                     painter.setPen(lpen)
-
-                    x1 = self.col2x(x1)
-                    x2 = self.col2x(x2)                    
-                    painter.drawLine(x1, dot_y + y1*h, x2, dot_y + y2*h)
+                    x1 = self.col2x(start)
+                    x2 = self.col2x(end)
+                    painter.drawLine(x1, dot_y - h/2, x2, dot_y + h/2)
  
                 if gnode.rev in self.heads:
                     dot_color = "yellow"

@@ -1,6 +1,6 @@
 # -*- coding: iso-8859-1 -*-
 #!/usr/bin/env python
-# hgview_qt4.py - qt4-based hgk
+# hgview_qt4.py - qt4-based hg rev log browser
 #
 # Copyright (C) 2007-2009 Logilab. All rights reserved.
 #
@@ -57,8 +57,13 @@ class HgMainWindow(QtGui.QMainWindow):
         uifile = os.path.join(os.path.dirname(__file__), ui_file)
         self.ui = uic.loadUi(uifile, self)
         self._icons = {}
-        # for now, status bar is not used
-        self.statusBar().hide()
+
+        # 
+        self.pb = QtGui.QProgressBar(self.statusBar())
+        self.pb.setTextVisible(False)
+        self.pb.hide()
+        self.statusBar().addPermanentWidget(self.pb)
+        #self.statusBar().hide()
 
         self.splitter_2.setStretchFactor(0, 2)
         self.splitter_2.setStretchFactor(1, 1)
@@ -142,9 +147,13 @@ class HgMainWindow(QtGui.QMainWindow):
         self.setup_revision_table()
         self.setup_filelist_table()
 
-        QtGui.qApp.flush()        
         self.refresh_revision_table()
 
+    def load_repository(self, repo=None):
+        if repo is not None:
+            self.repo = repo
+        self.setup_models()
+        
     def loadConfig(self):
         cfg = HgConfig(self.repo.ui)
         fontstr = cfg.getFont()
@@ -163,9 +172,33 @@ class HgMainWindow(QtGui.QMainWindow):
         self.users, self.aliases = cfg.getUsers()
         self.hidefinddelay = cfg.getHideFindDelay()
         
-    def setup_revision_table(self):
+    def setup_models(self):
         self.repomodel = HgRepoListModel(self.repo)
+        self.tableView_revisions.setModel(self.repomodel)        
+        self.filelistmodel = HgFileListModel(self.repo, self.repomodel.graph)
+        self.tableView_filelist.setModel(self.filelistmodel)
+
+        self.connect(self.repomodel, QtCore.SIGNAL('filling(int)'),
+                     self.start_filling)
+        self.connect(self.repomodel, QtCore.SIGNAL('filled(int)'),
+                     self.pb.setValue)
+        self.connect(self.repomodel, QtCore.SIGNAL('fillingover()'),
+                     self.pb.hide)
         
+        self.connect(self.tableView_filelist.selectionModel(),
+                     QtCore.SIGNAL('currentRowChanged (const QModelIndex & , const QModelIndex & )'),
+                     self.file_selected)
+        self.connect(self.tableView_filelist,
+                     QtCore.SIGNAL('doubleClicked (const QModelIndex &)'),
+                     self.file_activated)
+        self.connect(self.tableView_revisions.selectionModel(),
+                     QtCore.SIGNAL('currentRowChanged (const QModelIndex & , const QModelIndex & )'),
+                     self.revision_selected)
+        self.connect(self.tableView_filelist.horizontalHeader(),
+                     QtCore.SIGNAL('sectionResized(int, int, int)'),
+                     self.file_section_resized)
+
+    def setup_revision_table(self):
         repotable = self.tableView_revisions
         repotable.installEventFilter(self)
         repotable.setTabKeyNavigation(False)
@@ -176,13 +209,11 @@ class HgMainWindow(QtGui.QMainWindow):
         repotable.setSelectionMode(QtGui.QAbstractItemView.SingleSelection)
         repotable.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
         repotable.setAlternatingRowColors(True)
-        repotable.setModel(self.repomodel)
         repotable.show()
 
     def setup_filelist_table(self):
-        self.filelistmodel = HgFileListModel(self.repo, self.repomodel.graph)
-
         filetable = self.tableView_filelist
+        filetable.setFocusPolicy(QtCore.Qt.NoFocus)
         filetable.verticalHeader().setDefaultSectionSize(self.rowheight)
         filetable.setTabKeyNavigation(False)
         filetable.setShowGrid(False)
@@ -190,20 +221,7 @@ class HgMainWindow(QtGui.QMainWindow):
         filetable.setSelectionMode(QtGui.QAbstractItemView.SingleSelection)
         filetable.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
         filetable.setAlternatingRowColors(True)
-        filetable.setModel(self.filelistmodel)
 
-        self.connect(self.tableView_filelist.selectionModel(),
-                     QtCore.SIGNAL('currentRowChanged (const QModelIndex & , const QModelIndex & )'),
-                     self.file_selected)
-        self.connect(self.tableView_filelist,
-                     QtCore.SIGNAL('doubleClicked (const QModelIndex &)'),
-                     self.file_activated)
-        self.connect(self.tableView_revisions.selectionModel(),
-                     QtCore.SIGNAL('currentRowChanged (const QModelIndex & , const QModelIndex & )'),
-                     self.revision_selected)
-        self.connect(filetable.horizontalHeader(),
-                     QtCore.SIGNAL('sectionResized(int, int, int)'),
-                     self.file_section_resized)
         
     def setup_header_textview(self):
         self.header_diff_format = QtGui.QTextCharFormat()
@@ -239,6 +257,10 @@ class HgMainWindow(QtGui.QMainWindow):
                     return True
         return QtGui.QMainWindow.eventFilter(self, watched, event)
                         
+    def start_filling(self, nmax):
+        self.pb.setRange(0, nmax)
+        self.pb.show()
+
     def revision_selected(self, index, index_from):
         """
         Callback called when a revision os selected in the revisions table
@@ -335,7 +357,7 @@ class HgMainWindow(QtGui.QMainWindow):
                     
     def refresh_revision_table(self):
         """Starts the process of filling the HgModel"""
-        # XXX TODO
+        self.load_repository(hg.repository(self.repo.ui, self.repo.root))
         self.tableView_revisions.setCurrentIndex(self.tableView_revisions.model().index(0,0))
 
     def fill_revlog_header(self, ctx):
@@ -598,14 +620,13 @@ def main():
     elif opt.filerex:
         filerex = opt.filerex
 
-    #try:
-    if 1:
+    try:
         u = ui.ui()
         repo = hg.repository(u, dir_)
         #repo = HgHLRepo(dir_)
-    #except:
-    #    print "You are not in a repo, are you?"
-    #    sys.exit(1)
+    except:
+        print "You are not in a repo, are you?"
+        sys.exit(1)
 
     app = QtGui.QApplication(sys.argv)
     mainwindow = HgMainWindow(repo, filerex)
@@ -615,7 +636,7 @@ def main():
 
 if __name__ == "__main__":
     # remove current dir from sys.path
-    if sys.path.count('.'):
+    while sys.path.count('.'):
         sys.path.remove('.')
         print 'removed'
     main()
