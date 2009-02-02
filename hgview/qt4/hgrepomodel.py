@@ -36,7 +36,7 @@ _columnmap = {'ID': lambda ctx: ctx.rev(),
               }
 
 # in following lambdas, r is a hg repo 
-_maxwidth = {'ID': lambda r: str(r.changelog.count()),
+_maxwidth = {'ID': lambda r: str(hasattr(r.changelog, "count") and r.changelog.count() or len(r.changelog)),
              'Date': lambda r: cvrt_date(r.changectx(0).date()),
              'Tags': lambda r: sorted(r.tags().keys(), cmp=lambda x,y: cmp(len(x), len(y)))[-1],
              'Branch': lambda r: sorted(r.branchtags().keys(), cmp=lambda x,y: cmp(len(x), len(y)))[-1],
@@ -94,7 +94,10 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
         return self._branch_colors[branch]
     
     def rowCount(self, parent=None):
-        return self.repo.changelog.count()
+        try:
+            return self.repo.changelog.count()
+        except AttributeError:
+            return len(self.repo.changelog)
 
     def columnCount(self, parent=None):
         return len(self._columns)
@@ -214,7 +217,10 @@ class FileRevModel(HgRepoListModel):
         self._ctxcache = {}
         
     def rowCount(self, parent=None):
-        return self.filelog.count()
+        try:
+            return self.filelog.count()
+        except AttributeError:
+            return len(self.filelog)
 
     def data(self, index, role):
         if not index.isValid():

@@ -105,9 +105,9 @@ class HgMainWindow(QtGui.QMainWindow):
             self.filter_files_reg = None
         self.filter_noderange = None
 
-        self.init_filter()
-        self.connect(self.button_filter, QtCore.SIGNAL('clicked ()'),
-                     self.on_filter)
+        # self.init_filter()
+        # self.connect(self.button_filter, QtCore.SIGNAL('clicked ()'),
+        #              self.on_filter)
 
         # find frame
         self._cur_find_pos = None

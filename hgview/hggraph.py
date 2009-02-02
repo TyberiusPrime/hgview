@@ -7,7 +7,6 @@ from mercurial import patch, util
 from decorators import timeit
 
 def diff(repo, ctx1, ctx2=None, files=None):
-    out = StringIO()
     if ctx2 is None:
         ctx2 = ctx1.parents()[0]
     if files is None:
@@ -15,8 +14,13 @@ def diff(repo, ctx1, ctx2=None, files=None):
     else:
         def match(fn):
             return fn in files
-    diff = patch.diff(repo, ctx2.node(), ctx1.node(), match=match, fp=out)
-    diff = out.getvalue()
+    try:
+        out = StringIO()        
+        patch.diff(repo, ctx2.node(), ctx1.node(), match=match, fp=out)
+        diff = out.getvalue()
+    except:
+        diff = '\n'.join(patch.diff(repo, ctx2.node(), ctx1.node(), match=match))
+        
     try:
         diff = unicode(diff, "utf-8")
     except UnicodeError:
@@ -91,7 +95,10 @@ def build_children(repo):
     """
     children = []
     parents = []
-    nnodes = repo.changelog.count()
+    try:
+        nnodes = repo.changelog.count()
+    except AttributeError:
+        nnodes = len(repo.changelog)
     children = [[] for i in xrange(nnodes)]
     parents = [get_rev_parents(repo, i) for i in xrange(nnodes)]
     for i, prts in enumerate(parents):
@@ -211,7 +218,10 @@ class Graph(object):
 @timeit
 def _build_graph(repo, start_rev=None, stop_rev=0):
     if start_rev is None:
-        start_rev = repo.changelog.count()
+        try:
+            start_rev = repo.changelog.count()
+        except AttributeError:
+            start_rev = len(repo.changelog)
     graph = list(revision_grapher(repo, start_rev, stop_rev))
     return graph
 
