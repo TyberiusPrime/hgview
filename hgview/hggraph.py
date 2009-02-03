@@ -49,7 +49,11 @@ def revision_grapher(repo, start_rev=None, stop_rev=0, branch=None):
     """
 
     if start_rev is None:
-        start_rev = repo.changelog.count()
+        try:
+            start_rev = repo.changelog.count()
+        except AttributeError:
+            start_rev = len(repo.changelog)
+            
         
     assert start_rev >= stop_rev
     curr_rev = start_rev
