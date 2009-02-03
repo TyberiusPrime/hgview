@@ -121,7 +121,8 @@ class GraphNode(object):
             ncols = len(lines)
         self.cols = ncols
         self.parents = parents
-        self.lines = lines
+        self.bottomlines = lines
+        self.toplines = []
         
 class Graph(object):
     @timeit
@@ -144,9 +145,12 @@ class Graph(object):
             try:
                 nrev, xpos, color, lines, parents = self.grapher.next()
                 gnode = GraphNode(nrev, xpos, color, lines, parents)
+                if idx > 1:
+                    gnode.toplines = self.nodes[-1].bottomlines
                 self.nodes.append(gnode)
                 self.nodesdict[nrev] = gnode
                 mcol.append(gnode.cols)
+
             except StopIteration:
                 self.grapher = None
                 stopped = True

@@ -155,15 +155,16 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
                 lpen.setColor(QtGui.QColor(color))
                 painter.setPen(lpen)
 
-                for start, end, color in gnode.lines:
-                    lpen = QtGui.QPen(pen)
-                    lpen.setColor(QtGui.QColor(get_color(color)))
-                    lpen.setWidth(2)
-                    painter.setPen(lpen)
-                    x1 = self.col2x(start)
-                    x2 = self.col2x(end)
-                    painter.drawLine(x1, dot_y - h/2, x2, dot_y + h/2)
- 
+                for y1, y2, lines in ((0, h, gnode.bottomlines),
+                                      (-h, 0, gnode.toplines)):
+                    for start, end, color in lines:
+                        lpen = QtGui.QPen(pen)
+                        lpen.setColor(QtGui.QColor(get_color(color)))
+                        lpen.setWidth(2)
+                        painter.setPen(lpen)
+                        x1 = self.col2x(start)
+                        x2 = self.col2x(end)
+                        painter.drawLine(x1, dot_y + y1, x2, dot_y + y2) 
                 if gnode.rev in self.heads:
                     dot_color = "yellow"
                 else:
