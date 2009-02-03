@@ -82,7 +82,10 @@ def revision_grapher(repo, start_rev=None, stop_rev=0, branch=None):
         # Add parents to next_revs.
         parents = __get_parents(repo, curr_rev)
         parents_to_add = []
-        preferred_color = curcolor
+        if len(parents) > 1:
+            preferred_color = None
+        else:            
+            preferred_color = curcolor
         for parent in parents:
             if parent not in next_revs:
                 parents_to_add.append(parent)
@@ -93,8 +96,9 @@ def revision_grapher(repo, start_rev=None, stop_rev=0, branch=None):
                     else:
                         rev_color[parent] = nextcolor
                         nextcolor += 1
-
-        #parents_to_add.sort()
+            preferred_color = None
+                
+        # parents_to_add.sort()
         next_revs[rev_index:rev_index + 1] = parents_to_add
 
         lines = []

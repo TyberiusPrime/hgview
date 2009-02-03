@@ -278,7 +278,6 @@ class HgMainWindow(QtGui.QMainWindow):
                 self.tableView_filelist.selectRow(0)
                 self.file_selected(self.filelistmodel.createIndex(0,0,None), None)
             else:
-                print "empty filelistmodel for", ctx.rev()
                 self.textview_status.clear()
 
     def file_selected(self, index=None, index_from=None):
