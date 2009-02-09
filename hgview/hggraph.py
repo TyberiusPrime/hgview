@@ -28,9 +28,11 @@ def diff(repo, ctx1, ctx2=None, files=None):
         diff = unicode(diff, "iso-8859-15", 'ignore')
     return diff
 
-def __get_parents(repo, rev):
-    return [x for x in repo.changelog.parentrevs(rev) if x != nullrev]
-
+def __get_parents(repo, rev, branch=None):
+    if not branch:
+        return [x for x in repo.changelog.parentrevs(rev) if x != nullrev]
+    return [x for x in repo.changelog.parentrevs(rev) if (x != nullrev and repo.changectx(rev).branch() == branch)]
+    
 def revision_grapher(repo, start_rev=None, stop_rev=0, branch=None):
     """incremental revision grapher
 
@@ -47,14 +49,11 @@ def revision_grapher(repo, start_rev=None, stop_rev=0, branch=None):
       - parent revisions of current revision
 
     """
-
     if start_rev is None:
         try:
             start_rev = repo.changelog.count()
         except AttributeError:
             start_rev = len(repo.changelog)
-            
-        
     assert start_rev >= stop_rev
     curr_rev = start_rev
     revs = []
@@ -67,24 +66,25 @@ def revision_grapher(repo, start_rev=None, stop_rev=0, branch=None):
                 ctx = repo.changectx(curr_rev)
                 if ctx.branch() != branch:
                     curr_rev -= 1
+                    yield None
                     continue
             # New head.
             revs.append(curr_rev)
             rev_color[curr_rev] = curcolor = nextcolor
             nextcolor += 1
-            r = __get_parents(repo, curr_rev)
+            r = __get_parents(repo, curr_rev, branch)
             while r:
                 r0 = r[0]
                 if r0 < stop_rev: break
                 if r0 in rev_color: break
                 rev_color[r0] = curcolor
-                r = __get_parents(repo, r0)
+                r = __get_parents(repo, r0, branch)
         curcolor = rev_color[curr_rev]            
         rev_index = revs.index(curr_rev)
         next_revs = revs[:]
 
         # Add parents to next_revs.
-        parents = __get_parents(repo, curr_rev)
+        parents = __get_parents(repo, curr_rev, branch)
         parents_to_add = []
         if len(parents) > 1:
             preferred_color = None
@@ -134,26 +134,27 @@ class GraphNode(object):
         
 class Graph(object):
     @timeit
-    def __init__(self, repo):
+    def __init__(self, repo, branch=None):
         self.repo = repo
-        self.grapher = revision_grapher(self.repo)
+        self.grapher = revision_grapher(self.repo, branch=branch)
         self.nodes = []
         self.nodesdict = {}
         self.max_cols = 0
         
-    def _build_nodes(self, idx):
-        if idx < len(self.nodes):
-            return
+    def _build_nodes(self, nnodes):
         if self.grapher is None:
             return
         
         stopped = False
         mcol = [self.max_cols]
-        while not stopped and len(self.nodes) <= idx:
+        for i in xrange(nnodes):
             try:
-                nrev, xpos, color, lines, parents = self.grapher.next()
+                v = self.grapher.next()
+                if v is None:
+                    continue
+                nrev, xpos, color, lines, parents = v
                 gnode = GraphNode(nrev, xpos, color, lines, parents)
-                if idx > 1:
+                if self.nodes:
                     gnode.toplines = self.nodes[-1].bottomlines
                 self.nodes.append(gnode)
                 self.nodesdict[nrev] = gnode
@@ -162,15 +163,17 @@ class Graph(object):
             except StopIteration:
                 self.grapher = None
                 stopped = True
+                break
+            
         self.max_cols = max(mcol)
         return not stopped
 
-    def fill(self, step=10):
-        i = 0
-        while self._build_nodes(i+step):
-            i += step
+    def fill(self, step=100):
+        for i in xrange(0, self.count(), step):
+            self._build_nodes(step)
             yield i
-        yield len(self)
+        self._build_nodes(step)
+        yield self.count()
         
     def __getitem__(self, idx):
         if idx >= len(self.nodes):
@@ -178,12 +181,15 @@ class Graph(object):
         return self.nodes[idx]
 
     def __len__(self):
+        return max(len(self.nodes) - 1, 0)
+        
+    def count(self):
         try:
             return self.repo.changelog.count()
         except AttributeError:
             return len(self.repo.changelog)
-        
 
+        
 if __name__ == "__main__":
     import sys
     from mercurial import ui, hg

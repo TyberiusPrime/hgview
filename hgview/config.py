@@ -119,6 +119,13 @@ class _HgConfig(object):
         hidefinddelay: delay (in ms) after which the find bar will disappear
         """
         return int(self.ui.config(self.section, 'hidefindddelay', default))
+
+    @cached
+    def getFillingStep(self, default=300):
+        """
+        fillingstep: number of nodes 'loaded' at a time when updating repo graph log
+        """
+        return int(self.ui.config(self.section, 'fillingstep', default))
     
 
 def get_option_descriptions():

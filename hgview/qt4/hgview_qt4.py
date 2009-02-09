@@ -74,7 +74,7 @@ class HgMainWindow(QtGui.QMainWindow):
         lay.setContentsMargins(0,0,0,0)
         # main window actions
         self.connect(self.actionRefresh, QtCore.SIGNAL('triggered ()'),
-                     self.refresh_revision_table)
+                     self.reload_repository)
         self.connect(self.actionAbout, QtCore.SIGNAL('triggered ()'),
                      self.on_about)
         self.connect(self.actionQuit, QtCore.SIGNAL('triggered ()'),
@@ -102,17 +102,7 @@ class HgMainWindow(QtGui.QMainWindow):
         self.textview_status = sci
         
         # filter frame
-        self.filter_frame.hide() # disabled for now XXX TODO
-        self.filerex = filerex
-        if filerex:
-            self.filter_files_reg = re.compile(filerex)
-        else:
-            self.filter_files_reg = None
-        self.filter_noderange = None
-
-        # self.init_filter()
-        # self.connect(self.button_filter, QtCore.SIGNAL('clicked ()'),
-        #              self.on_filter)
+        self.setup_filterframe()
 
         # find frame
         self._cur_find_pos = None
@@ -147,6 +137,16 @@ class HgMainWindow(QtGui.QMainWindow):
         self.setup_revision_table()
         self.setup_filelist_table()
 
+        branches = sorted(self.repo.branchtags().keys())
+        if len(branches) == 1:
+            self.branch_comboBox.setEnabled(False)
+        else:
+            branchesmodel = QtGui.QStringListModel([''] + branches)
+            self.branch_comboBox.setModel(branchesmodel)
+            self.branchesmodel = branchesmodel
+
+        self.repo = repo
+        self.setup_models()
         self.refresh_revision_table()
 
     def load_repository(self, repo=None):
@@ -171,6 +171,23 @@ class HgMainWindow(QtGui.QMainWindow):
         self.rowheight = cfg.getRowHeight()
         self.users, self.aliases = cfg.getUsers()
         self.hidefinddelay = cfg.getHideFindDelay()
+
+    def setup_filterframe(self):
+        #self.filter_frame.hide() # disabled for now XXX TODO
+        self.connect(self.branch_comboBox, QtCore.SIGNAL('activated(const QString &)'),
+                     #self.setup_models)
+                     self.refresh_revision_table)
+        
+##         self.filerex = filerex
+##         if filerex:
+##             self.filter_files_reg = re.compile(filerex)
+##         else:
+##             self.filter_files_reg = None
+##         self.filter_noderange = None
+
+        # self.init_filter()
+        # self.connect(self.button_filter, QtCore.SIGNAL('clicked ()'),
+        #              self.on_filter)
         
     def setup_models(self):
         self.repomodel = HgRepoListModel(self.repo)
@@ -184,6 +201,8 @@ class HgMainWindow(QtGui.QMainWindow):
                      self.pb.setValue)
         self.connect(self.repomodel, QtCore.SIGNAL('fillingover()'),
                      self.pb.hide)
+        self.connect(self.repomodel, QtCore.SIGNAL('fillingover()'),
+                     lambda : self.tableView_revisions.setCurrentIndex(self.tableView_revisions.model().index(0,0)))
         
         self.connect(self.tableView_filelist.selectionModel(),
                      QtCore.SIGNAL('currentRowChanged (const QModelIndex & , const QModelIndex & )'),
@@ -198,6 +217,7 @@ class HgMainWindow(QtGui.QMainWindow):
                      QtCore.SIGNAL('sectionResized(int, int, int)'),
                      self.file_section_resized)
 
+        
     def setup_revision_table(self):
         repotable = self.tableView_revisions
         repotable.installEventFilter(self)
@@ -258,9 +278,10 @@ class HgMainWindow(QtGui.QMainWindow):
         return QtGui.QMainWindow.eventFilter(self, watched, event)
                         
     def start_filling(self, nmax):
+        self.pb.setValue(0)
         self.pb.setRange(0, nmax)
         self.pb.show()
-
+        
     def revision_selected(self, index, index_from):
         """
         Callback called when a revision os selected in the revisions table
@@ -342,21 +363,33 @@ class HgMainWindow(QtGui.QMainWindow):
     def get_file_data(self, filename, ctx=None):
         if ctx is None:
             ctx = self.filelistmodel.current_ctx
+        data = ""
         flag = self.filelistmodel.fileflag(filename, ctx)
-        if flag == "M":
-            # return the diff but the 3 first lines
-            data = revdiff(self.repo, ctx, files=[filename])
-            data = u'\n'.join(data.splitlines()[3:])
-        elif flag == "A":
-            # return the whole file
-            data = unicode(ctx.filectx(filename).data(), errors='ignore') # XXX
-        else:
-            data = ""
+        if flag != "R":
+            fc = ctx.filectx(filename)
+            if fc.size() > 100000:
+                data = "File too big"
+                return flag, data
+            if flag == "M":
+                # return the diff but the 3 first lines
+                data = revdiff(self.repo, ctx, files=[filename])
+                data = u'\n'.join(data.splitlines()[3:])
+            elif flag == "A":
+                # return the whole file
+                data = unicode(fc.data(), errors='ignore') # XXX
         return flag, data
-                    
-    def refresh_revision_table(self):
+
+    def reload_repository(self):
+        self.repo = hg.repository(self.repo.ui, self.repo.root)
+        self.refresh_revision_table()
+
+    @timeit
+    def refresh_revision_table(self, branch=None):
         """Starts the process of filling the HgModel"""
-        self.load_repository(hg.repository(self.repo.ui, self.repo.root))
+        if branch is None:
+            branch = self.branch_comboBox.currentText()
+        branch = str(branch)
+        self.repomodel.setRepo(self.repo, branch=branch)
         self.tableView_revisions.setCurrentIndex(self.tableView_revisions.model().index(0,0))
 
     def fill_revlog_header(self, ctx):

@@ -44,40 +44,59 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
     """
     _columns = 'ID','Log','Author','Date','Tags', 'Branch'
 
-    def __init__(self, repo, parent=None):
+    def __init__(self, repo, branch='', parent=None):
         """
         repo is a hg repo instance
         """
         QtCore.QAbstractTableModel.__init__(self, parent)
+        self.gr_fill_timer = QtCore.QTimer()
+        self.connect(self.gr_fill_timer, QtCore.SIGNAL('timeout()'),
+                     self.fillGraph)
+        self.setRepo(repo, branch)
+
+    @timeit
+    def setRepo(self, repo, branch=''):
         self.repo = repo
         self.loadConfig()
         
         self._user_colors = {}
         self._branch_colors = {}
-        self.graph = Graph(self.repo)
+        self.graph = Graph(self.repo, branch=branch)
         self.heads = [self.repo.changectx(x).rev() for x in self.repo.heads()]
-        self.gr_fill_timer = QtCore.QTimer()
         self._fill_iter = None
-        self.connect(self.gr_fill_timer, QtCore.SIGNAL('timeout()'),
-                     self.fillGraph)
-        QtCore.QTimer.singleShot(0, self.gr_fill_timer.start) 
-
+        self.gr_fill_timer.start()
+        
     def fillGraph(self):
+        step = self.fill_step
         if self._fill_iter is None:
-            self.emit(QtCore.SIGNAL('filling(int)'), len(self.graph))
-            self._fill_iter = self.graph.fill()
+            self.emit(QtCore.SIGNAL('filling(int)'), self.graph.count())
+            self._fill_iter = self.graph.fill(step=step)
+            self.emit(QtCore.SIGNAL('layoutChanged()'))
+            QtGui.QApplication.processEvents()
         try:
-            self.emit(QtCore.SIGNAL('filled(int)'), self._fill_iter.next())
+            n = len(self.graph)
+            self.beginInsertRows(QtCore.QModelIndex(), n, n+step)
+            nfilled = self._fill_iter.next()
+            self.emit(QtCore.SIGNAL('filled(int)'), nfilled)
+            self.endInsertRows()
         except StopIteration:
             self.gr_fill_timer.stop()
             self._fill_iter = None
             self.emit(QtCore.SIGNAL('fillingover()'))
+            self.emit(QtCore.SIGNAL('layoutChanged()'))
+
+    def rowCount(self, parent=None):
+        return len(self.graph)
+
+    def columnCount(self, parent=None):
+        return len(self._columns)
         
     def loadConfig(self):
         cfg = HgConfig(self.repo.ui)
         self._users, self._aliases = cfg.getUsers()
         self.dot_radius = cfg.getDotRadius(default=8)
         self.rowheight = cfg.getRowHeight()
+        self.fill_step = cfg.getFillingStep()
         
     def maxWidthValueForColumn(self, column):
         column = self._columns[column]
@@ -105,15 +124,6 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
             self._branch_colors[branch] = COLORS[(len(self._branch_colors) % len(COLORS))]
         return self._branch_colors[branch]
     
-    def rowCount(self, parent=None):
-        try:
-            return self.repo.changelog.count()
-        except AttributeError:
-            return len(self.repo.changelog)
-
-    def columnCount(self, parent=None):
-        return len(self._columns)
-
     def col2x(self, col):
         return (1.2*self.dot_radius + 0) * col + self.dot_radius/2 + 3
 
