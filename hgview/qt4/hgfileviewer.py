@@ -10,6 +10,7 @@ from PyQt4.QtCore import Qt
 from hgrepomodel import FileRevModel
 from blockmatcher import BlockList
 from hgview.config import HgConfig
+from hgview.qt4.lexers import get_lexer
 
 sides = ('left', 'right')
 otherside = {'left':'right', 'right':'left'}
@@ -67,11 +68,22 @@ class FileViewer(QtGui.QDialog):
         self.textBrowser_filecontent.setFrameShape(QtGui.QFrame.NoFrame)
         self.textBrowser_filecontent.setMarginLineNumbers(1, True)
         self.textBrowser_filecontent.setFont(self.font)
-        self.textBrowser_filecontent.setLexer(Qsci.QsciLexerPython())
         self.textBrowser_filecontent.setReadOnly(True)
         self.markerplus = self.textBrowser_filecontent.markerDefine(Qsci.QsciScintilla.Plus)
         self.markerminus = self.textBrowser_filecontent.markerDefine(Qsci.QsciScintilla.Minus)
         lay.addWidget(self.textBrowser_filecontent)
+
+        # try to find a lexer for our file.
+        f = self.repo.file(self.filename)
+        head = f.heads()[0]
+        if f.size(f.rev(head)) < 1e6:
+            data = f.read(head)
+        else:
+            data = '' # too big
+        lexer = get_lexer(self.filename, data)
+        if lexer:
+            lexer.setDefaultFont(self.font)
+            self.textBrowser_filecontent.setLexer(lexer)
 
         self.tableView_revisions.verticalHeader().setDefaultSectionSize(self.rowheight)
         self.filerevmodel = FileRevModel(self.repo, self.filename, noderev)
@@ -139,8 +151,17 @@ class FileDiffViewer(QtGui.QDialog):
         self.filedata = {'left': None, 'right': None}
         self._previous = None
         self._invbarchanged=False
-        lex = Qsci.QsciLexerPython()
-        lex.setDefaultFont(QtGui.QFont('Courier', 10))
+
+        # try to find a lexer for our file.
+        f = self.repo.file(self.filename)
+        head = f.heads()[0]
+        if f.size(f.rev(head)) < 1e6:
+            data = f.read(head)
+        else:
+            data = '' # too big
+        lexer = get_lexer(self.filename, data)
+        if lexer:
+            lexer.setDefaultFont(self.font)
 
         # viewers are Scintilla editors
         self.viewers = {}
@@ -162,7 +183,7 @@ class FileDiffViewer(QtGui.QDialog):
             sci.SendScintilla(sci.SCI_INDICSETUNDER, 9, True)
             sci.SendScintilla(sci.SCI_INDICSETFORE, 8, 0xA0A0ff) # light blue
             sci.SendScintilla(sci.SCI_INDICSETFORE, 9, 0xffA0A0) # light red
-            sci.setLexer(lex)
+            sci.setLexer(lexer)
             sci.setReadOnly(True)
             lay.addWidget(sci)
             self.markerplus = sci.markerDefine(Qsci.QsciScintilla.Plus)
