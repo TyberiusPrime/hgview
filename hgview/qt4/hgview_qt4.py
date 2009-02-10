@@ -26,6 +26,7 @@ from hgview.qt4.hgfileviewer import FileViewer, FileDiffViewer
 from hgview.hggraph import diff as revdiff
 from hgview.decorators import timeit
 from hgview.config import HgConfig
+from hgview.qt4.lexers import get_lexer
 
 Qt = QtCore.Qt
 bold = QtGui.QFont.Bold
@@ -87,12 +88,7 @@ class HgMainWindow(QtGui.QMainWindow):
         sci.setMarginLineNumbers(1, True)
         sci.setReadOnly(True)
         sci.setFont(self.font)
-        self.lexers = {"python": Qsci.QsciLexerPython(),
-                       "diff": Qsci.QsciLexerDiff(),
-                       # ...
-                       }
-        for lex in self.lexers.values():
-            lex.setDefaultFont(self.font)
+
         sci.SendScintilla(sci.SCI_INDICSETSTYLE, 8, sci.INDIC_ROUNDBOX)
         sci.SendScintilla(sci.SCI_INDICSETUNDER, 8, True)
         sci.SendScintilla(sci.SCI_INDICSETFORE, 8, 0xBBFFFF)
@@ -315,21 +311,24 @@ class HgMainWindow(QtGui.QMainWindow):
         row = index.row()
         sel_file = ctx.files()[row]
         flag, data = self.get_file_data(sel_file)
-        
+
+        lexer = None
         if flag == "M":
-            w.setLexer(self.lexers['diff'])
+            lexer = Qsci.QsciLexerDiff()
         elif flag == "A":
-            w.setLexer(self.lexers['python']) # XXX
-        else:
-            w.setLexer(None)
+            lexer = get_lexer(sel_file, data)
+        if lexer:
+            lexer.setDefaultFont(self.font)
+        w.setLexer(lexer)
+        self._cur_lexer = lexer 
 
         self.textview_status.setText(data)
         self.highlight_search_string()
         self._cur_find_pos = None
 
     def file_activated(self, index):
-        sel_file = self.filelistmodel.fileFromIndex(index)
-        if sel_file is not None:
+        sel_file = self.filelistmodel.fileFromIndex(index)        
+        if sel_file is not None and self.repo.file(sel_file).count()>1:
             FileDiffViewer(self.repo, sel_file).exec_()
                 
     def file_section_resized(self, idx, oldsize, newsize):
