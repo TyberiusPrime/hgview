@@ -197,8 +197,8 @@ class FileDiffViewer(QtGui.QDialog):
                          lambda value, side=side: self.vbar_changed(value, side))
         self.setTabOrder(table, self.viewers['left']) 
         self.setTabOrder(self.viewers['left'], self.viewers['right']) 
-        QtCore.QTimer.singleShot(10, self.resize_columns)
-        QtCore.QTimer.singleShot(1, self.set_init_selections)
+        self.setup_columns_size()
+        self.set_init_selections()
         
     def loadConfig(self):
         cfg = HgConfig(self.repo.ui)
@@ -232,8 +232,6 @@ class FileDiffViewer(QtGui.QDialog):
             if self._diff is None or not self._diff.get_opcodes():
                 self._diff = None
                 self.timer.stop()
-                # hack to try to make rev lists display fine at startup
-                QtCore.QTimer.singleShot(0, self.resize_columns)
                 break
 
             tag, alo, ahi, blo, bhi = self._diff.get_opcodes().pop(0)
@@ -306,30 +304,24 @@ class FileDiffViewer(QtGui.QDialog):
             self.timer.start()
         
     def set_init_selections(self):
-        QtGui.QApplication.processEvents()
         self.tableView_revisions_left.setCurrentIndex(self.filerevmodel.index(0,0))
         self.tableView_revisions_right.setCurrentIndex(self.filerevmodel.index(1,0))
         
-    def resize_columns(self):
+    def setup_columns_size(self):
         """
         Recompute column sizes for rev list ListViews, using
         autoresize for all columns but the 'description' one, and
         making this latter takes the remaining space.
         """
-        QtGui.QApplication.processEvents()
         ncols = self.filerevmodel.columnCount()
         cols = [x for x in range(ncols) if x != 1]
+        hleft = self.tableView_revisions_left.horizontalHeader()
+        hright = self.tableView_revisions_right.horizontalHeader()
         for c in cols:
-            self.tableView_revisions_left.resizeColumnToContents(c)    
-            self.tableView_revisions_right.resizeColumnToContents(c)
-
-        vp_width = self.tableView_revisions_left.viewport().width()
-        colsum = sum([self.tableView_revisions_left.columnWidth(i) for i in cols])
-        self.tableView_revisions_left.setColumnWidth(1, vp_width-colsum)
-
-        vp_width = self.tableView_revisions_right.viewport().width()
-        colsum = sum([self.tableView_revisions_right.columnWidth(i) for i in cols])
-        self.tableView_revisions_right.setColumnWidth(1, vp_width-colsum)
+            hleft.setResizeMode(c, hleft.ResizeToContents)
+            hright.setResizeMode(c, hleft.ResizeToContents)
+        hleft.setResizeMode(1, hleft.Stretch)
+        hright.setResizeMode(1, hleft.Stretch)
         
     def vbar_changed(self, value, side):
         """
