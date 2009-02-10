@@ -217,27 +217,22 @@ class HgMainWindow(QtGui.QMainWindow):
     def setup_revision_table(self):
         repotable = self.tableView_revisions
         repotable.installEventFilter(self)
-        repotable.setTabKeyNavigation(False)
-
-        repotable.verticalHeader().setDefaultSectionSize(self.rowheight)
-        repotable.setShowGrid(False)
-        repotable.verticalHeader().hide()
-        repotable.setSelectionMode(QtGui.QAbstractItemView.SingleSelection)
-        repotable.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
-        repotable.setAlternatingRowColors(True)
+        self._setup_table(repotable)
         repotable.show()
 
     def setup_filelist_table(self):
         filetable = self.tableView_filelist
         filetable.setFocusPolicy(QtCore.Qt.NoFocus)
-        filetable.verticalHeader().setDefaultSectionSize(self.rowheight)
-        filetable.setTabKeyNavigation(False)
-        filetable.setShowGrid(False)
-        filetable.verticalHeader().hide()
-        filetable.setSelectionMode(QtGui.QAbstractItemView.SingleSelection)
-        filetable.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
-        filetable.setAlternatingRowColors(True)
-
+        self._setup_table(filetable)
+        
+    def _setup_table(self, table):
+        table.setTabKeyNavigation(False)
+        table.verticalHeader().setDefaultSectionSize(self.rowheight)
+        table.setShowGrid(False)
+        table.verticalHeader().hide()
+        table.setSelectionMode(QtGui.QAbstractItemView.SingleSelection)
+        table.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
+        table.setAlternatingRowColors(True)
         
     def setup_header_textview(self):
         self.header_diff_format = QtGui.QTextCharFormat()
