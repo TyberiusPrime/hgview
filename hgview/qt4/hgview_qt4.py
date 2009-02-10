@@ -365,7 +365,7 @@ class HgMainWindow(QtGui.QMainWindow):
             ctx = self.filelistmodel.current_ctx
         data = ""
         flag = self.filelistmodel.fileflag(filename, ctx)
-        if flag != "R":
+        if flag in ('M', 'A'):
             fc = ctx.filectx(filename)
             if fc.size() > 100000:
                 data = "File too big"
