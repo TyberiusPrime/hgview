@@ -119,6 +119,8 @@ class HgMainWindow(QtGui.QMainWindow):
                      self.show_find_frame)
         self.connect(self.action_FindNext, QtCore.SIGNAL('triggered()'),
                      self.on_find)
+        self.connect(self.button_find, QtCore.SIGNAL('clicked(bool)'),
+                     self.on_find)
         self.connect(self.entry_find, QtCore.SIGNAL('returnPressed()'),
                      self.on_find)
         self.connect(self.entry_find, QtCore.SIGNAL('textChanged(const QString &)'),
@@ -434,11 +436,14 @@ class HgMainWindow(QtGui.QMainWindow):
             data = unicode(self.textview_status.text())
             w.SendScintilla(w.SCI_SETINDICATORCURRENT, 8)
             pos = data.find(self._find_text)
+            found = pos > -1
             n = len(self._find_text)
             while pos > -1:
                 w.SendScintilla(w.SCI_INDICATORFILLRANGE, pos, n)
                 pos = data.find(self._find_text, pos+1)
-
+            return found
+        return False
+    
     def clear_highlights(self):
         w = self.textview_status
         n = w.length()
@@ -449,7 +454,10 @@ class HgMainWindow(QtGui.QMainWindow):
 
     def find_in_data(self, data, pos, filename=None, rev=None):
         """
-        Find self._find_text in 'data', from 'pos' 
+        Find self._find_text in 'data', from 'pos'
+
+        - if rev is given, it will make rev the current revision displayed
+        - if filename is given, it will select it in the file list table
         """
         pos = data.find(self._find_text, pos+1)
         if pos > -1:
@@ -459,7 +467,7 @@ class HgMainWindow(QtGui.QMainWindow):
                     self.tableView_revisions.setCurrentIndex(idx)
             if filename is not None:
                 self.tableView_filelist.keyboardSearch(filename)
-            else:
+            else: # filename is the one currently selected
                 filename = self.filelistmodel.fileFromIndex(self.tableView_filelist.currentIndex())
             w = self.textview_status
             line = w.SendScintilla(w.SCI_LINEFROMPOSITION, pos)
@@ -505,18 +513,17 @@ class HgMainWindow(QtGui.QMainWindow):
         callback called when 'Find' button is pushed
         """
         self._find_frame_timer.stop()
-        if self._cur_find_pos is not None:
+        curfile = self.filelistmodel.fileFromIndex(self.tableView_filelist.currentIndex())
+        if self._cur_find_pos is None:
+            if self.highlight_search_string():
+                self._cur_find_pos = curfile, 0
+        if self._cur_find_pos:
             curfile, pos = self._cur_find_pos
-        else:
-            curfile = self.filelistmodel.fileFromIndex(self.tableView_filelist.currentIndex())
-            pos = 0
-            self.highlight_search_string()
-        if curfile:
             flag, data = self.get_file_data(curfile)
             if self.find_in_data(data, pos):
                 return
-            if self.find_in_rev(self.current_ctx.rev(), curfile):
-                return
+        if self.find_in_rev(self.current_ctx.rev(), curfile):
+            return
         if self.find_in_repo(self.current_ctx.rev()):
             return
         self._cur_find_pos = None
@@ -535,7 +542,7 @@ class HgMainWindow(QtGui.QMainWindow):
             self._find_text = newtext
             self._cur_find_pos = None
             self.clear_highlights()
-            
+            self.highlight_search_string()            
         self._find_frame_timer.start()
         
     def on_anchor_clicked(self, qurl):
