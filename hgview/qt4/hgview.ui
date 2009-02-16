@@ -243,6 +243,65 @@
       </layout>
      </widget>
     </item>
+    <item>
+     <widget class="QFrame" name="goto_frame" >
+      <property name="frameShape" >
+       <enum>QFrame::NoFrame</enum>
+      </property>
+      <property name="frameShadow" >
+       <enum>QFrame::Raised</enum>
+      </property>
+      <layout class="QHBoxLayout" name="horizontalLayout_3" >
+       <property name="margin" >
+        <number>0</number>
+       </property>
+       <item>
+        <widget class="QPushButton" name="close_goto_toolButton" >
+         <property name="text" >
+          <string/>
+         </property>
+         <property name="icon" >
+          <iconset resource="hgview.qrc" >
+           <normaloff>:/icons/close.png</normaloff>:/icons/close.png</iconset>
+         </property>
+         <property name="flat" >
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="label_5" >
+         <property name="text" >
+          <string>Goto revision</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLineEdit" name="entry_goto" />
+       </item>
+       <item>
+        <widget class="QToolButton" name="button_goto" >
+         <property name="text" >
+          <string>Go</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <spacer name="horizontalSpacer_3" >
+         <property name="orientation" >
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0" >
+          <size>
+           <width>279</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+      </layout>
+     </widget>
+    </item>
    </layout>
   </widget>
   <widget class="QMenuBar" name="menubar" >
@@ -274,10 +333,11 @@
      <string>&amp;Edit</string>
     </property>
     <addaction name="action_Find" />
+    <addaction name="action_Goto" />
    </widget>
    <addaction name="menuFile" />
-   <addaction name="menuHelp" />
    <addaction name="menu_Edit" />
+   <addaction name="menuHelp" />
   </widget>
   <widget class="QStatusBar" name="statusbar" >
    <property name="geometry" >
@@ -290,6 +350,9 @@
    </property>
   </widget>
   <widget class="QToolBar" name="toolBar" >
+   <property name="enabled" >
+    <bool>true</bool>
+   </property>
    <property name="geometry" >
     <rect>
      <x>0</x>
@@ -309,6 +372,9 @@
    </attribute>
   </widget>
   <widget class="QToolBar" name="toolBar_2" >
+   <property name="enabled" >
+    <bool>true</bool>
+   </property>
    <property name="geometry" >
     <rect>
      <x>15</x>
@@ -366,7 +432,10 @@
   </action>
   <action name="action_Find" >
    <property name="text" >
-    <string>&amp;Find</string>
+    <string>&amp;Find...</string>
+   </property>
+   <property name="shortcut" >
+    <string>Ctrl+F</string>
    </property>
   </action>
   <action name="actionCloseFind" >
@@ -381,6 +450,23 @@
   <action name="action_FindNext" >
    <property name="text" >
     <string>Find &amp;Next</string>
+   </property>
+  </action>
+  <action name="action_Goto" >
+   <property name="text" >
+    <string>&amp;Goto revision...</string>
+   </property>
+   <property name="shortcut" >
+    <string>Ctrl+G</string>
+   </property>
+  </action>
+  <action name="actionCloseGoto" >
+   <property name="icon" >
+    <iconset resource="hgview.qrc" >
+     <normaloff>:/icons/close.png</normaloff>:/icons/close.png</iconset>
+   </property>
+   <property name="text" >
+    <string>close</string>
    </property>
   </action>
  </widget>

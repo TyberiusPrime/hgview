@@ -131,6 +131,28 @@ class HgMainWindow(QtGui.QMainWindow):
         self.connect(self._find_frame_timer, QtCore.SIGNAL('timeout()'),
                      self.find_frame.hide)
 
+        self.goto_frame.hide()
+        self.close_goto_toolButton.setIcon(self._icons['closefind'])
+        self.action_Goto.setShortcuts([self.action_Find.shortcut(), "Ctrl+G"])
+        self.connect(self.actionCloseGoto, QtCore.SIGNAL('triggered(bool)'),
+                     self.goto_frame.hide)
+        self.connect(self.close_goto_toolButton, QtCore.SIGNAL('clicked(bool)'),
+                     self.goto_frame.hide)
+        self.connect(self.action_Goto, QtCore.SIGNAL('triggered()'),
+                     self.show_goto_frame)
+        self.connect(self.button_goto, QtCore.SIGNAL('clicked(bool)'),
+                     self.on_goto)
+        self.connect(self.entry_goto, QtCore.SIGNAL('returnPressed()'),
+                     self.on_goto)
+        self._goto_frame_timer = QtCore.QTimer(self)
+        self._goto_frame_timer.setInterval(self.hidefinddelay)
+        self.connect(self._goto_frame_timer, QtCore.SIGNAL('timeout()'),
+                     self.goto_frame.hide)
+        
+        self.goto_model = QtGui.QStringListModel(['tip'])
+        self.goto_completer = QtGui.QCompleter(self.goto_model, self)
+        self.entry_goto.setCompleter(self.goto_completer)
+
         # setup tables and views
         self.setup_header_textview()
         self.setup_revision_table()
@@ -144,15 +166,21 @@ class HgMainWindow(QtGui.QMainWindow):
             self.branch_comboBox.setModel(branchesmodel)
             self.branchesmodel = branchesmodel
 
-        self.repo = repo
         self.setup_models()
         self.refresh_revision_table()
 
-    def load_repository(self, repo=None):
-        if repo is not None:
-            self.repo = repo
-        self.setup_models()
-        
+    def on_goto(self, *args):
+        goto = unicode(self.entry_goto.text())
+        try:
+            rev = self.repo.changectx(goto).rev()
+        except:
+            self.statusBar().showMessage("Can't find revision '%s'"%goto, 2000)
+        else:
+            idx = self.repomodel.indexFromRev(rev)
+            if idx is not None:
+                self.tableView_revisions.setCurrentIndex(idx)
+        self.goto_frame.hide()
+                    
     def loadConfig(self):
         cfg = HgConfig(self.repo.ui)
         fontstr = cfg.getFont()
@@ -200,6 +228,7 @@ class HgMainWindow(QtGui.QMainWindow):
         self.connect(self.tableView_filelist.horizontalHeader(),
                      QtCore.SIGNAL('sectionResized(int, int, int)'),
                      self.file_section_resized)
+        self.goto_model.setStringList(self.repo.tags().keys())
         
     def setup_revision_table(self):
         repotable = self.tableView_revisions
@@ -376,6 +405,7 @@ class HgMainWindow(QtGui.QMainWindow):
     def reload_repository(self):
         self.repo = hg.repository(self.repo.ui, self.repo.root)
         self.refresh_revision_table()
+        self.goto_model.setStringList(self.repo.tags().keys())
 
     #@timeit
     def refresh_revision_table(self, branch=None):
@@ -423,10 +453,18 @@ class HgMainWindow(QtGui.QMainWindow):
         return buf
 
     def show_find_frame(self, *args):
+        self.goto_frame.hide()
         self.find_frame.show()
         self.entry_find.setFocus()
         self.entry_find.selectAll()
         self._find_frame_timer.start()
+
+    def show_goto_frame(self, *args):
+        self.find_frame.hide()
+        self.goto_frame.show()
+        self.entry_goto.setFocus()
+        self.entry_goto.selectAll()
+        self._goto_frame_timer.start()
 
     def highlight_search_string(self):
         if not self.find_frame.isHidden() and self._find_text.strip():
