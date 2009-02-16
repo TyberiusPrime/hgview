@@ -59,12 +59,11 @@ class HgMainWindow(QtGui.QMainWindow):
         self.ui = uic.loadUi(uifile, self)
         self._icons = {}
 
-        # 
+        # setup the status bar, with a progress bar in it
         self.pb = QtGui.QProgressBar(self.statusBar())
         self.pb.setTextVisible(False)
         self.pb.hide()
         self.statusBar().addPermanentWidget(self.pb)
-        #self.statusBar().hide()
 
         self.splitter_2.setStretchFactor(0, 2)
         self.splitter_2.setStretchFactor(1, 1)
@@ -173,21 +172,8 @@ class HgMainWindow(QtGui.QMainWindow):
         self.hidefinddelay = cfg.getHideFindDelay()
 
     def setup_filterframe(self):
-        #self.filter_frame.hide() # disabled for now XXX TODO
         self.connect(self.branch_comboBox, QtCore.SIGNAL('activated(const QString &)'),
-                     #self.setup_models)
                      self.refresh_revision_table)
-        
-##         self.filerex = filerex
-##         if filerex:
-##             self.filter_files_reg = re.compile(filerex)
-##         else:
-##             self.filter_files_reg = None
-##         self.filter_noderange = None
-
-        # self.init_filter()
-        # self.connect(self.button_filter, QtCore.SIGNAL('clicked ()'),
-        #              self.on_filter)
         
     def setup_models(self):
         self.repomodel = HgRepoListModel(self.repo)
@@ -198,11 +184,9 @@ class HgMainWindow(QtGui.QMainWindow):
         self.connect(self.repomodel, QtCore.SIGNAL('filling(int)'),
                      self.start_filling)
         self.connect(self.repomodel, QtCore.SIGNAL('filled(int)'),
-                     self.pb.setValue)
+                     self.on_filled)
         self.connect(self.repomodel, QtCore.SIGNAL('fillingover()'),
                      self.pb.hide)
-        self.connect(self.repomodel, QtCore.SIGNAL('fillingover()'),
-                     lambda : self.tableView_revisions.setCurrentIndex(self.tableView_revisions.model().index(0,0)))
         
         self.connect(self.tableView_filelist.selectionModel(),
                      QtCore.SIGNAL('currentRowChanged (const QModelIndex & , const QModelIndex & )'),
@@ -216,7 +200,6 @@ class HgMainWindow(QtGui.QMainWindow):
         self.connect(self.tableView_filelist.horizontalHeader(),
                      QtCore.SIGNAL('sectionResized(int, int, int)'),
                      self.file_section_resized)
-
         
     def setup_revision_table(self):
         repotable = self.tableView_revisions
@@ -276,6 +259,16 @@ class HgMainWindow(QtGui.QMainWindow):
         self.pb.setValue(0)
         self.pb.setRange(0, nmax)
         self.pb.show()
+
+    def on_filled(self, nfilled):
+        # callback called each time the revisions model filling has progressed
+        selectfirst = self.pb.value() == 0
+        self.pb.setValue(nfilled)
+        if selectfirst:
+            # if this is the first time the model is filled, we select
+            # the first available revision
+            tv = self.tableView_revisions
+            tv.setCurrentIndex(tv.model().index(0,0))
         
     def revision_selected(self, index, index_from):
         """
