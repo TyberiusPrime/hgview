@@ -85,6 +85,7 @@ class HgMainWindow(QtGui.QMainWindow):
         sci = Qsci.QsciScintilla(self.textview_frame)
         lay.addWidget(sci)
         sci.setMarginLineNumbers(1, True)
+        sci.setMarginWidth(1, '000')
         sci.setReadOnly(True)
         sci.setFont(self.font)
 
@@ -346,6 +347,8 @@ class HgMainWindow(QtGui.QMainWindow):
         w.setLexer(lexer)
         self._cur_lexer = lexer 
 
+        nlines = data.count('\n')
+        self.textview_status.setMarginWidth(1, str(nlines)+'0')
         self.textview_status.setText(data)
         self.highlight_search_string()
         self._cur_find_pos = None
