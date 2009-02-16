@@ -374,7 +374,7 @@ class HgMainWindow(QtGui.QMainWindow):
         self.repo = hg.repository(self.repo.ui, self.repo.root)
         self.refresh_revision_table()
 
-    @timeit
+    #@timeit
     def refresh_revision_table(self, branch=None):
         """Starts the process of filling the HgModel"""
         if branch is None:

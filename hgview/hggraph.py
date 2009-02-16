@@ -133,7 +133,7 @@ class GraphNode(object):
         self.toplines = []
         
 class Graph(object):
-    @timeit
+    #@timeit
     def __init__(self, repo, branch=None):
         self.repo = repo
         self.grapher = revision_grapher(self.repo, branch=branch)

@@ -54,7 +54,7 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
                      self.fillGraph)
         self.setRepo(repo, branch)
 
-    @timeit
+    #@timeit
     def setRepo(self, repo, branch=''):
         self.repo = repo
         self.loadConfig()
