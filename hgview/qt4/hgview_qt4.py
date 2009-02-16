@@ -230,7 +230,10 @@ class HgMainWindow(QtGui.QMainWindow):
         
         self.textview_header.setFont(self.font)
         self.textview_header.setReadOnly(True)
-
+        self.connect(self.textview_header,
+                     QtCore.SIGNAL('anchorClicked(const QUrl &)'),
+                     self.on_anchor_clicked)
+        
     def resizeEvent(self, event):
         # we catch this event to resize smartly tables' columns
         QtGui.QMainWindow.resizeEvent(self, event)
@@ -544,16 +547,12 @@ class HgMainWindow(QtGui.QMainWindow):
         displaying the diffs
         """
         rev = int(qurl.toString())
-
         # forbid Qt to look for a real document at URL
-        self.textview_status.setSource(QtCore.QUrl(''))
+        self.textview_header.setSource(QtCore.QUrl(''))
 
-        node = self.repo.repo.changelog.node(rev)
-        row = self.repomodel.row_from_node(node)
-        if row is not None:
-            self.tableView_revisions.selectRow(row)
-        else:
-            print "CANNOT find row for node ", self.repo.read_node(node).rev, node
+        idx = self.repomodel.indexFromRev(rev)
+        if idx is not None:
+            self.tableView_revisions.setCurrentIndex(idx)
             
     def on_filter1_activate(self, *args):
         self.filter_dialog.show()
