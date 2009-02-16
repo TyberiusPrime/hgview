@@ -101,14 +101,14 @@ class HgMainWindow(QtGui.QMainWindow):
         self.setup_filterframe()
 
         # find frame
-        self._cur_find_pos = None
         self._find_text = None
         
-        self.find_frame.hide()
         # XXX don't know why I have to do this, the icon is affected
         # in designer, but it does not work here...
-        self._icons['closefind'] = QtGui.QIcon(':/icons/close.png')
-        self.close_find_toolButton.setIcon(self._icons['closefind'])
+        self._icons['closebtn'] = QtGui.QIcon(':/icons/close.png')
+
+        self.find_frame.hide()
+        self.close_find_toolButton.setIcon(self._icons['closebtn'])
         self.action_Find.setShortcuts([self.action_Find.shortcut(), "Ctrl+F", "/"])
         self.action_FindNext.setShortcuts([self.action_FindNext.shortcut(), "Ctrl+N"])
         self.connect(self.actionCloseFind, QtCore.SIGNAL('triggered(bool)'),
@@ -133,7 +133,7 @@ class HgMainWindow(QtGui.QMainWindow):
                      self.find_frame.hide)
 
         self.goto_frame.hide()
-        self.close_goto_toolButton.setIcon(self._icons['closefind'])
+        self.close_goto_toolButton.setIcon(self._icons['closebtn'])
         self.action_Goto.setShortcuts([self.action_Find.shortcut(), "Ctrl+G"])
         self.connect(self.actionCloseGoto, QtCore.SIGNAL('triggered(bool)'),
                      self.goto_frame.hide)
@@ -351,7 +351,6 @@ class HgMainWindow(QtGui.QMainWindow):
         self.textview_status.setMarginWidth(1, str(nlines)+'0')
         self.textview_status.setText(data)
         self.highlight_search_string()
-        self._cur_find_pos = None
 
     def file_activated(self, index):
         sel_file = self.filelistmodel.fileFromIndex(index)        
@@ -508,7 +507,6 @@ class HgMainWindow(QtGui.QMainWindow):
                     newpos = data.find(self._find_text, pos)
                     if newpos > -1:
                         pos = newpos + 1
-                        self._cur_find_pos = rev, filename, newpos
                         yield rev, filename, newpos
                     else:
                         pos = 0
@@ -528,9 +526,14 @@ class HgMainWindow(QtGui.QMainWindow):
             curfile = self.filelistmodel.fileFromIndex(self.tableView_filelist.currentIndex())
             currev = self.current_ctx.rev()
             self._find_iter = self.find_in_repo(currev, curfile)
-        QtCore.QTimer.singleShot(0, self.find_next)
-
+        self.find_next()
+        
     def find_next(self, step=0):
+        """
+        to be called from 'on_find' callback (or recursively). Try to
+        find the next occurrence of self._find_text (as a 'background'
+        process, so the GUI is not frozen, and as a cancellable task).
+        """
         if self._find_iter is None:
             return
         for next_find in self._find_iter:
@@ -571,12 +574,10 @@ class HgMainWindow(QtGui.QMainWindow):
         newtext = unicode(newtext)
         if not newtext.strip():
             self._find_text = None
-            self._cur_find_pos = None
             self._find_iter = None
             self.clear_highlights()            
         if self._find_text != newtext:
             self._find_text = newtext
-            self._cur_find_pos = None
             self._find_iter = None
             self.clear_highlights()
             self.highlight_search_string()            
