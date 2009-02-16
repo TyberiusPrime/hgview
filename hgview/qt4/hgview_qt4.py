@@ -121,6 +121,8 @@ class HgMainWindow(QtGui.QMainWindow):
                      self.on_find)
         self.connect(self.button_find, QtCore.SIGNAL('clicked(bool)'),
                      self.on_find)
+        self.connect(self.button_cancelsearch, QtCore.SIGNAL('clicked(bool)'),
+                     self.on_cancelsearch)
         self.connect(self.entry_find, QtCore.SIGNAL('returnPressed()'),
                      self.on_find)
         self.connect(self.entry_find, QtCore.SIGNAL('textChanged(const QString &)'),
@@ -452,83 +454,79 @@ class HgMainWindow(QtGui.QMainWindow):
         w.SendScintilla(w.SCI_SETINDICATORCURRENT, 9)
         w.SendScintilla(w.SCI_INDICATORCLEARRANGE, 0, n)
 
-    def find_in_data(self, data, pos, filename=None, rev=None):
-        """
-        Find self._find_text in 'data', from 'pos'
-
-        - if rev is given, it will make rev the current revision displayed
-        - if filename is given, it will select it in the file list table
-        """
-        pos = data.find(self._find_text, pos+1)
-        if pos > -1:
-            if rev is not None:
-                idx = self.repomodel.indexFromRev(rev)
-                if idx is not None:
-                    self.tableView_revisions.setCurrentIndex(idx)
-            if filename is not None:
-                self.tableView_filelist.keyboardSearch(filename)
-            else: # filename is the one currently selected
-                filename = self.filelistmodel.fileFromIndex(self.tableView_filelist.currentIndex())
-            w = self.textview_status
-            line = w.SendScintilla(w.SCI_LINEFROMPOSITION, pos)
-            #line, idx = w.lineIndexFromPosition(nextpos)
-            w.ensureLineVisible(line)
-            w.SendScintilla(w.SCI_SETINDICATORCURRENT, 9)
-            w.SendScintilla(w.SCI_INDICATORCLEARRANGE, 0, pos)
-            w.SendScintilla(w.SCI_INDICATORFILLRANGE, pos, len(self._find_text))
-            self._cur_find_pos = filename, pos
-            self._find_frame_timer.start()
-            return True
-        return False
-
-    def find_in_rev(self, rev=None, curfile=None):
-        """
-        Find self._find_text in all files of the revision 'rev' (from file 'curfile' if given)
-        """
-        if rev is None:
-            ctx = self.current_ctx
-        else:
-            ctx = self.repo.changectx(rev)
-        pos = 0
-        files = ctx.files()
-        if curfile is not None:
-            files = files[files.index(curfile)+1:]
-        for filename in files:
-            flag, data = self.get_file_data(filename, ctx)
-            if self.find_in_data(data, pos, filename, rev):
-                return True
-        return False
-        
-    def find_in_repo(self, fromrev):
+    def find_in_repo(self, fromrev, fromfile=None):
         """
         Find self._find_text in the whole repo from rev 'fromrev'
         """
-        for rev in xrange(fromrev-1, 0, -1):
-            if self.find_in_rev(rev):
-                return True
-        return False
-    
+        for rev in xrange(fromrev, 0, -1):
+            ctx = self.repo.changectx(rev)
+            pos = 0
+            files = ctx.files()
+            if fromfile is not None and fromfile in files:
+                files = files[files.index(fromfile):]
+                fromfile=None
+            for filename in files:
+                flag, data = self.get_file_data(filename, ctx)
+                while True:
+                    newpos = data.find(self._find_text, pos)
+                    if newpos > -1:
+                        pos = newpos + 1
+                        self._cur_find_pos = rev, filename, newpos
+                        yield rev, filename, newpos
+                    else:
+                        pos = 0
+                        yield None
+                        break
+
+    def on_cancelsearch(self, *args):
+        self._find_iter = None
+        self.statusBar().showMessage('Search cancelled!', 2000)
+        
     def on_find(self, *args):
         """
         callback called when 'Find' button is pushed
         """
-        self._find_frame_timer.stop()
-        curfile = self.filelistmodel.fileFromIndex(self.tableView_filelist.currentIndex())
-        if self._cur_find_pos is None:
-            if self.highlight_search_string():
-                self._cur_find_pos = curfile, 0
-        if self._cur_find_pos:
-            curfile, pos = self._cur_find_pos
-            flag, data = self.get_file_data(curfile)
-            if self.find_in_data(data, pos):
-                return
-        if self.find_in_rev(self.current_ctx.rev(), curfile):
+        self._find_frame_timer.stop() # prevent find frame from hiding while searching
+        if self._find_iter is None:
+            curfile = self.filelistmodel.fileFromIndex(self.tableView_filelist.currentIndex())
+            currev = self.current_ctx.rev()
+            self._find_iter = self.find_in_repo(currev, curfile)
+        QtCore.QTimer.singleShot(0, self.find_next)
+
+    def find_next(self, step=0):
+        if self._find_iter is None:
             return
-        if self.find_in_repo(self.current_ctx.rev()):
+        for next_find in self._find_iter:
+            if next_find is None:
+                if (step % 20) == 0: 
+                    self.statusBar().showMessage('Searching'+'.'*(step/20))
+                step += 1
+                QtCore.QTimer.singleShot(0, lambda self=self, step=(step % 80): self.find_next(step))
+            else:
+                self.statusBar().clearMessage()
+                rev, filename, pos = next_find
+                if self.current_ctx.rev() != rev:
+                    idx = self.repomodel.indexFromRev(rev)
+                    if idx is not None:
+                        self.tableView_revisions.setCurrentIndex(idx)
+
+                if filename != self.filelistmodel.fileFromIndex(self.tableView_filelist.currentIndex()):
+                    self.tableView_filelist.keyboardSearch(filename)
+                    self.highlight_search_string()
+
+                w = self.textview_status
+                line = w.SendScintilla(w.SCI_LINEFROMPOSITION, pos)
+                #line, idx = w.lineIndexFromPosition(nextpos)
+                w.ensureLineVisible(line)
+                w.SendScintilla(w.SCI_SETINDICATORCURRENT, 9)
+                w.SendScintilla(w.SCI_INDICATORCLEARRANGE, 0, pos)
+                w.SendScintilla(w.SCI_INDICATORFILLRANGE, pos, len(self._find_text))
+                self._find_frame_timer.start()
             return
-        self._cur_find_pos = None
+        self.statusBar().showMessage('No more matches found in repository', 2000)
+        self._find_iter = None
         self._find_frame_timer.start()
-        
+
     def on_find_text_changed(self, newtext):
         """
         Callback called when the content of the find text entry is changed
@@ -537,10 +535,12 @@ class HgMainWindow(QtGui.QMainWindow):
         if not newtext.strip():
             self._find_text = None
             self._cur_find_pos = None
+            self._find_iter = None
             self.clear_highlights()            
         if self._find_text != newtext:
             self._find_text = newtext
             self._cur_find_pos = None
+            self._find_iter = None
             self.clear_highlights()
             self.highlight_search_string()            
         self._find_frame_timer.start()
