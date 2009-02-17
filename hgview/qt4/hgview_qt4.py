@@ -170,6 +170,17 @@ class HgMainWindow(QtGui.QMainWindow):
         self.setup_models()
         self.refresh_revision_table()
 
+    def closeEvent(self, event):
+        if not self.goto_frame.isHidden():
+            self.goto_frame.hide()
+            event.ignore()
+        elif not self.find_frame.isHidden():
+            self.on_cancelsearch()
+            self.find_frame.hide()
+            event.ignore()
+        else:
+            event.accept()
+        
     def on_goto(self, *args):
         goto = unicode(self.entry_goto.text())
         try:
