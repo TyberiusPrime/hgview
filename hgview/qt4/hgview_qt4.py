@@ -367,7 +367,8 @@ class HgMainWindow(QtGui.QMainWindow):
         # resized according to the widget size.
         self.tableView_filelist.resizeColumnToContents(1)
         vp_width = self.tableView_filelist.viewport().width()
-        self.tableView_filelist.setColumnWidth(0, vp_width-self.tableView_filelist.columnWidth(1))
+        col_width = vp_width-self.tableView_filelist.columnWidth(1)
+        self.tableView_filelist.setColumnWidth(0, col_width)
 
     def resize_revisiontable_columns(self, *args):
         # same as before, but for the "Log" column
@@ -485,9 +486,9 @@ class HgMainWindow(QtGui.QMainWindow):
     def clear_highlights(self):
         w = self.textview_status
         n = w.length()
-        w.SendScintilla(w.SCI_SETINDICATORCURRENT, 8)
+        w.SendScintilla(w.SCI_SETINDICATORCURRENT, 8) # highlight
         w.SendScintilla(w.SCI_INDICATORCLEARRANGE, 0, n)
-        w.SendScintilla(w.SCI_SETINDICATORCURRENT, 9)
+        w.SendScintilla(w.SCI_SETINDICATORCURRENT, 9) # current found occurrence
         w.SendScintilla(w.SCI_INDICATORCLEARRANGE, 0, n)
 
     def find_in_repo(self, fromrev, fromfile=None):

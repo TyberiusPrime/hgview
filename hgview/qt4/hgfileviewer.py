@@ -143,6 +143,8 @@ class FileDiffViewer(QtGui.QDialog):
 
         # load qt designer ui file
         self.ui = uic.loadUi(ui_file, self)
+        self.connect(self.actionClose, QtCore.SIGNAL('triggered(bool)'),
+                     self.close)
         # hg repo
         self.repo = repo
         self.filename = filename
@@ -175,6 +177,7 @@ class FileDiffViewer(QtGui.QDialog):
             sci.setFont(self.font)
             sci.verticalScrollBar().setFocusPolicy(Qt.StrongFocus)
             sci.setFocusProxy(sci.verticalScrollBar())
+            sci.verticalScrollBar().installEventFilter(self)
             sci.setFrameShape(QtGui.QFrame.NoFrame)
             sci.setMarginLineNumbers(1, True)
             sci.SendScintilla(sci.SCI_INDICSETSTYLE, 8, sci.INDIC_ROUNDBOX)
@@ -223,6 +226,13 @@ class FileDiffViewer(QtGui.QDialog):
         self.setTabOrder(self.viewers['left'], self.viewers['right']) 
         self.setup_columns_size()
         self.set_init_selections()
+
+    def eventFilter(self, watched, event):
+        if event.type() == event.KeyPress:
+            if event.key() == Qt.Key_Escape:
+                self.actionClose.trigger()
+                return True
+        return QtGui.QDialog.eventFilter(self, watched, event)
         
     def loadConfig(self):
         cfg = HgConfig(self.repo.ui)

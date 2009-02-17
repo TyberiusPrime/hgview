@@ -54,7 +54,7 @@
        </item>
       </layout>
      </widget>
-     <widget class="QWidget" name="" >
+     <widget class="QWidget" name="layoutWidget" >
       <layout class="QHBoxLayout" name="horizontalLayout_2" >
        <property name="spacing" >
         <number>0</number>
@@ -87,6 +87,9 @@
   <action name="actionClose" >
    <property name="text" >
     <string>Close</string>
+   </property>
+   <property name="shortcut" >
+    <string>Esc</string>
    </property>
   </action>
  </widget>
