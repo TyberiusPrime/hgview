@@ -179,10 +179,13 @@ class FileDiffViewer(QtGui.QDialog):
             sci.setMarginLineNumbers(1, True)
             sci.SendScintilla(sci.SCI_INDICSETSTYLE, 8, sci.INDIC_ROUNDBOX)
             sci.SendScintilla(sci.SCI_INDICSETSTYLE, 9, sci.INDIC_ROUNDBOX)
+            sci.SendScintilla(sci.SCI_INDICSETSTYLE, 10, sci.INDIC_ROUNDBOX)
             sci.SendScintilla(sci.SCI_INDICSETUNDER, 8, True)
             sci.SendScintilla(sci.SCI_INDICSETUNDER, 9, True)
-            sci.SendScintilla(sci.SCI_INDICSETFORE, 8, 0xA0A0ff) # light blue
-            sci.SendScintilla(sci.SCI_INDICSETFORE, 9, 0xffA0A0) # light red
+            sci.SendScintilla(sci.SCI_INDICSETUNDER, 10, True)
+            sci.SendScintilla(sci.SCI_INDICSETFORE, 8, 0xB0ffA0) # light green (+)
+            sci.SendScintilla(sci.SCI_INDICSETFORE, 9, 0xA0A0ff) # light red (-)
+            sci.SendScintilla(sci.SCI_INDICSETFORE, 10, 0xffA0A0) # light blue (x)
             sci.setLexer(lexer)
             sci.setReadOnly(True)
             lay.addWidget(sci)
@@ -258,12 +261,23 @@ class FileDiffViewer(QtGui.QDialog):
             tag, alo, ahi, blo, bhi = self._diff.get_opcodes().pop(0)
 
             if tag == 'replace':
+                w = self.viewers['left']
                 self.block['left'].addBlock('x', alo, ahi)
                 for i in range(alo, ahi):
-                    self.viewers['left'].markerAdd(i, self.markertriangle)
+                    w.markerAdd(i, self.markertriangle)
+                pos0 = w.SendScintilla(w.SCI_POSITIONFROMLINE, alo)
+                pos1 = w.SendScintilla(w.SCI_POSITIONFROMLINE, ahi)
+                w.SendScintilla(w.SCI_SETINDICATORCURRENT, 10)
+                w.SendScintilla(w.SCI_INDICATORFILLRANGE, pos0, pos1-pos0)
+
+                w = self.viewers['right']
                 self.block['right'].addBlock('x', blo, bhi)
                 for i in range(blo, bhi):
-                    self.viewers['right'].markerAdd(i, self.markertriangle)
+                    w.markerAdd(i, self.markertriangle)
+                pos0 = w.SendScintilla(w.SCI_POSITIONFROMLINE, blo)
+                pos1 = w.SendScintilla(w.SCI_POSITIONFROMLINE, bhi)
+                w.SendScintilla(w.SCI_SETINDICATORCURRENT, 10)
+                w.SendScintilla(w.SCI_INDICATORFILLRANGE, pos0, pos1-pos0)
 
             elif tag == 'delete':
                 w = self.viewers['left']

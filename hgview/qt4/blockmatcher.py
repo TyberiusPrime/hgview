@@ -10,9 +10,9 @@ class BlockList(QtGui.QWidget):
         self._blocks = set()
         self._minimum = 0
         self._maximum = 100
-        self.blockTypes = {'+': QtGui.QColor(0xFF, 0x00, 0x00, 0xa5),
-                           '-': QtGui.QColor(0x00, 0xFF, 0x00, 0xa5),
-                           'x': QtGui.QColor(0x55, 0x00, 0x55, 0xa5),
+        self.blockTypes = {'+': QtGui.QColor(0xA0, 0xFF, 0xB0, ),#0xa5),
+                           '-': QtGui.QColor(0xFF, 0xA0, 0xA0, ),#0xa5),
+                           'x': QtGui.QColor(0xA0, 0xA0, 0xFF, ),#0xa5),
                            }
         self._sbar = None
         self._value = 0
