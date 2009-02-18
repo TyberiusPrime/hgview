@@ -8,7 +8,7 @@ import numpy
 from PyQt4 import QtGui, QtCore, uic, Qsci
 from PyQt4.QtCore import Qt
 from hgrepomodel import FileRevModel
-from blockmatcher import BlockList
+from blockmatcher import BlockList, BlockMatch
 from hgview.config import HgConfig
 from hgview.qt4.lexers import get_lexer
 
@@ -64,11 +64,13 @@ class FileViewer(QtGui.QDialog):
         lay = QtGui.QHBoxLayout(self.frame)
         lay.setSpacing(0)
         lay.setContentsMargins(0,0,0,0)
-        self.textBrowser_filecontent = Qsci.QsciScintilla(self.frame)
-        self.textBrowser_filecontent.setFrameShape(QtGui.QFrame.NoFrame)
-        self.textBrowser_filecontent.setMarginLineNumbers(1, True)
-        self.textBrowser_filecontent.setFont(self.font)
-        self.textBrowser_filecontent.setReadOnly(True)
+        sci = Qsci.QsciScintilla(self.frame)
+        sci.setFrameShape(QtGui.QFrame.NoFrame)
+        sci.setMarginLineNumbers(1, True)
+        sci.setFont(self.font)
+        sci.setReadOnly(True)
+        sci.SendScintilla(sci.SCI_SETSELEOLFILLED, True)
+        self.textBrowser_filecontent = sci
         self.markerplus = self.textBrowser_filecontent.markerDefine(Qsci.QsciScintilla.Plus)
         self.markerminus = self.textBrowser_filecontent.markerDefine(Qsci.QsciScintilla.Minus)
         lay.addWidget(self.textBrowser_filecontent)
@@ -169,6 +171,7 @@ class FileDiffViewer(QtGui.QDialog):
         self.viewers = {}
         # block are diff-block displayers
         self.block = {}
+        self.diffblock = BlockMatch(self.frame)
         lay = QtGui.QHBoxLayout(self.frame)
         lay.setSpacing(0)
         lay.setContentsMargins(0,0,0,0)
@@ -178,18 +181,31 @@ class FileDiffViewer(QtGui.QDialog):
             sci.verticalScrollBar().setFocusPolicy(Qt.StrongFocus)
             sci.setFocusProxy(sci.verticalScrollBar())
             sci.verticalScrollBar().installEventFilter(self)
+            sci.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
             sci.setFrameShape(QtGui.QFrame.NoFrame)
             sci.setMarginLineNumbers(1, True)
-            sci.SendScintilla(sci.SCI_INDICSETSTYLE, 8, sci.INDIC_ROUNDBOX)
-            sci.SendScintilla(sci.SCI_INDICSETSTYLE, 9, sci.INDIC_ROUNDBOX)
-            sci.SendScintilla(sci.SCI_INDICSETSTYLE, 10, sci.INDIC_ROUNDBOX)
-            sci.SendScintilla(sci.SCI_INDICSETUNDER, 8, True)
-            sci.SendScintilla(sci.SCI_INDICSETUNDER, 9, True)
-            sci.SendScintilla(sci.SCI_INDICSETUNDER, 10, True)
-            sci.SendScintilla(sci.SCI_INDICSETFORE, 8, 0xB0ffA0) # light green (+)
-            sci.SendScintilla(sci.SCI_INDICSETFORE, 9, 0xA0A0ff) # light red (-)
-            sci.SendScintilla(sci.SCI_INDICSETFORE, 10, 0xffA0A0) # light blue (x)
-            sci.setLexer(lexer)
+            sci.SendScintilla(sci.SCI_SETSELEOLFILLED, True)
+
+##             sci.SendScintilla(sci.SCI_INDICSETSTYLE, 8, sci.INDIC_ROUNDBOX)
+##             sci.SendScintilla(sci.SCI_INDICSETSTYLE, 9, sci.INDIC_ROUNDBOX)
+##             sci.SendScintilla(sci.SCI_INDICSETSTYLE, 10, sci.INDIC_ROUNDBOX)
+##             sci.SendScintilla(sci.SCI_INDICSETUNDER, 8, True)
+##             sci.SendScintilla(sci.SCI_INDICSETUNDER, 9, True)
+##             sci.SendScintilla(sci.SCI_INDICSETUNDER, 10, True)
+##             sci.SendScintilla(sci.SCI_INDICSETFORE, 8, 0xB0FFA0) # light green (+)
+##             sci.SendScintilla(sci.SCI_INDICSETFORE, 9, 0xA0A0FF) # light red (-)
+##             sci.SendScintilla(sci.SCI_INDICSETFORE, 10, 0xFFA0A0) # light blue (x)
+
+            #sci.setLexer(lexer)
+            #print "required for lexer", sci.SendScintilla(sci.SCI_GETSTYLEBITSNEEDED)
+            #sci.SendScintilla(sci.SCI_SETSTYLEBITS, 7)
+            sci.SendScintilla(sci.SCI_STYLESETEOLFILLED, 0x10, True)
+            sci.SendScintilla(sci.SCI_STYLESETBACK, 0x10, 0xB0FFA0)
+            sci.SendScintilla(sci.SCI_STYLESETEOLFILLED, 0x08, True)
+            sci.SendScintilla(sci.SCI_STYLESETBACK, 0x08, 0xA0A0FF)
+            sci.SendScintilla(sci.SCI_STYLESETEOLFILLED, 0x04, True)
+            sci.SendScintilla(sci.SCI_STYLESETBACK, 0x04, 0xFFA0A0)
+
             sci.setReadOnly(True)
             lay.addWidget(sci)
             self.markerplus = sci.markerDefine(Qsci.QsciScintilla.Plus)
@@ -199,9 +215,11 @@ class FileDiffViewer(QtGui.QDialog):
 
             blk = BlockList(self.frame)
             blk.linkScrollBar(sci.verticalScrollBar())
+            self.diffblock.linkScrollBar(sci.verticalScrollBar(), side)
             lay.insertWidget(idx, blk)
             self.block[side] = blk
-
+        lay.insertWidget(2, self.diffblock) 
+        
         # timer used to fill viewers with diff block markers during GUI idle time 
         self.timer = QtCore.QTimer()
         self.timer.setSingleShot(False)
@@ -254,7 +272,8 @@ class FileDiffViewer(QtGui.QDialog):
     def update_page_steps(self):
         for side in sides:
             self.block[side].syncPageStep()
-            
+        self.diffblock.syncPageStep()
+        
     def idle_fill_files(self):
         # we make a burst of diff-lines computed at once, but we
         # disable GUI updates for efficiency reasons, then only
@@ -262,6 +281,8 @@ class FileDiffViewer(QtGui.QDialog):
         for side in sides:
             self.viewers[side].setUpdatesEnabled(False)
             self.block[side].setUpdatesEnabled(False)
+        self.diffblock.setUpdatesEnabled(False)
+
         for n in range(30): # burst pool
             if self._diff is None or not self._diff.get_opcodes():
                 self._diff = None
@@ -270,55 +291,77 @@ class FileDiffViewer(QtGui.QDialog):
 
             tag, alo, ahi, blo, bhi = self._diff.get_opcodes().pop(0)
 
+            w = self.viewers['left']
+            cposl = w.SendScintilla(w.SCI_GETENDSTYLED)
+            w = self.viewers['right']
+            cposr = w.SendScintilla(w.SCI_GETENDSTYLED)
             if tag == 'replace':
-                w = self.viewers['left']
                 self.block['left'].addBlock('x', alo, ahi)
+                self.block['right'].addBlock('x', blo, bhi)
+                self.diffblock.addBlock('x', alo, ahi, blo, bhi)
+
+                w = self.viewers['left']
                 for i in range(alo, ahi):
                     w.markerAdd(i, self.markertriangle)
                 pos0 = w.SendScintilla(w.SCI_POSITIONFROMLINE, alo)
                 pos1 = w.SendScintilla(w.SCI_POSITIONFROMLINE, ahi)
-                w.SendScintilla(w.SCI_SETINDICATORCURRENT, 10)
-                w.SendScintilla(w.SCI_INDICATORFILLRANGE, pos0, pos1-pos0)
+                #w.SendScintilla(w.SCI_SETINDICATORCURRENT, 10)
+                #w.SendScintilla(w.SCI_INDICATORFILLRANGE, pos0, pos1-pos0)
+                w.SendScintilla(w.SCI_STARTSTYLING, pos0, 0x04)
+                w.SendScintilla(w.SCI_SETSTYLING, pos1-pos0, 0x04)
 
                 w = self.viewers['right']
-                self.block['right'].addBlock('x', blo, bhi)
                 for i in range(blo, bhi):
                     w.markerAdd(i, self.markertriangle)
                 pos0 = w.SendScintilla(w.SCI_POSITIONFROMLINE, blo)
                 pos1 = w.SendScintilla(w.SCI_POSITIONFROMLINE, bhi)
-                w.SendScintilla(w.SCI_SETINDICATORCURRENT, 10)
-                w.SendScintilla(w.SCI_INDICATORFILLRANGE, pos0, pos1-pos0)
+                #w.SendScintilla(w.SCI_SETINDICATORCURRENT, 10)
+                #w.SendScintilla(w.SCI_INDICATORFILLRANGE, pos0, pos1-pos0)
+                w.SendScintilla(w.SCI_STARTSTYLING, pos0, 0x04)
+                w.SendScintilla(w.SCI_SETSTYLING, pos1-pos0, 0x04)
 
             elif tag == 'delete':
+                self.block['left'].addBlock('-', alo, ahi)
+                self.diffblock.addBlock('-', alo, ahi, blo, bhi)
+
                 w = self.viewers['left']
                 for i in range(alo, ahi):            
                     w.markerAdd(i, self.markerminus)
-                self.block['left'].addBlock('-', alo, ahi)
                 pos0 = w.SendScintilla(w.SCI_POSITIONFROMLINE, alo)
                 pos1 = w.SendScintilla(w.SCI_POSITIONFROMLINE, ahi)
-                w.SendScintilla(w.SCI_SETINDICATORCURRENT, 9)
-                w.SendScintilla(w.SCI_INDICATORFILLRANGE, pos0, pos1-pos0)
+                #w.SendScintilla(w.SCI_SETINDICATORCURRENT, 9)
+                #w.SendScintilla(w.SCI_INDICATORFILLRANGE, pos0, pos1-pos0)
+                w.SendScintilla(w.SCI_STARTSTYLING, pos0, 0x08)
+                w.SendScintilla(w.SCI_SETSTYLING, pos1-pos0, 0x08)
 
             elif tag == 'insert':
+                self.block['right'].addBlock('+', blo, bhi)
+                self.diffblock.addBlock('+', alo, ahi, blo, bhi)
+
                 w = self.viewers['right']
                 for i in range(blo, bhi):
                     w.markerAdd(i, self.markerplus)
-                self.block['right'].addBlock('+', blo, bhi)
                 pos0 = w.SendScintilla(w.SCI_POSITIONFROMLINE, blo)
                 pos1 = w.SendScintilla(w.SCI_POSITIONFROMLINE, bhi)
-                w.SendScintilla(w.SCI_SETINDICATORCURRENT, 8)
-                w.SendScintilla(w.SCI_INDICATORFILLRANGE, pos0, pos1-pos0)
+                #w.SendScintilla(w.SCI_SETINDICATORCURRENT, 8)
+                #w.SendScintilla(w.SCI_INDICATORFILLRANGE, pos0, pos1-pos0)
+                w.SendScintilla(w.SCI_STARTSTYLING, pos0, 0x10)
+                w.SendScintilla(w.SCI_SETSTYLING, pos1-pos0, 0x10)
+                
 
             elif tag == 'equal':
                 pass
 
             else:
                 raise ValueError, 'unknown tag %r' % (tag,)
+            #self.viewers['left'].SendScintilla(w.SCI_STARTSTYLING, cposl, 0x1F)
+            #self.viewers['right'].SendScintilla(w.SCI_STARTSTYLING, cposr, 0x1F)
             
         # ok, let's enable GUI refresh for code viewers and diff-block displayers 
         for side in sides:
             self.viewers[side].setUpdatesEnabled(True)
             self.block[side].setUpdatesEnabled(True)
+        self.diffblock.setUpdatesEnabled(True)
         # force diff-block displayers to recompute their pageStep
         # according the document size (since this cannot be done using
         # signal/slot, since there is no 'pageStepChanged(int)' signal
@@ -333,6 +376,8 @@ class FileDiffViewer(QtGui.QDialog):
         for side in sides:
             self.viewers[side].clear()
             self.block[side].clear()
+        self.diffblock.clear()
+        
         if None not in self.filedata.values():
             if self.timer.isActive():
                 self.timer.stop()
