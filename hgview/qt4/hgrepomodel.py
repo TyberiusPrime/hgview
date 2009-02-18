@@ -20,12 +20,15 @@ import sys
 import mx.DateTime as dt
 import re
 
+from mercurial.node import nullrev
+from mercurial.revlog import LookupError
 from hgview.hggraph import Graph, diff as revdiff
 from hgview.config import HgConfig
-#from hgview.decorators import timeit
+from hgview.decorators import timeit
 
 from PyQt4 import QtCore, QtGui
 connect = QtCore.QObject.connect
+nullvariant = QtCore.QVariant()
 
 COLORS = [ "blue", "darkgreen", "red", "green", "darkblue", "purple",
            "cyan", "magenta", "darkred", "darkmagenta"]
@@ -62,6 +65,22 @@ _maxwidth = {'ID': lambda r: str(len(r.changelog)),
                                         cmp=lambda x,y: cmp(len(x), len(y)))[-1],
              }
 
+def datacached(meth):
+    """
+    decorator used to cache 'data' method of Qt models 
+    """
+    def data(self, index, role):
+        if not index.isValid():
+            return nullvariant
+        row = index.row()
+        col = index.column()
+        if (row, col, role) in self._datacache:
+            return self._datacache[(row, col, role)]
+        result = meth(self, index, role)
+        self._datacache[(row, col, role)] = result
+        return result
+    return data
+
 class HgRepoListModel(QtCore.QAbstractTableModel):
     """
     Model used for displaying the revisions of a Hg *local* repository
@@ -73,6 +92,7 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
         repo is a hg repo instance
         """
         QtCore.QAbstractTableModel.__init__(self, parent)
+        self._datacache = {}
         self.gr_fill_timer = QtCore.QTimer()
         self.connect(self.gr_fill_timer, QtCore.SIGNAL('timeout()'),
                      self.fillGraph)
@@ -81,6 +101,7 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
     #@timeit
     def setRepo(self, repo, branch=''):
         self.repo = repo
+        self._datacache = {}
         self.loadConfig()
         
         self._user_colors = {}
@@ -151,9 +172,10 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
     def col2x(self, col):
         return (1.2*self.dot_radius + 0) * col + self.dot_radius/2 + 3
 
+    @datacached
     def data(self, index, role):
         if not index.isValid():
-            return QtCore.QVariant()
+            return nullvariant
         row = index.row() + 1
         column = self._columns[index.column()]
         gnode = self.graph[row]
@@ -213,12 +235,12 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
                 painter.end()
                 ret = QtCore.QVariant(pix)
                 return ret
-        return QtCore.QVariant()
+        return nullvariant
 
     def headerData(self, section, orientation, role):
         if orientation == QtCore.Qt.Horizontal and role == QtCore.Qt.DisplayRole:
             return QtCore.QVariant(self._columns[section])
-        return QtCore.QVariant()
+        return nullvariant
 
     def row_from_node(self, node):
         try:
@@ -235,6 +257,7 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
     def clear(self):
         """empty the list"""
         self.graph = None
+        self._datacache = {}        
         self.notify_data_changed()
 
     def notify_data_changed(self):
@@ -266,7 +289,7 @@ class FileRevModel(HgRepoListModel):
 
     def data(self, index, role):
         if not index.isValid():
-            return QtCore.QVariant()
+            return nullvariant
         row = self.rowCount() - index.row() - 1 
         column = self._columns[index.column()]
         if row in self._ctxcache:
@@ -285,7 +308,7 @@ class FileRevModel(HgRepoListModel):
                 return QtCore.QVariant(QtGui.QColor(self.user_color(ctx.user())))
             if column == 'Branch': #branch
                 return QtCore.QVariant(QtGui.QColor(self.namedbranch_color(ctx.branch())))
-        return QtCore.QVariant()
+        return nullvariant
 
 replus = re.compile(r'^[+][^+].*', re.M)
 reminus = re.compile(r'^[-][^-].*', re.M)
@@ -300,9 +323,8 @@ class HgFileListModel(QtCore.QAbstractTableModel):
         """
         QtCore.QAbstractTableModel.__init__(self, parent)
         self.repo = repo
+        self._datacache = {}            
         self.loadConfig()
-        self.stats = [] # list of couples (n_line_added, n_line_removed),
-                        # one for each file 
         self.current_ctx = None
         self.connect(self, QtCore.SIGNAL("dataChanged(const QModelIndex & , const QModelIndex & )"),
                      self.datachangedcalled)
@@ -320,6 +342,7 @@ class HgFileListModel(QtCore.QAbstractTableModel):
     def setDiffWidth(self, w):
         if w != self.diffwidth:
             self.diffwidth = w
+            self._datacache = {}
             self.emit(QtCore.SIGNAL('dataChanged(const QModelIndex &, const QModelIndex & )'),
                       self.index(2, 0),
                       self.index(2, self.rowCount()))
@@ -339,15 +362,19 @@ class HgFileListModel(QtCore.QAbstractTableModel):
         return 3
 
     def setSelectedRev(self, ctx):
-        self.current_ctx = ctx
-        self.changes = self.repo.status(ctx.parents()[0].node(), ctx.node())[:5]
-        self.emit(QtCore.SIGNAL("layoutChanged()"))
+        if ctx != self.current_ctx:
+            self.current_ctx = ctx
+            self._datacache = {}            
+            self.changes = [self.repo.status(ctx.parents()[0].node(), ctx.node())[:5], None]
+            if ctx.parents()[1]:
+                self.changes[1] = self.repo.status(ctx.parents()[1].node(), ctx.node())[:5]
+            self.emit(QtCore.SIGNAL("layoutChanged()"))
 
     def fileflag(self, fn, ctx=None):
-        if ctx is not None:
+        if ctx is not None and ctx != self.current_ctx:
             changes = self.repo.status(ctx.parents()[0].node(), ctx.node())[:5]
         else:
-            changes = self.changes
+            changes = self.changes[0]
         modified, added, removed, deleted, unknown = changes
         for fl, lst in zip(["M","A","R","D","?"],
                            [modified, added, removed, deleted, unknown]):
@@ -361,26 +388,28 @@ class HgFileListModel(QtCore.QAbstractTableModel):
         row = index.row()
         return self.current_ctx.files()[row]
         
+    @datacached
     def data(self, index, role):
         if not index.isValid() or index.row()>len(self) or not self.current_ctx:
-            return QtCore.QVariant()
+            return nullvariant
         row = index.row()
         column = index.column()
-
+        
         current_file = self.current_ctx.files()[row]
-        stats = None
-
         if column == 2:
-            # graph display of the diff
-            diff = revdiff(self.repo, self.current_ctx, files=[current_file])
-            fdata = self.current_ctx.filectx(current_file).data()
-            add = len(replus.findall(diff))
-            rem = len(reminus.findall(diff))
-            tot = len(fdata.splitlines())
-            if tot == 0:
-                tot = add + rem
-                
             if role == QtCore.Qt.DecorationRole:
+                # graph display of the diff
+                diff = revdiff(self.repo, self.current_ctx, files=[current_file])
+                try:
+                    fdata = self.current_ctx.filectx(current_file).data()
+                    tot = len(fdata.splitlines())
+                except LookupError:
+                    tot = 0
+                add = len(replus.findall(diff))
+                rem = len(reminus.findall(diff))
+                if tot == 0:
+                    tot = max(add + rem, 1)
+
                 w = self.diffwidth - 20
                 h = 20 
 
@@ -393,8 +422,9 @@ class HgFileListModel(QtCore.QAbstractTableModel):
                 painter = QtGui.QPainter(pix)
                 #painter.setRenderHint(QtGui.QPainter.Antialiasing)
 
-                for x0,w0, color in ((0, nm, 'red'), (nm, np, 'green'),
-                                    (nm+np, nd, 'gray')):
+                for x0,w0, color in ((0, nm, 'red'),
+                                     (nm, np, 'green'),
+                                     (nm+np, nd, 'gray')):
                     color = QtGui.QColor(color)
                     painter.setBrush(color)
                     painter.setPen(color)
@@ -417,13 +447,13 @@ class HgFileListModel(QtCore.QAbstractTableModel):
                     color = self._flagcolor.get(self.fileflag(current_file), 'black')
                     if color is not None:
                         return QtCore.QVariant(QtGui.QColor(color))
-        return QtCore.QVariant()
+        return nullvariant
 
     def headerData(self, section, orientation, role):
         if orientation == QtCore.Qt.Horizontal and role == QtCore.Qt.DisplayRole:
             return QtCore.QVariant(['File', 'Flag', 'Diff'][section])
 
-        return QtCore.QVariant()
+        return nullvariant
 
         
 if __name__ == "__main__":
