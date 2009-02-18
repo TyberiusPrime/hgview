@@ -1,21 +1,32 @@
 # -*- coding: utf-8 -*-
+# Copyright (c) 2003-2009 LOGILAB S.A. (Paris, FRANCE).
+# http://www.logilab.fr/ -- mailto:contact@logilab.fr
+#
+# This program is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation; either version 2 of the License, or (at your option) any later
+# version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program; if not, write to the Free Software Foundation, Inc.,
+# 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+#
+# pylint: disable-msg=C0103
+
 """
-Module for managing configuration parameters of qtview using Hg's configuration system
+Module for managing configuration parameters of qtview using Hg's
+configuration system
 """
 import os
 
-# _HgConfig is instanciated only once (singleton)
-# this 'factory' is used to manage this (not using heavy guns of metaclass or so) 
-_hgconfig = None
-def HgConfig(ui):    
-    global _hgconfig
-    if _hgconfig is None:
-        _hgconfig = _HgConfig(ui)
-    return _hgconfig
-
-
-# decorator to cache config values once they are read
 def cached(meth):
+    """
+    decorator to cache config values once they are read
+    """
     name = meth.func_name
     def wrapper(self, *args, **kw):
         if name in self._cache:
@@ -25,8 +36,11 @@ def cached(meth):
         return res
     wrapper.__doc__ = meth.__doc__
     return wrapper
-    
-class _HgConfig(object):
+
+class HgConfig(object):
+    """
+    Class managing user configuration from hg standard configuration system (.hgrc) 
+    """
     def __init__(self, ui, section="qtview"):
         self.ui = ui
         self.section = section
@@ -37,7 +51,8 @@ class _HgConfig(object):
         """
         font: default font used to display diffs and files. Use Qt4 format.
         """
-        return self.ui.config(self.section, 'font', 'Monospace,10,-1,5,50,0,0,0,1,0')
+        return self.ui.config(self.section, 'font',
+                              'Monospace,10,-1,5,50,0,0,0,1,0')
 
     @cached
     def getDotRadius(self, default=8):
@@ -46,7 +61,7 @@ class _HgConfig(object):
         """
         r = self.ui.config(self.section, 'dotradius', default)
         return r
-    
+
     @cached
     def getUsers(self):
         """
@@ -56,13 +71,13 @@ class _HgConfig(object):
         aliases = {}
         usersfile = self.ui.config(self.section, 'users', None)
         try:
-            f = open(os.path.expanduser(usersfile))
-        except:
-            f = None
-        
-        if f:
+            cfgfile = open(os.path.expanduser(usersfile))
+        except IOError:
+            cfgfile = None
+
+        if cfgfile:
             currid = None
-            for line in f:
+            for line in cfgfile:
                 line = line.strip()
                 if not line or line.startswith('#'):
                     continue
@@ -70,12 +85,12 @@ class _HgConfig(object):
                 if cmd == 'id':
                     currid = val
                     if currid in users:
-                        print "Warning, user %s is defined several times" % currid
+                        print "W: user %s is defined several times" % currid
                     users[currid] = {'aliases': set()}
                 elif cmd == "alias":
                     users[currid]['aliases'].add(val)
                     if val in aliases:
-                        print "Warning, alias %s is used in several user definitions" % val
+                        print "W: alias %s is used in several user definitions" % val
                     aliases[val] = currid
                 else:
                     users[currid][cmd] = val
@@ -86,25 +101,25 @@ class _HgConfig(object):
         """
         filemodifiedcolor: display color of a modified file
         """
-        return self.ui.config(self.section, 'filemodifiedcolor', default)        
+        return self.ui.config(self.section, 'filemodifiedcolor', default)
     @cached
     def getFileRemovedColor(self, default='red'):
         """
-        fileremovedcolor: display color of a removed file        
+        fileremovedcolor: display color of a removed file
         """
-        return self.ui.config(self.section, 'fileremovededcolor', default)        
+        return self.ui.config(self.section, 'fileremovededcolor', default)
     @cached
     def getFileDeletedColor(self, default='darkred'):
         """
-        filedeletedcolor: display color of a deleted file        
+        filedeletedcolor: display color of a deleted file
         """
-        return self.ui.config(self.section, 'filedeletedcolor', default)        
+        return self.ui.config(self.section, 'filedeletedcolor', default)
     @cached
     def getFileAddedColor(self, default='green'):
         """
-        fileaddedcolor: display color of an added file        
+        fileaddedcolor: display color of an added file
         """
-        return self.ui.config(self.section, 'fileaddedcolor', default)        
+        return self.ui.config(self.section, 'fileaddedcolor', default)
 
     @cached
     def getRowHeight(self, default=20):
@@ -112,7 +127,7 @@ class _HgConfig(object):
         rowheight: height (in pixels) on a row of the revision table
         """
         return int(self.ui.config(self.section, 'rowheight', default))
-        
+
     @cached
     def getHideFindDelay(self, default=10000):
         """
@@ -126,7 +141,22 @@ class _HgConfig(object):
         fillingstep: number of nodes 'loaded' at a time when updating repo graph log
         """
         return int(self.ui.config(self.section, 'fillingstep', default))
-    
+
+_HgConfig = HgConfig
+# HgConfig is instanciated only once (singleton)
+#
+# this 'factory' is used to manage this (not using heavy guns of
+# metaclass or so)
+_hgconfig = None
+def HgConfig(ui):
+    """Factory to instanciate HgConfig class as a singleton
+    """
+    # pylint: disable-msg=E0102
+    global _hgconfig
+    if _hgconfig is None:
+        _hgconfig = _HgConfig(ui)
+    return _hgconfig
+
 
 def get_option_descriptions():
     options = []
@@ -138,4 +168,4 @@ def get_option_descriptions():
                 if doc and doc.strip():
                     options.append(doc.strip())
     return options
-            
+

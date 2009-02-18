@@ -1,4 +1,22 @@
 # -*- coding: utf-8 -*-
+# Copyright (c) 2003-2009 LOGILAB S.A. (Paris, FRANCE).
+# http://www.logilab.fr/ -- mailto:contact@logilab.fr
+#
+# This program is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation; either version 2 of the License, or (at your option) any later
+# version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program; if not, write to the Free Software Foundation, Inc.,
+# 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+"""Qt4 widgets to display hg revisions of a file
+"""
+
 import sys, os
 from os.path import dirname, join, expanduser, isfile
 import difflib
@@ -7,13 +25,14 @@ import numpy
 
 from PyQt4 import QtGui, QtCore, uic, Qsci
 from PyQt4.QtCore import Qt
-from hgrepomodel import FileRevModel
-from blockmatcher import BlockList, BlockMatch
+
 from hgview.config import HgConfig
+from hgview.qt4.hgrepomodel import FileRevModel
+from hgview.qt4.blockmatcher import BlockList, BlockMatch
 from hgview.qt4.lexers import get_lexer
 
 sides = ('left', 'right')
-otherside = {'left':'right', 'right':'left'}
+otherside = {'left': 'right', 'right': 'left'}
 
 
 class Differ(difflib.Differ):
@@ -63,7 +82,7 @@ class FileViewer(QtGui.QDialog):
         
         lay = QtGui.QHBoxLayout(self.frame)
         lay.setSpacing(0)
-        lay.setContentsMargins(0,0,0,0)
+        lay.setContentsMargins(0, 0, 0, 0)
         sci = Qsci.QsciScintilla(self.frame)
         sci.setFrameShape(QtGui.QFrame.NoFrame)
         sci.setMarginLineNumbers(1, True)
@@ -115,7 +134,7 @@ class FileViewer(QtGui.QDialog):
             if not font.fromString(fontstr):
                 raise Exception
         except:
-            print "bad font name '%s'"%fontstr
+            print "bad font name '%s'" % fontstr
             font.setFamily("Monospace")
             font.setFixedPitch(True)
             font.setPointSize(10)
@@ -154,7 +173,7 @@ class FileDiffViewer(QtGui.QDialog):
         
         self.filedata = {'left': None, 'right': None}
         self._previous = None
-        self._invbarchanged=False
+        self._invbarchanged = False
 
         # try to find a lexer for our file.
         f = self.repo.file(self.filename)
@@ -174,7 +193,7 @@ class FileDiffViewer(QtGui.QDialog):
         self.diffblock = BlockMatch(self.frame)
         lay = QtGui.QHBoxLayout(self.frame)
         lay.setSpacing(0)
-        lay.setContentsMargins(0,0,0,0)
+        lay.setContentsMargins(0, 0, 0, 0)
         for side, idx  in (('left', 0), ('right', 3)):
             sci = Qsci.QsciScintilla(self.frame)
             sci.setFont(self.font)
@@ -235,7 +254,7 @@ class FileDiffViewer(QtGui.QDialog):
             table.verticalHeader().hide()
             self.connect(table.selectionModel(),
                          QtCore.SIGNAL('currentRowChanged(const QModelIndex &, const QModelIndex &)'),
-                         getattr(self, 'revision_selected_%s'%side))
+                         getattr(self, 'revision_selected_%s' % side))
                          #lambda idx, oldidx, side=side: self.revision_selected(idx, side))
             self.connect(self.viewers[side].verticalScrollBar(),
                          QtCore.SIGNAL('valueChanged(int)'),
@@ -260,7 +279,7 @@ class FileDiffViewer(QtGui.QDialog):
             if not font.fromString(fontstr):
                 raise Exception
         except:
-            print "bad font name '%s'"%fontstr
+            print "bad font name '%s'" % fontstr
             font.setFamily("Monospace")
             font.setFixedPitch(True)
             font.setPointSize(10)
@@ -382,9 +401,10 @@ class FileDiffViewer(QtGui.QDialog):
             if self.timer.isActive():
                 self.timer.stop()
             for side in sides:
-                self.viewers[side].setMarginWidth(1, "00%s"%len(self.filedata[side]))
+                self.viewers[side].setMarginWidth(1, "00%s" % len(self.filedata[side]))
                 
-            self._diff = difflib.SequenceMatcher(None, self.filedata['left'], self.filedata['right'])
+            self._diff = difflib.SequenceMatcher(None, self.filedata['left'],
+                                                 self.filedata['right'])
             blocks = self._diff.get_opcodes()[:]
             
             self._diffmatch = {'left': [x[1:3] for x in blocks],
@@ -394,8 +414,8 @@ class FileDiffViewer(QtGui.QDialog):
             self.timer.start()
         
     def set_init_selections(self):
-        self.tableView_revisions_left.setCurrentIndex(self.filerevmodel.index(0,0))
-        self.tableView_revisions_right.setCurrentIndex(self.filerevmodel.index(1,0))
+        self.tableView_revisions_left.setCurrentIndex(self.filerevmodel.index(0, 0))
+        self.tableView_revisions_right.setCurrentIndex(self.filerevmodel.index(1, 0))
         
     def setup_columns_size(self):
         """
@@ -422,7 +442,7 @@ class FileDiffViewer(QtGui.QDialog):
         if self._invbarchanged:
             # prevent loops in changes (left -> right -> left ...) 
             return
-        self._invbarchanged=True
+        self._invbarchanged = True
         oside = otherside[side]
         
         for i, (lo, hi) in enumerate(self._diffmatch[side]):
@@ -437,7 +457,7 @@ class FileDiffViewer(QtGui.QDialog):
         else:
             bvalue = bhi
         vbar.setValue(bvalue)
-        self._invbarchanged=False
+        self._invbarchanged = False
 
     def revision_selected_left(self, index, oldindex):
         self.revision_selected(index, 'left')
@@ -446,9 +466,11 @@ class FileDiffViewer(QtGui.QDialog):
 
     def revision_selected(self, index, side):
         row = index.row() 
-        filectx = self.repo.filectx(self.filename, fileid=self.filerevmodel.filelog.node(row))
+        filectx = self.repo.filectx(self.filename,
+                                    fileid=self.filerevmodel.filelog.node(row))
         ctx = filectx.changectx()
-        self.filedata[side] = self.filerevmodel.filelog.read(self.filerevmodel.filelog.node(row)).splitlines()
+        node = self.filerevmodel.filelog.node(row)
+        self.filedata[side] = self.filerevmodel.filelog.read(node).splitlines()
         self.update_diff()
         
         

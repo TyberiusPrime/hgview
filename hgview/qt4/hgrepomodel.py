@@ -1,7 +1,28 @@
+# Copyright (c) 2009 LOGILAB S.A. (Paris, FRANCE).
+# http://www.logilab.fr/ -- mailto:contact@logilab.fr
+#
+# This program is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation; either version 2 of the License, or (at your option) any later
+# version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program; if not, write to the Free Software Foundation, Inc.,
+# 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+"""Qt4 model for hg repo changelogs and filelogs
+
+"""
 import sys
 import mx.DateTime as dt
-import itertools
 import re
+
+from hgview.hggraph import Graph, diff as revdiff
+from hgview.config import HgConfig
+#from hgview.decorators import timeit
 
 from PyQt4 import QtCore, QtGui
 connect = QtCore.QObject.connect
@@ -10,17 +31,18 @@ COLORS = [ "blue", "darkgreen", "red", "green", "darkblue", "purple",
            "cyan", "magenta", "darkred", "darkmagenta"]
 #COLORS = [str(color) for color in QtGui.QColor.colorNames()]
 def get_color(n):
+    """
+    Return a color at index 'n' rotating in the available colors
+    """
     return COLORS[n % len(COLORS)]
 
 def cvrt_date(date):
+    """
+    Convert a date given the hg way, ie. couple (date, tz), into a
+    formatted QString
+    """
     date, tzdelay = date
     return QtCore.QDateTime.fromTime_t(int(date)).toString(QtCore.Qt.ISODate)
-    return dt.DateTimeFromTicks(date) + tzdelay/dt.oneHour
-
-from hgview.hggraph import Graph, diff as revdiff
-from hgview.config import HgConfig
-
-from hgview.decorators import timeit
 
 # in following lambdas, ctx is a hg changectx 
 _columnmap = {'ID': lambda ctx: ctx.rev(),
@@ -34,8 +56,10 @@ _columnmap = {'ID': lambda ctx: ctx.rev(),
 # in following lambdas, r is a hg repo 
 _maxwidth = {'ID': lambda r: str(len(r.changelog)),
              'Date': lambda r: cvrt_date(r.changectx(0).date()),
-             'Tags': lambda r: sorted(r.tags().keys(), cmp=lambda x,y: cmp(len(x), len(y)))[-1],
-             'Branch': lambda r: sorted(r.branchtags().keys(), cmp=lambda x,y: cmp(len(x), len(y)))[-1],
+             'Tags': lambda r: sorted(r.tags().keys(),
+                                      cmp=lambda x,y: cmp(len(x), len(y)))[-1],
+             'Branch': lambda r: sorted(r.branchtags().keys(),
+                                        cmp=lambda x,y: cmp(len(x), len(y)))[-1],
              }
 
 class HgRepoListModel(QtCore.QAbstractTableModel):
@@ -113,7 +137,7 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
             except:
                 pass
         if user not in self._user_colors:
-            self._user_colors[user] = COLORS[(len(self._user_colors) % len(COLORS))]
+            self._user_colors[user] = get_color(len(self._user_colors))
         return self._user_colors[user]
 
     def user_name(self, user):
@@ -121,7 +145,7 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
 
     def namedbranch_color(self, branch):
         if branch not in self._branch_colors:
-            self._branch_colors[branch] = COLORS[(len(self._branch_colors) % len(COLORS))]
+            self._branch_colors[branch] = get_color(len(self._branch_colors))
         return self._branch_colors[branch]
     
     def col2x(self, col):
@@ -145,11 +169,12 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
                 return QtCore.QVariant(QtGui.QColor(self.namedbranch_color(ctx.branch())))
         elif role == QtCore.Qt.DecorationRole:
             if column == 'Log':
-                w = (gnode.cols)*(1*self.dot_radius + 0) + 20
+                radius = self.dot_radius
+                w = (gnode.cols)*(1*radius + 0) + 20
                 h = self.rowheight
 
-                dot_x = self.col2x(gnode.x) - self.dot_radius/2
-                dot_y = (h/2)
+                dot_x = self.col2x(gnode.x) - radius / 2
+                dot_y = h / 2
                                 
                 pix = QtGui.QPixmap(w, h)
                 pix.fill(QtGui.QColor(0,0,0,0))
@@ -180,11 +205,11 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
                 else:
                     dot_color = QtGui.QColor(self.namedbranch_color(ctx.branch()))
 
-                dot_y = (h/2)-self.dot_radius/2
+                dot_y = (h/2) - radius / 2
                     
                 painter.setBrush(QtGui.QColor(dot_color))
                 painter.setPen(QtCore.Qt.black)
-                painter.drawEllipse(dot_x, dot_y, self.dot_radius, self.dot_radius)
+                painter.drawEllipse(dot_x, dot_y, radius, radius)
                 painter.end()
                 ret = QtCore.QVariant(pix)
                 return ret
@@ -247,7 +272,8 @@ class FileRevModel(HgRepoListModel):
         if row in self._ctxcache:
             ctx = self._ctxcache[row]
         else:
-            ctx = self.repo.filectx(self.filename, fileid=self.filelog.node(row)).changectx()
+            ctx = self.repo.filectx(self.filename,
+                                    fileid=self.filelog.node(row)).changectx()
             self._ctxcache[row] = ctx
             
         if role == QtCore.Qt.DisplayRole:

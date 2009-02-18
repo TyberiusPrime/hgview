@@ -20,14 +20,17 @@ Based on graphlog's algorithm, with insipration stolen to TortoiseHg
 revision grapher.
 """
 
-from itertools import izip, count as icount
 from StringIO import StringIO
 
 from mercurial.node import nullrev
 from mercurial import patch, util
-from decorators import timeit
+
+#from hgview.decorators import timeit
 
 def diff(repo, ctx1, ctx2=None, files=None):
+    """
+    Compute the diff of files between 2 changectx
+    """
     if ctx2 is None:
         ctx2 = ctx1.parents()[0]
     if files is None:
@@ -35,26 +38,34 @@ def diff(repo, ctx1, ctx2=None, files=None):
     else:
         def match(fn):
             return fn in files
-    # try/except for the sake of hg compatibility (API changes between 1.0 and 1.1)
+    # try/except for the sake of hg compatibility (API changes between
+    # 1.0 and 1.1)
     try:
         out = StringIO()        
         patch.diff(repo, ctx2.node(), ctx1.node(), match=match, fp=out)
-        diff = out.getvalue()
+        diffdata = out.getvalue()
     except:
-        diff = '\n'.join(patch.diff(repo, ctx2.node(), ctx1.node(), match=match))
+        diffdata = '\n'.join(patch.diff(repo, ctx2.node(), ctx1.node(),
+                                        match=match))
     # XXX how to deal diff encodings?
     try:
-        diff = unicode(diff, "utf-8")
+        diffdata = unicode(diffdata, "utf-8")
     except UnicodeError:
         # XXX use a default encoding from config?
-        diff = unicode(diff, "iso-8859-15", 'ignore')
-    return diff
+        diffdata = unicode(diffdata, "iso-8859-15", 'ignore')
+    return diffdata
 
 
 def __get_parents(repo, rev, branch=None):
+    """
+    Return non-null parents of `rev`. If branch is given, only return
+    parents that belongs to names branch `branch` (beware that this is
+    much slower).
+    """
     if not branch:
         return [x for x in repo.changelog.parentrevs(rev) if x != nullrev]
-    return [x for x in repo.changelog.parentrevs(rev) if (x != nullrev and repo.changectx(rev).branch() == branch)]
+    return [x for x in repo.changelog.parentrevs(rev) \
+            if (x != nullrev and repo.changectx(rev).branch() == branch)]
     
 
 def revision_grapher(repo, start_rev=None, stop_rev=0, branch=None):
@@ -96,8 +107,8 @@ def revision_grapher(repo, start_rev=None, stop_rev=0, branch=None):
             r = __get_parents(repo, curr_rev, branch)
             while r:
                 r0 = r[0]
-                if r0 < stop_rev: break
-                if r0 in rev_color: break
+                if r0 < stop_rev or r0 in rev_color:
+                    break
                 rev_color[r0] = curcolor
                 r = __get_parents(repo, r0, branch)
         curcolor = rev_color[curr_rev]            
@@ -180,7 +191,7 @@ class Graph(object):
         
         stopped = False
         mcol = [self.max_cols]
-        for i in xrange(nnodes):
+        for _ in xrange(nnodes):
             try:
                 v = self.grapher.next()
                 if v is None:
@@ -225,6 +236,7 @@ class Graph(object):
 
         
 if __name__ == "__main__":
+    # pylint: disable-msg=C0103
     import sys
     from mercurial import ui, hg
     u = ui.ui()

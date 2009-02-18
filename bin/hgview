@@ -1,4 +1,10 @@
 #!/usr/bin/env python
+"""
+Hg repository log browser.
+
+This may be used as a standalone application or as a hg extension. See
+README file included.
+"""
 
 import sys, os
 import os.path as pos
@@ -7,15 +13,13 @@ try:
     import hgview
 except ImportError:
     import stat
-    exec_path = pos.abspath(__file__)
-    # Resolve symbolic links
-    statinfo = os.lstat(exec_path)
+    execpath = pos.abspath(__file__)
+    # resolve symbolic links
+    statinfo = os.lstat(execpath)
     if stat.S_ISLNK(statinfo.st_mode):
-        exec_path = pos.abspath(pos.join(pos.dirname(exec_path),
-                                os.readlink(exec_path)))
-    py_path = pos.abspath(pos.join(pos.dirname(exec_path), ".."))
-    #print "Inserting:", py_path
-    sys.path.append(py_path)
+        execpath = pos.abspath(pos.join(pos.dirname(execpath),
+                                        os.readlink(execpath)))
+    sys.path.append(pos.abspath(pos.join(pos.dirname(execpath), "..")))
 
 from hgview.qt4 import hgview_qt4 as hgview
 
