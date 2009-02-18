@@ -12,18 +12,18 @@
 # You should have received a copy of the GNU General Public License along with
 # this program; if not, write to the Free Software Foundation, Inc.,
 # 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
-"""Copyright (c) 2000-2008 LOGILAB S.A. (Paris, FRANCE).
+"""Copyright (c) 2000-2009 LOGILAB S.A. (Paris, FRANCE).
 http://www.logilab.fr/ -- mailto:contact@logilab.fr  
 """
 
 import glob
-modname = 'hgview'
-numversion = (0, 9, 1)
+modname = 'hgqv'
+numversion = (0, 90, 0)
 version = '.'.join([str(num) for num in numversion])
 
 
 license = 'GPL'
-copyright = '''Copyright © 2007-2008 LOGILAB S.A. (Paris, FRANCE).
+copyright = '''Copyright © 2007-2009 LOGILAB S.A. (Paris, FRANCE).
 http://www.logilab.fr/ -- mailto:contact@logilab.fr'''
 
 short_desc = "mercurial interactive history viewer"
@@ -33,6 +33,8 @@ long_desc = """
  written with efficiency in mind when dealing with big repositories
  (it can happily be used to browse Linux kernel source code
  repository).
+
+ This is actually a major rework of the Qt version of hgview.
 """
 
 author = "Logilab"
@@ -43,8 +45,8 @@ web = "http://www.logilab.org/projects/%s" % modname
 ftp = "ftp://ftp.logilab.org/pub/%s" % modname
 
 
-scripts = ['bin/hgview']
-debian_name = 'hgview'
+scripts = ['bin/hgqv']
+debian_name = 'hgqv'
 debian_maintainer = 'Alexandre Fayolle' 
 debian_maintainer_email = 'alexandre.fayolle@logilab.fr'
 pyversions = ["2.4", "2.5"]
@@ -53,7 +55,7 @@ debian_handler = 'python-dep-standalone'
  
 from os.path import join
 include_dirs = [] #join('tests', 'data'), join('tests', 'packages')]
-data_files = [('share/hgview', ['hgview/qt4/hgview.ui']),
-              ('share/man/man1', ['hgview.1',
+data_files = [('share/hgqv', ['hgview/qt4/hgview.ui']),
+              ('share/man/man1', ['hgqv.1',
                                  ]),]
 

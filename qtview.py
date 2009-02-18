@@ -1,4 +1,4 @@
-# qtview: viual graphlog browser in PyQt4
+# qtview: visual graphlog browser in PyQt4
 #
 # Copyright 2008-2009 Logilab
 #
@@ -27,6 +27,7 @@ def start_qtview(ui, repo, *args, **kwargs):
     Up/Down     - go to next/previous revision
     Left/Right  - display previous/next files of the current changeset
     Ctrl+F or / - display the search bar
+    Ctrl+G      - displa the 'goto rev' bar
     Esc         - exit
     Enter       - run the diff viewer for the currently selected file
                   (display diff between revisions)
@@ -84,7 +85,7 @@ def start_qtview(ui, repo, *args, **kwargs):
         # You can specificy it's location in ~/.hgrc via
         #   [qtview]
         #   path=
-        cmd = ui.config("qtview", "path", "qtview") 
+        cmd = ui.config("qtview", "path", "hgqv") 
         os.system(cmd)
     else:
         app = QtGui.QApplication(sys.argv)

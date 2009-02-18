@@ -44,16 +44,15 @@ class HgMainWindow(QtGui.QMainWindow):
 
         # load qt designer ui file
         for _path in [dirname(__file__),
-                      join(sys.exec_prefix, 'share/hgview'),
-                      os.path.expanduser('~/share/hgview'),
-                      join(dirname(__file__), "../../../../../share/hgview"),
+                      join(sys.exec_prefix, 'share/hgqv'),
+                      os.path.expanduser('~/share/hgqv'),
+                      join(dirname(__file__), "../../../../../share/hgqv"),
                       ]:
-            ui_file = join(_path, 'hgview.ui')
-            
+            ui_file = join(_path, 'hgqv.ui')
             if isfile(ui_file):
                 break
         else:
-            raise ValueError("Unable to find hgview.ui\n"
+            raise ValueError("Unable to find hgqv.ui\n"
                              "Check your installation.")
         uifile = os.path.join(os.path.dirname(__file__), ui_file)
         self.ui = uic.loadUi(uifile, self)
