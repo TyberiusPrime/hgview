@@ -1,4 +1,25 @@
-# helper functions to ease hg revision graph building
+# Copyright (c) 2003-2009 LOGILAB S.A. (Paris, FRANCE).
+# http://www.logilab.fr/ -- mailto:contact@logilab.fr
+#
+# This program is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation; either version 2 of the License, or (at your option) any later
+# version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program; if not, write to the Free Software Foundation, Inc.,
+# 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+
+"""helper functions and classes to ease hg revision graph building
+
+Based on graphlog's algorithm, with insipration stolen to TortoiseHg
+revision grapher.
+"""
+
 from itertools import izip, count as icount
 from StringIO import StringIO
 
@@ -14,25 +35,28 @@ def diff(repo, ctx1, ctx2=None, files=None):
     else:
         def match(fn):
             return fn in files
+    # try/except for the sake of hg compatibility (API changes between 1.0 and 1.1)
     try:
         out = StringIO()        
         patch.diff(repo, ctx2.node(), ctx1.node(), match=match, fp=out)
         diff = out.getvalue()
     except:
         diff = '\n'.join(patch.diff(repo, ctx2.node(), ctx1.node(), match=match))
-        
+    # XXX how to deal diff encodings?
     try:
         diff = unicode(diff, "utf-8")
     except UnicodeError:
-        # XXX use a default encoding from config
+        # XXX use a default encoding from config?
         diff = unicode(diff, "iso-8859-15", 'ignore')
     return diff
+
 
 def __get_parents(repo, rev, branch=None):
     if not branch:
         return [x for x in repo.changelog.parentrevs(rev) if x != nullrev]
     return [x for x in repo.changelog.parentrevs(rev) if (x != nullrev and repo.changectx(rev).branch() == branch)]
     
+
 def revision_grapher(repo, start_rev=None, stop_rev=0, branch=None):
     """incremental revision grapher
 
@@ -50,10 +74,7 @@ def revision_grapher(repo, start_rev=None, stop_rev=0, branch=None):
 
     """
     if start_rev is None:
-        try:
-            start_rev = repo.changelog.count()
-        except AttributeError:
-            start_rev = len(repo.changelog)
+        start_rev = len(repo.changelog)
     assert start_rev >= stop_rev
     curr_rev = start_rev
     revs = []
@@ -121,6 +142,10 @@ def revision_grapher(repo, start_rev=None, stop_rev=0, branch=None):
 
 
 class GraphNode(object):
+    """
+    Simple class to encapsulate e hg node in the revision graph. Does
+    nothing but declaring attributes.
+    """
     def __init__(self, rev, xposition, color, lines, parents, ncols=None):
         self.rev = rev
         self.x = xposition
@@ -133,6 +158,11 @@ class GraphNode(object):
         self.toplines = []
         
 class Graph(object):
+    """
+    Graph object to ease hg repo navigation. The Graph object
+    instanciate a `revision_grapher` generator, and provide a `fill`
+    method to build the graph progressively.
+    """
     #@timeit
     def __init__(self, repo, branch=None):
         self.repo = repo
@@ -142,6 +172,9 @@ class Graph(object):
         self.max_cols = 0
         
     def _build_nodes(self, nnodes):
+        """Internal method.
+        Build `nnodes` more nodes in our graph. 
+        """
         if self.grapher is None:
             return
         
@@ -169,25 +202,26 @@ class Graph(object):
         return not stopped
 
     def fill(self, step=100):
-        for i in xrange(0, self.count(), step):
+        """
+        Return a generator that fills the graph by bursts of `step`
+        more nodes at each iteration.
+        """
+        for i in xrange(0, len(self.repo.changelog), step):
             self._build_nodes(step)
             yield i
         self._build_nodes(step)
-        yield self.count()
+        yield len(self.repo.changelog)
         
     def __getitem__(self, idx):
         if idx >= len(self.nodes):
+            # build as many graph nodes as required to answer the
+            # requested idx
             self._build_nodes(idx)
         return self.nodes[idx]
 
     def __len__(self):
+        # len(graph) is the number of actually built graph nodes
         return max(len(self.nodes) - 1, 0)
-        
-    def count(self):
-        try:
-            return self.repo.changelog.count()
-        except AttributeError:
-            return len(self.repo.changelog)
 
         
 if __name__ == "__main__":

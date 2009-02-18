@@ -5,9 +5,8 @@
 # This software may be used and distributed according to the terms
 # of the GNU General Public License, incorporated herein by reference.
 
-from mercurial import hg, commands, dispatch
-
 import os
+from mercurial import hg, commands, dispatch
     
 # every command must take a ui and and repo as arguments.
 # opts is a dict where you can find other command line flags

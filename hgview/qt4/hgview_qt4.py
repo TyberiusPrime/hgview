@@ -95,6 +95,8 @@ class HgMainWindow(QtGui.QMainWindow):
         sci.SendScintilla(sci.SCI_INDICSETSTYLE, 9, sci.INDIC_PLAIN)
         sci.SendScintilla(sci.SCI_INDICSETUNDER, 9, False)
         sci.SendScintilla(sci.SCI_INDICSETFORE, 9, 0x0000FF)
+
+        sci.SendScintilla(sci.SCI_SETSELEOLFILLED, True)
         self.textview_status = sci
         
         # filter frame
@@ -365,7 +367,7 @@ class HgMainWindow(QtGui.QMainWindow):
 
     def file_activated(self, index):
         sel_file = self.filelistmodel.fileFromIndex(index)        
-        if sel_file is not None and self.repo.file(sel_file).count()>1:
+        if sel_file is not None and len(self.repo.file(sel_file))>1:
             FileDiffViewer(self.repo, sel_file).exec_()
                 
     def file_section_resized(self, idx, oldsize, newsize):
@@ -616,7 +618,7 @@ class HgMainWindow(QtGui.QMainWindow):
         node_low = self.spinbutton_rev_low
         node_high = self.spinbutton_rev_high
 
-        cnt = self.repo.changelog.count()
+        cnt = len(self.repo.changelog)
         if self.filter_files_reg:
             file_filter.setText(self.filerex)
         node_low.setRange(0, cnt+1)

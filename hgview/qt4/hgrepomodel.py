@@ -32,7 +32,7 @@ _columnmap = {'ID': lambda ctx: ctx.rev(),
               }
 
 # in following lambdas, r is a hg repo 
-_maxwidth = {'ID': lambda r: str(hasattr(r.changelog, "count") and r.changelog.count() or len(r.changelog)),
+_maxwidth = {'ID': lambda r: str(len(r.changelog)),
              'Date': lambda r: cvrt_date(r.changectx(0).date()),
              'Tags': lambda r: sorted(r.tags().keys(), cmp=lambda x,y: cmp(len(x), len(y)))[-1],
              'Branch': lambda r: sorted(r.branchtags().keys(), cmp=lambda x,y: cmp(len(x), len(y)))[-1],
@@ -69,7 +69,7 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
     def fillGraph(self):
         step = self.fill_step
         if self._fill_iter is None:
-            self.emit(QtCore.SIGNAL('filling(int)'), self.graph.count())
+            self.emit(QtCore.SIGNAL('filling(int)'), len(self.repo.changelog))
             self._fill_iter = self.graph.fill(step=step)
             self.emit(QtCore.SIGNAL('layoutChanged()'))
             QtGui.QApplication.processEvents()
@@ -237,10 +237,7 @@ class FileRevModel(HgRepoListModel):
         self._ctxcache = {}
         
     def rowCount(self, parent=None):
-        try:
-            return self.filelog.count()
-        except AttributeError:
-            return len(self.filelog)
+        return len(self.filelog)
 
     def data(self, index, role):
         if not index.isValid():

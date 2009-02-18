@@ -1,4 +1,4 @@
-# Copyright (c) 2003-2007 LOGILAB S.A. (Paris, FRANCE).
+# Copyright (c) 2003-2009 LOGILAB S.A. (Paris, FRANCE).
 # http://www.logilab.fr/ -- mailto:contact@logilab.fr
 #
 # This program is free software; you can redistribute it and/or modify it under
@@ -20,3 +20,10 @@ written with efficiency in mind when dealing with big repositories
 (it can happily be used to browse Linux kernel source code
 repository).
 """
+
+# monkey patch to support older hg versions
+from mercurial import changelog, filelog
+if not hasattr(changelog.changelog, '__len__'):
+    changelog.changelog.__len__ = changelog.changelog.count
+if not hasattr(filelog.filelog, '__len__'):
+    filelog.filelog.__len__ = filelog.filelog.count
