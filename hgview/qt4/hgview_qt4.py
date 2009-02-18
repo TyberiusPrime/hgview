@@ -314,7 +314,7 @@ class HgMainWindow(QtGui.QMainWindow):
             # if this is the first time the model is filled, we select
             # the first available revision
             tv = self.tableView_revisions
-            tv.setCurrentIndex(tv.model().index(0,0))
+            tv.setCurrentIndex(tv.model().index(0, 0))
         
     def revision_selected(self, index, index_from):
         """
@@ -331,10 +331,11 @@ class HgMainWindow(QtGui.QMainWindow):
             self.filelistmodel.setSelectedRev(ctx)
             if len(self.filelistmodel):
                 self.tableView_filelist.selectRow(0)
-                self.file_selected(self.filelistmodel.createIndex(0,0,None), None)
+                self.file_selected(self.filelistmodel.createIndex(0, 0, None), None)
             else:
                 self.textview_status.clear()
 
+    #@timeit
     def file_selected(self, index=None, index_from=None):
         """
         Callback called when a filename is selected in the file list
@@ -349,7 +350,6 @@ class HgMainWindow(QtGui.QMainWindow):
         row = index.row()
         sel_file = ctx.files()[row]
         flag, data = self.get_file_data(sel_file)
-
         lexer = None
         if flag == "M":
             lexer = Qsci.QsciLexerDiff()
@@ -375,16 +375,17 @@ class HgMainWindow(QtGui.QMainWindow):
             self.filelistmodel.setDiffWidth(newsize)
 
     def resize_filelist_columns(self, *args):
-        # resize columns the smart way: the diffstat column is resized
-        # according to its content, the one holding file names being
-        # resized according to the widget size.
+        # resize columns the smart way: the first column holding file
+        # names is resized according to the total widget size.
         self.tableView_filelist.resizeColumnToContents(1)
         vp_width = self.tableView_filelist.viewport().width()
-        col_width = vp_width-self.tableView_filelist.columnWidth(1)
+        col_widths = [self.tableView_filelist.columnWidth(i) \
+                      for i in range(1, self.filelistmodel.columnCount())]
+        col_width = vp_width - sum(col_widths)
         self.tableView_filelist.setColumnWidth(0, col_width)
 
     def resize_revisiontable_columns(self, *args):
-        # same as before, but for the "Log" column
+        # same as before, but for the "Log" column of the repo graph log
         col1_width = self.tableView_revisions.viewport().width()
         fontm = QtGui.QFontMetrics(self.tableView_revisions.font())
         for c in range(self.repomodel.columnCount()):
@@ -399,6 +400,7 @@ class HgMainWindow(QtGui.QMainWindow):
             col1_width -= self.tableView_revisions.columnWidth(c)
         self.tableView_revisions.setColumnWidth(1, col1_width)
 
+    #@timeit
     def get_file_data(self, filename, ctx=None):
         if ctx is None:
             ctx = self.filelistmodel.current_ctx
