@@ -366,8 +366,9 @@ class HgFileListModel(QtCore.QAbstractTableModel):
             self.current_ctx = ctx
             self._datacache = {}            
             self.changes = [self.repo.status(ctx.parents()[0].node(), ctx.node())[:5], None]
-            if ctx.parents()[1]:
-                self.changes[1] = self.repo.status(ctx.parents()[1].node(), ctx.node())[:5]
+            # XXX will we need this?
+            #if ctx.parents()[1]:
+            #    self.changes[1] = self.repo.status(ctx.parents()[1].node(), ctx.node())[:5]
             self.emit(QtCore.SIGNAL("layoutChanged()"))
 
     def fileflag(self, fn, ctx=None):
