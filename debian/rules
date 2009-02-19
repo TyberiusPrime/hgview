@@ -31,8 +31,8 @@ install: build
 	dh_testroot
 	dh_clean -k
 	dh_installdirs
-	python setup.py -q install --prefix=debian/hgview/usr
-	rm -rf debian/hgview/usr/lib/python*/site-packages/hgview/test
+	python setup.py -q install --prefix=debian/hgqv/usr
+	rm -rf debian/hgqv/usr/lib/python*/site-packages/hgqv/test
 
 
 # Build architecture-independent files here.

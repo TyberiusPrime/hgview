@@ -1,3 +1,12 @@
+hgqv (0.99.0-1) unstable; urgency=low
+
+  * Fork from hgview to build a Qt4-only based application
+  * Make it work as a hg extension
+  * Rework keybindings and general navigation
+  * Add a diff viewer between revisions of a file 
+
+ -- David Douard <david.douard@logilab.fr>  Thu, 19 Feb 2009 00:58:23 +0100
+
 hgview (0.9.1-1) unstable; urgency=low
 
   * Fix a format bug and clean code.

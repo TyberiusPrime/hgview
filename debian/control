@@ -8,13 +8,13 @@ Build-Depends: debhelper (>= 5.0.38)
 Build-Depends-Indep: python (>=2.3.5-7),  python-central (>= 0.5.6)
 Standards-Version: 3.8.0
 XS-Python-Version: current
-Vcs-Hg: http://www.logilab.org/cgi-bin/hgwebdir.cgi/hgview
-Vcs-Browser: http://www.logilab.org/cgi-bin/hgwebdir.cgi/hgview
-Homepage: http://www.logilab.org/project/hgview
+Vcs-Hg: http://www.logilab.org/cgi-bin/hgwebdir.cgi/hgqv
+Vcs-Browser: http://www.logilab.org/cgi-bin/hgwebdir.cgi/hgqv
+Homepage: http://www.logilab.org/project/hgqv
 
-Package: hgview
+Package: hgqv
 Architecture: all
-Depends: python, python-glade2 | python-qt4
+Depends: python, python-qt4, python-qscintilla2, python-egenix-mxdate
 XB-Python-Version: ${python:Versions}
 Description: mercurial interactive history viewer
  Its purpose is similar to the hgk tool of mercurial, and it has been
