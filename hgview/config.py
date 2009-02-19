@@ -70,10 +70,12 @@ class HgConfig(object):
         users = {}
         aliases = {}
         usersfile = self.ui.config(self.section, 'users', None)
-        try:
-            cfgfile = open(os.path.expanduser(usersfile))
-        except IOError:
-            cfgfile = None
+        cfgfile = None
+        if usersfile:
+            try:
+                cfgfile = open(os.path.expanduser(usersfile))
+            except IOError:
+                cfgfile = None
 
         if cfgfile:
             currid = None
