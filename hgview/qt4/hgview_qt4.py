@@ -57,6 +57,7 @@ class HgMainWindow(QtGui.QMainWindow):
         uifile = os.path.join(os.path.dirname(__file__), ui_file)
         self.ui = uic.loadUi(uifile, self)
         self._icons = {}
+        self.current_ctx = None
 
         # setup the status bar, with a progress bar in it
         self.pb = QtGui.QProgressBar(self.statusBar())
@@ -103,6 +104,14 @@ class HgMainWindow(QtGui.QMainWindow):
 
         # find frame
         self._find_text = None
+
+        # rev navigation history (manage 'back' action)
+        self._rev_history = []
+        self._rev_pos = -1
+        self._in_history = False # flag set when we are "in" the
+        # history. It is required cause we cannot known, in
+        # "revision_selected", if we are crating a new branch in the
+        # history navigation or if we are navigating the history
         
         # XXX don't know why I have to do this, the icon is affected
         # in designer, but it does not work here...
@@ -114,6 +123,8 @@ class HgMainWindow(QtGui.QMainWindow):
         self.action_FindNext.setShortcuts([self.action_FindNext.shortcut(), "Ctrl+N"])
         self.connect(self.actionCloseFind, QtCore.SIGNAL('triggered(bool)'),
                      self.find_frame.hide)
+        self.connect(self.actionBack, QtCore.SIGNAL('triggered(bool)'),
+                     self.back)
         self.connect(self.close_find_toolButton, QtCore.SIGNAL('clicked(bool)'),
                      self.find_frame.hide)
         self.connect(self.action_Find, QtCore.SIGNAL('triggered()'),
@@ -171,6 +182,16 @@ class HgMainWindow(QtGui.QMainWindow):
         self.setup_models()
         self.refresh_revision_table()
 
+    def back(self):
+        if self._rev_history:
+            self._rev_pos -= 1
+            idx = self.repomodel.indexFromRev(self._rev_history[self._rev_pos])
+            if idx is not None:
+                self._in_history = True
+                self.tableView_revisions.setCurrentIndex(idx)
+            if self._rev_pos < 1:
+                self.actionBack.setEnabled(False)
+                
     def closeEvent(self, event):
         if not self.goto_frame.isHidden():
             self.goto_frame.hide()
@@ -319,10 +340,19 @@ class HgMainWindow(QtGui.QMainWindow):
         """
         Callback called when a revision os selected in the revisions table
         """
-        row = index.row() + 1
         if self.repomodel.graph:
+            row = index.row() + 1
             gnode = self.repomodel.graph[row]
             ctx = self.repo.changectx(gnode.rev)
+            if self.current_ctx and self.current_ctx.rev() == ctx.rev():
+                return                            
+            if not self._in_history:
+                del self._rev_history[self._rev_pos+1:]
+                self._rev_history.append(ctx.rev())
+                self._rev_pos = len(self._rev_history)-1
+            self.actionBack.setEnabled(self._rev_pos>0 and len(self._rev_history)>0)
+
+            self._in_history = False
             self.current_ctx = ctx
             header = self.fill_revlog_header(ctx)
             self.textview_header.setHtml(header)

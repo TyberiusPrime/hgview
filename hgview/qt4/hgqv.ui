@@ -334,6 +334,7 @@
     </property>
     <addaction name="action_Find" />
     <addaction name="action_Goto" />
+    <addaction name="actionBack" />
    </widget>
    <addaction name="menuFile" />
    <addaction name="menu_Edit" />
@@ -393,11 +394,6 @@
     <bool>false</bool>
    </attribute>
   </widget>
-  <action name="action" >
-   <property name="text" >
-    <string>'</string>
-   </property>
-  </action>
   <action name="actionOpen_repository" >
    <property name="text" >
     <string>&amp;Open repository</string>
@@ -467,6 +463,17 @@
    </property>
    <property name="text" >
     <string>close</string>
+   </property>
+  </action>
+  <action name="actionBack" >
+   <property name="checkable" >
+    <bool>false</bool>
+   </property>
+   <property name="text" >
+    <string>&amp;Back</string>
+   </property>
+   <property name="shortcut" >
+    <string>Alt+Left</string>
    </property>
   </action>
  </widget>
