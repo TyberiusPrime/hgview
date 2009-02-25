@@ -25,6 +25,8 @@ from StringIO import StringIO
 from mercurial.node import nullrev
 from mercurial import patch, util
 
+import hgview # force apply monkeypatches
+
 #from hgview.decorators import timeit
 
 def diff(repo, ctx1, ctx2=None, files=None):
@@ -151,6 +153,54 @@ def revision_grapher(repo, start_rev=None, stop_rev=0, branch=None):
         revs = next_revs
         curr_rev -= 1
 
+def filelog_grapher(repo, path):
+    '''
+    Graph the ancestry of a single file (log).  Deletions show
+    up as breaks in the graph.
+    '''
+    filerev = len(repo.file(path)) - 1
+    revs = []
+    rev_color = {}
+    nextcolor = 0
+    while filerev >= 0:
+        fctx = repo.filectx(path, fileid=filerev)
+
+        # Compute revs and next_revs.
+        if filerev not in revs:
+            revs.append(filerev)
+            rev_color[filerev] = nextcolor ; nextcolor += 1
+        curcolor = rev_color[filerev]
+        index = revs.index(filerev)
+        next_revs = revs[:]
+
+        # Add parents to next_revs.
+        parents = [f.filerev() for f in fctx.parents() if f.path() == path]
+        parents_to_add = []
+        for parent in parents:
+            if parent not in next_revs:
+                parents_to_add.append(parent)
+                if len(parents) > 1:
+                    rev_color[parent] = nextcolor ; nextcolor += 1
+                else:
+                    rev_color[parent] = curcolor
+        parents_to_add.sort()
+        next_revs[index:index + 1] = parents_to_add
+
+        lines = []
+        for i, rev in enumerate(revs):
+            if rev in next_revs:
+                color = rev_color[rev]
+                lines.append( (i, next_revs.index(rev), color) )
+            elif rev == filerev:
+                for parent in parents:
+                    color = rev_color[parent]
+                    lines.append( (i, next_revs.index(parent), color) )
+
+        pcrevs = [pfc.rev() for pfc in fctx.parents()]
+        yield (fctx.rev(), index, curcolor, lines, pcrevs)
+        revs = next_revs
+        filerev -= 1
+
 
 class GraphNode(object):
     """
@@ -175,9 +225,10 @@ class Graph(object):
     method to build the graph progressively.
     """
     #@timeit
-    def __init__(self, repo, branch=None):
+    def __init__(self, repo, grapher):
         self.repo = repo
-        self.grapher = revision_grapher(self.repo, branch=branch)
+        self.maxlog = len(self.repo.changelog)
+        self.grapher = grapher
         self.nodes = []
         self.nodesdict = {}
         self.max_cols = 0
@@ -187,7 +238,7 @@ class Graph(object):
         Build `nnodes` more nodes in our graph. 
         """
         if self.grapher is None:
-            return
+            return False
         
         stopped = False
         mcol = [self.max_cols]
@@ -197,14 +248,15 @@ class Graph(object):
                 if v is None:
                     continue
                 nrev, xpos, color, lines, parents = v
+                if nrev >= self.maxlog:
+                    continue
                 gnode = GraphNode(nrev, xpos, color, lines, parents)
                 if self.nodes:
                     gnode.toplines = self.nodes[-1].bottomlines
                 self.nodes.append(gnode)
                 self.nodesdict[nrev] = gnode
                 mcol.append(gnode.cols)
-
-            except StopIteration:
+            except StopIteration:                
                 self.grapher = None
                 stopped = True
                 break
@@ -217,22 +269,26 @@ class Graph(object):
         Return a generator that fills the graph by bursts of `step`
         more nodes at each iteration.
         """
-        for i in xrange(0, len(self.repo.changelog), step):
-            self._build_nodes(step)
-            yield i
-        self._build_nodes(step)
-        yield len(self.repo.changelog)
+        while self._build_nodes(step):
+            yield len(self)
+        yield len(self)
         
     def __getitem__(self, idx):
         if idx >= len(self.nodes):
             # build as many graph nodes as required to answer the
             # requested idx
             self._build_nodes(idx)
+        if idx > len(self):
+            print "ARGHH, ", idx, len(self)
+            import traceback
+            traceback.print_stack()
+            return self.nodes[-1]
+            return None
         return self.nodes[idx]
 
     def __len__(self):
         # len(graph) is the number of actually built graph nodes
-        return max(len(self.nodes) - 1, 0)
+        return max(len(self.nodes), 0)
 
         
 if __name__ == "__main__":
@@ -241,5 +297,9 @@ if __name__ == "__main__":
     from mercurial import ui, hg
     u = ui.ui()
     r = hg.repository(u, sys.argv[1])
-    g = Graph(r)
+    if len(sys.argv) == 3:
+        rg = filelog_grapher(r, sys.argv[2])
+    else:
+        rg = revision_grapher(r)
+    g = Graph(r, rg)
     
