@@ -56,6 +56,7 @@ class HgMainWindow(QtGui.QMainWindow):
                              "Check your installation.")
         uifile = os.path.join(os.path.dirname(__file__), ui_file)
         self.ui = uic.loadUi(uifile, self)
+        self.setWindowTitle('hgqv: %s' % os.path.abspath(self.repo.root))
 
         # member variables
         self._icons = {}
@@ -411,7 +412,9 @@ class HgMainWindow(QtGui.QMainWindow):
     def file_activated(self, index):
         sel_file = self.filelistmodel.fileFromIndex(index)
         if sel_file is not None and len(self.repo.file(sel_file))>1:
-            FileDiffViewer(self.repo, sel_file).exec_()
+            dlg = FileDiffViewer(self.repo, sel_file)
+            dlg.setWindowTitle('Hg file log viewer')
+            dlg.show()
 
     def file_section_resized(self, idx, oldsize, newsize):
         if idx == 2:
