@@ -240,7 +240,7 @@ class HgMainWindow(QtGui.QMainWindow):
     def setup_models(self):
         self.repomodel = HgRepoListModel(self.repo)
         self.tableView_revisions.setModel(self.repomodel)        
-        self.filelistmodel = HgFileListModel(self.repo, self.repomodel.graph)
+        self.filelistmodel = HgFileListModel(self.repo)
         self.tableView_filelist.setModel(self.filelistmodel)
 
         self.connect(self.repomodel, QtCore.SIGNAL('filling(int)'),
@@ -341,7 +341,7 @@ class HgMainWindow(QtGui.QMainWindow):
         Callback called when a revision os selected in the revisions table
         """
         if self.repomodel.graph:
-            row = index.row() + 1
+            row = index.row()
             gnode = self.repomodel.graph[row]
             ctx = self.repo.changectx(gnode.rev)
             if self.current_ctx and self.current_ctx.rev() == ctx.rev():

@@ -22,7 +22,9 @@ import re
 
 from mercurial.node import nullrev
 from mercurial.revlog import LookupError
+
 from hgview.hggraph import Graph, diff as revdiff
+from hgview.hggraph import revision_grapher, filelog_grapher
 from hgview.config import HgConfig
 from hgview.decorators import timeit
 
@@ -106,7 +108,9 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
         
         self._user_colors = {}
         self._branch_colors = {}
-        self.graph = Graph(self.repo, branch=branch)
+        grapher = revision_grapher(self.repo, branch=branch)
+        self.graph = Graph(self.repo, grapher)
+        self.nmax = len(self.repo.changelog)
         self.heads = [self.repo.changectx(x).rev() for x in self.repo.heads()]
         self._fill_iter = None
         self.gr_fill_timer.start()
@@ -114,21 +118,23 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
     def fillGraph(self):
         step = self.fill_step
         if self._fill_iter is None:
-            self.emit(QtCore.SIGNAL('filling(int)'), len(self.repo.changelog))
+            self.emit(QtCore.SIGNAL('filling(int)'), self.nmax)
             self._fill_iter = self.graph.fill(step=step)
             self.emit(QtCore.SIGNAL('layoutChanged()'))
             QtGui.QApplication.processEvents()
         try:
             n = len(self.graph)
-            self.beginInsertRows(QtCore.QModelIndex(), n, n+step)
+            nm = min(n+step, self.nmax)
+            self.beginInsertRows(QtCore.QModelIndex(), n, nm)
             nfilled = self._fill_iter.next()
             self.emit(QtCore.SIGNAL('filled(int)'), nfilled)
-            self.endInsertRows()
         except StopIteration:
             self.gr_fill_timer.stop()
             self._fill_iter = None
             self.emit(QtCore.SIGNAL('fillingover()'))
             self.emit(QtCore.SIGNAL('layoutChanged()'))
+        finally:
+            self.endInsertRows()
 
     def rowCount(self, parent=None):
         return len(self.graph)
@@ -176,7 +182,7 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
     def data(self, index, role):
         if not index.isValid():
             return nullvariant
-        row = index.row() + 1
+        row = index.row()
         column = self._columns[index.column()]
         gnode = self.graph[row]
         ctx = self.repo.changectx(gnode.rev)
@@ -269,46 +275,34 @@ class FileRevModel(HgRepoListModel):
     viewer of in diff-file viewer dialogs.
     """
     _columns = ('ID', 'Log', 'Author', 'Date')
-
+    
     def __init__(self, repo, filename, noderev=None, parent=None):
         """
         data is a HgHLRepo instance
         """
-        QtCore.QAbstractTableModel.__init__(self, parent)
+        HgRepoListModel.__init__(self, repo, parent=parent)
+        self.filelog = self.repo.file(filename)
+        self.setFilename(filename)
+        
+    def setRepo(self, repo, branch=''):
+        self.repo = repo
+        self._datacache = {}
+        self.loadConfig()
+
+    def setFilename(self, filename):
+        self.filename = filename
+        self.filelog = self.repo.file(filename)
+        self.nmax = len(self.filelog)
+        grapher = filelog_grapher(self.repo, self.filename)
+        
         self._user_colors = {}
         self._branch_colors = {}
-        self.repo = repo
-        self.filename = filename
-        self.loadConfig()
-        self.filelog = self.repo.file(filename)
-        self.heads = [self.filelog.rev(x) for x in self.filelog.heads()]
-        self._ctxcache = {}
+        self.graph = Graph(self.repo, grapher)
+        self.heads = [self.repo.changectx(x).rev() for x in self.repo.heads()]
+        self._datacache = {}
+        self._fill_iter = None
+        self.gr_fill_timer.start()
         
-    def rowCount(self, parent=None):
-        return len(self.filelog)
-
-    def data(self, index, role):
-        if not index.isValid():
-            return nullvariant
-        row = self.rowCount() - index.row() - 1 
-        column = self._columns[index.column()]
-        if row in self._ctxcache:
-            ctx = self._ctxcache[row]
-        else:
-            ctx = self.repo.filectx(self.filename,
-                                    fileid=self.filelog.node(row)).changectx()
-            self._ctxcache[row] = ctx
-            
-        if role == QtCore.Qt.DisplayRole:
-            if column == 'Author': #author
-                return QtCore.QVariant(self.user_name(_columnmap[column](ctx)))
-            return QtCore.QVariant(_columnmap[column](ctx))
-        elif role == QtCore.Qt.ForegroundRole:
-            if column == 'Author': #author
-                return QtCore.QVariant(QtGui.QColor(self.user_color(ctx.user())))
-            if column == 'Branch': #branch
-                return QtCore.QVariant(QtGui.QColor(self.namedbranch_color(ctx.branch())))
-        return nullvariant
 
 replus = re.compile(r'^[+][^+].*', re.M)
 reminus = re.compile(r'^[-][^-].*', re.M)
@@ -317,7 +311,7 @@ class HgFileListModel(QtCore.QAbstractTableModel):
     """
     Model used for listing (modified) files of a given Hg revision
     """
-    def __init__(self, repo, graph, parent=None):
+    def __init__(self, repo, parent=None):
         """
         data is a HgHLRepo instance
         """
@@ -459,25 +453,36 @@ class HgFileListModel(QtCore.QAbstractTableModel):
         
 if __name__ == "__main__":
     from mercurial import ui, hg
-    root = '.'
-    if len(sys.argv)>1:
-        root=sys.argv[1]
+    from optparse import OptionParser
+    p = OptionParser()
+    p.add_option('-R', '--root', default='.',
+                 dest='root',
+                 help="Repository main directory")
+    p.add_option('-f', '--file', default=None,
+                 dest='filename',
+                 help="display the revision graph of this file (if not given, display the whole rev graph)")
+
+    opt, args = p.parse_args()
+
     u = ui.ui()    
-    repo = hg.repository(u, root)
+    repo = hg.repository(u, opt.root)
     app = QtGui.QApplication(sys.argv)
-    model = HgRepoListModel(repo)
+    if opt.filename is not None:
+        model = FileRevModel(repo, opt.filename)
+    else:
+        model = HgRepoListModel(repo)
     
     view = QtGui.QTableView()
     #delegate = GraphDelegate()
     #view.setItemDelegateForColumn(1, delegate)
     view.setShowGrid(False)
     view.verticalHeader().hide()
+    view.verticalHeader().setDefaultSectionSize(20)
     view.setSelectionMode(QtGui.QAbstractItemView.SingleSelection)
     view.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
     view.setModel(model)
     view.setWindowTitle("Simple Hg List Model")
     view.show()
     view.setAlternatingRowColors(True)
-    view.resizeColumnsToContents()
-    print "number of branches:", len(model.graph.rawgraph) 
+    #view.resizeColumnsToContents()
     sys.exit(app.exec_())
