@@ -36,27 +36,10 @@ def start_qtview(ui, repo, *args, **kwargs):
     Configuration:
 
     Configuration statements goes under the section [qtview] of the
-    hgrc config file. The 'users' config statement should the path of
-    a file describing users, like:
+    hgrc config file.
 
-    -----------------------------------------------
-    # file ~/.hgusers
-    id=david
-    alias=david.douard@logilab.fr
-    alias=david@logilab.fr
-    alias=David Douard <david.douard@logilab.fr>
-    color=#FF0000
+    If a filename is given, only launch the filelog viewer for this file.
     
-    id=ludal
-    alias=ludovic.aubry@logilab.fr
-    alias=ludal@logilab.fr
-    alias=Ludovic Aubry <ludovic.aubry@logilab.fr>
-    color=#00FF00
-    -----------------------------------------------
-    
-    This allow to make several 'authors' under the same name, with the
-    same color, in the graphlog browser.
-
     Use 'qtview-options' command to display list of all configuration options.
     """
     rundir = repo.root
@@ -86,10 +69,14 @@ def start_qtview(ui, repo, *args, **kwargs):
         #   [qtview]
         #   path=
         cmd = ui.config("qtview", "path", "hgqv") 
-        os.system(cmd)
+        os.system(cmd + " " + " ".join(args))
     else:
         app = QtGui.QApplication(sys.argv)
-        mainwindow = qtview.HgMainWindow(repo)
+        if len(args) == 1:
+            # should be a filename of a file managed in the repo
+            mainwindow = qtview.FileDiffViewer(repo, args[0])
+        else:
+            mainwindow = qtview.HgMainWindow(repo)
         mainwindow.show()
         return app.exec_()
 
@@ -102,12 +89,36 @@ def display_options(ui, repo, *args, **kwargs):
     options = get_option_descriptions()
     msg = """\nConfiguration options available for qtview.
     These should be set under the [qtview] section.\n\n"""
-    ui.status(msg + '\n'.join(["  - " + v for v in options]) + '\n')
+    msg += '\n'.join(["  - " + v for v in options]) + '\n'
+    msg += """
+    The 'users' config statement should be the path of a file
+    describing users, like:
+
+    -----------------------------------------------
+    # file ~/.hgusers
+    id=david
+    alias=david.douard@logilab.fr
+    alias=david@logilab.fr
+    alias=David Douard <david.douard@logilab.fr>
+    color=#FF0000
+    
+    id=ludal
+    alias=ludovic.aubry@logilab.fr
+    alias=ludal@logilab.fr
+    alias=Ludovic Aubry <ludovic.aubry@logilab.fr>
+    color=#00FF00
+    -----------------------------------------------
+    
+    This allow to make several 'authors' under the same name, with the
+    same color, in the graphlog browser.
+    """
+    
+    ui.status(msg)
     
 cmdtable = {
     "^qtview|qtv|qv": (start_qtview,
                        [],
-                       "hg qtview [options] [.]"),
+                       "hg qtview [options] [filename]"),
     "^qtview-options|qtview-config|qv-config|qv-cfg": (display_options,
                         [],
                         "")
