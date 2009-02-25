@@ -248,16 +248,16 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
             return QtCore.QVariant(self._columns[section])
         return nullvariant
 
-    def row_from_node(self, node):
-        try:
-            return self.graph.rows.index(node)
-        except ValueError:
-            return None
-
-    def indexFromRev(self, rev):
+    def rowFromRev(self, rev):
         for row, gnode in enumerate(self.graph):
             if gnode.rev == rev:
-                return self.index(row-1, 0)
+                return row
+        return None
+        
+    def indexFromRev(self, rev):
+        row = self.rowFromRev(rev)
+        if row is not None:
+            return self.index(row, 0)
         return None
                 
     def clear(self):
