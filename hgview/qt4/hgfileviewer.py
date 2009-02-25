@@ -205,19 +205,6 @@ class FileDiffViewer(QtGui.QDialog):
             sci.setMarginLineNumbers(1, True)
             sci.SendScintilla(sci.SCI_SETSELEOLFILLED, True)
 
-##             sci.SendScintilla(sci.SCI_INDICSETSTYLE, 8, sci.INDIC_ROUNDBOX)
-##             sci.SendScintilla(sci.SCI_INDICSETSTYLE, 9, sci.INDIC_ROUNDBOX)
-##             sci.SendScintilla(sci.SCI_INDICSETSTYLE, 10, sci.INDIC_ROUNDBOX)
-##             sci.SendScintilla(sci.SCI_INDICSETUNDER, 8, True)
-##             sci.SendScintilla(sci.SCI_INDICSETUNDER, 9, True)
-##             sci.SendScintilla(sci.SCI_INDICSETUNDER, 10, True)
-##             sci.SendScintilla(sci.SCI_INDICSETFORE, 8, 0xB0FFA0) # light green (+)
-##             sci.SendScintilla(sci.SCI_INDICSETFORE, 9, 0xA0A0FF) # light red (-)
-##             sci.SendScintilla(sci.SCI_INDICSETFORE, 10, 0xFFA0A0) # light blue (x)
-
-            #sci.setLexer(lexer)
-            #print "required for lexer", sci.SendScintilla(sci.SCI_GETSTYLEBITSNEEDED)
-            #sci.SendScintilla(sci.SCI_SETSTYLEBITS, 7)
             sci.SendScintilla(sci.SCI_STYLESETEOLFILLED, 0x10, True)
             sci.SendScintilla(sci.SCI_STYLESETBACK, 0x10, 0xB0FFA0)
             sci.SendScintilla(sci.SCI_STYLESETEOLFILLED, 0x08, True)
@@ -246,6 +233,8 @@ class FileDiffViewer(QtGui.QDialog):
                      self.idle_fill_files)        
 
         self.filerevmodel = FileRevModel(self.repo, self.filename, noderev)
+        self.connect(self.filerevmodel, QtCore.SIGNAL('fillingover()'),
+                     self.set_init_selections)
         for side in sides:
             table = getattr(self, 'tableView_revisions_%s' % side)
             table.verticalHeader().setDefaultSectionSize(self.rowheight)
@@ -255,14 +244,12 @@ class FileDiffViewer(QtGui.QDialog):
             self.connect(table.selectionModel(),
                          QtCore.SIGNAL('currentRowChanged(const QModelIndex &, const QModelIndex &)'),
                          getattr(self, 'revision_selected_%s' % side))
-                         #lambda idx, oldidx, side=side: self.revision_selected(idx, side))
             self.connect(self.viewers[side].verticalScrollBar(),
                          QtCore.SIGNAL('valueChanged(int)'),
                          lambda value, side=side: self.vbar_changed(value, side))
         self.setTabOrder(table, self.viewers['left']) 
         self.setTabOrder(self.viewers['left'], self.viewers['right']) 
         self.setup_columns_size()
-        self.set_init_selections()
 
     def eventFilter(self, watched, event):
         if event.type() == event.KeyPress:
@@ -324,8 +311,6 @@ class FileDiffViewer(QtGui.QDialog):
                     w.markerAdd(i, self.markertriangle)
                 pos0 = w.SendScintilla(w.SCI_POSITIONFROMLINE, alo)
                 pos1 = w.SendScintilla(w.SCI_POSITIONFROMLINE, ahi)
-                #w.SendScintilla(w.SCI_SETINDICATORCURRENT, 10)
-                #w.SendScintilla(w.SCI_INDICATORFILLRANGE, pos0, pos1-pos0)
                 w.SendScintilla(w.SCI_STARTSTYLING, pos0, 0x04)
                 w.SendScintilla(w.SCI_SETSTYLING, pos1-pos0, 0x04)
 
@@ -334,8 +319,6 @@ class FileDiffViewer(QtGui.QDialog):
                     w.markerAdd(i, self.markertriangle)
                 pos0 = w.SendScintilla(w.SCI_POSITIONFROMLINE, blo)
                 pos1 = w.SendScintilla(w.SCI_POSITIONFROMLINE, bhi)
-                #w.SendScintilla(w.SCI_SETINDICATORCURRENT, 10)
-                #w.SendScintilla(w.SCI_INDICATORFILLRANGE, pos0, pos1-pos0)
                 w.SendScintilla(w.SCI_STARTSTYLING, pos0, 0x04)
                 w.SendScintilla(w.SCI_SETSTYLING, pos1-pos0, 0x04)
 
@@ -348,8 +331,6 @@ class FileDiffViewer(QtGui.QDialog):
                     w.markerAdd(i, self.markerminus)
                 pos0 = w.SendScintilla(w.SCI_POSITIONFROMLINE, alo)
                 pos1 = w.SendScintilla(w.SCI_POSITIONFROMLINE, ahi)
-                #w.SendScintilla(w.SCI_SETINDICATORCURRENT, 9)
-                #w.SendScintilla(w.SCI_INDICATORFILLRANGE, pos0, pos1-pos0)
                 w.SendScintilla(w.SCI_STARTSTYLING, pos0, 0x08)
                 w.SendScintilla(w.SCI_SETSTYLING, pos1-pos0, 0x08)
 
@@ -362,19 +343,14 @@ class FileDiffViewer(QtGui.QDialog):
                     w.markerAdd(i, self.markerplus)
                 pos0 = w.SendScintilla(w.SCI_POSITIONFROMLINE, blo)
                 pos1 = w.SendScintilla(w.SCI_POSITIONFROMLINE, bhi)
-                #w.SendScintilla(w.SCI_SETINDICATORCURRENT, 8)
-                #w.SendScintilla(w.SCI_INDICATORFILLRANGE, pos0, pos1-pos0)
                 w.SendScintilla(w.SCI_STARTSTYLING, pos0, 0x10)
                 w.SendScintilla(w.SCI_SETSTYLING, pos1-pos0, 0x10)
-                
 
             elif tag == 'equal':
                 pass
 
             else:
                 raise ValueError, 'unknown tag %r' % (tag,)
-            #self.viewers['left'].SendScintilla(w.SCI_STARTSTYLING, cposl, 0x1F)
-            #self.viewers['right'].SendScintilla(w.SCI_STARTSTYLING, cposr, 0x1F)
             
         # ok, let's enable GUI refresh for code viewers and diff-block displayers 
         for side in sides:
