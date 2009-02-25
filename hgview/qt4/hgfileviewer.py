@@ -78,7 +78,7 @@ class FileViewer(QtGui.QDialog):
         # hg repo
         self.repo = repo
         self.filename = filename
-        self.loadConfig()
+        self.load_config()
         
         lay = QtGui.QHBoxLayout(self.frame)
         lay.setSpacing(0)
@@ -126,7 +126,7 @@ class FileViewer(QtGui.QDialog):
         self.textBrowser_filecontent.markerAdd(1, self.markerplus)
         self.textBrowser_filecontent.markerAdd(2, self.markerminus)
 
-    def loadConfig(self):
+    def load_config(self):
         cfg = HgConfig(self.repo.ui)
         fontstr = cfg.getFont()
         font = QtGui.QFont()
@@ -169,7 +169,7 @@ class FileDiffViewer(QtGui.QDialog):
         # hg repo
         self.repo = repo
         self.filename = filename
-        self.loadConfig()
+        self.load_config()
         
         self.filedata = {'left': None, 'right': None}
         self._previous = None
@@ -261,7 +261,7 @@ class FileDiffViewer(QtGui.QDialog):
                 return True
         return QtGui.QDialog.eventFilter(self, watched, event)
         
-    def loadConfig(self):
+    def load_config(self):
         cfg = HgConfig(self.repo.ui)
         fontstr = cfg.getFont()
         font = QtGui.QFont()

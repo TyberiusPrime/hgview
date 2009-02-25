@@ -40,7 +40,7 @@ class HgMainWindow(QtGui.QMainWindow):
         # hg repo
         self.graph = None
         self.repo = repo
-        self.loadConfig()
+        self.load_config()
 
         # load qt designer ui file
         for _path in [dirname(__file__),
@@ -56,55 +56,10 @@ class HgMainWindow(QtGui.QMainWindow):
                              "Check your installation.")
         uifile = os.path.join(os.path.dirname(__file__), ui_file)
         self.ui = uic.loadUi(uifile, self)
+
+        # member variables
         self._icons = {}
         self.current_ctx = None
-
-        # setup the status bar, with a progress bar in it
-        self.pb = QtGui.QProgressBar(self.statusBar())
-        self.pb.setTextVisible(False)
-        self.pb.hide()
-        self.statusBar().addPermanentWidget(self.pb)
-
-        self.splitter_2.setStretchFactor(0, 2)
-        self.splitter_2.setStretchFactor(1, 1)
-        self.connect(self.splitter_2, QtCore.SIGNAL('splitterMoved (int, int)'),
-                     self.resize_filelist_columns)
-        lay = QtGui.QHBoxLayout(self.textview_frame)
-        lay.setSpacing(0)
-        lay.setContentsMargins(0,0,0,0)
-        # main window actions
-        self.connect(self.actionRefresh, QtCore.SIGNAL('triggered ()'),
-                     self.reload_repository)
-        self.connect(self.actionAbout, QtCore.SIGNAL('triggered ()'),
-                     self.on_about)
-        self.connect(self.actionQuit, QtCore.SIGNAL('triggered ()'),
-                     self.close)
-        self.actionQuit.setShortcuts([self.actionQuit.shortcut(), Qt.Key_Escape])
-        
-        # text viewer
-        sci = Qsci.QsciScintilla(self.textview_frame)
-        lay.addWidget(sci)
-        sci.setMarginLineNumbers(1, True)
-        sci.setMarginWidth(1, '000')
-        sci.setReadOnly(True)
-        sci.setFont(self.font)
-
-        sci.SendScintilla(sci.SCI_INDICSETSTYLE, 8, sci.INDIC_ROUNDBOX)
-        sci.SendScintilla(sci.SCI_INDICSETUNDER, 8, True)
-        sci.SendScintilla(sci.SCI_INDICSETFORE, 8, 0xBBFFFF)
-        sci.SendScintilla(sci.SCI_INDICSETSTYLE, 9, sci.INDIC_PLAIN)
-        sci.SendScintilla(sci.SCI_INDICSETUNDER, 9, False)
-        sci.SendScintilla(sci.SCI_INDICSETFORE, 9, 0x0000FF)
-
-        sci.SendScintilla(sci.SCI_SETSELEOLFILLED, True)
-        self.textview_status = sci
-        
-        # filter frame
-        self.setup_filterframe()
-
-        # find frame
-        self._find_text = None
-
         # rev navigation history (manage 'back' action)
         self._rev_history = []
         self._rev_pos = -1
@@ -112,12 +67,70 @@ class HgMainWindow(QtGui.QMainWindow):
         # history. It is required cause we cannot known, in
         # "revision_selected", if we are crating a new branch in the
         # history navigation or if we are navigating the history
+        self._find_text = None
+
+        self.setup_statusbar()
         
+        self.splitter_2.setStretchFactor(0, 2)
+        self.splitter_2.setStretchFactor(1, 1)
+        self.connect(self.splitter_2, QtCore.SIGNAL('splitterMoved (int, int)'),
+                     self.resize_filelist_columns)
+
+        self.setup_main_actions()
+        # text viewer
+        self.setup_diffview()
+        # filter frame
+        self.setup_filterframe()
+        
+        self._icons['closebtn'] = QtGui.QIcon(':/icons/close.png')
+        self.setup_find_frame()
+        self.setup_goto_frame()
+
+        # setup tables and views
+        self.setup_header_textview()
+        self.setup_revision_table()
+        self.setup_filelist_table()
+
+        self.setup_branch_combo()
+        self.setup_models()
+
+        self.refresh_revision_table()
+
+    def setup_branch_combo(self):
+        branches = sorted(self.repo.branchtags().keys())
+        if len(branches) == 1:
+            self.branch_comboBox.setEnabled(False)
+        else:
+            self.branchesmodel = QtGui.QStringListModel([''] + branches)
+            self.branch_comboBox.setModel(self.branchesmodel)
+        
+    def setup_goto_frame(self):
+        self.goto_frame.hide()
+        self.close_goto_toolButton.setIcon(self._icons['closebtn'])
+        self.action_Goto.setShortcuts([self.action_Find.shortcut(), "Ctrl+G"])
+        self.connect(self.actionCloseGoto, QtCore.SIGNAL('triggered(bool)'),
+                     self.goto_frame.hide)
+        self.connect(self.close_goto_toolButton, QtCore.SIGNAL('clicked(bool)'),
+                     self.goto_frame.hide)
+        self.connect(self.action_Goto, QtCore.SIGNAL('triggered()'),
+                     self.show_goto_frame)
+        self.connect(self.button_goto, QtCore.SIGNAL('clicked(bool)'),
+                     self.on_goto)
+        self.connect(self.entry_goto, QtCore.SIGNAL('returnPressed()'),
+                     self.on_goto)
+        self._goto_frame_timer = QtCore.QTimer(self)
+        self._goto_frame_timer.setInterval(self.hidefinddelay)
+        self.connect(self._goto_frame_timer, QtCore.SIGNAL('timeout()'),
+                     self.goto_frame.hide)
+        
+        self.goto_model = QtGui.QStringListModel(['tip'])
+        self.goto_completer = QtGui.QCompleter(self.goto_model, self)
+        self.entry_goto.setCompleter(self.goto_completer)
+        
+    def setup_find_frame(self):
+        self.find_frame.hide()
         # XXX don't know why I have to do this, the icon is affected
         # in designer, but it does not work here...
-        self._icons['closebtn'] = QtGui.QIcon(':/icons/close.png')
-
-        self.find_frame.hide()
         self.close_find_toolButton.setIcon(self._icons['closebtn'])
         self.action_Find.setShortcuts([self.action_Find.shortcut(), "Ctrl+F", "/"])
         self.action_FindNext.setShortcuts([self.action_FindNext.shortcut(), "Ctrl+N"])
@@ -143,45 +156,45 @@ class HgMainWindow(QtGui.QMainWindow):
         self._find_frame_timer.setInterval(self.hidefinddelay)
         self.connect(self._find_frame_timer, QtCore.SIGNAL('timeout()'),
                      self.find_frame.hide)
-
-        self.goto_frame.hide()
-        self.close_goto_toolButton.setIcon(self._icons['closebtn'])
-        self.action_Goto.setShortcuts([self.action_Find.shortcut(), "Ctrl+G"])
-        self.connect(self.actionCloseGoto, QtCore.SIGNAL('triggered(bool)'),
-                     self.goto_frame.hide)
-        self.connect(self.close_goto_toolButton, QtCore.SIGNAL('clicked(bool)'),
-                     self.goto_frame.hide)
-        self.connect(self.action_Goto, QtCore.SIGNAL('triggered()'),
-                     self.show_goto_frame)
-        self.connect(self.button_goto, QtCore.SIGNAL('clicked(bool)'),
-                     self.on_goto)
-        self.connect(self.entry_goto, QtCore.SIGNAL('returnPressed()'),
-                     self.on_goto)
-        self._goto_frame_timer = QtCore.QTimer(self)
-        self._goto_frame_timer.setInterval(self.hidefinddelay)
-        self.connect(self._goto_frame_timer, QtCore.SIGNAL('timeout()'),
-                     self.goto_frame.hide)
         
-        self.goto_model = QtGui.QStringListModel(['tip'])
-        self.goto_completer = QtGui.QCompleter(self.goto_model, self)
-        self.entry_goto.setCompleter(self.goto_completer)
+    def setup_main_actions(self):
+        # main window actions
+        self.connect(self.actionRefresh, QtCore.SIGNAL('triggered ()'),
+                     self.reload_repository)
+        self.connect(self.actionAbout, QtCore.SIGNAL('triggered ()'),
+                     self.on_about)
+        self.connect(self.actionQuit, QtCore.SIGNAL('triggered ()'),
+                     self.close)
+        self.actionQuit.setShortcuts([self.actionQuit.shortcut(), Qt.Key_Escape])
+        
+    def setup_statusbar(self):
+        # setup the status bar, with a progress bar in it
+        self.pb = QtGui.QProgressBar(self.statusBar())
+        self.pb.setTextVisible(False)
+        self.pb.hide()
+        self.statusBar().addPermanentWidget(self.pb)
+        
+    def setup_diffview(self):
+        lay = QtGui.QHBoxLayout(self.textview_frame)
+        lay.setSpacing(0)
+        lay.setContentsMargins(0,0,0,0)
+        sci = Qsci.QsciScintilla(self.textview_frame)
+        lay.addWidget(sci)
+        sci.setMarginLineNumbers(1, True)
+        sci.setMarginWidth(1, '000')
+        sci.setReadOnly(True)
+        sci.setFont(self.font)
 
-        # setup tables and views
-        self.setup_header_textview()
-        self.setup_revision_table()
-        self.setup_filelist_table()
+        sci.SendScintilla(sci.SCI_INDICSETSTYLE, 8, sci.INDIC_ROUNDBOX)
+        sci.SendScintilla(sci.SCI_INDICSETUNDER, 8, True)
+        sci.SendScintilla(sci.SCI_INDICSETFORE, 8, 0xBBFFFF)
+        sci.SendScintilla(sci.SCI_INDICSETSTYLE, 9, sci.INDIC_PLAIN)
+        sci.SendScintilla(sci.SCI_INDICSETUNDER, 9, False)
+        sci.SendScintilla(sci.SCI_INDICSETFORE, 9, 0x0000FF)
 
-        branches = sorted(self.repo.branchtags().keys())
-        if len(branches) == 1:
-            self.branch_comboBox.setEnabled(False)
-        else:
-            branchesmodel = QtGui.QStringListModel([''] + branches)
-            self.branch_comboBox.setModel(branchesmodel)
-            self.branchesmodel = branchesmodel
-
-        self.setup_models()
-        self.refresh_revision_table()
-
+        sci.SendScintilla(sci.SCI_SETSELEOLFILLED, True)
+        self.textview_status = sci
+        
     def back(self):
         if self._rev_history:
             self._rev_pos -= 1
@@ -191,17 +204,6 @@ class HgMainWindow(QtGui.QMainWindow):
                 self.tableView_revisions.setCurrentIndex(idx)
             if self._rev_pos < 1:
                 self.actionBack.setEnabled(False)
-                
-    def closeEvent(self, event):
-        if not self.goto_frame.isHidden():
-            self.goto_frame.hide()
-            event.ignore()
-        elif not self.find_frame.isHidden():
-            self.on_cancelsearch()
-            self.find_frame.hide()
-            event.ignore()
-        else:
-            event.accept()
         
     def on_goto(self, *args):
         goto = unicode(self.entry_goto.text())
@@ -215,7 +217,7 @@ class HgMainWindow(QtGui.QMainWindow):
                 self.tableView_revisions.setCurrentIndex(idx)
         self.goto_frame.hide()
                     
-    def loadConfig(self):
+    def load_config(self):
         cfg = HgConfig(self.repo.ui)
         fontstr = cfg.getFont()
         font = QtGui.QFont()
@@ -296,7 +298,19 @@ class HgMainWindow(QtGui.QMainWindow):
         self.connect(self.textview_header,
                      QtCore.SIGNAL('anchorClicked(const QUrl &)'),
                      self.on_anchor_clicked)
-        
+
+    # Qt methods
+    def closeEvent(self, event):
+        if not self.goto_frame.isHidden():
+            self.goto_frame.hide()
+            event.ignore()
+        elif not self.find_frame.isHidden():
+            self.on_cancelsearch()
+            self.find_frame.hide()
+            event.ignore()
+        else:
+            event.accept()
+
     def resizeEvent(self, event):
         # we catch this event to resize smartly tables' columns
         QtGui.QMainWindow.resizeEvent(self, event)
@@ -403,32 +417,6 @@ class HgMainWindow(QtGui.QMainWindow):
         if idx == 2:
             self.filelistmodel.setDiffWidth(newsize)
 
-    def resize_filelist_columns(self, *args):
-        # resize columns the smart way: the first column holding file
-        # names is resized according to the total widget size.
-        self.tableView_filelist.resizeColumnToContents(1)
-        vp_width = self.tableView_filelist.viewport().width()
-        col_widths = [self.tableView_filelist.columnWidth(i) \
-                      for i in range(1, self.filelistmodel.columnCount())]
-        col_width = vp_width - sum(col_widths)
-        self.tableView_filelist.setColumnWidth(0, col_width)
-
-    def resize_revisiontable_columns(self, *args):
-        # same as before, but for the "Log" column of the repo graph log
-        col1_width = self.tableView_revisions.viewport().width()
-        fontm = QtGui.QFontMetrics(self.tableView_revisions.font())
-        for c in range(self.repomodel.columnCount()):
-            if c == 1:
-                continue
-            w = self.repomodel.maxWidthValueForColumn(c)
-            if w is not None:
-                w = fontm.width(unicode(w) + 'w')
-                self.tableView_revisions.setColumnWidth(c, w)
-            else:
-                self.tableView_revisions.setColumnWidth(c, 140)
-            col1_width -= self.tableView_revisions.columnWidth(c)
-        self.tableView_revisions.setColumnWidth(1, col1_width)
-
     #@timeit
     def get_file_data(self, filename, ctx=None):
         if ctx is None:
@@ -499,6 +487,33 @@ class HgMainWindow(QtGui.QMainWindow):
         buf += '<div class="diff_desc"><p>%s</p></div>\n' % ctx.description().replace('\n', '<br/>\n')
         return buf
 
+
+    def resize_filelist_columns(self, *args):
+        # resize columns the smart way: the first column holding file
+        # names is resized according to the total widget size.
+        self.tableView_filelist.resizeColumnToContents(1)
+        vp_width = self.tableView_filelist.viewport().width()
+        col_widths = [self.tableView_filelist.columnWidth(i) \
+                      for i in range(1, self.filelistmodel.columnCount())]
+        col_width = vp_width - sum(col_widths)
+        self.tableView_filelist.setColumnWidth(0, col_width)
+
+    def resize_revisiontable_columns(self, *args):
+        # same as before, but for the "Log" column of the repo graph log
+        col1_width = self.tableView_revisions.viewport().width()
+        fontm = QtGui.QFontMetrics(self.tableView_revisions.font())
+        for c in range(self.repomodel.columnCount()):
+            if c == 1:
+                continue
+            w = self.repomodel.maxWidthValueForColumn(c)
+            if w is not None:
+                w = fontm.width(unicode(w) + 'w')
+                self.tableView_revisions.setColumnWidth(c, w)
+            else:
+                self.tableView_revisions.setColumnWidth(c, 140)
+            col1_width -= self.tableView_revisions.columnWidth(c)
+        self.tableView_revisions.setColumnWidth(1, col1_width)
+
     def show_find_frame(self, *args):
         self.goto_frame.hide()
         self.find_frame.show()
@@ -513,6 +528,7 @@ class HgMainWindow(QtGui.QMainWindow):
         self.entry_goto.selectAll()
         self._goto_frame_timer.start()
 
+    # methods to manage searching
     def highlight_search_string(self):
         if not self.find_frame.isHidden() and self._find_text.strip():
             w = self.textview_status
@@ -641,54 +657,6 @@ class HgMainWindow(QtGui.QMainWindow):
         if idx is not None:
             self.tableView_revisions.setCurrentIndex(idx)
             
-    def on_filter1_activate(self, *args):
-        self.filter_dialog.show()
-
-    def init_filter(self):
-        file_filter = self.entry_file_filter
-        node_low = self.spinbutton_rev_low
-        node_high = self.spinbutton_rev_high
-
-        cnt = len(self.repo.changelog)
-        if self.filter_files_reg:
-            file_filter.setText(self.filerex)
-        node_low.setRange(0, cnt+1)
-        node_high.setRange(0, cnt+1)
-        node_low.setValue(0)
-        node_high.setValue(cnt)
-
-    def on_filter(self, *args):
-        file_filter = self.entry_file_filter
-        node_low = self.spinbutton_rev_low
-        node_high = self.spinbutton_rev_high
-        self.filter_files_reg = re.compile(str(file_filter.text()))
-        self.filter_noderange = set(range(node_low.value(), node_high.value()))
-        self.refresh_revision_table()
-
-    def revpopup_add_tag(self, item):
-        path, col = self.revpopup_path
-        if path is None or col is None:
-            return
-        self.revisions
-        
-    def revpopup_update(self, item):
-        print "UPDATE"
-        
-    def filter_nodes(self):
-        """Filter the nodes according to filter_files and filter_nodes"""
-        keepnodes = []
-        nodes = self.repo.nodes
-        frex = self.filter_files_reg
-        noderange = self.filter_noderange or set(range(len(nodes)))
-        for n in nodes:
-            node = self.repo.read_node(n)
-            if node.rev in noderange:
-                for f in node.files:
-                    if frex.search(f):
-                        keepnodes.append(n)
-                        break
-        return keepnodes
-
     def on_about(self, *args):
         """ Display about dialog """
         from hgview.__pkginfo__ import modname, version, short_desc, long_desc

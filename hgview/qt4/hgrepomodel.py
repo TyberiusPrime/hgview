@@ -104,7 +104,7 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
     def setRepo(self, repo, branch=''):
         self.repo = repo
         self._datacache = {}
-        self.loadConfig()
+        self.load_config()
         
         self._user_colors = {}
         self._branch_colors = {}
@@ -142,7 +142,7 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
     def columnCount(self, parent=None):
         return len(self._columns)
         
-    def loadConfig(self):
+    def load_config(self):
         cfg = HgConfig(self.repo.ui)
         self._users, self._aliases = cfg.getUsers()
         self.dot_radius = cfg.getDotRadius(default=8)
@@ -287,7 +287,7 @@ class FileRevModel(HgRepoListModel):
     def setRepo(self, repo, branch=''):
         self.repo = repo
         self._datacache = {}
-        self.loadConfig()
+        self.load_config()
 
     def setFilename(self, filename):
         self.filename = filename
@@ -318,13 +318,13 @@ class HgFileListModel(QtCore.QAbstractTableModel):
         QtCore.QAbstractTableModel.__init__(self, parent)
         self.repo = repo
         self._datacache = {}            
-        self.loadConfig()
+        self.load_config()
         self.current_ctx = None
         self.connect(self, QtCore.SIGNAL("dataChanged(const QModelIndex & , const QModelIndex & )"),
                      self.datachangedcalled)
         self.diffwidth = 100
 
-    def loadConfig(self):
+    def load_config(self):
         cfg = HgConfig(self.repo.ui)
         self._flagcolor = {}
         self._flagcolor['M'] = cfg.getFileModifiedColor(default='blue') 
