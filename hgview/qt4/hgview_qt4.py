@@ -641,7 +641,10 @@ class HgMainWindow(QtGui.QMainWindow):
             self._find_text = newtext
             self._find_iter = None
             self.clear_highlights()
-            self.highlight_search_string()            
+            if not self.highlight_search_string():
+                self.statusBar().showMessage('Search string not found in current diff. '
+                                             'Hit "Find next" button to start searching '
+                                             'in the repository', 2000)
         self._find_frame_timer.start()
         
     def on_anchor_clicked(self, qurl):
