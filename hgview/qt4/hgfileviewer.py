@@ -441,11 +441,15 @@ class FileDiffViewer(QtGui.QDialog):
         self.revision_selected(index, 'right')
 
     def revision_selected(self, index, side):
-        row = index.row() 
-        filectx = self.repo.filectx(self.filename,
-                                    fileid=self.filerevmodel.filelog.node(row))
-        ctx = filectx.changectx()
-        node = self.filerevmodel.filelog.node(row)
+        row = index.row()
+        rev = self.filerevmodel.graph[row].rev
+        # XXX not very nice (probably not robust over hg evolution)
+        for i, idx in enumerate(self.filerevmodel.filelog.index):
+            if idx[4] == rev:
+                break
+        else:
+            return
+        node = self.filerevmodel.filelog.node(i)
         self.filedata[side] = self.filerevmodel.filelog.read(node).splitlines()
         self.update_diff()
         
