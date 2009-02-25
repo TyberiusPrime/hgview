@@ -60,7 +60,7 @@ class HgConfig(object):
         dotradius: radius (in pixels) of the dot in the revision graph
         """
         r = self.ui.config(self.section, 'dotradius', default)
-        return r
+        return int(r)
 
     @cached
     def getUsers(self):
