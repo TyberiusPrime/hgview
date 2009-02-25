@@ -43,7 +43,7 @@ def diff(repo, ctx1, ctx2=None, files=None):
     # try/except for the sake of hg compatibility (API changes between
     # 1.0 and 1.1)
     try:
-        out = StringIO()        
+        out = StringIO()
         patch.diff(repo, ctx2.node(), ctx1.node(), match=match, fp=out)
         diffdata = out.getvalue()
     except:
@@ -68,7 +68,7 @@ def __get_parents(repo, rev, branch=None):
         return [x for x in repo.changelog.parentrevs(rev) if x != nullrev]
     return [x for x in repo.changelog.parentrevs(rev) \
             if (x != nullrev and repo.changectx(rev).branch() == branch)]
-    
+
 
 def revision_grapher(repo, start_rev=None, stop_rev=0, branch=None):
     """incremental revision grapher
@@ -92,7 +92,7 @@ def revision_grapher(repo, start_rev=None, stop_rev=0, branch=None):
     curr_rev = start_rev
     revs = []
     rev_color = {}
-    nextcolor = 0    
+    nextcolor = 0
     while curr_rev >= stop_rev:
         # Compute revs and next_revs.
         if curr_rev not in revs:
@@ -113,7 +113,7 @@ def revision_grapher(repo, start_rev=None, stop_rev=0, branch=None):
                     break
                 rev_color[r0] = curcolor
                 r = __get_parents(repo, r0, branch)
-        curcolor = rev_color[curr_rev]            
+        curcolor = rev_color[curr_rev]
         rev_index = revs.index(curr_rev)
         next_revs = revs[:]
 
@@ -122,7 +122,7 @@ def revision_grapher(repo, start_rev=None, stop_rev=0, branch=None):
         parents_to_add = []
         if len(parents) > 1:
             preferred_color = None
-        else:            
+        else:
             preferred_color = curcolor
         for parent in parents:
             if parent not in next_revs:
@@ -135,7 +135,7 @@ def revision_grapher(repo, start_rev=None, stop_rev=0, branch=None):
                         rev_color[parent] = nextcolor
                         nextcolor += 1
             preferred_color = None
-                
+
         # parents_to_add.sort()
         next_revs[rev_index:rev_index + 1] = parents_to_add
 
@@ -217,7 +217,7 @@ class GraphNode(object):
         self.parents = parents
         self.bottomlines = lines
         self.toplines = []
-        
+
 class Graph(object):
     """
     Graph object to ease hg repo navigation. The Graph object
@@ -232,14 +232,14 @@ class Graph(object):
         self.nodes = []
         self.nodesdict = {}
         self.max_cols = 0
-        
+
     def _build_nodes(self, nnodes):
         """Internal method.
-        Build `nnodes` more nodes in our graph. 
+        Build `nnodes` more nodes in our graph.
         """
         if self.grapher is None:
             return False
-        
+
         stopped = False
         mcol = [self.max_cols]
         for _ in xrange(nnodes):
@@ -256,11 +256,11 @@ class Graph(object):
                 self.nodes.append(gnode)
                 self.nodesdict[nrev] = gnode
                 mcol.append(gnode.cols)
-            except StopIteration:                
+            except StopIteration:
                 self.grapher = None
                 stopped = True
                 break
-            
+
         self.max_cols = max(mcol)
         return not stopped
 
@@ -272,7 +272,7 @@ class Graph(object):
         while self._build_nodes(step):
             yield len(self)
         yield len(self)
-        
+
     def __getitem__(self, idx):
         if idx >= len(self.nodes):
             # build as many graph nodes as required to answer the
@@ -290,7 +290,7 @@ class Graph(object):
         # len(graph) is the number of actually built graph nodes
         return max(len(self.nodes), 0)
 
-        
+
 if __name__ == "__main__":
     # pylint: disable-msg=C0103
     import sys
@@ -302,4 +302,4 @@ if __name__ == "__main__":
     else:
         rg = revision_grapher(r)
     g = Graph(r, rg)
-    
+

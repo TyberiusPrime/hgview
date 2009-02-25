@@ -49,7 +49,7 @@ def cvrt_date(date):
     date, tzdelay = date
     return QtCore.QDateTime.fromTime_t(int(date)).toString(QtCore.Qt.ISODate)
 
-# in following lambdas, ctx is a hg changectx 
+# in following lambdas, ctx is a hg changectx
 _columnmap = {'ID': lambda ctx: ctx.rev(),
               'Log': lambda ctx: ctx.description(),
               'Author': lambda ctx: ctx.user(),
@@ -58,7 +58,7 @@ _columnmap = {'ID': lambda ctx: ctx.rev(),
               'Branch': lambda ctx: ctx.branch(),
               }
 
-# in following lambdas, r is a hg repo 
+# in following lambdas, r is a hg repo
 _maxwidth = {'ID': lambda r: str(len(r.changelog)),
              'Date': lambda r: cvrt_date(r.changectx(0).date()),
              'Tags': lambda r: sorted(r.tags().keys(),
@@ -69,7 +69,7 @@ _maxwidth = {'ID': lambda r: str(len(r.changelog)),
 
 def datacached(meth):
     """
-    decorator used to cache 'data' method of Qt models 
+    decorator used to cache 'data' method of Qt models
     """
     def data(self, index, role):
         if not index.isValid():
@@ -105,7 +105,7 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
         self.repo = repo
         self._datacache = {}
         self.load_config()
-        
+
         self._user_colors = {}
         self._branch_colors = {}
         grapher = revision_grapher(self.repo, branch=branch)
@@ -114,7 +114,7 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
         self.heads = [self.repo.changectx(x).rev() for x in self.repo.heads()]
         self._fill_iter = None
         self.gr_fill_timer.start()
-        
+
     def fillGraph(self):
         step = self.fill_step
         if self._fill_iter is None:
@@ -141,20 +141,20 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
 
     def columnCount(self, parent=None):
         return len(self._columns)
-        
+
     def load_config(self):
         cfg = HgConfig(self.repo.ui)
         self._users, self._aliases = cfg.getUsers()
         self.dot_radius = cfg.getDotRadius(default=8)
         self.rowheight = cfg.getRowHeight()
         self.fill_step = cfg.getFillingStep()
-        
+
     def maxWidthValueForColumn(self, column):
         column = self._columns[column]
         if column in _maxwidth:
             return _maxwidth[column](self.repo)
         return None
-    
+
     def user_color(self, user):
         if user in self._aliases:
             user = self._aliases[user]
@@ -174,7 +174,7 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
         if branch not in self._branch_colors:
             self._branch_colors[branch] = get_color(len(self._branch_colors))
         return self._branch_colors[branch]
-    
+
     def col2x(self, col):
         return (1.2*self.dot_radius + 0) * col + self.dot_radius/2 + 3
 
@@ -186,7 +186,7 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
         column = self._columns[index.column()]
         gnode = self.graph[row]
         ctx = self.repo.changectx(gnode.rev)
-        if role == QtCore.Qt.DisplayRole:            
+        if role == QtCore.Qt.DisplayRole:
             if column == 'Author': #author
                 return QtCore.QVariant(self.user_name(_columnmap[column](ctx)))
             return QtCore.QVariant(_columnmap[column](ctx))
@@ -203,7 +203,7 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
 
                 dot_x = self.col2x(gnode.x) - radius / 2
                 dot_y = h / 2
-                                
+
                 pix = QtGui.QPixmap(w, h)
                 pix.fill(QtGui.QColor(0,0,0,0))
                 painter = QtGui.QPainter(pix)
@@ -227,14 +227,14 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
                         painter.setPen(lpen)
                         x1 = self.col2x(start)
                         x2 = self.col2x(end)
-                        painter.drawLine(x1, dot_y + y1, x2, dot_y + y2) 
+                        painter.drawLine(x1, dot_y + y1, x2, dot_y + y2)
                 if gnode.rev in self.heads:
                     dot_color = "yellow"
                 else:
                     dot_color = QtGui.QColor(self.namedbranch_color(ctx.branch()))
 
                 dot_y = (h/2) - radius / 2
-                    
+
                 painter.setBrush(QtGui.QColor(dot_color))
                 painter.setPen(QtCore.Qt.black)
                 painter.drawEllipse(dot_x, dot_y, radius, radius)
@@ -253,17 +253,17 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
             if gnode.rev == rev:
                 return row
         return None
-        
+
     def indexFromRev(self, rev):
         row = self.rowFromRev(rev)
         if row is not None:
             return self.index(row, 0)
         return None
-                
+
     def clear(self):
         """empty the list"""
         self.graph = None
-        self._datacache = {}        
+        self._datacache = {}
         self.notify_data_changed()
 
     def notify_data_changed(self):
@@ -275,7 +275,7 @@ class FileRevModel(HgRepoListModel):
     viewer of in diff-file viewer dialogs.
     """
     _columns = ('ID', 'Log', 'Author', 'Date')
-    
+
     def __init__(self, repo, filename, noderev=None, parent=None):
         """
         data is a HgHLRepo instance
@@ -283,7 +283,7 @@ class FileRevModel(HgRepoListModel):
         HgRepoListModel.__init__(self, repo, parent=parent)
         self.filelog = self.repo.file(filename)
         self.setFilename(filename)
-        
+
     def setRepo(self, repo, branch=''):
         self.repo = repo
         self._datacache = {}
@@ -294,7 +294,7 @@ class FileRevModel(HgRepoListModel):
         self.filelog = self.repo.file(filename)
         self.nmax = len(self.filelog)
         grapher = filelog_grapher(self.repo, self.filename)
-        
+
         self._user_colors = {}
         self._branch_colors = {}
         self.graph = Graph(self.repo, grapher)
@@ -302,7 +302,7 @@ class FileRevModel(HgRepoListModel):
         self._datacache = {}
         self._fill_iter = None
         self.gr_fill_timer.start()
-        
+
 
 replus = re.compile(r'^[+][^+].*', re.M)
 reminus = re.compile(r'^[-][^-].*', re.M)
@@ -317,7 +317,7 @@ class HgFileListModel(QtCore.QAbstractTableModel):
         """
         QtCore.QAbstractTableModel.__init__(self, parent)
         self.repo = repo
-        self._datacache = {}            
+        self._datacache = {}
         self.load_config()
         self.current_ctx = None
         self.connect(self, QtCore.SIGNAL("dataChanged(const QModelIndex & , const QModelIndex & )"),
@@ -327,12 +327,12 @@ class HgFileListModel(QtCore.QAbstractTableModel):
     def load_config(self):
         cfg = HgConfig(self.repo.ui)
         self._flagcolor = {}
-        self._flagcolor['M'] = cfg.getFileModifiedColor(default='blue') 
+        self._flagcolor['M'] = cfg.getFileModifiedColor(default='blue')
         self._flagcolor['R'] = cfg.getFileRemovedColor(default='red')
         self._flagcolor['D'] = cfg.getFileDeletedColor(default='red')
         self._flagcolor['A'] = cfg.getFileAddedColor(default='green')
         self._flagcolor['?'] = "black"
-        
+
     def setDiffWidth(self, w):
         if w != self.diffwidth:
             self.diffwidth = w
@@ -340,12 +340,12 @@ class HgFileListModel(QtCore.QAbstractTableModel):
             self.emit(QtCore.SIGNAL('dataChanged(const QModelIndex &, const QModelIndex & )'),
                       self.index(2, 0),
                       self.index(2, self.rowCount()))
-                             
+
     def __len__(self):
         if self.current_ctx:
             return len(self.current_ctx.files())
         return 0
-    
+
     def datachangedcalled(self, fr, to):
         print "datachangedcalled"
 
@@ -358,7 +358,7 @@ class HgFileListModel(QtCore.QAbstractTableModel):
     def setSelectedRev(self, ctx):
         if ctx != self.current_ctx:
             self.current_ctx = ctx
-            self._datacache = {}            
+            self._datacache = {}
             self.changes = [self.repo.status(ctx.parents()[0].node(), ctx.node())[:5], None]
             # XXX will we need this?
             #if ctx.parents()[1]:
@@ -382,14 +382,14 @@ class HgFileListModel(QtCore.QAbstractTableModel):
             return None
         row = index.row()
         return self.current_ctx.files()[row]
-        
+
     @datacached
     def data(self, index, role):
         if not index.isValid() or index.row()>len(self) or not self.current_ctx:
             return nullvariant
         row = index.row()
         column = index.column()
-        
+
         current_file = self.current_ctx.files()[row]
         if column == 2:
             if role == QtCore.Qt.DecorationRole:
@@ -406,7 +406,7 @@ class HgFileListModel(QtCore.QAbstractTableModel):
                     tot = max(add + rem, 1)
 
                 w = self.diffwidth - 20
-                h = 20 
+                h = 20
 
                 np = int(w*add/tot)
                 nm = int(w*rem/tot)
@@ -431,7 +431,7 @@ class HgFileListModel(QtCore.QAbstractTableModel):
                 painter.drawRect(5, 0, w+1, h-3)
                 painter.end()
                 return QtCore.QVariant(pix)
-        else:        
+        else:
             if role == QtCore.Qt.DisplayRole:
                 if column == 0:
                     return QtCore.QVariant(current_file)
@@ -450,7 +450,7 @@ class HgFileListModel(QtCore.QAbstractTableModel):
 
         return nullvariant
 
-        
+
 if __name__ == "__main__":
     from mercurial import ui, hg
     from optparse import OptionParser
@@ -464,14 +464,14 @@ if __name__ == "__main__":
 
     opt, args = p.parse_args()
 
-    u = ui.ui()    
+    u = ui.ui()
     repo = hg.repository(u, opt.root)
     app = QtGui.QApplication(sys.argv)
     if opt.filename is not None:
         model = FileRevModel(repo, opt.filename)
     else:
         model = HgRepoListModel(repo)
-    
+
     view = QtGui.QTableView()
     #delegate = GraphDelegate()
     #view.setItemDelegateForColumn(1, delegate)

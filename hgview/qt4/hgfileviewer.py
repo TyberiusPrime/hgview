@@ -55,7 +55,7 @@ class Differ(difflib.Differ):
         yield "+ " + bline
         if btags:
             yield "? %s%s\n" % ("\t" * common, btags)
-        
+
 class FileViewer(QtGui.QDialog):
     def __init__(self, repo, filename, noderev=None):
         QtGui.QDialog.__init__(self)
@@ -65,7 +65,7 @@ class FileViewer(QtGui.QDialog):
                       join(dirname(__file__), "../../../../../share/hgview"),
                       ]:
             ui_file = join(_path, 'fileviewer.ui')
-            
+
             if isfile(ui_file):
                 break
         else:
@@ -79,7 +79,7 @@ class FileViewer(QtGui.QDialog):
         self.repo = repo
         self.filename = filename
         self.load_config()
-        
+
         lay = QtGui.QHBoxLayout(self.frame)
         lay.setSpacing(0)
         lay.setContentsMargins(0, 0, 0, 0)
@@ -112,16 +112,16 @@ class FileViewer(QtGui.QDialog):
         self.connect(self.tableView_revisions.selectionModel(),
                      QtCore.SIGNAL('currentRowChanged (const QModelIndex & , const QModelIndex & )'),
                      self.revision_selected)
-        
+
     def revision_selected(self, index, oldindex):
-        row = index.row() 
+        row = index.row()
         filectx = self.repo.filectx(self.filename, fileid=self.filerevmodel.filelog.node(row))
         ctx = filectx.changectx()
         data = self.filerevmodel.filelog.revision(self.filerevmodel.filelog.node(row))
         nlines = data.count('\n')
         self.textBrowser_filecontent.setMarginWidth(1, str(nlines)+'00')
         self.textBrowser_filecontent.setText(data)
-        
+
         self.textBrowser_filecontent.markerDeleteAll()
         self.textBrowser_filecontent.markerAdd(1, self.markerplus)
         self.textBrowser_filecontent.markerAdd(2, self.markerminus)
@@ -142,10 +142,10 @@ class FileViewer(QtGui.QDialog):
 
         self.rowheight = cfg.getRowHeight()
         self.users, self.aliases = cfg.getUsers()
-        
+
 class FileDiffViewer(QtGui.QDialog):
     """
-    Qt4 dialog to display diffs between different mercurial revisions of a file.  
+    Qt4 dialog to display diffs between different mercurial revisions of a file.
     """
     def __init__(self, repo, filename, noderev=None):
         QtGui.QDialog.__init__(self)
@@ -155,7 +155,7 @@ class FileDiffViewer(QtGui.QDialog):
                       join(dirname(__file__), "../../../../../share/hgview"),
                       ]:
             ui_file = join(_path, 'filediffviewer.ui')
-            
+
             if isfile(ui_file):
                 break
         else:
@@ -170,7 +170,7 @@ class FileDiffViewer(QtGui.QDialog):
         self.repo = repo
         self.filename = filename
         self.load_config()
-        
+
         self.filedata = {'left': None, 'right': None}
         self._previous = None
         self._invbarchanged = False
@@ -224,13 +224,13 @@ class FileDiffViewer(QtGui.QDialog):
             self.diffblock.linkScrollBar(sci.verticalScrollBar(), side)
             lay.insertWidget(idx, blk)
             self.block[side] = blk
-        lay.insertWidget(2, self.diffblock) 
-        
-        # timer used to fill viewers with diff block markers during GUI idle time 
+        lay.insertWidget(2, self.diffblock)
+
+        # timer used to fill viewers with diff block markers during GUI idle time
         self.timer = QtCore.QTimer()
         self.timer.setSingleShot(False)
         self.connect(self.timer, QtCore.SIGNAL("timeout()"),
-                     self.idle_fill_files)        
+                     self.idle_fill_files)
 
         self.filerevmodel = FileRevModel(self.repo, self.filename, noderev)
         self.connect(self.filerevmodel, QtCore.SIGNAL('fillingover()'),
@@ -247,20 +247,20 @@ class FileDiffViewer(QtGui.QDialog):
             self.connect(self.viewers[side].verticalScrollBar(),
                          QtCore.SIGNAL('valueChanged(int)'),
                          lambda value, side=side: self.vbar_changed(value, side))
-        self.setTabOrder(table, self.viewers['left']) 
-        self.setTabOrder(self.viewers['left'], self.viewers['right']) 
+        self.setTabOrder(table, self.viewers['left'])
+        self.setTabOrder(self.viewers['left'], self.viewers['right'])
 
     def modelFilled(self):
         self.set_init_selections()
         self.setup_columns_size()
-        
+
     def eventFilter(self, watched, event):
         if event.type() == event.KeyPress:
             if event.key() == Qt.Key_Escape:
                 self.actionClose.trigger()
                 return True
         return QtGui.QDialog.eventFilter(self, watched, event)
-        
+
     def load_config(self):
         cfg = HgConfig(self.repo.ui)
         fontstr = cfg.getFont()
@@ -277,12 +277,12 @@ class FileDiffViewer(QtGui.QDialog):
 
         self.rowheight = cfg.getRowHeight()
         self.users, self.aliases = cfg.getUsers()
-        
+
     def update_page_steps(self):
         for side in sides:
             self.block[side].syncPageStep()
         self.diffblock.syncPageStep()
-        
+
     def idle_fill_files(self):
         # we make a burst of diff-lines computed at once, but we
         # disable GUI updates for efficiency reasons, then only
@@ -330,7 +330,7 @@ class FileDiffViewer(QtGui.QDialog):
                 self.diffblock.addBlock('-', alo, ahi, blo, bhi)
 
                 w = self.viewers['left']
-                for i in range(alo, ahi):            
+                for i in range(alo, ahi):
                     w.markerAdd(i, self.markerminus)
                 pos0 = w.SendScintilla(w.SCI_POSITIONFROMLINE, alo)
                 pos1 = w.SendScintilla(w.SCI_POSITIONFROMLINE, ahi)
@@ -354,8 +354,8 @@ class FileDiffViewer(QtGui.QDialog):
 
             else:
                 raise ValueError, 'unknown tag %r' % (tag,)
-            
-        # ok, let's enable GUI refresh for code viewers and diff-block displayers 
+
+        # ok, let's enable GUI refresh for code viewers and diff-block displayers
         for side in sides:
             self.viewers[side].setUpdatesEnabled(True)
             self.block[side].setUpdatesEnabled(True)
@@ -365,7 +365,7 @@ class FileDiffViewer(QtGui.QDialog):
         # signal/slot, since there is no 'pageStepChanged(int)' signal
         # for scroll bars...
         QtCore.QTimer.singleShot(0, self.update_page_steps)
-        
+
     def update_diff(self):
         """
         Recompute the diff, display files and starts the timer
@@ -375,27 +375,27 @@ class FileDiffViewer(QtGui.QDialog):
             self.viewers[side].clear()
             self.block[side].clear()
         self.diffblock.clear()
-        
+
         if None not in self.filedata.values():
             if self.timer.isActive():
                 self.timer.stop()
             for side in sides:
                 self.viewers[side].setMarginWidth(1, "00%s" % len(self.filedata[side]))
-                
+
             self._diff = difflib.SequenceMatcher(None, self.filedata['left'],
                                                  self.filedata['right'])
             blocks = self._diff.get_opcodes()[:]
-            
+
             self._diffmatch = {'left': [x[1:3] for x in blocks],
                                'right': [x[3:5] for x in blocks]}
             for side in sides:
                 self.viewers[side].setText('\n'.join(self.filedata[side]))
             self.timer.start()
-        
+
     def set_init_selections(self):
         self.tableView_revisions_left.setCurrentIndex(self.filerevmodel.index(1, 0))
         self.tableView_revisions_right.setCurrentIndex(self.filerevmodel.index(0, 0))
-        
+
     def setup_columns_size(self):
         """
         Recompute column sizes for rev list ListViews, using
@@ -411,7 +411,7 @@ class FileDiffViewer(QtGui.QDialog):
             hright.setResizeMode(c, hleft.ResizeToContents)
         hleft.setResizeMode(1, hleft.Stretch)
         hright.setResizeMode(1, hleft.Stretch)
-        
+
     def vbar_changed(self, value, side):
         """
         Callback called when the vertical scrollbar of a file viewer
@@ -419,15 +419,15 @@ class FileDiffViewer(QtGui.QDialog):
         viewer.
         """
         if self._invbarchanged:
-            # prevent loops in changes (left -> right -> left ...) 
+            # prevent loops in changes (left -> right -> left ...)
             return
         self._invbarchanged = True
         oside = otherside[side]
-        
+
         for i, (lo, hi) in enumerate(self._diffmatch[side]):
             if lo <= value < hi:
                 break
-        dv = value - lo            
+        dv = value - lo
 
         blo, bhi = self._diffmatch[oside][i]
         vbar = self.viewers[oside].verticalScrollBar()
@@ -455,9 +455,9 @@ class FileDiffViewer(QtGui.QDialog):
         node = self.filerevmodel.filelog.node(i)
         self.filedata[side] = self.filerevmodel.filelog.read(node).splitlines()
         self.update_diff()
-        
-        
-    
+
+
+
 if __name__ == '__main__':
     from mercurial import ui, hg
     from optparse import OptionParser
@@ -476,8 +476,8 @@ if __name__ == '__main__':
         opt.print_help()
         sys.exit(1)
     filename = args[0]
-        
-    u = ui.ui()    
+
+    u = ui.ui()
     repo = hg.repository(u, options.repo)
     app = QtGui.QApplication([])
 
@@ -488,4 +488,4 @@ if __name__ == '__main__':
         view = FileViewer(repo, filename)
         view.show()
     sys.exit(app.exec_())
-    
+
