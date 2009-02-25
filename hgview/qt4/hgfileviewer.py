@@ -234,7 +234,7 @@ class FileDiffViewer(QtGui.QDialog):
 
         self.filerevmodel = FileRevModel(self.repo, self.filename, noderev)
         self.connect(self.filerevmodel, QtCore.SIGNAL('fillingover()'),
-                     self.set_init_selections)
+                     self.modelFilled)
         for side in sides:
             table = getattr(self, 'tableView_revisions_%s' % side)
             table.verticalHeader().setDefaultSectionSize(self.rowheight)
@@ -249,8 +249,11 @@ class FileDiffViewer(QtGui.QDialog):
                          lambda value, side=side: self.vbar_changed(value, side))
         self.setTabOrder(table, self.viewers['left']) 
         self.setTabOrder(self.viewers['left'], self.viewers['right']) 
-        self.setup_columns_size()
 
+    def modelFilled(self):
+        self.set_init_selections()
+        self.setup_columns_size()
+        
     def eventFilter(self, watched, event):
         if event.type() == event.KeyPress:
             if event.key() == Qt.Key_Escape:
@@ -390,8 +393,8 @@ class FileDiffViewer(QtGui.QDialog):
             self.timer.start()
         
     def set_init_selections(self):
-        self.tableView_revisions_left.setCurrentIndex(self.filerevmodel.index(0, 0))
-        self.tableView_revisions_right.setCurrentIndex(self.filerevmodel.index(1, 0))
+        self.tableView_revisions_left.setCurrentIndex(self.filerevmodel.index(1, 0))
+        self.tableView_revisions_right.setCurrentIndex(self.filerevmodel.index(0, 0))
         
     def setup_columns_size(self):
         """
