@@ -13,49 +13,31 @@ import sys, os
 import time
 import re
 
-from optparse import OptionParser
-from os.path import dirname, join, isfile
-
-from PyQt4 import QtCore, QtGui, Qsci, uic
+from PyQt4 import QtCore, QtGui, Qsci
 
 from mercurial import ui, hg, patch
 from mercurial.node import hex, short as short_hex, bin as short_bin
 
 from hgview.qt4.hgrepomodel import HgRepoListModel, HgFileListModel
-from hgview.qt4.hgfileviewer import FileViewer, FileDiffViewer
+from hgview.qt4.hgfileviewer import FileViewer, FileDiffViewer, ManifestViewer
 from hgview.hggraph import diff as revdiff
 from hgview.decorators import timeit
 from hgview.config import HgConfig
 from hgview.qt4.lexers import get_lexer
+from hgview.qt4 import HgDialogMixin
 
 Qt = QtCore.Qt
 bold = QtGui.QFont.Bold
 normal = QtGui.QFont.Normal
 
-class HgMainWindow(QtGui.QMainWindow):
+class HgMainWindow(QtGui.QMainWindow, HgDialogMixin):
+    _uifile = 'hgqv.ui'
     """Main hg view application"""
     def __init__(self, repo, filerex = None):
-        QtGui.QMainWindow.__init__(self)
-
-        # hg repo
-        self.graph = None
         self.repo = repo
-        self.load_config()
+        QtGui.QMainWindow.__init__(self)
+        HgDialogMixin.__init__(self)
 
-        # load qt designer ui file
-        for _path in [dirname(__file__),
-                      join(sys.exec_prefix, 'share/hgqv'),
-                      os.path.expanduser('~/share/hgqv'),
-                      join(dirname(__file__), "../../../../../share/hgqv"),
-                      ]:
-            ui_file = join(_path, 'hgqv.ui')
-            if isfile(ui_file):
-                break
-        else:
-            raise ValueError("Unable to find hgqv.ui\n"
-                             "Check your installation.")
-        uifile = os.path.join(os.path.dirname(__file__), ui_file)
-        self.ui = uic.loadUi(uifile, self)
         self.setWindowTitle('hgqv: %s' % os.path.abspath(self.repo.root))
 
         # member variables
@@ -219,21 +201,7 @@ class HgMainWindow(QtGui.QMainWindow):
         self.goto_frame.hide()
 
     def load_config(self):
-        cfg = HgConfig(self.repo.ui)
-        fontstr = cfg.getFont()
-        font = QtGui.QFont()
-        try:
-            if not font.fromString(fontstr):
-                raise Exception
-        except:
-            print "bad font name '%s'"%fontstr
-            font.setFamily("Monospace")
-            font.setFixedPitch(True)
-            font.setPointSize(10)
-        self.font = font
-
-        self.rowheight = cfg.getRowHeight()
-        self.users, self.aliases = cfg.getUsers()
+        cfg = HgDialogMixin.load_config(self)
         self.hidefinddelay = cfg.getHideFindDelay()
 
     def setup_filterframe(self):
@@ -262,6 +230,9 @@ class HgMainWindow(QtGui.QMainWindow):
         self.connect(self.tableView_revisions.selectionModel(),
                      QtCore.SIGNAL('currentRowChanged (const QModelIndex & , const QModelIndex & )'),
                      self.revision_selected)
+        self.connect(self.tableView_revisions,
+                     QtCore.SIGNAL('doubleClicked (const QModelIndex &)'),
+                     self.revision_activated)
         self.connect(self.tableView_filelist.horizontalHeader(),
                      QtCore.SIGNAL('sectionResized(int, int, int)'),
                      self.file_section_resized)
@@ -315,9 +286,8 @@ class HgMainWindow(QtGui.QMainWindow):
     def resizeEvent(self, event):
         # we catch this event to resize smartly tables' columns
         QtGui.QMainWindow.resizeEvent(self, event)
-        if self.graph is None: # do not resize if we are loading a reporsitory
-            self.resize_revisiontable_columns()
-            self.resize_filelist_columns()
+        self.resize_revisiontable_columns()
+        self.resize_filelist_columns()
 
     def eventFilter(self, watched, event):
         if watched == self.tableView_revisions:
@@ -351,9 +321,21 @@ class HgMainWindow(QtGui.QMainWindow):
             tv = self.tableView_revisions
             tv.setCurrentIndex(tv.model().index(0, 0))
 
+    def revision_activated(self, index):
+        """
+        Callback called when a revision is double-clicked in the revisions table        
+        """
+        if not index.isValid():
+            return
+        row = index.row()
+        gnode = self.repomodel.graph[row]
+        dlg = ManifestViewer(self.repo, gnode.rev)
+        dlg.setWindowTitle('Hg manifest viewer')
+        dlg.show()
+    
     def revision_selected(self, index, index_from):
         """
-        Callback called when a revision os selected in the revisions table
+        Callback called when a revision is selected in the revisions table
         """
         if self.repomodel.graph:
             row = index.row()
@@ -685,6 +667,7 @@ def find_repository(path):
     return path
 
 def main():
+    from optparse import OptionParser
     parser = OptionParser()
     parser.add_option('-R', '--repository', dest='repo',
                        help='location of the repository to explore')

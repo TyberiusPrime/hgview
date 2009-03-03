@@ -18,15 +18,19 @@
 """
 
 import sys, os
-from os.path import dirname, join, expanduser, isfile
+import os.path as osp
+
 import difflib
 import math
 import numpy
+
+from mercurial.node import hex, short as short_hex
 
 from PyQt4 import QtGui, QtCore, uic, Qsci
 from PyQt4.QtCore import Qt
 
 from hgview.config import HgConfig
+from hgview.qt4 import HgDialogMixin
 from hgview.qt4.hgrepomodel import FileRevModel
 from hgview.qt4.blockmatcher import BlockList, BlockMatch
 from hgview.qt4.lexers import get_lexer
@@ -35,50 +39,15 @@ sides = ('left', 'right')
 otherside = {'left': 'right', 'right': 'left'}
 
 
-class Differ(difflib.Differ):
-    def _dump(self, tag, x, lo, hi):
-        """Generate comparison results for a same-tagged range."""
-        for i in xrange(lo, hi):
-            yield (tag, x[i])
-
-    def _qformat(self, aline, bline, atags, btags):
-        common = min(_count_leading(aline, "\t"),
-                     _count_leading(bline, "\t"))
-        common = min(common, _count_leading(atags[:common], " "))
-        atags = atags[common:].rstrip()
-        btags = btags[common:].rstrip()
-
-        yield "- " + aline
-        if atags:
-            yield "? %s%s\n" % ("\t" * common, atags)
-
-        yield "+ " + bline
-        if btags:
-            yield "? %s%s\n" % ("\t" * common, btags)
-
-class FileViewer(QtGui.QDialog):
+class FileViewer(QtGui.QDialog, HgDialogMixin):
+    _uifile = 'fileviewer.ui'
     def __init__(self, repo, filename, noderev=None):
-        QtGui.QDialog.__init__(self)
-        for _path in [dirname(__file__),
-                      join(sys.exec_prefix, 'share/hgview'),
-                      expanduser('~/share/hgview'),
-                      join(dirname(__file__), "../../../../../share/hgview"),
-                      ]:
-            ui_file = join(_path, 'fileviewer.ui')
-
-            if isfile(ui_file):
-                break
-        else:
-            raise ValueError("Unable to find fileviewer.ui\n"
-                             "Check your installation.")
-
-        # load qt designer ui file
-        #uifile = join(ui_file)
-        self.ui = uic.loadUi(ui_file, self)
-        # hg repo
         self.repo = repo
+        QtGui.QDialog.__init__(self)
+        HgDialogMixin.__init__(self)
+
+        # hg repo
         self.filename = filename
-        self.load_config()
 
         lay = QtGui.QHBoxLayout(self.frame)
         lay.setSpacing(0)
@@ -126,50 +95,212 @@ class FileViewer(QtGui.QDialog):
         self.textBrowser_filecontent.markerAdd(1, self.markerplus)
         self.textBrowser_filecontent.markerAdd(2, self.markerminus)
 
-    def load_config(self):
-        cfg = HgConfig(self.repo.ui)
-        fontstr = cfg.getFont()
-        font = QtGui.QFont()
-        try:
-            if not font.fromString(fontstr):
-                raise Exception
-        except:
-            print "bad font name '%s'" % fontstr
-            font.setFamily("Monospace")
-            font.setFixedPitch(True)
-            font.setPointSize(10)
-        self.font = font
 
-        self.rowheight = cfg.getRowHeight()
-        self.users, self.aliases = cfg.getUsers()
 
-class FileDiffViewer(QtGui.QDialog):
+class TreeItem(object):
+    def __init__(self, data, parent=None):
+        self.parentItem = parent
+        self.itemData = data
+        self.childItems = []
+
+    def appendChild(self, item):
+        self.childItems.append(item)
+        return item
+    addChild = appendChild
+    
+    def child(self, row):
+        return self.childItems[row]
+
+    def childCount(self):
+        return len(self.childItems)
+
+    def columnCount(self):
+        return len(self.itemData)
+
+    def data(self, column):
+        return self.itemData[column]
+
+    def parent(self):
+        return self.parentItem
+
+    def row(self):
+        if self.parentItem:
+            return self.parentItem.childItems.index(self)
+
+        return 0
+
+    def __getitem__(self, idx):
+        return self.childItems[idx]
+
+    def __len__(self):
+        return len(self.childItems)
+
+    def __iter__(self):
+        for ch in self.childItems:
+            yield ch
+            
+    
+class ManifestModel(QtCore.QAbstractItemModel):
+    def __init__(self, repo, rev, parent=None):
+        QtCore.QAbstractItemModel.__init__(self, parent)
+
+        self.repo = repo
+        self.changectx = self.repo.changectx(rev)
+        self.setupModelData()
+
+    def data(self, index, role):
+        if not index.isValid():
+            return QtCore.QVariant()
+
+        if role != QtCore.Qt.DisplayRole:
+            return QtCore.QVariant()
+
+        item = index.internalPointer()
+        return QtCore.QVariant(item.data(index.column()))
+
+    def flags(self, index):
+        if not index.isValid():
+            return QtCore.Qt.ItemIsEnabled
+        return QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable
+
+    def headerData(self, section, orientation, role):
+        if orientation == QtCore.Qt.Horizontal and role == QtCore.Qt.DisplayRole:
+            return QtCore.QVariant(self.rootItem.data(section))
+        return QtCore.QVariant()
+
+    def index(self, row, column, parent):
+        if row < 0 or column < 0 or row >= self.rowCount(parent) or column >= self.columnCount(parent):
+            return QtCore.QModelIndex()
+
+        if not parent.isValid():
+            parentItem = self.rootItem
+        else:
+            parentItem = parent.internalPointer()
+        childItem = parentItem.child(row)
+        if childItem is not None:
+            return self.createIndex(row, column, childItem)
+        else:
+            return QtCore.QModelIndex()
+
+    def parent(self, index):
+        if not index.isValid():
+            return QtCore.QModelIndex()
+
+        childItem = index.internalPointer()
+        parentItem = childItem.parent()
+
+        if parentItem == self.rootItem:
+            return QtCore.QModelIndex()
+
+        return self.createIndex(parentItem.row(), 0, parentItem)
+
+    def rowCount(self, parent):
+        if parent.column() > 0:
+            return 0
+
+        if not parent.isValid():
+            parentItem = self.rootItem
+        else:
+            parentItem = parent.internalPointer()
+        return parentItem.childCount()
+
+    def columnCount(self, parent):
+        if parent.isValid():
+            return parent.internalPointer().columnCount()
+        else:
+            return self.rootItem.columnCount()
+
+    def setupModelData(self):
+        rootData = ["rev %s:%s" % (self.changectx.rev(),
+                                   short_hex(self.changectx.node()))]
+        self.rootItem = TreeItem(rootData)
+
+        for path in sorted(self.changectx.manifest()):
+            path = path.split(osp.sep)
+            node = self.rootItem
+            
+            for p in path:
+                for ch in node:
+                    if ch.data(0) == p:
+                        node = ch
+                        break
+                else:
+                    node = node.addChild(TreeItem([p], node))
+
+    def pathForIndex(self, index):
+        idxs = []
+        while index.isValid():
+            idxs.insert(0, index)
+            index = self.parent(index)
+        return osp.sep.join([index.internalPointer().data(0) for index in idxs])
+        
+class ManifestViewer(QtGui.QMainWindow, HgDialogMixin):
+    """
+    Qt4 dialog to display all files of a repo at a given revision
+    """
+    _uifile = 'manifestviewer.ui'
+    def __init__(self, repo, noderev):
+        self.repo = repo
+        QtGui.QMainWindow.__init__(self)
+        HgDialogMixin.__init__(self)
+        #self.connect(self.actionClose, QtCore.SIGNAL('triggered(bool)'),
+        #             self.close)
+        # hg repo
+        self.rev = noderev
+        self.treemodel = ManifestModel(self.repo, self.rev)
+        self.treeView.setModel(self.treemodel)
+        self.connect(self.treeView, QtCore.SIGNAL('activated(const QModelIndex &)'),
+                     self.file_selected)
+        self.setup_textview()
+
+    def setup_textview(self):
+        lay = QtGui.QHBoxLayout(self.mainFrame)
+        lay.setSpacing(0)
+        lay.setContentsMargins(0,0,0,0)
+        sci = Qsci.QsciScintilla(self.mainFrame)
+        lay.addWidget(sci)
+        sci.setMarginLineNumbers(1, True)
+        sci.setMarginWidth(1, '000')
+        sci.setReadOnly(True)
+        sci.setFont(self.font)
+
+        sci.SendScintilla(sci.SCI_SETSELEOLFILLED, True)
+        self.textView = sci
+        
+    def file_selected(self, index):
+        if not index.isValid():
+            return
+        path = self.treemodel.pathForIndex(index)
+        fc = self.repo.changectx(self.rev).filectx(path)
+        if fc.size() > 100000:
+            data = "File too big"
+        else:
+            # return the whole file
+            data = unicode(fc.data(), errors='ignore') # XXX
+            lexer = get_lexer(path, data)
+            if lexer:
+                lexer.setFont(self.font)
+                self.textView.setLexer(lexer)
+            self._cur_lexer = lexer
+        nlines = data.count('\n')
+        self.textView.setMarginWidth(1, str(nlines)+'00')
+        self.textView.setText(data)
+        
+    
+class FileDiffViewer(QtGui.QDialog, HgDialogMixin):
     """
     Qt4 dialog to display diffs between different mercurial revisions of a file.
     """
+    _uifile = 'filediffviewer.ui'
     def __init__(self, repo, filename, noderev=None):
+        self.repo = repo
         QtGui.QDialog.__init__(self)
-        for _path in [dirname(__file__),
-                      join(sys.exec_prefix, 'share/hgview'),
-                      expanduser('~/share/hgview'),
-                      join(dirname(__file__), "../../../../../share/hgview"),
-                      ]:
-            ui_file = join(_path, 'filediffviewer.ui')
-
-            if isfile(ui_file):
-                break
-        else:
-            raise ValueError("Unable to find fileviewer.ui\n"
-                             "Check your installation.")
-
-        # load qt designer ui file
-        self.ui = uic.loadUi(ui_file, self)
+        HgDialogMixin.__init__(self)
+        
         self.connect(self.actionClose, QtCore.SIGNAL('triggered(bool)'),
                      self.close)
         # hg repo
-        self.repo = repo
         self.filename = filename
-        self.load_config()
 
         self.filedata = {'left': None, 'right': None}
         self._previous = None
@@ -239,7 +370,7 @@ class FileDiffViewer(QtGui.QDialog):
             table = getattr(self, 'tableView_revisions_%s' % side)
             table.verticalHeader().setDefaultSectionSize(self.rowheight)
             table.setTabKeyNavigation(False)
-            table.setModel(self.filerevmodel)
+            table.setModel(self.lerevmodel)
             table.verticalHeader().hide()
             self.connect(table.selectionModel(),
                          QtCore.SIGNAL('currentRowChanged(const QModelIndex &, const QModelIndex &)'),
@@ -260,23 +391,6 @@ class FileDiffViewer(QtGui.QDialog):
                 self.actionClose.trigger()
                 return True
         return QtGui.QDialog.eventFilter(self, watched, event)
-
-    def load_config(self):
-        cfg = HgConfig(self.repo.ui)
-        fontstr = cfg.getFont()
-        font = QtGui.QFont()
-        try:
-            if not font.fromString(fontstr):
-                raise Exception
-        except:
-            print "bad font name '%s'" % fontstr
-            font.setFamily("Monospace")
-            font.setFixedPitch(True)
-            font.setPointSize(10)
-        self.font = font
-
-        self.rowheight = cfg.getRowHeight()
-        self.users, self.aliases = cfg.getUsers()
 
     def update_page_steps(self):
         for side in sides:
@@ -471,21 +585,27 @@ if __name__ == '__main__':
                    default=False,
                    action='store_true',
                    help='Run in diff mode')
+    opt.add_option('-r', '--rev',
+                   dest='rev',
+                   default=None,
+                   help='Run in manifest navigation mode for the given rev')
+
     options, args = opt.parse_args()
     if len(args)!=1:
-        opt.print_help()
-        sys.exit(1)
-    filename = args[0]
+        filename = None
+    else:
+        filename = args[0]
 
     u = ui.ui()
     repo = hg.repository(u, options.repo)
     app = QtGui.QApplication([])
 
     if options.diff:
-        dview = FileDiffViewer(repo, filename)
-        dview.show()
+        view = FileDiffViewer(repo, filename)
+    elif options.rev is not None:
+        view = ManifestViewer(repo, int(options.rev))
     else:
         view = FileViewer(repo, filename)
-        view.show()
+    view.show()
     sys.exit(app.exec_())
 
