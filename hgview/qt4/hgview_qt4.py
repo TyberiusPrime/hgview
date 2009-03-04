@@ -379,15 +379,17 @@ class HgMainWindow(QtGui.QMainWindow, HgDialogMixin):
         lexer = None
         if flag == "M":
             lexer = Qsci.QsciLexerDiff()
+            self.textview_status.setMarginWidth(1, 0)
         elif flag == "A":
             lexer = get_lexer(sel_file, data)
+            nlines = data.count('\n')
+            self.textview_status.setMarginWidth(1, str(nlines)+'0')            
         if lexer:
             lexer.setDefaultFont(self.font)
+            lexer.setFont(self.font)
         w.setLexer(lexer)
         self._cur_lexer = lexer
 
-        nlines = data.count('\n')
-        self.textview_status.setMarginWidth(1, str(nlines)+'0')
         self.textview_status.setText(data)
         self.highlight_search_string()
 
