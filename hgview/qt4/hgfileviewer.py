@@ -73,6 +73,7 @@ class FileViewer(QtGui.QDialog, HgDialogMixin):
         lexer = get_lexer(self.filename, data)
         if lexer:
             lexer.setDefaultFont(self.font)
+            lexer.setFont(self.font)
             self.textBrowser_filecontent.setLexer(lexer)
 
         self.tableView_revisions.verticalHeader().setDefaultSectionSize(self.rowheight)
@@ -316,7 +317,8 @@ class FileDiffViewer(QtGui.QDialog, HgDialogMixin):
         lexer = get_lexer(self.filename, data)
         if lexer:
             lexer.setDefaultFont(self.font)
-
+            lexer.setFont(self.font)
+        self.lexer = lexer
         # viewers are Scintilla editors
         self.viewers = {}
         # block are diff-block displayers
@@ -335,21 +337,29 @@ class FileDiffViewer(QtGui.QDialog, HgDialogMixin):
             sci.setFrameShape(QtGui.QFrame.NoFrame)
             sci.setMarginLineNumbers(1, True)
             sci.SendScintilla(sci.SCI_SETSELEOLFILLED, True)
-
-            sci.SendScintilla(sci.SCI_STYLESETEOLFILLED, 0x10, True)
-            sci.SendScintilla(sci.SCI_STYLESETBACK, 0x10, 0xB0FFA0)
-            sci.SendScintilla(sci.SCI_STYLESETEOLFILLED, 0x08, True)
-            sci.SendScintilla(sci.SCI_STYLESETBACK, 0x08, 0xA0A0FF)
-            sci.SendScintilla(sci.SCI_STYLESETEOLFILLED, 0x04, True)
-            sci.SendScintilla(sci.SCI_STYLESETBACK, 0x04, 0xFFA0A0)
+            if lexer:
+                sci.setLexer(lexer)
 
             sci.setReadOnly(True)
             lay.addWidget(sci)
-            self.markerplus = sci.markerDefine(Qsci.QsciScintilla.Plus)
-            self.markerminus = sci.markerDefine(Qsci.QsciScintilla.Minus)
-            self.markertriangle = sci.markerDefine(Qsci.QsciScintilla.RightTriangle)
-            self.viewers[side] = sci
+            
+            # hide margin 0 (markers)
+            sci.SendScintilla(sci.SCI_SETMARGINTYPEN, 0, 0)
+            sci.SendScintilla(sci.SCI_SETMARGINWIDTHN, 0, 0)
+            # setup margin 1 for line numbers only
+            sci.SendScintilla(sci.SCI_SETMARGINTYPEN, 1, 1)
+            sci.SendScintilla(sci.SCI_SETMARGINWIDTHN, 1, 20)
+            sci.SendScintilla(sci.SCI_SETMARGINMASKN, 1, 0)
 
+            # define markers for colorize zones of diff
+            self.markerplus = sci.markerDefine(Qsci.QsciScintilla.Background)
+            sci.SendScintilla(sci.SCI_MARKERSETBACK, self.markerplus, 0xB0FFA0)
+            self.markerminus = sci.markerDefine(Qsci.QsciScintilla.Background)
+            sci.SendScintilla(sci.SCI_MARKERSETBACK, self.markerminus, 0xA0A0FF)
+            self.markertriangle = sci.markerDefine(Qsci.QsciScintilla.Background)
+            sci.SendScintilla(sci.SCI_MARKERSETBACK, self.markertriangle, 0xFFA0A0)
+            
+            self.viewers[side] = sci
             blk = BlockList(self.frame)
             blk.linkScrollBar(sci.verticalScrollBar())
             self.diffblock.linkScrollBar(sci.verticalScrollBar(), side)
@@ -370,7 +380,7 @@ class FileDiffViewer(QtGui.QDialog, HgDialogMixin):
             table = getattr(self, 'tableView_revisions_%s' % side)
             table.verticalHeader().setDefaultSectionSize(self.rowheight)
             table.setTabKeyNavigation(False)
-            table.setModel(self.lerevmodel)
+            table.setModel(self.filerevmodel)
             table.verticalHeader().hide()
             self.connect(table.selectionModel(),
                          QtCore.SIGNAL('currentRowChanged(const QModelIndex &, const QModelIndex &)'),
@@ -426,18 +436,10 @@ class FileDiffViewer(QtGui.QDialog, HgDialogMixin):
                 w = self.viewers['left']
                 for i in range(alo, ahi):
                     w.markerAdd(i, self.markertriangle)
-                pos0 = w.SendScintilla(w.SCI_POSITIONFROMLINE, alo)
-                pos1 = w.SendScintilla(w.SCI_POSITIONFROMLINE, ahi)
-                w.SendScintilla(w.SCI_STARTSTYLING, pos0, 0x04)
-                w.SendScintilla(w.SCI_SETSTYLING, pos1-pos0, 0x04)
 
                 w = self.viewers['right']
                 for i in range(blo, bhi):
                     w.markerAdd(i, self.markertriangle)
-                pos0 = w.SendScintilla(w.SCI_POSITIONFROMLINE, blo)
-                pos1 = w.SendScintilla(w.SCI_POSITIONFROMLINE, bhi)
-                w.SendScintilla(w.SCI_STARTSTYLING, pos0, 0x04)
-                w.SendScintilla(w.SCI_SETSTYLING, pos1-pos0, 0x04)
 
             elif tag == 'delete':
                 self.block['left'].addBlock('-', alo, ahi)
@@ -446,10 +448,6 @@ class FileDiffViewer(QtGui.QDialog, HgDialogMixin):
                 w = self.viewers['left']
                 for i in range(alo, ahi):
                     w.markerAdd(i, self.markerminus)
-                pos0 = w.SendScintilla(w.SCI_POSITIONFROMLINE, alo)
-                pos1 = w.SendScintilla(w.SCI_POSITIONFROMLINE, ahi)
-                w.SendScintilla(w.SCI_STARTSTYLING, pos0, 0x08)
-                w.SendScintilla(w.SCI_SETSTYLING, pos1-pos0, 0x08)
 
             elif tag == 'insert':
                 self.block['right'].addBlock('+', blo, bhi)
@@ -458,10 +456,6 @@ class FileDiffViewer(QtGui.QDialog, HgDialogMixin):
                 w = self.viewers['right']
                 for i in range(blo, bhi):
                     w.markerAdd(i, self.markerplus)
-                pos0 = w.SendScintilla(w.SCI_POSITIONFROMLINE, blo)
-                pos1 = w.SendScintilla(w.SCI_POSITIONFROMLINE, bhi)
-                w.SendScintilla(w.SCI_STARTSTYLING, pos0, 0x10)
-                w.SendScintilla(w.SCI_SETSTYLING, pos1-pos0, 0x10)
 
             elif tag == 'equal':
                 pass
