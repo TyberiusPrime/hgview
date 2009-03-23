@@ -128,13 +128,12 @@ class BlockMatch(BlockList):
         ps_r = float(self._pagestep['right'])
         v_l = self._value['left']
         v_r = self._value['right']
-        
-        # compute scale
-        #scalel = float(h)/((1.0 + (ps_l/self._maximum['left'])) * ps_l)
-        #scaler = float(h)/((1.0 + (ps_r/self._maximum['right'])) * ps_r)
-        scalel = float(h)/ps_l
-        scaler = float(h)/ps_r
 
+        # we do integer divisions here cause the pagestep is the
+        # integer number of fully displayed text lines
+        scalel = self._sbar['left'].height()//ps_l
+        scaler = self._sbar['right'].height()//ps_r
+        
         ml = v_l
         Ml = v_l + ps_l
         mr = v_r
@@ -160,7 +159,6 @@ class BlockMatch(BlockList):
             p.drawPath(path)
 
             p.restore()
-
 
     def setMaximum(self, m, side):
         self._maximum[side] = m
@@ -204,6 +202,9 @@ class BlockMatch(BlockList):
         for side in ['left', 'right']:
             self.setPageStep(self._sbar[side].pageStep(), side)
 
+    def resizeEvent(self, event):
+        self.syncPageStep()
+        
     def linkScrollBar(self, sb, side):
         """
         Make the block list displayer be linked to the scrollbar
