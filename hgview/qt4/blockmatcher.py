@@ -5,6 +5,14 @@ from PyQt4 import QtGui, QtCore
 from PyQt4.QtCore import Qt, SIGNAL
 
 class BlockList(QtGui.QWidget):
+    """
+    A simple widget to be 'linked' to the scrollbar of a diff text
+    view.
+
+    It represents diff blocks with coloured rectangles, showing
+    currently viewed area by a semi-transparant rectangle sliding
+    above them.
+    """
     def __init__(self, *args):
         QtGui.QWidget.__init__(self, *args)
         self._blocks = set()
@@ -95,6 +103,13 @@ class BlockList(QtGui.QWidget):
         p.restore()
         
 class BlockMatch(BlockList):
+    """
+    A simpe widget to be linked to 2 file views (text areas),
+    displaying 2 versions of a same file (diff).
+
+    It will show graphically matching diff blocks between the 2 text
+    areas.
+    """
     def __init__(self, *args):
         QtGui.QWidget.__init__(self, *args)
         self._blocks = set()
