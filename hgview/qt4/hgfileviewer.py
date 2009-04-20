@@ -244,8 +244,9 @@ class ManifestViewer(QtGui.QMainWindow, HgDialogMixin):
         self.repo = repo
         QtGui.QMainWindow.__init__(self)
         HgDialogMixin.__init__(self)
-        #self.connect(self.actionClose, QtCore.SIGNAL('triggered(bool)'),
-        #             self.close)
+        self.actionClose.setShortcuts([self.actionClose.shortcut(), Qt.Key_Escape])
+        self.connect(self.actionClose, QtCore.SIGNAL('triggered(bool)'),
+                     self.close)
         # hg repo
         self.rev = noderev
         self.treemodel = ManifestModel(self.repo, self.rev)
