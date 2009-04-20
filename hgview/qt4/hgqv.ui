@@ -16,9 +16,9 @@
    <property name="geometry" >
     <rect>
      <x>0</x>
-     <y>45</y>
+     <y>69</y>
      <width>730</width>
-     <height>578</height>
+     <height>554</height>
     </rect>
    </property>
    <layout class="QVBoxLayout" name="verticalLayout_3" >
@@ -358,8 +358,8 @@
     <rect>
      <x>0</x>
      <y>30</y>
-     <width>15</width>
-     <height>15</height>
+     <width>215</width>
+     <height>39</height>
     </rect>
    </property>
    <property name="windowTitle" >
@@ -371,6 +371,10 @@
    <attribute name="toolBarBreak" >
     <bool>false</bool>
    </attribute>
+   <addaction name="action_Find" />
+   <addaction name="actionCloseFind" />
+   <addaction name="action_Goto" />
+   <addaction name="actionCloseGoto" />
   </widget>
   <widget class="QToolBar" name="toolBar_2" >
    <property name="enabled" >
@@ -378,10 +382,10 @@
    </property>
    <property name="geometry" >
     <rect>
-     <x>15</x>
+     <x>215</x>
      <y>30</y>
-     <width>715</width>
-     <height>15</height>
+     <width>515</width>
+     <height>39</height>
     </rect>
    </property>
    <property name="windowTitle" >
@@ -427,6 +431,9 @@
    </property>
   </action>
   <action name="action_Find" >
+   <property name="checkable" >
+    <bool>true</bool>
+   </property>
    <property name="text" >
     <string>&amp;Find...</string>
    </property>
@@ -449,6 +456,9 @@
    </property>
   </action>
   <action name="action_Goto" >
+   <property name="checkable" >
+    <bool>true</bool>
+   </property>
    <property name="text" >
     <string>&amp;Goto revision...</string>
    </property>
@@ -480,5 +490,102 @@
  <resources>
   <include location="hgview.qrc" />
  </resources>
- <connections/>
+ <connections>
+  <connection>
+   <sender>action_Find</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>find_frame</receiver>
+   <slot>setVisible(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>364</x>
+     <y>576</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>action_Goto</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>goto_frame</receiver>
+   <slot>setVisible(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>364</x>
+     <y>607</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionCloseFind</sender>
+   <signal>activated()</signal>
+   <receiver>action_Find</receiver>
+   <slot>toggle()</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionCloseGoto</sender>
+   <signal>activated()</signal>
+   <receiver>action_Goto</receiver>
+   <slot>toggle()</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>action_Find</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>actionCloseFind</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>action_Goto</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>actionCloseGoto</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
 </ui>

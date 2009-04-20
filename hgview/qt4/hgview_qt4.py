@@ -91,62 +91,62 @@ class HgMainWindow(QtGui.QMainWindow, HgDialogMixin):
         self.goto_frame.hide()
         self.close_goto_toolButton.setIcon(self._icons['closebtn'])
         self.action_Goto.setShortcuts([self.action_Find.shortcut(), "Ctrl+G"])
-        self.connect(self.actionCloseGoto, QtCore.SIGNAL('triggered(bool)'),
-                     self.goto_frame.hide)
         self.connect(self.close_goto_toolButton, QtCore.SIGNAL('clicked(bool)'),
-                     self.goto_frame.hide)
-        self.connect(self.action_Goto, QtCore.SIGNAL('triggered()'),
-                     self.show_goto_frame)
+                     lambda: self.action_Goto.setChecked(False))
         self.connect(self.button_goto, QtCore.SIGNAL('clicked(bool)'),
                      self.on_goto)
         self.connect(self.entry_goto, QtCore.SIGNAL('returnPressed()'),
                      self.on_goto)
+
         self._goto_frame_timer = QtCore.QTimer(self)
         self._goto_frame_timer.setInterval(self.hidefinddelay)
         self.connect(self._goto_frame_timer, QtCore.SIGNAL('timeout()'),
-                     self.goto_frame.hide)
+                     lambda: self.action_Goto.setChecked(False))
+        self.connect(self.action_Goto, QtCore.SIGNAL('toggled(bool)'),
+                     self.on_goto_toggled)
 
         self.goto_model = QtGui.QStringListModel(['tip'])
         self.goto_completer = QtGui.QCompleter(self.goto_model, self)
         self.entry_goto.setCompleter(self.goto_completer)
+        self.action_Goto.setChecked(False)
 
     def setup_find_frame(self):
         self.find_frame.hide()
         # XXX don't know why I have to do this, the icon is affected
         # in designer, but it does not work here...
         self.close_find_toolButton.setIcon(self._icons['closebtn'])
-        self.action_Find.setShortcuts([self.action_Find.shortcut(), "Ctrl+F", "/"])
+        self.action_Find.setShortcuts([self.action_Find.shortcut(), "/"])
         self.action_FindNext.setShortcuts([self.action_FindNext.shortcut(), "Ctrl+N"])
-        self.connect(self.actionCloseFind, QtCore.SIGNAL('triggered(bool)'),
-                     self.find_frame.hide)
         self.connect(self.actionBack, QtCore.SIGNAL('triggered(bool)'),
                      self.back)
-        self.connect(self.close_find_toolButton, QtCore.SIGNAL('clicked(bool)'),
-                     self.find_frame.hide)
-        self.connect(self.action_Find, QtCore.SIGNAL('triggered()'),
-                     self.show_find_frame)
         self.connect(self.action_FindNext, QtCore.SIGNAL('triggered()'),
                      self.on_find)
         self.connect(self.button_find, QtCore.SIGNAL('clicked(bool)'),
                      self.on_find)
         self.connect(self.button_cancelsearch, QtCore.SIGNAL('clicked(bool)'),
                      self.on_cancelsearch)
+        self.connect(self.close_find_toolButton, QtCore.SIGNAL('clicked(bool)'),
+                     lambda: self.action_Find.setChecked(False))
         self.connect(self.entry_find, QtCore.SIGNAL('returnPressed()'),
                      self.on_find)
         self.connect(self.entry_find, QtCore.SIGNAL('textChanged(const QString &)'),
                      self.on_find_text_changed)
+
         self._find_frame_timer = QtCore.QTimer(self)
         self._find_frame_timer.setInterval(self.hidefinddelay)
         self.connect(self._find_frame_timer, QtCore.SIGNAL('timeout()'),
-                     self.find_frame.hide)
+                     lambda: self.action_Find.setChecked(False))
+        self.connect(self.action_Find, QtCore.SIGNAL('toggled(bool)'),
+                     self.on_find_toggled)
+        self.action_Find.setChecked(False)
 
     def setup_main_actions(self):
         # main window actions
-        self.connect(self.actionRefresh, QtCore.SIGNAL('triggered ()'),
+        self.connect(self.actionRefresh, QtCore.SIGNAL('triggered()'),
                      self.reload_repository)
-        self.connect(self.actionAbout, QtCore.SIGNAL('triggered ()'),
+        self.connect(self.actionAbout, QtCore.SIGNAL('triggered()'),
                      self.on_about)
-        self.connect(self.actionQuit, QtCore.SIGNAL('triggered ()'),
+        self.connect(self.actionQuit, QtCore.SIGNAL('triggered()'),
                      self.close)
         self.actionQuit.setShortcuts([self.actionQuit.shortcut(), Qt.Key_Escape])
 
@@ -274,11 +274,11 @@ class HgMainWindow(QtGui.QMainWindow, HgDialogMixin):
     # Qt methods
     def closeEvent(self, event):
         if not self.goto_frame.isHidden():
-            self.goto_frame.hide()
+            self.action_Goto.setChecked(False)
             event.ignore()
         elif not self.find_frame.isHidden():
             self.on_cancelsearch()
-            self.find_frame.hide()
+            self.action_Find.setChecked(False)
             event.ignore()
         else:
             event.accept()
@@ -501,23 +501,32 @@ class HgMainWindow(QtGui.QMainWindow, HgDialogMixin):
             col1_width -= self.tableView_revisions.columnWidth(c)
         self.tableView_revisions.setColumnWidth(1, col1_width)
 
-    def show_find_frame(self, *args):
-        self.goto_frame.hide()
-        self.find_frame.show()
-        self.entry_find.setFocus()
-        self.entry_find.selectAll()
-        self._find_frame_timer.start()
+    def on_find_toggled(self, checked):
+        if checked:
+            self.entry_find.setFocus()
+            self.entry_find.selectAll()
+            self._find_frame_timer.start()
+        else:
+            self._find_frame_timer.stop()
+            
+    def on_goto_toggled(self, checked):
+        if checked:
+            self.entry_goto.setFocus()
+            self.entry_goto.selectAll()
+            self._goto_frame_timer.start()
+        else:
+            self._goto_frame_timer.stop()
 
     def show_goto_frame(self, *args):
-        self.find_frame.hide()
-        self.goto_frame.show()
+        self._find_frame_timer.stop()
+        self.action_Find.setChecked(False)
         self.entry_goto.setFocus()
         self.entry_goto.selectAll()
         self._goto_frame_timer.start()
 
     # methods to manage searching
     def highlight_search_string(self):
-        if not self.find_frame.isHidden() and self._find_text.strip():
+        if not self.find_frame.isHidden() and self._find_text is not None and self._find_text.strip():
             w = self.textview_status
             data = unicode(self.textview_status.text())
             w.SendScintilla(w.SCI_SETINDICATORCURRENT, 8)
