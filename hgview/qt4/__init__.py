@@ -5,11 +5,16 @@ import os
 import os.path as osp
 import sys
 
+# automatically load resource module, creating it on the fly if
+# required
 curdir = osp.dirname(__file__)
 pyfile = osp.join(curdir, "hgview_rc.py")
 rcfile = osp.join(curdir, "hgview.qrc")
 if not osp.isfile(pyfile) or osp.getmtime(pyfile) < osp.getmtime(rcfile):
-    os.system('pyrcc4 %s -o %s' % (rcfile, pyfile))
+    if os.system('pyrcc4 %s -o %s' % (rcfile, pyfile)):
+        print "ERROR: Cannot convert the resource file '%s' into a python module."
+        print "Please check the PyQt 'pyrcc4' tool is installed, or do it by hand running:"
+        print "pyrcc4 %s -o %s" % (rcfile, pyfile)
 import hgview_rc
 
 from PyQt4 import QtGui, uic
