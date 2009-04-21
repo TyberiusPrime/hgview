@@ -65,10 +65,14 @@ class HgMainWindow(QtGui.QMainWindow, HgDialogMixin):
         # filter frame
         self.setup_filterframe()
 
+        # required due to a probable bug in uic module
         self._icons['closebtn'] = QtGui.QIcon(':/icons/close.png')
-        self.setup_find_frame()
-        self.setup_goto_frame()
-
+        self._icons['back'] = QtGui.QIcon(':/icons/back.svg')
+        self._icons['forward'] = QtGui.QIcon(':/icons/forward.svg')
+        self.setup_frame_find()
+        self.setup_frame_goto()
+        self.setup_navigation_buttons()
+        
         # setup tables and views
         self.setup_header_textview()
         self.setup_revision_table()
@@ -87,58 +91,65 @@ class HgMainWindow(QtGui.QMainWindow, HgDialogMixin):
             self.branchesmodel = QtGui.QStringListModel([''] + branches)
             self.branch_comboBox.setModel(self.branchesmodel)
 
-    def setup_goto_frame(self):
-        self.goto_frame.hide()
+    def setup_frame_goto(self):
+        self.frame_goto.hide()
         self.close_goto_toolButton.setIcon(self._icons['closebtn'])
-        self.action_Goto.setShortcuts([self.action_Find.shortcut(), "Ctrl+G"])
         self.connect(self.close_goto_toolButton, QtCore.SIGNAL('clicked(bool)'),
-                     lambda: self.action_Goto.setChecked(False))
+                     lambda: self.actionGoto.setChecked(False))
         self.connect(self.button_goto, QtCore.SIGNAL('clicked(bool)'),
                      self.on_goto)
         self.connect(self.entry_goto, QtCore.SIGNAL('returnPressed()'),
                      self.on_goto)
 
-        self._goto_frame_timer = QtCore.QTimer(self)
-        self._goto_frame_timer.setInterval(self.hidefinddelay)
-        self.connect(self._goto_frame_timer, QtCore.SIGNAL('timeout()'),
-                     lambda: self.action_Goto.setChecked(False))
-        self.connect(self.action_Goto, QtCore.SIGNAL('toggled(bool)'),
+        self._frame_goto_timer = QtCore.QTimer(self)
+        self._frame_goto_timer.setInterval(self.hidefinddelay)
+        self.connect(self._frame_goto_timer, QtCore.SIGNAL('timeout()'),
+                     lambda: self.actionGoto.setChecked(False))
+        self.connect(self.actionGoto, QtCore.SIGNAL('toggled(bool)'),
                      self.on_goto_toggled)
 
         self.goto_model = QtGui.QStringListModel(['tip'])
         self.goto_completer = QtGui.QCompleter(self.goto_model, self)
         self.entry_goto.setCompleter(self.goto_completer)
-        self.action_Goto.setChecked(False)
+        self.actionGoto.setChecked(False)
 
-    def setup_find_frame(self):
-        self.find_frame.hide()
+    def setup_navigation_buttons(self):
+        self.actionBack.setIcon(self._icons['back'])
+        self.connect(self.actionBack, QtCore.SIGNAL('triggered(bool)'),
+                     self.back)
+
+        self.actionForward.setIcon(self._icons['forward'])
+        self.connect(self.actionForward, QtCore.SIGNAL('triggered(bool)'),
+                     self.forward)
+        
+    def setup_frame_find(self):
+        self.frame_find.hide()
         # XXX don't know why I have to do this, the icon is affected
         # in designer, but it does not work here...
         self.close_find_toolButton.setIcon(self._icons['closebtn'])
-        self.action_Find.setShortcuts([self.action_Find.shortcut(), "/"])
-        self.action_FindNext.setShortcuts([self.action_FindNext.shortcut(), "Ctrl+N"])
-        self.connect(self.actionBack, QtCore.SIGNAL('triggered(bool)'),
-                     self.back)
-        self.connect(self.action_FindNext, QtCore.SIGNAL('triggered()'),
+        self.actionFind.setShortcuts([self.actionFind.shortcut(), "/"])
+        self.actionFindNext.setShortcuts([self.actionFindNext.shortcut(), "Ctrl+N"])
+
+        self.connect(self.actionFindNext, QtCore.SIGNAL('triggered()'),
                      self.on_find)
         self.connect(self.button_find, QtCore.SIGNAL('clicked(bool)'),
                      self.on_find)
         self.connect(self.button_cancelsearch, QtCore.SIGNAL('clicked(bool)'),
                      self.on_cancelsearch)
         self.connect(self.close_find_toolButton, QtCore.SIGNAL('clicked(bool)'),
-                     lambda: self.action_Find.setChecked(False))
+                     lambda: self.actionFind.setChecked(False))
         self.connect(self.entry_find, QtCore.SIGNAL('returnPressed()'),
                      self.on_find)
         self.connect(self.entry_find, QtCore.SIGNAL('textChanged(const QString &)'),
                      self.on_find_text_changed)
 
-        self._find_frame_timer = QtCore.QTimer(self)
-        self._find_frame_timer.setInterval(self.hidefinddelay)
-        self.connect(self._find_frame_timer, QtCore.SIGNAL('timeout()'),
-                     lambda: self.action_Find.setChecked(False))
-        self.connect(self.action_Find, QtCore.SIGNAL('toggled(bool)'),
+        self._frame_find_timer = QtCore.QTimer(self)
+        self._frame_find_timer.setInterval(self.hidefinddelay)
+        self.connect(self._frame_find_timer, QtCore.SIGNAL('timeout()'),
+                     lambda: self.actionFind.setChecked(False))
+        self.connect(self.actionFind, QtCore.SIGNAL('toggled(bool)'),
                      self.on_find_toggled)
-        self.action_Find.setChecked(False)
+        self.actionFind.setChecked(False)
 
     def setup_main_actions(self):
         # main window actions
@@ -185,8 +196,24 @@ class HgMainWindow(QtGui.QMainWindow, HgDialogMixin):
             if idx is not None:
                 self._in_history = True
                 self.tableView_revisions.setCurrentIndex(idx)
-            if self._rev_pos < 1:
-                self.actionBack.setEnabled(False)
+        self.set_navigation_button_state()
+
+    def forward(self):
+        if self._rev_history:
+            self._rev_pos += 1
+            idx = self.repomodel.indexFromRev(self._rev_history[self._rev_pos])
+            if idx is not None:
+                self._in_history = True
+                self.tableView_revisions.setCurrentIndex(idx)
+        self.set_navigation_button_state()
+
+    def set_navigation_button_state(self):
+        if len(self._rev_history) > 0:
+            self.actionBack.setEnabled(self._rev_pos > 0)
+            self.actionForward.setEnabled(self._rev_pos < len(self._rev_history)-1)
+        else:
+            self.actionBack.setEnabled(False)
+            self.actionForward.setEnabled(False)
 
     def on_goto(self, *args):
         goto = unicode(self.entry_goto.text())
@@ -198,7 +225,7 @@ class HgMainWindow(QtGui.QMainWindow, HgDialogMixin):
             idx = self.repomodel.indexFromRev(rev)
             if idx is not None:
                 self.tableView_revisions.setCurrentIndex(idx)
-        self.goto_frame.hide()
+        self.actionGoto.setChecked(False)
 
     def load_config(self):
         cfg = HgDialogMixin.load_config(self)
@@ -207,6 +234,12 @@ class HgMainWindow(QtGui.QMainWindow, HgDialogMixin):
     def setup_filterframe(self):
         self.connect(self.branch_comboBox, QtCore.SIGNAL('activated(const QString &)'),
                      self.refresh_revision_table)
+        self.frame_branch_action = self.toolBar_treefilters.addWidget(self.frame_branch)
+        self.frame_revrange_action = self.toolBar_treefilters.addWidget(self.frame_revrange)
+        self.frame_filter_action = self.toolBar_treefilters.addWidget(self.frame_filter)
+
+        self.frame_revrange_action.setVisible(False)
+        self.frame_filter_action.setVisible(False)
 
     def setup_models(self):
         self.repomodel = HgRepoListModel(self.repo)
@@ -273,12 +306,12 @@ class HgMainWindow(QtGui.QMainWindow, HgDialogMixin):
 
     # Qt methods
     def closeEvent(self, event):
-        if not self.goto_frame.isHidden():
-            self.action_Goto.setChecked(False)
+        if not self.frame_goto.isHidden():
+            self.actionGoto.setChecked(False)
             event.ignore()
-        elif not self.find_frame.isHidden():
+        elif not self.frame_find.isHidden():
             self.on_cancelsearch()
-            self.action_Find.setChecked(False)
+            self.actionFind.setChecked(False)
             event.ignore()
         else:
             event.accept()
@@ -347,7 +380,7 @@ class HgMainWindow(QtGui.QMainWindow, HgDialogMixin):
                 del self._rev_history[self._rev_pos+1:]
                 self._rev_history.append(ctx.rev())
                 self._rev_pos = len(self._rev_history)-1
-            self.actionBack.setEnabled(self._rev_pos>0 and len(self._rev_history)>0)
+            self.set_navigation_button_state()
 
             self._in_history = False
             self.current_ctx = ctx
@@ -505,28 +538,28 @@ class HgMainWindow(QtGui.QMainWindow, HgDialogMixin):
         if checked:
             self.entry_find.setFocus()
             self.entry_find.selectAll()
-            self._find_frame_timer.start()
+            self._frame_find_timer.start()
         else:
-            self._find_frame_timer.stop()
+            self._frame_find_timer.stop()
             
     def on_goto_toggled(self, checked):
         if checked:
             self.entry_goto.setFocus()
             self.entry_goto.selectAll()
-            self._goto_frame_timer.start()
+            self._frame_goto_timer.start()
         else:
-            self._goto_frame_timer.stop()
+            self._frame_goto_timer.stop()
 
-    def show_goto_frame(self, *args):
-        self._find_frame_timer.stop()
-        self.action_Find.setChecked(False)
+    def show_frame_goto(self, *args):
+        self._frame_find_timer.stop()
+        self.actionFind.setChecked(False)
         self.entry_goto.setFocus()
         self.entry_goto.selectAll()
-        self._goto_frame_timer.start()
+        self._frame_goto_timer.start()
 
     # methods to manage searching
     def highlight_search_string(self):
-        if not self.find_frame.isHidden() and self._find_text is not None and self._find_text.strip():
+        if not self.frame_find.isHidden() and self._find_text is not None and self._find_text.strip():
             w = self.textview_status
             data = unicode(self.textview_status.text())
             w.SendScintilla(w.SCI_SETINDICATORCURRENT, 8)
@@ -578,7 +611,7 @@ class HgMainWindow(QtGui.QMainWindow, HgDialogMixin):
         """
         callback called when 'Find' button is pushed
         """
-        self._find_frame_timer.stop() # prevent find frame from hiding while searching
+        self._frame_find_timer.stop() # prevent find frame from hiding while searching
         if self._find_iter is None:
             curfile = self.filelistmodel.fileFromIndex(self.tableView_filelist.currentIndex())
             currev = self.current_ctx.rev()
@@ -618,11 +651,11 @@ class HgMainWindow(QtGui.QMainWindow, HgDialogMixin):
                 w.SendScintilla(w.SCI_SETINDICATORCURRENT, 9)
                 w.SendScintilla(w.SCI_INDICATORCLEARRANGE, 0, pos)
                 w.SendScintilla(w.SCI_INDICATORFILLRANGE, pos, len(self._find_text))
-                self._find_frame_timer.start()
+                self._frame_find_timer.start()
             return
         self.statusBar().showMessage('No more matches found in repository', 2000)
         self._find_iter = None
-        self._find_frame_timer.start()
+        self._frame_find_timer.start()
 
     def on_find_text_changed(self, newtext):
         """
@@ -641,7 +674,7 @@ class HgMainWindow(QtGui.QMainWindow, HgDialogMixin):
                 self.statusBar().showMessage('Search string not found in current diff. '
                                              'Hit "Find next" button to start searching '
                                              'in the repository', 2000)
-        self._find_frame_timer.start()
+        self._frame_find_timer.start()
 
     def on_anchor_clicked(self, qurl):
         """
