@@ -25,6 +25,7 @@ import math
 import numpy
 
 from mercurial.node import hex, short as short_hex
+from mercurial.revlog import LookupError
 
 from PyQt4 import QtGui, QtCore, uic, Qsci
 from PyQt4.QtCore import Qt
@@ -51,6 +52,7 @@ class FileViewer(QtGui.QDialog, HgDialogMixin):
 
         lay = QtGui.QHBoxLayout(self.frame)
         lay.setSpacing(0)
+
         lay.setContentsMargins(0, 0, 0, 0)
         sci = Qsci.QsciScintilla(self.frame)
         sci.setFrameShape(QtGui.QFrame.NoFrame)
@@ -142,6 +144,10 @@ class TreeItem(object):
             
     
 class ManifestModel(QtCore.QAbstractItemModel):
+    """
+    Qt model to display a hg manifest, ie. the tree of files at a
+    given revision. To be used with a QTreeView.
+    """
     def __init__(self, repo, rev, parent=None):
         QtCore.QAbstractItemModel.__init__(self, parent)
 
@@ -235,14 +241,14 @@ class ManifestModel(QtCore.QAbstractItemModel):
             index = self.parent(index)
         return osp.sep.join([index.internalPointer().data(0) for index in idxs])
         
-class ManifestViewer(QtGui.QMainWindow, HgDialogMixin):
+class ManifestViewer(QtGui.QDialog, HgDialogMixin):
     """
     Qt4 dialog to display all files of a repo at a given revision
     """
     _uifile = 'manifestviewer.ui'
     def __init__(self, repo, noderev):
         self.repo = repo
-        QtGui.QMainWindow.__init__(self)
+        QtGui.QDialog.__init__(self)
         HgDialogMixin.__init__(self)
         self.actionClose.setShortcuts([self.actionClose.shortcut(), Qt.Key_Escape])
         self.connect(self.actionClose, QtCore.SIGNAL('triggered(bool)'),
@@ -251,7 +257,8 @@ class ManifestViewer(QtGui.QMainWindow, HgDialogMixin):
         self.rev = noderev
         self.treemodel = ManifestModel(self.repo, self.rev)
         self.treeView.setModel(self.treemodel)
-        self.connect(self.treeView, QtCore.SIGNAL('activated(const QModelIndex &)'),
+        self.connect(self.treeView.selectionModel(),
+                     QtCore.SIGNAL('currentChanged(const QModelIndex &, const QModelIndex &)'),
                      self.file_selected)
         self.setup_textview()
 
@@ -269,11 +276,18 @@ class ManifestViewer(QtGui.QMainWindow, HgDialogMixin):
         sci.SendScintilla(sci.SCI_SETSELEOLFILLED, True)
         self.textView = sci
         
-    def file_selected(self, index):
+    def file_selected(self, index, *args):
         if not index.isValid():
             return
         path = self.treemodel.pathForIndex(index)
-        fc = self.repo.changectx(self.rev).filectx(path)
+        try:
+            fc = self.repo.changectx(self.rev).filectx(path)
+        except LookupError:
+            # may occur when a directory is selected
+            self.textView.setMarginWidth(1, '00')
+            self.textView.setText('')
+            return
+        
         if fc.size() > 100000:
             data = "File too big"
         else:
