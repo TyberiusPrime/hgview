@@ -33,6 +33,10 @@ install: build
 	dh_installdirs
 	python setup.py -q install --prefix=debian/hgqv/usr
 	rm -rf debian/hgqv/usr/lib/python*/site-packages/hgqv/test
+	install -d debian/hgqv/etc/mercurial/hgrc.d/
+	install -m 644 \
+		hgext/hgqv.rc \
+		debian/hgqv/etc/mercurial/hgrc.d/hgqv.rc
 
 
 # Build architecture-independent files here.
@@ -53,6 +57,13 @@ binary-indep: build install
 	dh_gencontrol -i 
 	dh_md5sums -i
 	dh_builddeb -i
+
+# Install system-wide extensions
+binary-install:
+	install -d $(DEB_DESTDIR)/etc/mercurial/hgrc.d/
+	install -m 644 \
+		hgext/hgqv.rc \
+		$(DEB_DESTDIR)/etc/mercurial/hgrc.d/hgqv.rc
 
 
 

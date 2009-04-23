@@ -10,7 +10,7 @@ import sys
 curdir = osp.dirname(__file__)
 pyfile = osp.join(curdir, "hgqv_rc.py")
 rcfile = osp.join(curdir, "hgqv.qrc")
-if not osp.isfile(pyfile) or osp.getmtime(pyfile) < osp.getmtime(rcfile):
+if not osp.isfile(pyfile) or osp.isfile(rcfile) and osp.getmtime(pyfile) < osp.getmtime(rcfile):
     if os.system('pyrcc4 %s -o %s' % (rcfile, pyfile)):
         print "ERROR: Cannot convert the resource file '%s' into a python module."
         print "Please check the PyQt 'pyrcc4' tool is installed, or do it by hand running:"

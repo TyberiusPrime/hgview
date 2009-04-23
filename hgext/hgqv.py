@@ -45,10 +45,10 @@ def start_hgqv(ui, repo, *args, **kwargs):
     rundir = repo.root
 
     # If this user has a username validation hook enabled,
-    # it could conflict with Qct because both will try to
+    # it could conflict with hgqv because both will try to
     # allocate a QApplication, and PyQt doesn't deal well
     # with two app instances running under the same context.
-    # To prevent this, we run the hook early before Qct
+    # To prevent this, we run the hook early before hgqv
     # allocates the app
     try:
         from hgconf.uname import hook

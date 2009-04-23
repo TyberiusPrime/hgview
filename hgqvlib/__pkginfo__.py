@@ -64,6 +64,6 @@ data_files = [('share/hgqv', ['hgqvlib/qt4/hgqv.ui',
               ('share/man/man1', ['doc/hgqv.1',
                                  ]),
               ('share/python-support/mercurial-common/hgext', ['hgext/hgqv.py',]),
-              ('/etc/mercurial/hgrc.d', ['hgext/hgqv.rc',]),
+              #('../etc/mercurial/hgrc.d', ['hgext/hgqv.rc',]),
               ]
 

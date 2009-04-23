@@ -18,3 +18,4 @@ include doc/hgqv.1
 include hgext/hgqv.py
 include hgext/hgqv.rc
 
+recursive-include etc *

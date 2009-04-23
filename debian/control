@@ -12,7 +12,7 @@ Homepage: http://www.logilab.org/project/hgqv
 
 Package: hgqv
 Architecture: all
-Depends: python, python-qt4, python-qscintilla2, python-egenix-mxdate, mercurial (>= 0.9.3)
+Depends: python, python-qt4, python-qscintilla2, python-egenix-mxdatetime, mercurial (>= 0.9.3)
 Enhances: mercurial
 XB-Python-Version: ${python:Versions}
 Description: mercurial interactive history viewer
