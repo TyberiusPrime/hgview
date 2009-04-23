@@ -17,7 +17,7 @@
 # You should have received a copy of the GNU General Public License along with
 # this program; if not, write to the Free Software Foundation, Inc.,
 # 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
-""" Generic Setup script, takes package info from hgview.__pkginfo__.py file """
+""" Generic Setup script, takes package info from hgqv.__pkginfo__.py file """
 
 from __future__ import nested_scopes
 
@@ -26,34 +26,44 @@ import sys
 import shutil
 from distutils.core import setup
 from distutils.command import install_lib
-from os.path import isdir, exists, join, walk
+from distutils.command.build import build
+from os.path import isdir, exists, join, walk, splitext
+
+try:
+    from setuptools import setup
+    from setuptools.command import install_lib
+    USE_SETUPTOOLS = 1
+except ImportError:    
+    from distutils.core import setup
+    from distutils.command import install_lib
+    USE_SETUPTOOLS = 0
 
 # import required features
-from hgview.__pkginfo__ import modname, version, license, short_desc, long_desc, \
+from hgqvlib.__pkginfo__ import modname, version, license, short_desc, long_desc, \
      web, author, author_email
 # import optional features
 try:
-    from hgview.__pkginfo__ import distname
+    from hgqvlib.__pkginfo__ import distname
 except ImportError:
     distname = modname
 try:
-    from hgview.__pkginfo__ import scripts
+    from hgqvlib.__pkginfo__ import scripts
 except ImportError:
     scripts = []
 try:
-    from hgview.__pkginfo__ import data_files
+    from hgqvlib.__pkginfo__ import data_files
 except ImportError:
     data_files = None
 try:
-    from hgview.__pkginfo__ import subpackage_of
+    from hgqvlib.__pkginfo__ import subpackage_of
 except ImportError:
     subpackage_of = None
 try:
-    from hgview.__pkginfo__ import include_dirs
+    from hgqvlib.__pkginfo__ import include_dirs
 except ImportError:
     include_dirs = []
 try:
-    from hgview.__pkginfo__ import ext_modules
+    from hgqvlib.__pkginfo__ import ext_modules
 except ImportError:
     ext_modules = None
 
@@ -155,24 +165,79 @@ class MyInstallLib(install_lib.install_lib):
             for directory in include_dirs:
                 dest = join(self.install_dir, base, directory)
                 export(directory, dest)
+
+class QtBuild(build):
+    def compile_ui(self, ui_file, py_file=None):
+        return # disabled for now
+        # Search for pyuic4 in python bin dir, then in the $Path.
+        if py_file is None:
+            py_file = splitext(ui_file)[0] + "_ui.py"
+        try:
+            from PyQt4 import uic
+            fp = open(py_file, 'w')
+            uic.compileUi(ui_file, fp)
+            fp.close()
+        except Exception, e:
+            print 'Unable to compile user interface', e
+            return
+
+    def compile_rc(self, qrc_file, py_file=None):
+        # Search for pyuic4 in python bin dir, then in the $Path.
+        if py_file is None:
+            py_file = splitext(qrc_file)[0] + "_rc.py"
+        if os.system('pyrcc4 "%s" -o "%s"' % (qrc_file, py_file)) > 0:
+            print "Unable to generate python module for resource file", qrc_file
         
-def install(**kwargs):
+    def run(self):
+        for dirpath, _, filenames in os.walk(join('hgqvlib', 'qt4')):
+            for filename in filenames:
+                if filename.endswith('.ui'):
+                    self.compile_ui(join(dirpath, filename))
+                elif filename.endswith('.qrc'):
+                    self.compile_rc(join(dirpath, filename))
+        build.run(self)
+        
+        
+def install():
     """setup entry point"""
+    try:
+        if USE_SETUPTOOLS:
+            sys.argv.remove('--force-manifest')
+    except:
+        pass
+    kwargs = {}
+    try:
+        # to generate qct MSI installer, you run python setup.py bdist_msi
+        from setuptools import setup
+        if os.name in ['nt']:
+            # the msi will automatically install the qct.py plugin into hgext
+            kwargs['data_files'] = [('lib/site-packages/hgext', ['hgext/hgqv.py']),
+                    ('mercurial/hgrc.d', ['hgqv.rc']),
+                    ('share/hgqv', ['doc/hgqv.1.html', 'README', 'README.mercurial'])]
+            scripts = ['win32/hgqv_postinstall.py']
+        else:
+            scripts = ['bin/hgqv']
+    except ImportError:
+        from distutils.core import setup
+        scripts = ['bin/hgqv']
+
     kwargs['package_dir'] = {modname : modname}
-    packages = [modname] + get_packages(modname, modname)
+    packages = ['hgqvlib', 'hgqvlib.qt4'] # [modname] + get_packages(modname, modname)
     kwargs['packages'] = packages
-    return setup(name = distname,
-                 version = version,
-                 license =license,
-                 description = short_desc,
-                 long_description = long_desc,
-                 author = author,
-                 author_email = author_email,
-                 url = web,
-                 scripts = ensure_scripts(scripts),
+    return setup(name=distname,
+                 version=version,
+                 license=license,
+                 description=short_desc,
+                 long_description=long_desc,
+                 author=author,
+                 author_email=author_email,
+                 url=web,
+                 scripts=ensure_scripts(scripts),
                  data_files=data_files,
                  ext_modules=ext_modules,
-                 cmdclass={'install_lib': MyInstallLib},
+                 cmdclass={'install_lib': MyInstallLib,
+                           'build' : QtBuild,
+                           },
                  **kwargs
                  )
             

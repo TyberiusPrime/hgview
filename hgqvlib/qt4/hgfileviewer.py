@@ -30,11 +30,11 @@ from mercurial.revlog import LookupError
 from PyQt4 import QtGui, QtCore, uic, Qsci
 from PyQt4.QtCore import Qt
 
-from hgview.config import HgConfig
-from hgview.qt4 import HgDialogMixin
-from hgview.qt4.hgrepomodel import FileRevModel
-from hgview.qt4.blockmatcher import BlockList, BlockMatch
-from hgview.qt4.lexers import get_lexer
+from hgqvlib.config import HgConfig
+from hgqvlib.qt4 import HgDialogMixin
+from hgqvlib.qt4.hgrepomodel import FileRevModel
+from hgqvlib.qt4.blockmatcher import BlockList, BlockMatch
+from hgqvlib.qt4.lexers import get_lexer
 
 sides = ('left', 'right')
 otherside = {'left': 'right', 'right': 'left'}

@@ -8,8 +8,8 @@ goto exit
 """
 # -------------------- Python section --------------------
 from PyQt4 import QtCore, QtGui
-from hgview.qt4 import hgview_qt4 as hgview
-hgview.main()
+from hgqvlib.qt4 import main as hgqv
+hgqv.main()
 
 DosExitLabel = """
 :exit

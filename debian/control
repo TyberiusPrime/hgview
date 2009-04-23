@@ -1,12 +1,10 @@
-Source: hgview
-Section: python
+Source: hgqv
+Section: devel
 Priority: optional
 Maintainer: David Douard <david.douard@logilab.fr>
-Uploaders: Alexandre Fayolle <afayolle@debian.org>,
-           Graziella Toutoungis <graziella.toutoungis@logilab.fr>
-Build-Depends: debhelper (>= 5.0.38)
-Build-Depends-Indep: python (>=2.3.5-7),  python-central (>= 0.5.6)
-Standards-Version: 3.8.0
+Build-Depends: debhelper (>= 5.0.38), python-qt4, mercurial (>= 0.9.3), python (>=2.3.5-7), python-central (>= 0.5.6), xmlto, asciidoc
+Build-Depends-Indep: 
+Standards-Version: 3.7.3
 XS-Python-Version: current
 Vcs-Hg: http://www.logilab.org/cgi-bin/hgwebdir.cgi/hgqv
 Vcs-Browser: http://www.logilab.org/cgi-bin/hgwebdir.cgi/hgqv
@@ -14,10 +12,11 @@ Homepage: http://www.logilab.org/project/hgqv
 
 Package: hgqv
 Architecture: all
-Depends: python, python-qt4, python-qscintilla2, python-egenix-mxdate
+Depends: python, python-qt4, python-qscintilla2, python-egenix-mxdate, mercurial (>= 0.9.3)
+Enhances: mercurial
 XB-Python-Version: ${python:Versions}
 Description: mercurial interactive history viewer
- Its purpose is similar to the hgk tool of mercurial, and it has been
+ Its purpose is to easily navigate in a mercurial repository history. It has been
  written with efficiency in mind when dealing with big repositories
- (it can happily be used to browse Linux kernel source code
- repository).
+ (it should happily be able to handle the browsing of the Linux kernel
+ source code repository).

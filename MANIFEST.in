@@ -1,7 +1,20 @@
+exclude .hgignore
+recursive-exclude debian *
+recursive-exclude debian.hardy *
+
 include ChangeLog
 include COPYING
-include TODO
-include bin/hgview
-include bin/hgview.bat
-include hgview/qt4/hgview.ui
-include hgview.1
+include README
+
+include bin/hgqv
+include bin/hgqv.bat
+
+include hgqvlib/qt4/hgqv.ui
+include hgqvlib/qt4/filediffviewer.ui
+include hgqvlib/qt4/fileviewer.ui
+include hgqvlib/qt4/manifestviewer.ui
+
+include doc/hgqv.1
+include hgext/hgqv.py
+include hgext/hgqv.rc
+

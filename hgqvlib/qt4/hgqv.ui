@@ -197,7 +197,7 @@
           <string/>
          </property>
          <property name="icon" >
-          <iconset resource="hgview.qrc" >
+          <iconset resource="hgqv.qrc" >
            <normaloff>:/icons/close.png</normaloff>:/icons/close.png</iconset>
          </property>
          <property name="flat" >
@@ -263,7 +263,7 @@
           <string/>
          </property>
          <property name="icon" >
-          <iconset resource="hgview.qrc" >
+          <iconset resource="hgqv.qrc" >
            <normaloff>:/icons/close.png</normaloff>:/icons/close.png</iconset>
          </property>
          <property name="flat" >
@@ -453,7 +453,7 @@
   </action>
   <action name="actionCloseFind" >
    <property name="icon" >
-    <iconset resource="hgview.qrc" >
+    <iconset resource="hgqv.qrc" >
      <normaloff>:/icons/close.png</normaloff>:/icons/close.png</iconset>
    </property>
    <property name="text" >
@@ -481,7 +481,7 @@
   </action>
   <action name="actionCloseGoto" >
    <property name="icon" >
-    <iconset resource="hgview.qrc" >
+    <iconset resource="hgqv.qrc" >
      <normaloff>:/icons/close.png</normaloff>:/icons/close.png</iconset>
    </property>
    <property name="text" >
@@ -496,7 +496,7 @@
     <bool>false</bool>
    </property>
    <property name="icon" >
-    <iconset resource="hgview.qrc" >
+    <iconset resource="hgqv.qrc" >
      <normaloff>:/icons/back.svg</normaloff>:/icons/back.svg</iconset>
    </property>
    <property name="text" >
@@ -514,7 +514,7 @@
     <bool>false</bool>
    </property>
    <property name="icon" >
-    <iconset resource="hgview.qrc" >
+    <iconset resource="hgqv.qrc" >
      <normaloff>:/icons/forward.svg</normaloff>:/icons/forward.svg</iconset>
    </property>
    <property name="text" >
@@ -529,7 +529,7 @@
   </action>
  </widget>
  <resources>
-  <include location="hgview.qrc" />
+  <include location="hgqv.qrc" />
  </resources>
  <connections>
   <connection>

@@ -25,9 +25,7 @@ from StringIO import StringIO
 from mercurial.node import nullrev
 from mercurial import patch, util
 
-import hgview # force apply monkeypatches
-
-#from hgview.decorators import timeit
+import hgqvlib # force apply monkeypatches
 
 def diff(repo, ctx1, ctx2=None, files=None):
     """

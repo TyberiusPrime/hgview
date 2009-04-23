@@ -1,13 +1,13 @@
 # -*- coding: iso-8859-1 -*-
 #!/usr/bin/env python
-# hgview_qt4.py - qt4-based hg rev log browser
+# main.py - qt4-based hg rev log browser
 #
 # Copyright (C) 2007-2009 Logilab. All rights reserved.
 #
 # This software may be used and distributed according to the terms
 # of the GNU General Public License, incorporated herein by reference.
 """
-Main Qt4 application for hgview
+Main Qt4 application for hgqv
 """
 import sys, os
 import time
@@ -18,13 +18,13 @@ from PyQt4 import QtCore, QtGui, Qsci
 from mercurial import ui, hg, patch
 from mercurial.node import hex, short as short_hex, bin as short_bin
 
-from hgview.qt4.hgrepomodel import HgRepoListModel, HgFileListModel
-from hgview.qt4.hgfileviewer import FileViewer, FileDiffViewer, ManifestViewer
-from hgview.hggraph import diff as revdiff
-from hgview.decorators import timeit
-from hgview.config import HgConfig
-from hgview.qt4.lexers import get_lexer
-from hgview.qt4 import HgDialogMixin
+from hgqvlib.qt4.hgrepomodel import HgRepoListModel, HgFileListModel
+from hgqvlib.qt4.hgfileviewer import FileViewer, FileDiffViewer, ManifestViewer
+from hgqvlib.hggraph import diff as revdiff
+from hgqvlib.decorators import timeit
+from hgqvlib.config import HgConfig
+from hgqvlib.qt4.lexers import get_lexer
+from hgqvlib.qt4 import HgDialogMixin
 
 Qt = QtCore.Qt
 bold = QtGui.QFont.Bold
@@ -691,9 +691,15 @@ class HgMainWindow(QtGui.QMainWindow, HgDialogMixin):
 
     def on_about(self, *args):
         """ Display about dialog """
-        from hgview.__pkginfo__ import modname, version, short_desc, long_desc
-        QtGui.QMessageBox.about(self, self.tr("About hgview_qt4"),
-                                "<h2>About hgview_qt4 %s</h2>" % version +
+        from hgqvlib.__pkginfo__ import modname, version, short_desc, long_desc
+        try:
+            from mercurial.version import get_version
+            hgversion = get_version()
+        except:
+            from mercurial.__version__ import version as hgversion
+            
+        QtGui.QMessageBox.about(self, self.tr("About hgqv"),
+                                "<h2>About hgqv %s</h2> (using hg %s)" % (version, hgversion) +
                                 "<p><i>%s</i></p>" % short_desc.capitalize() +
                                 "<p>%s</p>" % long_desc)
 

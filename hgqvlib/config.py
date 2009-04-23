@@ -18,7 +18,7 @@
 # pylint: disable-msg=C0103
 
 """
-Module for managing configuration parameters of qtview using Hg's
+Module for managing configuration parameters of hgqv using Hg's
 configuration system
 """
 import os
@@ -41,7 +41,7 @@ class HgConfig(object):
     """
     Class managing user configuration from hg standard configuration system (.hgrc) 
     """
-    def __init__(self, ui, section="qtview"):
+    def __init__(self, ui, section="hgqv"):
         self.ui = ui
         self.section = section
         self._cache = {}

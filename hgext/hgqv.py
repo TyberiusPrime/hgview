@@ -1,4 +1,4 @@
-# qtview: visual graphlog browser in PyQt4
+# hgqv: visual mercurial graphlog browser in PyQt4
 #
 # Copyright 2008-2009 Logilab
 #
@@ -15,10 +15,10 @@ from mercurial import hg, commands, dispatch
 # don't start with a dash.  If no default value is given in the parameter list,
 # they are required.
 
-def start_qtview(ui, repo, *args, **kwargs):
-    """start qtview log viewer
+def start_hgqv(ui, repo, *args, **kwargs):
+    """start hgqv log viewer
     
-    This command will launch the qtview log navigator, allowing to
+    This command will launch the hgqv log navigator, allowing to
     visually browse in the hg graph log, search in logs, and display
     diff between arbitrary revisions of a file.
 
@@ -35,12 +35,12 @@ def start_qtview(ui, repo, *args, **kwargs):
 
     Configuration:
 
-    Configuration statements goes under the section [qtview] of the
+    Configuration statements goes under the section [hgqv] of the
     hgrc config file.
 
     If a filename is given, only launch the filelog viewer for this file.
     
-    Use 'qtview-options' command to display list of all configuration options.
+    Use 'hgqv-options' command to display list of all configuration options.
     """
     rundir = repo.root
 
@@ -57,38 +57,39 @@ def start_qtview(ui, repo, *args, **kwargs):
         pass
 
     import sys
-    sys.path.insert(0, os.path.dirname(__file__))
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
     try:
         from PyQt4 import QtGui
-        import hgview.qt4.hgview_rc
-        from hgview.qt4 import hgview_qt4 as qtview
-    except ImportError:
+        import hgqvlib.qt4.hgqv_rc
+        from hgqvlib.qt4 import main as hgqv
+    except ImportError, e:
+        print e
         # If we're unable to import Qt4 and qctlib, try to
         # run the application directly
         # You can specificy it's location in ~/.hgrc via
-        #   [qtview]
+        #   [hgqv]
         #   path=
-        cmd = ui.config("qtview", "path", "hgqv") 
+        cmd = ui.config("hgqv", "path", "hgqv") 
         os.system(cmd + " " + " ".join(args))
     else:
         app = QtGui.QApplication(sys.argv)
         if len(args) == 1:
             # should be a filename of a file managed in the repo
-            mainwindow = qtview.FileDiffViewer(repo, args[0])
+            mainwindow = hgqv.FileDiffViewer(repo, args[0])
         else:
-            mainwindow = qtview.HgMainWindow(repo)
+            mainwindow = hgqv.HgMainWindow(repo)
         mainwindow.show()
         return app.exec_()
 
 def display_options(ui, repo, *args, **kwargs):
-    """display qtview full list of configuration options
+    """display hgqv full list of configuration options
     """
     import sys
-    sys.path.insert(0, os.path.dirname(__file__))
-    from hgview.config import get_option_descriptions
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+    from hgqvlib.config import get_option_descriptions
     options = get_option_descriptions()
-    msg = """\nConfiguration options available for qtview.
-    These should be set under the [qtview] section.\n\n"""
+    msg = """\nConfiguration options available for hgqv.
+    These should be set under the [hgqv] section.\n\n"""
     msg += '\n'.join(["  - " + v for v in options]) + '\n'
     msg += """
     The 'users' config statement should be the path of a file
@@ -116,11 +117,11 @@ def display_options(ui, repo, *args, **kwargs):
     ui.status(msg)
     
 cmdtable = {
-    "^qtview|qtv|qv": (start_qtview,
-                       [],
-                       "hg qtview [options] [filename]"),
-    "^qtview-options|qtview-config|qv-config|qv-cfg": (display_options,
-                        [],
-                        "")
+    "^qv": (start_hgqv,
+            [],
+            "hg qv [options] [filename]"),
+    "^qv-options|qv-config|qv-cfg": (display_options,
+                                     [],
+                                     "")
 }
     

@@ -1,0 +1,55 @@
+.\"     Title: hgqv
+.\"    Author: 
+.\" Generator: DocBook XSL Stylesheets v1.73.2 <http://docbook.sf.net/>
+.\"      Date: 04/22/2009
+.\"    Manual: 
+.\"    Source: 
+.\"
+.TH "HGQV" "1" "04/22/2009" "" ""
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.SH "NAME"
+hgqv - Qt based mercurial repository browser
+.SH "SYNOPSIS"
+\fIhgqv\fR [filename]
+.sp
+.SH "DESCRIPTION"
+hgqv(1) is a GUI application usually invoked from the command line\. The simplest way to use it is to install it as a hg extension\. Alternatively, it can be used as a standalone application by calling it from a mercurial repository\.
+.sp
+If [filename] is given, hgqv will start in file\-diff mode, in which user can easily compare arbitrary revisions of a file\.
+.sp
+.SH "FILES"
+.TS
+tab(:);
+lt lt
+lt lt.
+T{
+~/\.hgrc
+.sp
+T}:T{
+This is the standard file for configuring hg and its extensions\. See hg qv\-config for more details on what can be configured this way\.
+.sp
+T}
+T{
+~/\.hgusers
+.sp
+T}:T{
+This file holds configurations related to authors of patches in the hg repository\. See hg qv\-config for more details on what can be configured this way\.
+.sp
+T}
+.TE
+.sp
+.SH "BUGS"
+Please report any found bug on the mailing list or via email\. Patches (or mercurial bundles) are always welcome\.
+.sp
+.SH "AUTHOR"
+Written by David Douard <david\.douard@logilab\.fr>
+.sp
+.SH "RESOURCES"
+http://www\.logilab\.org/project/hgqv
+.sp
+.SH "COPYING"
+Copyright (C) 2009 David Douard Free use of this software is granted under the terms of the GNU General Public License (GPL)\.
+.sp

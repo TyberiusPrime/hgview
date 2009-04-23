@@ -1,3 +1,10 @@
+hgqv (1.0.0-1) unstable; urgency=low
+  * first stable release
+  * add a manifest viewer
+  * improve key bindings for easy navigation
+
+ -- David Douard <david.douard@logilab.fr>  Thu, 21 Apr 2009 20:58:23 +0100
+
 hgqv (0.99.0-1) unstable; urgency=low
 
   * Fork from hgview to build a Qt4-only based application

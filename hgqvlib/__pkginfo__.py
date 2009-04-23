@@ -18,7 +18,7 @@ http://www.logilab.fr/ -- mailto:contact@logilab.fr
 
 import glob
 modname = 'hgqv'
-numversion = (0, 90, 0)
+numversion = (1, 0, 0)
 version = '.'.join([str(num) for num in numversion])
 
 
@@ -29,20 +29,21 @@ http://www.logilab.fr/ -- mailto:contact@logilab.fr'''
 short_desc = "mercurial interactive history viewer"
 
 long_desc = """
- Its purpose is similar to the hgk tool of mercurial, and it has been
+ Its purpose is to easily navigate in a mercurial repository history. It has been
  written with efficiency in mind when dealing with big repositories
- (it can happily be used to browse Linux kernel source code
- repository).
+ (it should happily be able to handle the browsing of the Linux kernel
+ source code repository).
 
- This is actually a major rework of the Qt version of hgview.
+ This is actually a major rework of the Qt version of hgqv.
 """
 
 author = "Logilab"
-author_email = "devel@logilab.fr"
+author_email = "david.douard@logilab.fr"
 
 # TODO - publish
 web = "http://www.logilab.org/projects/%s" % modname
 ftp = "ftp://ftp.logilab.org/pub/%s" % modname
+mailinglist = "mailto://python-projects@lists.logilab.org"
 
 
 scripts = ['bin/hgqv']
@@ -55,7 +56,14 @@ debian_handler = 'python-dep-standalone'
  
 from os.path import join
 include_dirs = [] #join('tests', 'data'), join('tests', 'packages')]
-data_files = [('share/hgqv', ['hgview/qt4/hgview.ui']),
-              ('share/man/man1', ['hgqv.1',
-                                 ]),]
+data_files = [('share/hgqv', ['hgqvlib/qt4/hgqv.ui',
+                              'hgqvlib/qt4/filediffviewer.ui',
+                              'hgqvlib/qt4/fileviewer.ui',
+                              'hgqvlib/qt4/manifestviewer.ui',
+                              ]),
+              ('share/man/man1', ['doc/hgqv.1',
+                                 ]),
+              ('share/python-support/mercurial-common/hgext', ['hgext/hgqv.py',]),
+              ('/etc/mercurial/hgrc.d', ['hgext/hgqv.rc',]),
+              ]
 

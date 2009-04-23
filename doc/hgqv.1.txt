@@ -1,0 +1,55 @@
+hgqv(1)
+=======
+David Douard <david.douard@logilab.fr>
+
+NAME
+----
+hgqv - Qt based mercurial repository browser
+
+SYNOPSIS
+--------
+'hgqv' [filename]
+
+DESCRIPTION
+-----------
+
+hgqv(1) is a GUI application usually invoked from the command
+line. The simplest way to use it is to install it as a hg
+extension. Alternatively, it can be used as a standalone application
+by calling it from a mercurial repository.
+
+If [filename] is given, hgqv will start in file-diff mode, in which
+user can easily compare arbitrary revisions of a file.
+
+FILES
+-----
+
+~/.hgrc:: This is the standard file for configuring hg and its
+    extensions. See `hg qv-config` for more details on what can be
+    configured this way.
+    
+~/.hgusers:: This file holds configurations related to authors of
+    patches in the hg repository. See `hg qv-config` for more details
+    on what can be configured this way.
+
+BUGS
+----
+Please report any found bug on the mailing list or via email.
+Patches (or mercurial bundles) are always welcome.
+
+AUTHOR
+------
+Written by David Douard <david.douard@logilab.fr>
+
+RESOURCES
+---------
+http://www.logilab.org/project/hgqv
+
+COPYING
+-------
+Copyright \(C) 2009 David Douard
+Free use of this software is granted under the terms of the GNU General
+Public License (GPL).
+
+
+

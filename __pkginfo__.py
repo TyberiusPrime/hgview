@@ -1,1 +1,1 @@
-hgview/__pkginfo__.py
+hgqvlib/__pkginfo__.py

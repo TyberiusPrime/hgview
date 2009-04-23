@@ -1,6 +1,6 @@
 #
 # make sur the Qt rc files are converted into python modules, then load them
-# this must be done BEFORE other hgview qt4 modules are loaded.
+# this must be done BEFORE other hgqv qt4 modules are loaded.
 import os
 import os.path as osp
 import sys
@@ -8,17 +8,17 @@ import sys
 # automatically load resource module, creating it on the fly if
 # required
 curdir = osp.dirname(__file__)
-pyfile = osp.join(curdir, "hgview_rc.py")
-rcfile = osp.join(curdir, "hgview.qrc")
+pyfile = osp.join(curdir, "hgqv_rc.py")
+rcfile = osp.join(curdir, "hgqv.qrc")
 if not osp.isfile(pyfile) or osp.getmtime(pyfile) < osp.getmtime(rcfile):
     if os.system('pyrcc4 %s -o %s' % (rcfile, pyfile)):
         print "ERROR: Cannot convert the resource file '%s' into a python module."
         print "Please check the PyQt 'pyrcc4' tool is installed, or do it by hand running:"
         print "pyrcc4 %s -o %s" % (rcfile, pyfile)
-import hgview_rc
+import hgqv_rc
 
 from PyQt4 import QtGui, uic
-from hgview.config import HgConfig
+from hgqvlib.config import HgConfig
 
 class HgDialogMixin(object):
     def __init__(self):

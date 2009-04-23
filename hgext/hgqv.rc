@@ -1,0 +1,7 @@
+# This file is intended to be installed in a system's hgrc.d directory
+# It enables the hgqv's mercurial plugin, making the 'hg qv' command
+# available.  This file presumes hgext/hgqv.py has been installed in
+# the hgext path
+
+[extensions]
+hgext.hgqv =
