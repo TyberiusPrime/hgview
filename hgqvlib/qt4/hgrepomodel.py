@@ -13,14 +13,16 @@
 # You should have received a copy of the GNU General Public License along with
 # this program; if not, write to the Free Software Foundation, Inc.,
 # 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
-"""Qt4 model for hg repo changelogs and filelogs
-
+"""
+Qt4 model for hg repo changelogs and filelogs
 """
 import sys
 import mx.DateTime as dt
 import re
+import os.path as osp
 
 from mercurial.node import nullrev
+from mercurial.node import hex, short as short_hex
 from mercurial.revlog import LookupError
 
 from hgqvlib.hggraph import Graph, diff as revdiff
@@ -32,6 +34,7 @@ from PyQt4 import QtCore, QtGui
 connect = QtCore.QObject.connect
 nullvariant = QtCore.QVariant()
 
+# XXX make this better than a poor hard written list...
 COLORS = [ "blue", "darkgreen", "red", "green", "darkblue", "purple",
            "cyan", "magenta", "darkred", "darkmagenta"]
 #COLORS = [str(color) for color in QtGui.QColor.colorNames()]
@@ -88,6 +91,7 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
     Model used for displaying the revisions of a Hg *local* repository
     """
     _columns = 'ID','Log','Author','Date','Tags', 'Branch'
+    _stretchs = {'Log': 1, }
 
     def __init__(self, repo, branch='', parent=None):
         """
@@ -275,6 +279,7 @@ class FileRevModel(HgRepoListModel):
     viewer of in diff-file viewer dialogs.
     """
     _columns = ('ID', 'Log', 'Author', 'Date')
+    _stretchs = {'Log': 1}
 
     def __init__(self, repo, filename, noderev=None, parent=None):
         """
@@ -449,6 +454,149 @@ class HgFileListModel(QtCore.QAbstractTableModel):
             return QtCore.QVariant(['File', 'Flag', 'Diff'][section])
 
         return nullvariant
+
+
+
+class TreeItem(object):
+    def __init__(self, data, parent=None):
+        self.parentItem = parent
+        self.itemData = data
+        self.childItems = []
+
+    def appendChild(self, item):
+        self.childItems.append(item)
+        return item
+    addChild = appendChild
+    
+    def child(self, row):
+        return self.childItems[row]
+
+    def childCount(self):
+        return len(self.childItems)
+
+    def columnCount(self):
+        return len(self.itemData)
+
+    def data(self, column):
+        return self.itemData[column]
+
+    def parent(self):
+        return self.parentItem
+
+    def row(self):
+        if self.parentItem:
+            return self.parentItem.childItems.index(self)
+
+        return 0
+
+    def __getitem__(self, idx):
+        return self.childItems[idx]
+
+    def __len__(self):
+        return len(self.childItems)
+
+    def __iter__(self):
+        for ch in self.childItems:
+            yield ch
+            
+    
+class ManifestModel(QtCore.QAbstractItemModel):
+    """
+    Qt model to display a hg manifest, ie. the tree of files at a
+    given revision. To be used with a QTreeView.
+    """
+    def __init__(self, repo, rev, parent=None):
+        QtCore.QAbstractItemModel.__init__(self, parent)
+
+        self.repo = repo
+        self.changectx = self.repo.changectx(rev)
+        self.setupModelData()
+
+    def data(self, index, role):
+        if not index.isValid():
+            return QtCore.QVariant()
+
+        if role != QtCore.Qt.DisplayRole:
+            return QtCore.QVariant()
+
+        item = index.internalPointer()
+        return QtCore.QVariant(item.data(index.column()))
+
+    def flags(self, index):
+        if not index.isValid():
+            return QtCore.Qt.ItemIsEnabled
+        return QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable
+
+    def headerData(self, section, orientation, role):
+        if orientation == QtCore.Qt.Horizontal and role == QtCore.Qt.DisplayRole:
+            return QtCore.QVariant(self.rootItem.data(section))
+        return QtCore.QVariant()
+
+    def index(self, row, column, parent):
+        if row < 0 or column < 0 or row >= self.rowCount(parent) or column >= self.columnCount(parent):
+            return QtCore.QModelIndex()
+
+        if not parent.isValid():
+            parentItem = self.rootItem
+        else:
+            parentItem = parent.internalPointer()
+        childItem = parentItem.child(row)
+        if childItem is not None:
+            return self.createIndex(row, column, childItem)
+        else:
+            return QtCore.QModelIndex()
+
+    def parent(self, index):
+        if not index.isValid():
+            return QtCore.QModelIndex()
+
+        childItem = index.internalPointer()
+        parentItem = childItem.parent()
+
+        if parentItem == self.rootItem:
+            return QtCore.QModelIndex()
+
+        return self.createIndex(parentItem.row(), 0, parentItem)
+
+    def rowCount(self, parent):
+        if parent.column() > 0:
+            return 0
+
+        if not parent.isValid():
+            parentItem = self.rootItem
+        else:
+            parentItem = parent.internalPointer()
+        return parentItem.childCount()
+
+    def columnCount(self, parent):
+        if parent.isValid():
+            return parent.internalPointer().columnCount()
+        else:
+            return self.rootItem.columnCount()
+
+    def setupModelData(self):
+        rootData = ["rev %s:%s" % (self.changectx.rev(),
+                                   short_hex(self.changectx.node()))]
+        self.rootItem = TreeItem(rootData)
+
+        for path in sorted(self.changectx.manifest()):
+            path = path.split(osp.sep)
+            node = self.rootItem
+            
+            for p in path:
+                for ch in node:
+                    if ch.data(0) == p:
+                        node = ch
+                        break
+                else:
+                    node = node.addChild(TreeItem([p], node))
+
+    def pathForIndex(self, index):
+        idxs = []
+        while index.isValid():
+            idxs.insert(0, index)
+            index = self.parent(index)
+        return osp.sep.join([index.internalPointer().data(0) for index in idxs])
 
 
 if __name__ == "__main__":

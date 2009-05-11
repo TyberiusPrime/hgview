@@ -1,0 +1,235 @@
+# Copyright (c) 2009 LOGILAB S.A. (Paris, FRANCE).
+# http://www.logilab.fr/ -- mailto:contact@logilab.fr
+#
+# This program is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation; either version 2 of the License, or (at your option) any later
+# version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program; if not, write to the Free Software Foundation, Inc.,
+# 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+"""
+Qt4 high level widgets for hg repo changelogs and filelogs
+"""
+import sys
+
+from hgqvlib.decorators import timeit
+
+from PyQt4 import QtCore, QtGui
+connect = QtCore.QObject.connect
+SIGNAL = QtCore.SIGNAL
+nullvariant = QtCore.QVariant()
+
+from hgqvlib.qt4.hgfileviewer import ManifestViewer
+
+class HgRepoView(QtGui.QTableView):
+    """
+    A QTableView for displaying a FileRevModel or a HgRepoListModel,
+    with actions, shortcuts, etc.
+    """
+    def __init__(self, parent=None):
+        QtGui.QTableView.__init__(self, parent)
+        self.init_variables()
+        self.setShowGrid(False)
+        self.verticalHeader().hide()
+        self.verticalHeader().setDefaultSectionSize(20)
+        self.setSelectionMode(QtGui.QAbstractItemView.SingleSelection)
+        self.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
+        self.setAlternatingRowColors(True)
+        self.createActions()
+
+    def _action_defs(self):
+        a = [("back", self.tr("Back"), None, QtGui.QKeySequence(QtGui.QKeySequence.Back), self.back),
+             ("forward", self.tr("Forward"), None, QtGui.QKeySequence(QtGui.QKeySequence.Forward), self.forward),
+             ("manifest", self.tr("Show at rev..."), self.tr("Show the manifest at selected revision"), None, self.showAtRev),
+             ]
+        return a
+    
+    def createActions(self):
+        self._actions = {}
+        for name, desc, tip, key, cb in self._action_defs():
+            act = QtGui.QAction(desc, self)
+            if tip:
+                act.setStatusTip(tip)
+            if key:
+                act.setShortcut(key)
+            if cb:
+                connect(act, SIGNAL('triggered()'), cb)
+            self._actions[name] = act
+            self.addAction(act)
+            
+    def showAtRev(self):
+        ManifestViewer(self.model().repo, self.current_rev).show()
+        
+    def contextMenuEvent(self, event):
+        menu = QtGui.QMenu(self)
+        for act in ['manifest', None, 'back', 'forward']:
+            if act:
+                menu.addAction(self._actions[act])
+            else:
+                menu.addSeparator()
+        menu.exec_(event.globalPos())
+        
+    def init_variables(self):
+        # member variables
+        self.current_rev = None
+        # rev navigation history (manage 'back' action)
+        self._rev_history = []
+        self._rev_pos = -1
+        self._in_history = False # flag set when we are "in" the
+        # history. It is required cause we cannot known, in
+        # "revision_selected", if we are crating a new branch in the
+        # history navigation or if we are navigating the history
+        
+    def setModel(self, model):
+        self.init_variables()
+        QtGui.QTableView.setModel(self, model)
+        connect(self.selectionModel(),
+                QtCore.SIGNAL('currentRowChanged (const QModelIndex & , const QModelIndex & )'),
+                self.revisionSelected)
+        connect(self,
+                SIGNAL('doubleClicked (const QModelIndex &)'),
+                self.revisionActivated)
+
+    def resizeEvent(self, event):
+        # we catch this event to resize smartly tables' columns
+        QtGui.QTableView.resizeEvent(self, event)
+        self.resizeColumns()
+
+    def resizeColumns(self, *args):
+        # resize columns the smart way: the column holding Log
+        # is resized according to the total widget size.
+        col1_width = self.viewport().width()
+        fontm = QtGui.QFontMetrics(self.font())
+        model = self.model()
+        tot_stretch = 0.0
+        for c in range(model.columnCount()):
+            if model._columns[c] in model._stretchs:
+                tot_stretch += model._stretchs[model._columns[c]]
+                continue
+            w = model.maxWidthValueForColumn(c)
+            if w is not None:
+                w = fontm.width(unicode(w) + 'w')
+                self.setColumnWidth(c, w)
+            else:
+                self.setColumnWidth(c, 140)
+            col1_width -= self.columnWidth(c)
+
+        for c in range(model.columnCount()):
+            if model._columns[c] in model._stretchs:
+                w = model._stretchs[model._columns[c]] / tot_stretch
+                self.setColumnWidth(c, col1_width * w)
+
+
+    def revisionActivated(self, index):
+        if not index.isValid():
+            return
+        model = self.model()            
+        if model and model.graph:
+            row = index.row()
+            gnode = model.graph[row]
+            self.emit(SIGNAL('revisionActivated'), gnode.rev)
+
+    def revisionSelected(self, index, index_from):
+        """
+        Callback called when a revision is selected in the revisions table
+        """
+        model = self.model()            
+        if model and model.graph:
+            row = index.row()
+            gnode = model.graph[row]
+            rev = gnode.rev
+            if self.current_rev is not None and self.current_rev == rev:
+                return
+            if not self._in_history:
+                del self._rev_history[self._rev_pos+1:]
+                self._rev_history.append(rev)
+                self._rev_pos = len(self._rev_history)-1
+
+            self._in_history = False
+            self.current_rev = rev
+
+            self.emit(SIGNAL('revisionSelected'), rev)
+            self.set_navigation_button_state()
+
+    def set_navigation_button_state(self):
+        if len(self._rev_history) > 0:
+            back = self._rev_pos > 0
+            forw = self._rev_pos < len(self._rev_history)-1
+        else:
+            back = False
+            forw = False
+        self._actions['back'].setEnabled(back)
+        self._actions['forward'].setEnabled(forw)
+
+    def back(self):
+        if self._rev_history and self._rev_pos>0:
+            self._rev_pos -= 1
+            idx = self.model().indexFromRev(self._rev_history[self._rev_pos])
+            if idx is not None:
+                self._in_history = True
+                self.setCurrentIndex(idx)
+        self.set_navigation_button_state()
+
+    def forward(self):
+        if self._rev_history and self._rev_pos<(len(self._rev_history)-1):
+            self._rev_pos += 1
+            idx = self.model().indexFromRev(self._rev_history[self._rev_pos])
+            if idx is not None:
+                self._in_history = True
+                self.setCurrentIndex(idx)
+        self.set_navigation_button_state()
+
+    def goto(self, rev):
+        """
+        Select revision 'rev' (can be anything understood by repo.changectx())
+        """
+        try:
+            rev = self.model().repo.changectx(rev).rev()
+        except:
+            self.emit(SIGNAL('showMessage(QString&, int)'), "Can't find revision '%s'"%rev, 2000)
+        else:
+            idx = self.model().indexFromRev(rev)
+            if idx is not None:
+                self.setCurrentIndex(idx)
+        
+        
+if __name__ == "__main__":
+    from mercurial import ui, hg
+    from optparse import OptionParser
+    from hgqvlib.qt4.hgrepomodel import FileRevModel, HgRepoListModel
+    p = OptionParser()
+    p.add_option('-R', '--root', default='.',
+                 dest='root',
+                 help="Repository main directory")
+    p.add_option('-f', '--file', default=None,
+                 dest='filename',
+                 help="display the revision graph of this file (if not given, display the whole rev graph)")
+
+    opt, args = p.parse_args()
+
+    u = ui.ui()
+    repo = hg.repository(u, opt.root)
+    app = QtGui.QApplication(sys.argv)
+    if opt.filename is not None:
+        model = FileRevModel(repo, opt.filename)
+    else:
+        model = HgRepoListModel(repo)
+
+    view = HgRepoView()
+    def rev_sel(rev):
+        print "rev selected", rev
+    def rev_act(rev):
+        print "rev activated", rev
+    view.setModel(model)
+    connect(view, SIGNAL('revisionSelected'), rev_sel)
+    connect(view, SIGNAL('revisionActivated'), rev_act)
+    view.setWindowTitle("Simple Hg List Model")
+
+    view.show()
+    sys.exit(app.exec_())

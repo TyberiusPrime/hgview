@@ -64,11 +64,12 @@ class HgMainWindow(QtGui.QMainWindow, HgDialogMixin):
         self.init_variables()        
         # setup tables and views
         self.setup_header_textview()
-        self.setup_revision_table()
-        self.setup_filelist_table()
 
         self.setup_branch_combo()
         self.setup_models()
+
+        self.setup_revision_table()
+        self.setup_filelist_table()
 
         self.refresh_revision_table()
 
@@ -242,12 +243,8 @@ class HgMainWindow(QtGui.QMainWindow, HgDialogMixin):
         self.frame_revrange_action.setVisible(False)
         self.frame_filter_action.setVisible(False)
 
-    def setup_models(self):
+    def create_models(self):
         self.repomodel = HgRepoListModel(self.repo)
-        self.tableView_revisions.setModel(self.repomodel)
-        self.filelistmodel = HgFileListModel(self.repo)
-        self.tableView_filelist.setModel(self.filelistmodel)
-
         self.connect(self.repomodel, QtCore.SIGNAL('filling(int)'),
                      self.start_filling)
         self.connect(self.repomodel, QtCore.SIGNAL('filled(int)'),
@@ -255,32 +252,44 @@ class HgMainWindow(QtGui.QMainWindow, HgDialogMixin):
         self.connect(self.repomodel, QtCore.SIGNAL('fillingover()'),
                      self.pb.hide)
 
-        self.connect(self.tableView_filelist.selectionModel(),
-                     QtCore.SIGNAL('currentRowChanged (const QModelIndex & , const QModelIndex & )'),
-                     self.file_selected)
-        self.connect(self.tableView_filelist,
-                     QtCore.SIGNAL('doubleClicked (const QModelIndex &)'),
-                     self.file_activated)
-        self.connect(self.tableView_revisions.selectionModel(),
+        self.filelistmodel = HgFileListModel(self.repo)
+
+    def setup_models(self):
+        self.create_models()
+        self.tableView_revisions.setModel(self.repomodel)
+        self.tableView_filelist.setModel(self.filelistmodel)
+        self.goto_model.setStringList(self.repo.tags().keys())
+
+        repotable = self.tableView_revisions
+        self.connect(repotable.selectionModel(),
                      QtCore.SIGNAL('currentRowChanged (const QModelIndex & , const QModelIndex & )'),
                      self.revision_selected)
-        self.connect(self.tableView_revisions,
+        self.connect(repotable,
                      QtCore.SIGNAL('doubleClicked (const QModelIndex &)'),
                      self.revision_activated)
-        self.connect(self.tableView_filelist.horizontalHeader(),
+
+        filetable = self.tableView_filelist
+        self.connect(filetable.selectionModel(),
+                     QtCore.SIGNAL('currentRowChanged (const QModelIndex & , const QModelIndex & )'),
+                     self.file_selected)
+        self.connect(filetable,
+                     QtCore.SIGNAL('doubleClicked (const QModelIndex &)'),
+                     self.file_activated)
+        self.connect(filetable.horizontalHeader(),
                      QtCore.SIGNAL('sectionResized(int, int, int)'),
-                     self.file_section_resized)
-        self.goto_model.setStringList(self.repo.tags().keys())
+                     self.file_section_resized)        
 
     def setup_revision_table(self):
         repotable = self.tableView_revisions
         repotable.installEventFilter(self)
+
         self._setup_table(repotable)
         repotable.show()
 
     def setup_filelist_table(self):
         filetable = self.tableView_filelist
         filetable.setFocusPolicy(QtCore.Qt.NoFocus)
+
         self._setup_table(filetable)
 
     def _setup_table(self, table):
