@@ -40,20 +40,7 @@ class HgMainWindow(QtGui.QMainWindow, HgDialogMixin):
 
         self.setWindowTitle('hgqv: %s' % os.path.abspath(self.repo.root))
 
-        # member variables
-        self._icons = {}
-        self.current_ctx = None
-        # rev navigation history (manage 'back' action)
-        self._rev_history = []
-        self._rev_pos = -1
-        self._in_history = False # flag set when we are "in" the
-        # history. It is required cause we cannot known, in
-        # "revision_selected", if we are crating a new branch in the
-        # history navigation or if we are navigating the history
-        self._find_text = None
-
         self.setup_statusbar()
-
         self.splitter_2.setStretchFactor(0, 2)
         self.splitter_2.setStretchFactor(1, 1)
         self.connect(self.splitter_2, QtCore.SIGNAL('splitterMoved (int, int)'),
@@ -66,13 +53,15 @@ class HgMainWindow(QtGui.QMainWindow, HgDialogMixin):
         self.setup_filterframe()
 
         # required due to a probable bug in uic module
+        self._icons = {}
         self._icons['closebtn'] = QtGui.QIcon(':/icons/close.png')
         self._icons['back'] = QtGui.QIcon(':/icons/back.svg')
         self._icons['forward'] = QtGui.QIcon(':/icons/forward.svg')
         self.setup_frame_find()
         self.setup_frame_goto()
         self.setup_navigation_buttons()
-        
+
+        self.init_variables()        
         # setup tables and views
         self.setup_header_textview()
         self.setup_revision_table()
@@ -83,6 +72,18 @@ class HgMainWindow(QtGui.QMainWindow, HgDialogMixin):
 
         self.refresh_revision_table()
 
+    def init_variables(self):
+        # member variables
+        self.current_ctx = None
+        # rev navigation history (manage 'back' action)
+        self._rev_history = []
+        self._rev_pos = -1
+        self._in_history = False # flag set when we are "in" the
+        # history. It is required cause we cannot known, in
+        # "revision_selected", if we are crating a new branch in the
+        # history navigation or if we are navigating the history
+        self._find_text = None
+        
     def setup_branch_combo(self):
         branches = sorted(self.repo.branchtags().keys())
         if len(branches) == 1:
@@ -459,8 +460,10 @@ class HgMainWindow(QtGui.QMainWindow, HgDialogMixin):
 
     def reload_repository(self):
         self.repo = hg.repository(self.repo.ui, self.repo.root)
+        self.init_variables()
+        self.setup_branch_combo()
+        self.setup_models()        
         self.refresh_revision_table()
-        self.goto_model.setStringList(self.repo.tags().keys())
 
     #@timeit
     def refresh_revision_table(self, branch=None):
