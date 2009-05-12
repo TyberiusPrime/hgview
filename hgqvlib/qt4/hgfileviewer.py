@@ -14,15 +14,14 @@
 # You should have received a copy of the GNU General Public License along with
 # this program; if not, write to the Free Software Foundation, Inc.,
 # 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
-"""Qt4 widgets to display hg revisions of a file
+"""
+Qt4 dialogs to display hg revisions of a file
 """
 
 import sys, os
 import os.path as osp
 
 import difflib
-import math
-import numpy
 
 from mercurial.node import hex, short as short_hex
 from mercurial.revlog import LookupError

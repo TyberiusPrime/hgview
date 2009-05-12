@@ -18,13 +18,14 @@ Qt4 high level widgets for hg repo changelogs and filelogs
 """
 import sys
 
-from hgqvlib.decorators import timeit
+from mercurial.node import hex, short as short_hex, bin as short_bin
 
 from PyQt4 import QtCore, QtGui
 connect = QtCore.QObject.connect
 SIGNAL = QtCore.SIGNAL
 nullvariant = QtCore.QVariant()
 
+from hgqvlib.decorators import timeit
 from hgqvlib.qt4.hgfileviewer import ManifestViewer
 
 class HgRepoView(QtGui.QTableView):
@@ -198,6 +199,70 @@ class HgRepoView(QtGui.QTableView):
             if idx is not None:
                 self.setCurrentIndex(idx)
         
+    
+class RevDisplay(QtGui.QFrame):
+    def __init__(self, parent=None):
+        QtGui.QFrame.__init__(self, parent)
+        l = QtGui.QVBoxLayout(self)
+        l.setSpacing(0)
+        l.setContentsMargins(0,0,0,0)
+        self.textview = QtGui.QTextBrowser(self)
+        l.addWidget(self.textview)
+        self.descwidth = 60 # number of chars displayed for parent/child descriptions
+        connect(self.textview,
+                SIGNAL('anchorClicked(const QUrl &)'),
+                self.anchorClicked)
+
+    def anchorClicked(self, qurl):
+        """
+        Callback called when a link is clicked in the text browser
+        """
+        rev = int(qurl.toString())
+        self.emit(SIGNAL('revisionSelected'), rev)
+        
+    def displayRevision(self, ctx):
+        rev = ctx.rev()
+        buf = "<table width=100%>\n"
+        buf += '<tr>'
+        buf += '<td><b>Revision:</b>&nbsp;'\
+               '<span class="rev_number">%d</span>:'\
+               '<span class="rev_hash">%s</span></td>'\
+               '\n' % (ctx.rev(), short_hex(ctx.node()))
+        
+        buf += '<td><b>Author:</b>&nbsp;'\
+               '%s</td>'\
+               '\n' %  ctx.user()
+        buf += '<td><b>Branch:</b>&nbsp;%s</td>' % ctx.branch()
+        buf += '</tr>'
+        buf += "</table>\n"
+        buf += "<table width=100%>\n"
+        for p in ctx.parents():
+            if p.rev() > -1:
+                short = short_hex(p.node())
+                desc = p.description()
+                if len(desc) > self.descwidth:
+                    desc = desc[:self.descwidth] + '...'
+                buf += '<tr><td width=50 class="label"><b>Parent:</b></td>'\
+                       '<td colspan=5><span class="rev_number">%d</span>:'\
+                       '<a href="%s" class="rev_hash">%s</a>&nbsp;'\
+                       '<span class="short_desc"><i>%s</i></span></td></tr>'\
+                       '\n' % (p.rev(), p.rev(), short, desc)
+        for p in ctx.children():
+            if p.rev() > -1:
+                short = short_hex(p.node())
+                desc = p.description()
+                if len(desc) > self.descwidth:
+                    desc = desc[:self.descwidth] + '...'
+                buf += '<tr><td class="label"><b>Child:</b></td>'\
+                       '<td colspan=5><span class="rev_number">%d</span>:'\
+                       '<a href="%s" class="rev_hash">%s</a>&nbsp;'\
+                       '<span class="short_desc"><i>%s</i></span></td></tr>'\
+                       '\n' % (p.rev(), p.rev(), short, desc)
+
+        buf += "</table>\n"
+        buf += '<div class="diff_desc"><p>%s</p></div>\n' % ctx.description().replace('\n', '<br/>\n')
+        self.textview.setHtml(buf)
+
         
 if __name__ == "__main__":
     from mercurial import ui, hg
@@ -220,16 +285,19 @@ if __name__ == "__main__":
         model = FileRevModel(repo, opt.filename)
     else:
         model = HgRepoListModel(repo)
-
-    view = HgRepoView()
-    def rev_sel(rev):
-        print "rev selected", rev
-    def rev_act(rev):
-        print "rev activated", rev
+    w = QtGui.QWidget()
+    l = QtGui.QVBoxLayout(w)
+    
+    view = HgRepoView(w)
     view.setModel(model)
-    connect(view, SIGNAL('revisionSelected'), rev_sel)
-    connect(view, SIGNAL('revisionActivated'), rev_act)
     view.setWindowTitle("Simple Hg List Model")
 
-    view.show()
+    disp = RevDisplay(w)
+    connect(view, SIGNAL('revisionSelected'), lambda rev: disp.displayRevision(repo.changectx(rev)))
+    connect(disp, SIGNAL('revisionSelected'), view.goto)
+    #connect(view, SIGNAL('revisionActivated'), rev_act)
+    
+    l.addWidget(view, 2)
+    l.addWidget(disp)
+    w.show()
     sys.exit(app.exec_())
