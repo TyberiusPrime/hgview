@@ -25,10 +25,16 @@ from hgqvlib.decorators import timeit
 from hgqvlib.config import HgConfig
 from hgqvlib.qt4.lexers import get_lexer
 from hgqvlib.qt4 import HgDialogMixin
+from hgqvlib.qt4 import hgrepoview
+
+# dirty hack to please PyQt4 uic
+sys.modules['hgrepoview'] = hgrepoview
 
 Qt = QtCore.Qt
 bold = QtGui.QFont.Bold
 normal = QtGui.QFont.Normal
+connect = QtCore.QObject.connect
+SIGNAL = QtCore.SIGNAL
 
 class HgMainWindow(QtGui.QMainWindow, HgDialogMixin):
     _uifile = 'hgqv.ui'
@@ -43,8 +49,8 @@ class HgMainWindow(QtGui.QMainWindow, HgDialogMixin):
         self.setup_statusbar()
         self.splitter_2.setStretchFactor(0, 2)
         self.splitter_2.setStretchFactor(1, 1)
-        self.connect(self.splitter_2, QtCore.SIGNAL('splitterMoved (int, int)'),
-                     self.resize_filelist_columns)
+        connect(self.splitter_2, SIGNAL('splitterMoved (int, int)'),
+                self.resize_filelist_columns)
 
         self.setup_main_actions()
         # text viewer
@@ -74,15 +80,6 @@ class HgMainWindow(QtGui.QMainWindow, HgDialogMixin):
         self.refresh_revision_table()
 
     def init_variables(self):
-        # member variables
-        self.current_ctx = None
-        # rev navigation history (manage 'back' action)
-        self._rev_history = []
-        self._rev_pos = -1
-        self._in_history = False # flag set when we are "in" the
-        # history. It is required cause we cannot known, in
-        # "revision_selected", if we are crating a new branch in the
-        # history navigation or if we are navigating the history
         self._find_text = None
         
     def setup_branch_combo(self):
@@ -96,19 +93,19 @@ class HgMainWindow(QtGui.QMainWindow, HgDialogMixin):
     def setup_frame_goto(self):
         self.frame_goto.hide()
         self.close_goto_toolButton.setIcon(self._icons['closebtn'])
-        self.connect(self.close_goto_toolButton, QtCore.SIGNAL('clicked(bool)'),
-                     lambda: self.actionGoto.setChecked(False))
-        self.connect(self.button_goto, QtCore.SIGNAL('clicked(bool)'),
-                     self.on_goto)
-        self.connect(self.entry_goto, QtCore.SIGNAL('returnPressed()'),
-                     self.on_goto)
+        connect(self.close_goto_toolButton, SIGNAL('clicked(bool)'),
+                lambda: self.actionGoto.setChecked(False))
+        connect(self.button_goto, SIGNAL('clicked(bool)'),
+                self.on_goto)
+        connect(self.entry_goto, SIGNAL('returnPressed()'),
+                self.on_goto)
 
         self._frame_goto_timer = QtCore.QTimer(self)
         self._frame_goto_timer.setInterval(self.hidefinddelay)
-        self.connect(self._frame_goto_timer, QtCore.SIGNAL('timeout()'),
-                     lambda: self.actionGoto.setChecked(False))
-        self.connect(self.actionGoto, QtCore.SIGNAL('toggled(bool)'),
-                     self.on_goto_toggled)
+        connect(self._frame_goto_timer, SIGNAL('timeout()'),
+                lambda: self.actionGoto.setChecked(False))
+        connect(self.actionGoto, SIGNAL('toggled(bool)'),
+                self.on_goto_toggled)
 
         self.goto_model = QtGui.QStringListModel(['tip'])
         self.goto_completer = QtGui.QCompleter(self.goto_model, self)
@@ -116,14 +113,12 @@ class HgMainWindow(QtGui.QMainWindow, HgDialogMixin):
         self.actionGoto.setChecked(False)
 
     def setup_navigation_buttons(self):
-        self.actionBack.setIcon(self._icons['back'])
-        self.connect(self.actionBack, QtCore.SIGNAL('triggered(bool)'),
-                     self.back)
-
-        self.actionForward.setIcon(self._icons['forward'])
-        self.connect(self.actionForward, QtCore.SIGNAL('triggered(bool)'),
-                     self.forward)
-        
+        for act in ('back', 'forward'):
+            action = self.tableView_revisions._actions[act]
+            action.setIcon(self._icons[act])
+            self.toolBar_edit.addAction(action)
+            self.menu_Edit.addAction(action)
+            
     def setup_frame_find(self):
         self.frame_find.hide()
         # XXX don't know why I have to do this, the icon is affected
@@ -132,35 +127,35 @@ class HgMainWindow(QtGui.QMainWindow, HgDialogMixin):
         self.actionFind.setShortcuts([self.actionFind.shortcut(), "/"])
         self.actionFindNext.setShortcuts([self.actionFindNext.shortcut(), "Ctrl+N"])
 
-        self.connect(self.actionFindNext, QtCore.SIGNAL('triggered()'),
-                     self.on_find)
-        self.connect(self.button_find, QtCore.SIGNAL('clicked(bool)'),
-                     self.on_find)
-        self.connect(self.button_cancelsearch, QtCore.SIGNAL('clicked(bool)'),
-                     self.on_cancelsearch)
-        self.connect(self.close_find_toolButton, QtCore.SIGNAL('clicked(bool)'),
-                     lambda: self.actionFind.setChecked(False))
-        self.connect(self.entry_find, QtCore.SIGNAL('returnPressed()'),
-                     self.on_find)
-        self.connect(self.entry_find, QtCore.SIGNAL('textChanged(const QString &)'),
-                     self.on_find_text_changed)
+        connect(self.actionFindNext, SIGNAL('triggered()'),
+                self.on_find)
+        connect(self.button_find, SIGNAL('clicked(bool)'),
+                self.on_find)
+        connect(self.button_cancelsearch, SIGNAL('clicked(bool)'),
+                self.on_cancelsearch)
+        connect(self.close_find_toolButton, SIGNAL('clicked(bool)'),
+                lambda: self.actionFind.setChecked(False))
+        connect(self.entry_find, SIGNAL('returnPressed()'),
+                self.on_find)
+        connect(self.entry_find, SIGNAL('textChanged(const QString &)'),
+                self.on_find_text_changed)
 
         self._frame_find_timer = QtCore.QTimer(self)
         self._frame_find_timer.setInterval(self.hidefinddelay)
-        self.connect(self._frame_find_timer, QtCore.SIGNAL('timeout()'),
-                     lambda: self.actionFind.setChecked(False))
-        self.connect(self.actionFind, QtCore.SIGNAL('toggled(bool)'),
-                     self.on_find_toggled)
+        connect(self._frame_find_timer, SIGNAL('timeout()'),
+                lambda: self.actionFind.setChecked(False))
+        connect(self.actionFind, SIGNAL('toggled(bool)'),
+                self.on_find_toggled)
         self.actionFind.setChecked(False)
 
     def setup_main_actions(self):
         # main window actions
-        self.connect(self.actionRefresh, QtCore.SIGNAL('triggered()'),
-                     self.reload_repository)
-        self.connect(self.actionAbout, QtCore.SIGNAL('triggered()'),
-                     self.on_about)
-        self.connect(self.actionQuit, QtCore.SIGNAL('triggered()'),
-                     self.close)
+        connect(self.actionRefresh, SIGNAL('triggered()'),
+                self.reload_repository)
+        connect(self.actionAbout, SIGNAL('triggered()'),
+                self.on_about)
+        connect(self.actionQuit, SIGNAL('triggered()'),
+                self.close)
         self.actionQuit.setShortcuts([self.actionQuit.shortcut(), Qt.Key_Escape])
 
     def setup_statusbar(self):
@@ -191,42 +186,12 @@ class HgMainWindow(QtGui.QMainWindow, HgDialogMixin):
         sci.SendScintilla(sci.SCI_SETSELEOLFILLED, True)
         self.textview_status = sci
 
-    def back(self):
-        if self._rev_history:
-            self._rev_pos -= 1
-            idx = self.repomodel.indexFromRev(self._rev_history[self._rev_pos])
-            if idx is not None:
-                self._in_history = True
-                self.tableView_revisions.setCurrentIndex(idx)
-        self.set_navigation_button_state()
-
-    def forward(self):
-        if self._rev_history:
-            self._rev_pos += 1
-            idx = self.repomodel.indexFromRev(self._rev_history[self._rev_pos])
-            if idx is not None:
-                self._in_history = True
-                self.tableView_revisions.setCurrentIndex(idx)
-        self.set_navigation_button_state()
-
-    def set_navigation_button_state(self):
-        if len(self._rev_history) > 0:
-            self.actionBack.setEnabled(self._rev_pos > 0)
-            self.actionForward.setEnabled(self._rev_pos < len(self._rev_history)-1)
-        else:
-            self.actionBack.setEnabled(False)
-            self.actionForward.setEnabled(False)
-
     def on_goto(self, *args):
         goto = unicode(self.entry_goto.text())
         try:
-            rev = self.repo.changectx(goto).rev()
+            self.tableView_revisions.goto(goto)
         except:
             self.statusBar().showMessage("Can't find revision '%s'"%goto, 2000)
-        else:
-            idx = self.repomodel.indexFromRev(rev)
-            if idx is not None:
-                self.tableView_revisions.setCurrentIndex(idx)
         self.actionGoto.setChecked(False)
 
     def load_config(self):
@@ -234,8 +199,8 @@ class HgMainWindow(QtGui.QMainWindow, HgDialogMixin):
         self.hidefinddelay = cfg.getHideFindDelay()
 
     def setup_filterframe(self):
-        self.connect(self.branch_comboBox, QtCore.SIGNAL('activated(const QString &)'),
-                     self.refresh_revision_table)
+        connect(self.branch_comboBox, SIGNAL('activated(const QString &)'),
+                self.refresh_revision_table)
         self.frame_branch_action = self.toolBar_treefilters.addWidget(self.frame_branch)
         self.frame_revrange_action = self.toolBar_treefilters.addWidget(self.frame_revrange)
         self.frame_filter_action = self.toolBar_treefilters.addWidget(self.frame_filter)
@@ -245,12 +210,12 @@ class HgMainWindow(QtGui.QMainWindow, HgDialogMixin):
 
     def create_models(self):
         self.repomodel = HgRepoListModel(self.repo)
-        self.connect(self.repomodel, QtCore.SIGNAL('filling(int)'),
-                     self.start_filling)
-        self.connect(self.repomodel, QtCore.SIGNAL('filled(int)'),
-                     self.on_filled)
-        self.connect(self.repomodel, QtCore.SIGNAL('fillingover()'),
-                     self.pb.hide)
+        connect(self.repomodel, SIGNAL('filling(int)'),
+                self.start_filling)
+        connect(self.repomodel, SIGNAL('filled(int)'),
+                self.on_filled)
+        connect(self.repomodel, SIGNAL('fillingover()'),
+                self.pb.hide)
 
         self.filelistmodel = HgFileListModel(self.repo)
 
@@ -260,32 +225,25 @@ class HgMainWindow(QtGui.QMainWindow, HgDialogMixin):
         self.tableView_filelist.setModel(self.filelistmodel)
         self.goto_model.setStringList(self.repo.tags().keys())
 
-        repotable = self.tableView_revisions
-        self.connect(repotable.selectionModel(),
-                     QtCore.SIGNAL('currentRowChanged (const QModelIndex & , const QModelIndex & )'),
-                     self.revision_selected)
-        self.connect(repotable,
-                     QtCore.SIGNAL('doubleClicked (const QModelIndex &)'),
-                     self.revision_activated)
-
         filetable = self.tableView_filelist
-        self.connect(filetable.selectionModel(),
-                     QtCore.SIGNAL('currentRowChanged (const QModelIndex & , const QModelIndex & )'),
-                     self.file_selected)
-        self.connect(filetable,
-                     QtCore.SIGNAL('doubleClicked (const QModelIndex &)'),
-                     self.file_activated)
-        self.connect(filetable.horizontalHeader(),
-                     QtCore.SIGNAL('sectionResized(int, int, int)'),
-                     self.file_section_resized)        
+        connect(filetable.selectionModel(),
+                SIGNAL('currentRowChanged (const QModelIndex & , const QModelIndex & )'),
+                self.file_selected)
+        connect(filetable,
+                SIGNAL('doubleClicked (const QModelIndex &)'),
+                self.file_activated)
+        connect(filetable.horizontalHeader(),
+                SIGNAL('sectionResized(int, int, int)'),
+                self.file_section_resized)        
 
     def setup_revision_table(self):
-        repotable = self.tableView_revisions
-        repotable.installEventFilter(self)
-
-        self._setup_table(repotable)
-        repotable.show()
-
+        view = self.tableView_revisions
+        view.installEventFilter(self)        
+        connect(view, SIGNAL('revisionSelected'), self.revision_selected)
+        connect(view, SIGNAL('revisionActivated'), self.revision_activated)
+        #lambda rev: self.textview_header.displayRevision(self.repomodel.repo.changectx(rev)))
+        connect(self.textview_header, SIGNAL('revisionSelected'), view.goto)
+        
     def setup_filelist_table(self):
         filetable = self.tableView_filelist
         filetable.setFocusPolicy(QtCore.Qt.NoFocus)
@@ -308,12 +266,6 @@ class HgMainWindow(QtGui.QMainWindow, HgDialogMixin):
         self.header_diff_format.setForeground(Qt.black)
         self.header_diff_format.setBackground(Qt.gray)
 
-        self.textview_header.setFont(self.font)
-        self.textview_header.setReadOnly(True)
-        self.connect(self.textview_header,
-                     QtCore.SIGNAL('anchorClicked(const QUrl &)'),
-                     self.on_anchor_clicked)
-
     # Qt methods
     def closeEvent(self, event):
         if not self.frame_goto.isHidden():
@@ -329,7 +281,6 @@ class HgMainWindow(QtGui.QMainWindow, HgDialogMixin):
     def resizeEvent(self, event):
         # we catch this event to resize smartly tables' columns
         QtGui.QMainWindow.resizeEvent(self, event)
-        self.resize_revisiontable_columns()
         self.resize_filelist_columns()
 
     def eventFilter(self, watched, event):
@@ -364,39 +315,19 @@ class HgMainWindow(QtGui.QMainWindow, HgDialogMixin):
             tv = self.tableView_revisions
             tv.setCurrentIndex(tv.model().index(0, 0))
 
-    def revision_activated(self, index):
+    def revision_activated(self, rev):
         """
         Callback called when a revision is double-clicked in the revisions table        
         """
-        if not index.isValid():
-            return
-        row = index.row()
-        gnode = self.repomodel.graph[row]
-        dlg = ManifestViewer(self.repo, gnode.rev)
-        dlg.setWindowTitle('Hg manifest viewer')
-        dlg.show()
+        ManifestViewer(self.repo, rev).show()
     
-    def revision_selected(self, index, index_from):
+    def revision_selected(self, rev):
         """
         Callback called when a revision is selected in the revisions table
         """
         if self.repomodel.graph:
-            row = index.row()
-            gnode = self.repomodel.graph[row]
-            ctx = self.repo.changectx(gnode.rev)
-            if self.current_ctx and self.current_ctx.rev() == ctx.rev():
-                return
-            if not self._in_history:
-                del self._rev_history[self._rev_pos+1:]
-                self._rev_history.append(ctx.rev())
-                self._rev_pos = len(self._rev_history)-1
-            self.set_navigation_button_state()
-
-            self._in_history = False
-            self.current_ctx = ctx
-            header = self.fill_revlog_header(ctx)
-            self.textview_header.setHtml(header)
-
+            ctx = self.repomodel.repo.changectx(rev)
+            self.textview_header.displayRevision(ctx)            
             self.filelistmodel.setSelectedRev(ctx)
             if len(self.filelistmodel):
                 self.tableView_filelist.selectRow(0)
@@ -483,43 +414,6 @@ class HgMainWindow(QtGui.QMainWindow, HgDialogMixin):
         self.repomodel.setRepo(self.repo, branch=branch)
         self.tableView_revisions.setCurrentIndex(self.tableView_revisions.model().index(0,0))
 
-    def fill_revlog_header(self, ctx):
-        """Build the revision log header"""
-        repo = self.repo
-        buf = "<table>\n"
-        buf += '<tr><td class="label">Revision:</td>'\
-               '<td><span class="rev_number">%d</span>:'\
-               '<span class="rev_hash">%s</span></td></tr>'\
-               '\n' % (ctx.rev(), short_hex(ctx.node()))
-        #buf += short_hex(node) + '\n' #, "link")
-        buf += '<tr><td class="label">Author:</td>'\
-               '<td class="auth_id">%s</td></tr>'\
-               '\n' %  ctx.user()
-        #buf.create_mark("begdesc", buf.get_start_iter())
-
-        for p in ctx.parents():
-            if p.rev() > -1:
-                short = short_hex(p.node())
-                buf += '<tr><td class="label">Parent:</td>'\
-                       '<td><span class="rev_number">%d</span>:'\
-                       '<a href="%s" class="rev_hash">%s</a>&nbsp;'\
-                       '<span class="short_desc">(%s)</span></td></tr>'\
-                       '\n' % (p.rev(), p.rev(), short, p.description())
-        for p in ctx.children():
-            if p.rev() > -1:
-                short = short_hex(p.node())
-                buf += '<tr><td class="label">Child:</td>'\
-                       '<td><span class="rev_number">%d</span>:'\
-                       '<a href="%s" class="rev_hash">%s</a>&nbsp;'\
-                       '<span class="short_desc">(%s)</span></td></tr>'\
-                       '\n' % (p.rev(), p.rev(), short, p.description())
-
-        buf += "</table>\n"
-
-        buf += '<div class="diff_desc"><p>%s</p></div>\n' % ctx.description().replace('\n', '<br/>\n')
-        return buf
-
-
     def resize_filelist_columns(self, *args):
         # resize columns the smart way: the first column holding file
         # names is resized according to the total widget size.
@@ -529,22 +423,6 @@ class HgMainWindow(QtGui.QMainWindow, HgDialogMixin):
                       for i in range(1, self.filelistmodel.columnCount())]
         col_width = vp_width - sum(col_widths)
         self.tableView_filelist.setColumnWidth(0, col_width)
-
-    def resize_revisiontable_columns(self, *args):
-        # same as before, but for the "Log" column of the repo graph log
-        col1_width = self.tableView_revisions.viewport().width()
-        fontm = QtGui.QFontMetrics(self.tableView_revisions.font())
-        for c in range(self.repomodel.columnCount()):
-            if c == 1:
-                continue
-            w = self.repomodel.maxWidthValueForColumn(c)
-            if w is not None:
-                w = fontm.width(unicode(w) + 'w')
-                self.tableView_revisions.setColumnWidth(c, w)
-            else:
-                self.tableView_revisions.setColumnWidth(c, 140)
-            col1_width -= self.tableView_revisions.columnWidth(c)
-        self.tableView_revisions.setColumnWidth(1, col1_width)
 
     def on_find_toggled(self, checked):
         if checked:
@@ -688,18 +566,6 @@ class HgMainWindow(QtGui.QMainWindow, HgDialogMixin):
                                              'in the repository', 2000)
         self._frame_find_timer.start()
 
-    def on_anchor_clicked(self, qurl):
-        """
-        Callback called when a link is clicked in the text browser
-        displaying the diffs
-        """
-        rev = int(qurl.toString())
-        # forbid Qt to look for a real document at URL
-        self.textview_header.setSource(QtCore.QUrl(''))
-
-        idx = self.repomodel.indexFromRev(rev)
-        if idx is not None:
-            self.tableView_revisions.setCurrentIndex(idx)
 
     def on_about(self, *args):
         """ Display about dialog """

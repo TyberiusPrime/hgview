@@ -16,9 +16,9 @@
    <property name="geometry" >
     <rect>
      <x>0</x>
-     <y>69</y>
+     <y>63</y>
      <width>730</width>
-     <height>554</height>
+     <height>560</height>
     </rect>
    </property>
    <layout class="QVBoxLayout" name="verticalLayout_3" >
@@ -33,10 +33,10 @@
       <property name="orientation" >
        <enum>Qt::Vertical</enum>
       </property>
-      <widget class="QWidget" name="" >
+      <widget class="QWidget" name="layoutWidget" >
        <layout class="QVBoxLayout" name="verticalLayout_2" >
         <item>
-         <widget class="QTableView" name="tableView_revisions" >
+         <widget class="HgRepoView" name="tableView_revisions" >
           <property name="frameShape" >
            <enum>QFrame::StyledPanel</enum>
           </property>
@@ -162,7 +162,7 @@
            <property name="orientation" >
             <enum>Qt::Vertical</enum>
            </property>
-           <widget class="QTextBrowser" name="textview_header" />
+           <widget class="RevDisplay" name="textview_header" />
            <widget class="QFrame" name="textview_frame" >
             <property name="frameShape" >
              <enum>QFrame::NoFrame</enum>
@@ -302,11 +302,6 @@
         </spacer>
        </item>
       </layout>
-      <zorder>close_goto_toolButton</zorder>
-      <zorder>label_5</zorder>
-      <zorder>entry_goto</zorder>
-      <zorder>button_goto</zorder>
-      <zorder>splitter_3</zorder>
      </widget>
     </item>
    </layout>
@@ -341,8 +336,6 @@
     </property>
     <addaction name="actionFind" />
     <addaction name="actionGoto" />
-    <addaction name="actionBack" />
-    <addaction name="actionForward" />
    </widget>
    <addaction name="menuFile" />
    <addaction name="menu_Edit" />
@@ -366,8 +359,8 @@
     <rect>
      <x>0</x>
      <y>30</y>
-     <width>215</width>
-     <height>39</height>
+     <width>145</width>
+     <height>33</height>
     </rect>
    </property>
    <property name="windowTitle" >
@@ -379,8 +372,6 @@
    <attribute name="toolBarBreak" >
     <bool>false</bool>
    </attribute>
-   <addaction name="actionBack" />
-   <addaction name="actionForward" />
    <addaction name="actionFind" />
    <addaction name="actionCloseFind" />
    <addaction name="actionGoto" />
@@ -392,10 +383,10 @@
    </property>
    <property name="geometry" >
     <rect>
-     <x>215</x>
+     <x>145</x>
      <y>30</y>
-     <width>515</width>
-     <height>39</height>
+     <width>585</width>
+     <height>33</height>
     </rect>
    </property>
    <property name="windowTitle" >
@@ -491,43 +482,19 @@
     <bool>false</bool>
    </property>
   </action>
-  <action name="actionBack" >
-   <property name="checkable" >
-    <bool>false</bool>
-   </property>
-   <property name="icon" >
-    <iconset resource="hgqv.qrc" >
-     <normaloff>:/icons/back.svg</normaloff>:/icons/back.svg</iconset>
-   </property>
-   <property name="text" >
-    <string>&amp;Back</string>
-   </property>
-   <property name="toolTip" >
-    <string>Go to previous revision of navigation history</string>
-   </property>
-   <property name="shortcut" >
-    <string>Alt+Left</string>
-   </property>
-  </action>
-  <action name="actionForward" >
-   <property name="checkable" >
-    <bool>false</bool>
-   </property>
-   <property name="icon" >
-    <iconset resource="hgqv.qrc" >
-     <normaloff>:/icons/forward.svg</normaloff>:/icons/forward.svg</iconset>
-   </property>
-   <property name="text" >
-    <string>&amp;Forward</string>
-   </property>
-   <property name="toolTip" >
-    <string>Go to next revision of navigation history</string>
-   </property>
-   <property name="shortcut" >
-    <string>Alt+Right</string>
-   </property>
-  </action>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>HgRepoView</class>
+   <extends>QTableView</extends>
+   <header>hgrepoview.h</header>
+  </customwidget>
+  <customwidget>
+   <class>RevDisplay</class>
+   <extends>QTextBrowser</extends>
+   <header>hgrepoview.h</header>
+  </customwidget>
+ </customwidgets>
  <resources>
   <include location="hgqv.qrc" />
  </resources>
