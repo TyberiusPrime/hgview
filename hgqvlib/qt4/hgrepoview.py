@@ -28,7 +28,40 @@ nullvariant = QtCore.QVariant()
 
 from hgqvlib.decorators import timeit
 from hgqvlib.qt4.hgfileviewer import ManifestViewer
+from hgqvlib.qt4.quickbar import QuickBar
 
+class GotoQuickBar(QuickBar):
+    def __init__(self, parent):
+        QuickBar.__init__(self, "Goto", "Ctrl+G", "Goto", parent)
+        
+    def createActions(self, openkey, desc):
+        QuickBar.createActions(self, openkey, desc)
+        self._actions['go'] = QtGui.QAction("Go", self)
+        connect(self._actions['go'], SIGNAL('triggered()'),
+                self.goto)
+
+    def goto(self):
+        self.emit(SIGNAL('goto'), unicode(self.entry.text()))
+
+    def createContent(self):
+        QuickBar.createContent(self)
+        self.compl_model = QtGui.QStringListModel(['tip'])
+        self.completer = QtGui.QCompleter(self.compl_model, self)
+        self.entry = QtGui.QLineEdit(self)
+        self.entry.setCompleter(self.completer)
+        self.addWidget(self.entry)
+        self.addAction(self._actions['go'])
+
+        connect(self.entry, SIGNAL('returnPressed()'),
+                self._actions['go'].trigger)
+
+    def setVisible(self, visible=True):
+        QuickBar.setVisible(self, visible)
+        if visible:
+            self.entry.setFocus()
+            self.entry.selectAll()
+
+        
 class HgRepoView(QtGui.QTableView):
     """
     A QTableView for displaying a FileRevModel or a HgRepoListModel,
@@ -52,56 +85,14 @@ class HgRepoView(QtGui.QTableView):
         self._icons = {}
         
     def createToolbars(self):
-        self.goto_toolbar = QtGui.QToolBar("Goto", self)
-        self.goto_toolbar.setIconSize(QtCore.QSize(16,16))
-        self.goto_toolbar.setFloatable(False)
-        self.goto_toolbar.setMovable(False)
-        self.goto_toolbar.setAllowedAreas(Qt.BottomToolBarArea)
-        self.goto_toolbar.addAction(self._actions['closeGoto'])
-
-        self.esc_shortcut = QtGui.QShortcut(self)
-        self.esc_shortcut.setKey(Qt.Key_Escape)
-        connect(self.esc_shortcut, SIGNAL('activated()'),
-                lambda self=self: self._actions['goto'].setChecked(False))
-        
-        self.goto_model = QtGui.QStringListModel(['tip'])
-        self.goto_completer = QtGui.QCompleter(self.goto_model, self)
-        self.entry_goto = QtGui.QLineEdit(self.goto_toolbar)
-        self.entry_goto.setCompleter(self.goto_completer)
-        self.goto_toolbar.addWidget(self.entry_goto)
-        self.goto_toolbar.addAction(self._actions['go'])
-
-        goto = self._actions['goto']
-        goto.setCheckable(True)        
-        connect(goto, SIGNAL('toggled(bool)'),
-                self.setGotobarVisible)
-        connect(self.entry_goto, SIGNAL('editingFinished()'),
-                self._actions['go'].trigger)
-
-        self.goto_toolbar.hide()
-        goto.setChecked(False)
-        self.esc_shortcut.setEnabled(False)
-
-    def setGotobarVisible(self, visible):
-        self.goto_toolbar.setVisible(visible)
-        self.esc_shortcut.setEnabled(visible)
-        if visible:
-            self.entry_goto.setFocus()
-            self.entry_goto.selectAll()
-        else:
-            self.setFocus()
-        self.emit(SIGNAL('escShortcutDisabled(bool)'), not visible)
-        
-    def go(self):
-        self.goto(unicode(self.entry_goto.text()))
+        self.goto_toolbar = GotoQuickBar(self)
+        connect(self.goto_toolbar, SIGNAL('goto'),
+                self.goto)
         
     def _action_defs(self):
         a = [("back", self.tr("Back"), 'back', None, QtGui.QKeySequence(QtGui.QKeySequence.Back), self.back),
              ("forward", self.tr("Forward"), 'forward', None, QtGui.QKeySequence(QtGui.QKeySequence.Forward), self.forward),
              ("manifest", self.tr("Show at rev..."), None, self.tr("Show the manifest at selected revision"), None, self.showAtRev),
-             ("goto", self.tr('Goto'), None, None, QtGui.QKeySequence("Ctrl+G"), None),
-             ("closeGoto", self.tr('Close'), 'close', None, None, lambda self=self: self._actions['goto'].setChecked(False)),
-             ("go", self.tr('Go'), None, None, None, self.go),
              ]
         return a
     
@@ -131,6 +122,7 @@ class HgRepoView(QtGui.QTableView):
                 menu.addAction(self._actions[act])
             else:
                 menu.addSeparator()
+        menu.addAction(self.goto_toolbar._actions['open'])
         menu.exec_(event.globalPos())
         
     def init_variables(self):
@@ -153,7 +145,7 @@ class HgRepoView(QtGui.QTableView):
         connect(self,
                 SIGNAL('doubleClicked (const QModelIndex &)'),
                 self.revisionActivated)
-        self.goto_model.setStringList(model.repo.tags().keys())
+        self.goto_toolbar.compl_model.setStringList(model.repo.tags().keys())
 
     def resizeEvent(self, event):
         # we catch this event to resize smartly tables' columns
@@ -349,8 +341,6 @@ if __name__ == "__main__":
     l = QtGui.QVBoxLayout(w)
     
     view = HgRepoView(w)
-    view.goto_toolbar.setParent(root)
-    root.addToolBar(Qt.BottomToolBarArea, view.goto_toolbar)
     view.setModel(model)
     view.setWindowTitle("Simple Hg List Model")
 

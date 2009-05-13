@@ -216,7 +216,7 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
         connect(view, SIGNAL('revisionSelected'), self.revision_selected)
         connect(view, SIGNAL('revisionActivated'), self.revision_activated)
         connect(self.textview_header, SIGNAL('revisionSelected'), view.goto)
-        connect(view, SIGNAL('escShortcutDisabled(bool)'),
+        connect(view.goto_toolbar, SIGNAL('escShortcutDisabled(bool)'),
                 self.esc_shortcut.setEnabled)
         view.goto_toolbar.setParent(self)
         self.addToolBar(Qt.BottomToolBarArea, view.goto_toolbar)
