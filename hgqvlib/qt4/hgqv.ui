@@ -245,65 +245,6 @@
       </layout>
      </widget>
     </item>
-    <item>
-     <widget class="QFrame" name="frame_goto" >
-      <property name="frameShape" >
-       <enum>QFrame::NoFrame</enum>
-      </property>
-      <property name="frameShadow" >
-       <enum>QFrame::Raised</enum>
-      </property>
-      <layout class="QHBoxLayout" name="horizontalLayout_3" >
-       <property name="margin" >
-        <number>0</number>
-       </property>
-       <item>
-        <widget class="QPushButton" name="close_goto_toolButton" >
-         <property name="text" >
-          <string/>
-         </property>
-         <property name="icon" >
-          <iconset resource="hgqv.qrc" >
-           <normaloff>:/icons/close.png</normaloff>:/icons/close.png</iconset>
-         </property>
-         <property name="flat" >
-          <bool>true</bool>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QLabel" name="label_5" >
-         <property name="text" >
-          <string>Goto revision</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QLineEdit" name="entry_goto" />
-       </item>
-       <item>
-        <widget class="QToolButton" name="button_goto" >
-         <property name="text" >
-          <string>Go</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <spacer name="horizontalSpacer_3" >
-         <property name="orientation" >
-          <enum>Qt::Horizontal</enum>
-         </property>
-         <property name="sizeHint" stdset="0" >
-          <size>
-           <width>279</width>
-           <height>20</height>
-          </size>
-         </property>
-        </spacer>
-       </item>
-      </layout>
-     </widget>
-    </item>
    </layout>
   </widget>
   <widget class="QMenuBar" name="menubar" >
@@ -335,7 +276,6 @@
      <string>&amp;Edit</string>
     </property>
     <addaction name="actionFind" />
-    <addaction name="actionGoto" />
    </widget>
    <addaction name="menuFile" />
    <addaction name="menu_Edit" />
@@ -359,7 +299,7 @@
     <rect>
      <x>0</x>
      <y>30</y>
-     <width>145</width>
+     <width>69</width>
      <height>33</height>
     </rect>
    </property>
@@ -374,8 +314,6 @@
    </attribute>
    <addaction name="actionFind" />
    <addaction name="actionCloseFind" />
-   <addaction name="actionGoto" />
-   <addaction name="actionCloseGoto" />
   </widget>
   <widget class="QToolBar" name="toolBar_treefilters" >
    <property name="enabled" >
@@ -383,9 +321,9 @@
    </property>
    <property name="geometry" >
     <rect>
-     <x>145</x>
+     <x>69</x>
      <y>30</y>
-     <width>585</width>
+     <width>661</width>
      <height>33</height>
     </rect>
    </property>
@@ -459,29 +397,6 @@
     <string>Find &amp;Next</string>
    </property>
   </action>
-  <action name="actionGoto" >
-   <property name="checkable" >
-    <bool>true</bool>
-   </property>
-   <property name="text" >
-    <string>&amp;Goto revision...</string>
-   </property>
-   <property name="shortcut" >
-    <string>Ctrl+G</string>
-   </property>
-  </action>
-  <action name="actionCloseGoto" >
-   <property name="icon" >
-    <iconset resource="hgqv.qrc" >
-     <normaloff>:/icons/close.png</normaloff>:/icons/close.png</iconset>
-   </property>
-   <property name="text" >
-    <string>close</string>
-   </property>
-   <property name="visible" >
-    <bool>false</bool>
-   </property>
-  </action>
  </widget>
  <customwidgets>
   <customwidget>
@@ -516,22 +431,6 @@
    </hints>
   </connection>
   <connection>
-   <sender>actionGoto</sender>
-   <signal>toggled(bool)</signal>
-   <receiver>frame_goto</receiver>
-   <slot>setVisible(bool)</slot>
-   <hints>
-    <hint type="sourcelabel" >
-     <x>-1</x>
-     <y>-1</y>
-    </hint>
-    <hint type="destinationlabel" >
-     <x>364</x>
-     <y>607</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
    <sender>actionCloseFind</sender>
    <signal>activated()</signal>
    <receiver>actionFind</receiver>
@@ -548,41 +447,9 @@
    </hints>
   </connection>
   <connection>
-   <sender>actionCloseGoto</sender>
-   <signal>activated()</signal>
-   <receiver>actionGoto</receiver>
-   <slot>toggle()</slot>
-   <hints>
-    <hint type="sourcelabel" >
-     <x>-1</x>
-     <y>-1</y>
-    </hint>
-    <hint type="destinationlabel" >
-     <x>-1</x>
-     <y>-1</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
    <sender>actionFind</sender>
    <signal>toggled(bool)</signal>
    <receiver>actionCloseFind</receiver>
-   <slot>setEnabled(bool)</slot>
-   <hints>
-    <hint type="sourcelabel" >
-     <x>-1</x>
-     <y>-1</y>
-    </hint>
-    <hint type="destinationlabel" >
-     <x>-1</x>
-     <y>-1</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>actionGoto</sender>
-   <signal>toggled(bool)</signal>
-   <receiver>actionCloseGoto</receiver>
    <slot>setEnabled(bool)</slot>
    <hints>
     <hint type="sourcelabel" >
