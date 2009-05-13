@@ -64,7 +64,6 @@ class HgMainWindow(QtGui.QMainWindow, HgDialogMixin):
         self._icons['back'] = QtGui.QIcon(':/icons/back.svg')
         self._icons['forward'] = QtGui.QIcon(':/icons/forward.svg')
         self.setup_frame_find()
-        self.setup_frame_goto()
         self.setup_navigation_buttons()
 
         self.init_variables()        
@@ -89,28 +88,6 @@ class HgMainWindow(QtGui.QMainWindow, HgDialogMixin):
         else:
             self.branchesmodel = QtGui.QStringListModel([''] + branches)
             self.branch_comboBox.setModel(self.branchesmodel)
-
-    def setup_frame_goto(self):
-        self.frame_goto.hide()
-        self.close_goto_toolButton.setIcon(self._icons['closebtn'])
-        connect(self.close_goto_toolButton, SIGNAL('clicked(bool)'),
-                lambda: self.actionGoto.setChecked(False))
-        connect(self.button_goto, SIGNAL('clicked(bool)'),
-                self.on_goto)
-        connect(self.entry_goto, SIGNAL('returnPressed()'),
-                self.on_goto)
-
-        self._frame_goto_timer = QtCore.QTimer(self)
-        self._frame_goto_timer.setInterval(self.hidefinddelay)
-        connect(self._frame_goto_timer, SIGNAL('timeout()'),
-                lambda: self.actionGoto.setChecked(False))
-        connect(self.actionGoto, SIGNAL('toggled(bool)'),
-                self.on_goto_toggled)
-
-        self.goto_model = QtGui.QStringListModel(['tip'])
-        self.goto_completer = QtGui.QCompleter(self.goto_model, self)
-        self.entry_goto.setCompleter(self.goto_completer)
-        self.actionGoto.setChecked(False)
 
     def setup_navigation_buttons(self):
         for act in ('back', 'forward'):
@@ -156,8 +133,14 @@ class HgMainWindow(QtGui.QMainWindow, HgDialogMixin):
                 self.on_about)
         connect(self.actionQuit, SIGNAL('triggered()'),
                 self.close)
-        self.actionQuit.setShortcuts([self.actionQuit.shortcut(), Qt.Key_Escape])
-
+        # we explicitely create a QShortcut so we can disable it
+        # when a "helper context toolbar" is activated (which can be
+        # closed hitting the Esc shortcut)
+        self.esc_shortcut = QtGui.QShortcut(self)
+        self.esc_shortcut.setKey(Qt.Key_Escape)
+        connect(self.esc_shortcut, SIGNAL('activated()'),
+                self.close)
+        
     def setup_statusbar(self):
         # setup the status bar, with a progress bar in it
         self.pb = QtGui.QProgressBar(self.statusBar())
@@ -185,14 +168,6 @@ class HgMainWindow(QtGui.QMainWindow, HgDialogMixin):
 
         sci.SendScintilla(sci.SCI_SETSELEOLFILLED, True)
         self.textview_status = sci
-
-    def on_goto(self, *args):
-        goto = unicode(self.entry_goto.text())
-        try:
-            self.tableView_revisions.goto(goto)
-        except:
-            self.statusBar().showMessage("Can't find revision '%s'"%goto, 2000)
-        self.actionGoto.setChecked(False)
 
     def load_config(self):
         cfg = HgDialogMixin.load_config(self)
@@ -223,7 +198,6 @@ class HgMainWindow(QtGui.QMainWindow, HgDialogMixin):
         self.create_models()
         self.tableView_revisions.setModel(self.repomodel)
         self.tableView_filelist.setModel(self.filelistmodel)
-        self.goto_model.setStringList(self.repo.tags().keys())
 
         filetable = self.tableView_filelist
         connect(filetable.selectionModel(),
@@ -241,8 +215,11 @@ class HgMainWindow(QtGui.QMainWindow, HgDialogMixin):
         view.installEventFilter(self)        
         connect(view, SIGNAL('revisionSelected'), self.revision_selected)
         connect(view, SIGNAL('revisionActivated'), self.revision_activated)
-        #lambda rev: self.textview_header.displayRevision(self.repomodel.repo.changectx(rev)))
         connect(self.textview_header, SIGNAL('revisionSelected'), view.goto)
+        connect(view, SIGNAL('escShortcutDisabled(bool)'),
+                self.esc_shortcut.setEnabled)
+        view.goto_toolbar.setParent(self)
+        self.addToolBar(Qt.BottomToolBarArea, view.goto_toolbar)
         
     def setup_filelist_table(self):
         filetable = self.tableView_filelist
@@ -268,10 +245,7 @@ class HgMainWindow(QtGui.QMainWindow, HgDialogMixin):
 
     # Qt methods
     def closeEvent(self, event):
-        if not self.frame_goto.isHidden():
-            self.actionGoto.setChecked(False)
-            event.ignore()
-        elif not self.frame_find.isHidden():
+        if not self.frame_find.isHidden():
             self.on_cancelsearch()
             self.actionFind.setChecked(False)
             event.ignore()
@@ -432,21 +406,6 @@ class HgMainWindow(QtGui.QMainWindow, HgDialogMixin):
         else:
             self._frame_find_timer.stop()
             
-    def on_goto_toggled(self, checked):
-        if checked:
-            self.entry_goto.setFocus()
-            self.entry_goto.selectAll()
-            self._frame_goto_timer.start()
-        else:
-            self._frame_goto_timer.stop()
-
-    def show_frame_goto(self, *args):
-        self._frame_find_timer.stop()
-        self.actionFind.setChecked(False)
-        self.entry_goto.setFocus()
-        self.entry_goto.selectAll()
-        self._frame_goto_timer.start()
-
     # methods to manage searching
     def highlight_search_string(self):
         if not self.frame_find.isHidden() and self._find_text is not None and self._find_text.strip():
