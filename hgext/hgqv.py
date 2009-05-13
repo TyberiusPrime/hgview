@@ -61,7 +61,7 @@ def start_hgqv(ui, repo, *args, **kwargs):
     try:
         from PyQt4 import QtGui
         import hgqvlib.qt4.hgqv_rc
-        from hgqvlib.qt4 import main as hgqv
+        from hgqvlib.qt4 import hgrepoviewer as hgqv
     except ImportError, e:
         print e
         # If we're unable to import Qt4 and qctlib, try to
