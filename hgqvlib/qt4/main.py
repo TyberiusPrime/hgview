@@ -36,9 +36,9 @@ normal = QtGui.QFont.Normal
 connect = QtCore.QObject.connect
 SIGNAL = QtCore.SIGNAL
 
-class HgMainWindow(QtGui.QMainWindow, HgDialogMixin):
+class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
     _uifile = 'hgqv.ui'
-    """Main hg view application"""
+    """hg repository viewer/browser application"""
     def __init__(self, repo, filerex = None):
         self.repo = repo
         QtGui.QMainWindow.__init__(self)
@@ -579,13 +579,12 @@ def main():
     try:
         u = ui.ui()
         repo = hg.repository(u, dir_)
-        #repo = HgHLRepo(dir_)
     except:
         print "You are not in a repo, are you?"
         sys.exit(1)
 
     app = QtGui.QApplication(sys.argv)
-    mainwindow = HgMainWindow(repo, filerex)
+    mainwindow = HgRepoViewer(repo, filerex)
     mainwindow.show()
     sys.exit(app.exec_())
 

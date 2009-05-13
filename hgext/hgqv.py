@@ -77,7 +77,7 @@ def start_hgqv(ui, repo, *args, **kwargs):
             # should be a filename of a file managed in the repo
             mainwindow = hgqv.FileDiffViewer(repo, args[0])
         else:
-            mainwindow = hgqv.HgMainWindow(repo)
+            mainwindow = hgqv.HgRepoViewer(repo)
         mainwindow.show()
         return app.exec_()
 
