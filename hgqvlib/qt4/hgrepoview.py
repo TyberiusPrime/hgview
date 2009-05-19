@@ -27,6 +27,7 @@ SIGNAL = QtCore.SIGNAL
 nullvariant = QtCore.QVariant()
 
 from hgqvlib.decorators import timeit
+from hgqvlib.qt4 import icon as geticon
 from hgqvlib.qt4.hgfileviewer import ManifestViewer
 from hgqvlib.qt4.quickbar import QuickBar
 
@@ -76,14 +77,10 @@ class HgRepoView(QtGui.QTableView):
         self.setSelectionMode(QtGui.QAbstractItemView.SingleSelection)
         self.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
         self.setAlternatingRowColors(True)
-        self.setupIcons()
+
         self.createActions()
         self.createToolbars()
 
-    def setupIcons(self):
-        # icons are actually created by createActions method
-        self._icons = {}
-        
     def createToolbars(self):
         self.goto_toolbar = GotoQuickBar(self)
         connect(self.goto_toolbar, SIGNAL('goto'),
@@ -101,8 +98,7 @@ class HgRepoView(QtGui.QTableView):
         for name, desc, icon, tip, key, cb in self._action_defs():
             act = QtGui.QAction(desc, self)
             if icon:
-                self._icons[icon] = QtGui.QIcon(':/icons/%s.png' % icon)
-                act.setIcon(self._icons[icon])
+                act.setIcon(geticon(icon))
             if tip:
                 act.setStatusTip(tip)
             if key:

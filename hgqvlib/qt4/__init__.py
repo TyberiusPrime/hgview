@@ -15,9 +15,26 @@ if not osp.isfile(pyfile) or osp.isfile(rcfile) and osp.getmtime(pyfile) < osp.g
         print "ERROR: Cannot convert the resource file '%s' into a python module."
         print "Please check the PyQt 'pyrcc4' tool is installed, or do it by hand running:"
         print "pyrcc4 %s -o %s" % (rcfile, pyfile)
+
+# load icons from resource and store them in a dict, no matter their
+# extension (.svg or .png)
+from PyQt4 import QtCore
+from PyQt4 import QtGui, uic
 import hgqv_rc
 
-from PyQt4 import QtGui, uic
+_icons = {}
+def _load_icons():
+    d = QtCore.QDir(':/icons')
+    for icn in d.entryList():
+        name, ext = osp.splitext(str(icn))
+        if name not in _icons or ext == ".svg":
+            _icons[name] = QtGui.QIcon(':/icons/%s' % icn)
+
+def icon(name):    
+    if not _icons:
+        _load_icons()
+    return _icons.get(name)
+
 from hgqvlib.config import HgConfig
 
 class HgDialogMixin(object):

@@ -16,9 +16,9 @@
    <property name="geometry" >
     <rect>
      <x>0</x>
-     <y>63</y>
+     <y>45</y>
      <width>730</width>
-     <height>560</height>
+     <height>578</height>
     </rect>
    </property>
    <layout class="QVBoxLayout" name="verticalLayout_3" >
@@ -179,72 +179,6 @@
       </widget>
      </widget>
     </item>
-    <item>
-     <widget class="QFrame" name="frame_find" >
-      <property name="frameShape" >
-       <enum>QFrame::NoFrame</enum>
-      </property>
-      <property name="frameShadow" >
-       <enum>QFrame::Raised</enum>
-      </property>
-      <layout class="QHBoxLayout" name="horizontalLayout" >
-       <property name="margin" >
-        <number>0</number>
-       </property>
-       <item>
-        <widget class="QPushButton" name="close_find_toolButton" >
-         <property name="text" >
-          <string/>
-         </property>
-         <property name="icon" >
-          <iconset resource="hgqv.qrc" >
-           <normaloff>:/icons/close.png</normaloff>:/icons/close.png</iconset>
-         </property>
-         <property name="flat" >
-          <bool>true</bool>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QLabel" name="label" >
-         <property name="text" >
-          <string>Find</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QLineEdit" name="entry_find" />
-       </item>
-       <item>
-        <widget class="QToolButton" name="button_find" >
-         <property name="text" >
-          <string>Find next</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QToolButton" name="button_cancelsearch" >
-         <property name="text" >
-          <string>Cancel</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <spacer name="horizontalSpacer" >
-         <property name="orientation" >
-          <enum>Qt::Horizontal</enum>
-         </property>
-         <property name="sizeHint" stdset="0" >
-          <size>
-           <width>40</width>
-           <height>20</height>
-          </size>
-         </property>
-        </spacer>
-       </item>
-      </layout>
-     </widget>
-    </item>
    </layout>
   </widget>
   <widget class="QMenuBar" name="menubar" >
@@ -275,7 +209,6 @@
     <property name="title" >
      <string>&amp;Edit</string>
     </property>
-    <addaction name="actionFind" />
    </widget>
    <addaction name="menuFile" />
    <addaction name="menu_Edit" />
@@ -299,8 +232,8 @@
     <rect>
      <x>0</x>
      <y>30</y>
-     <width>69</width>
-     <height>33</height>
+     <width>15</width>
+     <height>15</height>
     </rect>
    </property>
    <property name="windowTitle" >
@@ -312,8 +245,6 @@
    <attribute name="toolBarBreak" >
     <bool>false</bool>
    </attribute>
-   <addaction name="actionFind" />
-   <addaction name="actionCloseFind" />
   </widget>
   <widget class="QToolBar" name="toolBar_treefilters" >
    <property name="enabled" >
@@ -321,10 +252,10 @@
    </property>
    <property name="geometry" >
     <rect>
-     <x>69</x>
+     <x>15</x>
      <y>30</y>
-     <width>661</width>
-     <height>33</height>
+     <width>715</width>
+     <height>15</height>
     </rect>
    </property>
    <property name="windowTitle" >
@@ -369,34 +300,6 @@
     <string>About</string>
    </property>
   </action>
-  <action name="actionFind" >
-   <property name="checkable" >
-    <bool>true</bool>
-   </property>
-   <property name="text" >
-    <string>&amp;Find...</string>
-   </property>
-   <property name="shortcut" >
-    <string>Ctrl+F</string>
-   </property>
-  </action>
-  <action name="actionCloseFind" >
-   <property name="icon" >
-    <iconset resource="hgqv.qrc" >
-     <normaloff>:/icons/close.png</normaloff>:/icons/close.png</iconset>
-   </property>
-   <property name="text" >
-    <string>close</string>
-   </property>
-   <property name="visible" >
-    <bool>false</bool>
-   </property>
-  </action>
-  <action name="actionFindNext" >
-   <property name="text" >
-    <string>Find &amp;Next</string>
-   </property>
-  </action>
  </widget>
  <customwidgets>
   <customwidget>
@@ -413,54 +316,5 @@
  <resources>
   <include location="hgqv.qrc" />
  </resources>
- <connections>
-  <connection>
-   <sender>actionFind</sender>
-   <signal>toggled(bool)</signal>
-   <receiver>frame_find</receiver>
-   <slot>setVisible(bool)</slot>
-   <hints>
-    <hint type="sourcelabel" >
-     <x>-1</x>
-     <y>-1</y>
-    </hint>
-    <hint type="destinationlabel" >
-     <x>364</x>
-     <y>576</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>actionCloseFind</sender>
-   <signal>activated()</signal>
-   <receiver>actionFind</receiver>
-   <slot>toggle()</slot>
-   <hints>
-    <hint type="sourcelabel" >
-     <x>-1</x>
-     <y>-1</y>
-    </hint>
-    <hint type="destinationlabel" >
-     <x>-1</x>
-     <y>-1</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>actionFind</sender>
-   <signal>toggled(bool)</signal>
-   <receiver>actionCloseFind</receiver>
-   <slot>setEnabled(bool)</slot>
-   <hints>
-    <hint type="sourcelabel" >
-     <x>-1</x>
-     <y>-1</y>
-    </hint>
-    <hint type="destinationlabel" >
-     <x>-1</x>
-     <y>-1</y>
-    </hint>
-   </hints>
-  </connection>
- </connections>
+ <connections/>
 </ui>

@@ -26,6 +26,7 @@ from hgqvlib.config import HgConfig
 from hgqvlib.qt4.lexers import get_lexer
 from hgqvlib.qt4 import HgDialogMixin
 from hgqvlib.qt4 import hgrepoview
+from hgqvlib.qt4.quickbar import QuickBar
 
 # dirty hack to please PyQt4 uic
 sys.modules['hgrepoview'] = hgrepoview
@@ -36,6 +37,61 @@ normal = QtGui.QFont.Normal
 connect = QtCore.QObject.connect
 SIGNAL = QtCore.SIGNAL
 
+class FindQuickBar(QuickBar):
+    def __init__(self, parent):
+        QuickBar.__init__(self, "Find", "/", "Find", parent)
+        self.currenttext = ''
+        
+    def createActions(self, openkey, desc):
+        QuickBar.createActions(self, openkey, desc)
+        self._actions['findnext'] = QtGui.QAction("Find next", self)
+        self._actions['findnext'].setShortcut(QtGui.QKeySequence("Ctrl+N"))
+        connect(self._actions['findnext'], SIGNAL('triggered()'), self.find)
+        self._actions['cancel'] = QtGui.QAction("Cancel", self)
+        #self._actions['cancel'].setShortcut(QtGui.QKeySequence("Ctrl+N"))
+        connect(self._actions['cancel'], SIGNAL('triggered()'), self.cancel)
+
+    def find(self, *args):
+        text = unicode(self.entry.text())
+        if text == self.currenttext:
+            self.emit(SIGNAL('findnext'), text)
+        else:
+            self.currenttext = text
+            self.emit(SIGNAL('find'), text)            
+
+    def cancel(self):
+        self.emit(SIGNAL('cancel'))
+
+    def setCancelEnabled(self, enabled=True):
+        self._actions['cancel'].setEnabled(enabled)
+    
+    def createContent(self):
+        QuickBar.createContent(self)
+        self.compl_model = QtGui.QStringListModel()
+        self.completer = QtGui.QCompleter(self.compl_model, self)
+        self.entry = QtGui.QLineEdit(self)
+        self.entry.setCompleter(self.completer)
+        self.addWidget(self.entry)
+        self.addAction(self._actions['findnext'])
+        self.addAction(self._actions['cancel'])
+        self.setCancelEnabled(False)
+        
+        connect(self.entry, SIGNAL('returnPressed()'),
+                self.find)
+        connect(self.entry, SIGNAL('textEdited(const QString &)'),
+                self.find)
+        
+    def setVisible(self, visible=True):
+        QuickBar.setVisible(self, visible)
+        if visible:
+            self.entry.setFocus()
+            self.entry.selectAll()
+
+    def text(self):
+        if self.isVisible() and self.currenttext.strip():
+            return self.currenttext
+        
+        
 class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
     _uifile = 'hgqv.ui'
     """hg repository viewer/browser application"""
@@ -52,21 +108,16 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
         connect(self.splitter_2, SIGNAL('splitterMoved (int, int)'),
                 self.resize_filelist_columns)
 
-        self.setup_main_actions()
+        self.createActions()
+        self.createToolbars()
+
         # text viewer
         self.setup_diffview()
         # filter frame
         self.setup_filterframe()
 
-        # required due to a probable bug in uic module
-        self._icons = {}
-        self._icons['closebtn'] = QtGui.QIcon(':/icons/close.png')
-        self._icons['back'] = QtGui.QIcon(':/icons/back.svg')
-        self._icons['forward'] = QtGui.QIcon(':/icons/forward.svg')
-        self.setup_frame_find()
         self.setup_navigation_buttons()
 
-        self.init_variables()        
         # setup tables and views
         self.setup_header_textview()
 
@@ -77,9 +128,6 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
         self.setup_filelist_table()
 
         self.refresh_revision_table()
-
-    def init_variables(self):
-        self._find_text = None
         
     def setup_branch_combo(self):
         branches = sorted(self.repo.branchtags().keys())
@@ -90,43 +138,36 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
             self.branch_comboBox.setModel(self.branchesmodel)
 
     def setup_navigation_buttons(self):
-        for act in ('back', 'forward'):
-            action = self.tableView_revisions._actions[act]
-            action.setIcon(self._icons[act])
-            self.toolBar_edit.addAction(action)
-            self.menu_Edit.addAction(action)
-            
-    def setup_frame_find(self):
-        self.frame_find.hide()
-        # XXX don't know why I have to do this, the icon is affected
-        # in designer, but it does not work here...
-        self.close_find_toolButton.setIcon(self._icons['closebtn'])
-        self.actionFind.setShortcuts([self.actionFind.shortcut(), "/"])
-        self.actionFindNext.setShortcuts([self.actionFindNext.shortcut(), "Ctrl+N"])
+        self.toolBar_edit.addAction(self.tableView_revisions._actions['back'])
+        self.toolBar_edit.addAction(self.tableView_revisions._actions['forward'])
+        #self.toolBar_edit.addAction(self.find_toolbar._actions['open'])
+        #self.toolBar_edit.addAction(self.tableView_revisions.goto_toolbar._actions['open'])
 
-        connect(self.actionFindNext, SIGNAL('triggered()'),
-                self.on_find)
-        connect(self.button_find, SIGNAL('clicked(bool)'),
-                self.on_find)
-        connect(self.button_cancelsearch, SIGNAL('clicked(bool)'),
-                self.on_cancelsearch)
-        connect(self.close_find_toolButton, SIGNAL('clicked(bool)'),
-                lambda: self.actionFind.setChecked(False))
-        connect(self.entry_find, SIGNAL('returnPressed()'),
-                self.on_find)
-        connect(self.entry_find, SIGNAL('textChanged(const QString &)'),
+    def createToolbars(self):
+        self._find_iter = None
+        self._toolbars = []
+        self.find_toolbar = FindQuickBar(self)
+        connect(self.find_toolbar, SIGNAL('find'),
                 self.on_find_text_changed)
+        connect(self.find_toolbar, SIGNAL('findnext'),
+                self.on_find)
+        connect(self.find_toolbar, SIGNAL('cancel'),
+                self.on_cancelsearch)
+        connect(self.find_toolbar, SIGNAL('escShortcutDisabled(bool)'),
+                self.esc_shortcut.setEnabled)
+        connect(self.find_toolbar, SIGNAL('visible'),
+                self.ensureOneQuickToolBar)
+        
+        self._toolbars.append(self.find_toolbar)
 
-        self._frame_find_timer = QtCore.QTimer(self)
-        self._frame_find_timer.setInterval(self.hidefinddelay)
-        connect(self._frame_find_timer, SIGNAL('timeout()'),
-                lambda: self.actionFind.setChecked(False))
-        connect(self.actionFind, SIGNAL('toggled(bool)'),
-                self.on_find_toggled)
-        self.actionFind.setChecked(False)
-
-    def setup_main_actions(self):
-        # main window actions
+    def ensureOneQuickToolBar(self):
+        tb = self.sender()
+        for w in self._toolbars:
+            if w is not tb:
+                w.hide()
+    
+    def createActions(self):
+        # main window actions (from .ui file)
         connect(self.actionRefresh, SIGNAL('triggered()'),
                 self.reload_repository)
         connect(self.actionAbout, SIGNAL('triggered()'),
@@ -220,6 +261,9 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
                 self.esc_shortcut.setEnabled)
         view.goto_toolbar.setParent(self)
         self.addToolBar(Qt.BottomToolBarArea, view.goto_toolbar)
+        connect(view.goto_toolbar, SIGNAL('visible'),
+                self.ensureOneQuickToolBar)
+        self._toolbars.append(view.goto_toolbar)
         
     def setup_filelist_table(self):
         filetable = self.tableView_filelist
@@ -242,15 +286,6 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
         self.header_diff_format.setFontWeight(bold)
         self.header_diff_format.setForeground(Qt.black)
         self.header_diff_format.setBackground(Qt.gray)
-
-    # Qt methods
-    def closeEvent(self, event):
-        if not self.frame_find.isHidden():
-            self.on_cancelsearch()
-            self.actionFind.setChecked(False)
-            event.ignore()
-        else:
-            event.accept()
 
     def resizeEvent(self, event):
         # we catch this event to resize smartly tables' columns
@@ -339,7 +374,8 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
         self._cur_lexer = lexer
 
         self.textview_status.setText(data)
-        self.highlight_search_string()
+        if self.find_toolbar.text():
+            self.highlight_search_string(self.find_toolbar.text())
 
     def file_activated(self, index):
         sel_file = self.filelistmodel.fileFromIndex(index)
@@ -398,28 +434,18 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
         col_width = vp_width - sum(col_widths)
         self.tableView_filelist.setColumnWidth(0, col_width)
 
-    def on_find_toggled(self, checked):
-        if checked:
-            self.entry_find.setFocus()
-            self.entry_find.selectAll()
-            self._frame_find_timer.start()
-        else:
-            self._frame_find_timer.stop()
-            
     # methods to manage searching
-    def highlight_search_string(self):
-        if not self.frame_find.isHidden() and self._find_text is not None and self._find_text.strip():
-            w = self.textview_status
-            data = unicode(self.textview_status.text())
-            w.SendScintilla(w.SCI_SETINDICATORCURRENT, 8)
-            pos = data.find(self._find_text)
-            found = pos > -1
-            n = len(self._find_text)
-            while pos > -1:
-                w.SendScintilla(w.SCI_INDICATORFILLRANGE, pos, n)
-                pos = data.find(self._find_text, pos+1)
-            return found
-        return False
+    def highlight_search_string(self, text):
+        w = self.textview_status
+        data = unicode(self.textview_status.text())
+        w.SendScintilla(w.SCI_SETINDICATORCURRENT, 8)
+        pos = data.find(text)
+        found = pos > -1
+        n = len(text)
+        while pos > -1:
+            w.SendScintilla(w.SCI_INDICATORFILLRANGE, pos, n)
+            pos = data.find(text, pos+1)
+        return found
 
     def clear_highlights(self):
         w = self.textview_status
@@ -429,9 +455,9 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
         w.SendScintilla(w.SCI_SETINDICATORCURRENT, 9) # current found occurrence
         w.SendScintilla(w.SCI_INDICATORCLEARRANGE, 0, n)
 
-    def find_in_repo(self, fromrev, fromfile=None):
+    def find_in_repo(self, text, fromrev, fromfile=None):
         """
-        Find self._find_text in the whole repo from rev 'fromrev'
+        Find text in the whole repo from rev 'fromrev'
         """
         for rev in xrange(fromrev, 0, -1):
             ctx = self.repo.changectx(rev)
@@ -443,7 +469,7 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
             for filename in files:
                 flag, data = self.get_file_data(filename, ctx)
                 while True:
-                    newpos = data.find(self._find_text, pos)
+                    newpos = data.find(text, pos)
                     if newpos > -1:
                         pos = newpos + 1
                         yield rev, filename, newpos
@@ -454,23 +480,24 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
 
     def on_cancelsearch(self, *args):
         self._find_iter = None
+        self.find_toolbar.setCancelEnabled(False)
         self.statusBar().showMessage('Search cancelled!', 2000)
 
-    def on_find(self, *args):
+    def on_find(self, text):
         """
-        callback called when 'Find' button is pushed
+        callback called by 'Find' quicktoolbar (on findnext signal)
         """
-        self._frame_find_timer.stop() # prevent find frame from hiding while searching
         if self._find_iter is None:
             curfile = self.filelistmodel.fileFromIndex(self.tableView_filelist.currentIndex())
-            currev = self.current_ctx.rev()
-            self._find_iter = self.find_in_repo(currev, curfile)
-        self.find_next()
+            currev = self.filelistmodel.current_ctx.rev()
+            self._find_iter = self.find_in_repo(text, currev, curfile)
+        self.find_toolbar.setCancelEnabled(True)
+        self.find_next(text)
 
-    def find_next(self, step=0):
+    def find_next(self, text, step=0):
         """
         to be called from 'on_find' callback (or recursively). Try to
-        find the next occurrence of self._find_text (as a 'background'
+        find the next occurrence of 'text' (as a 'background'
         process, so the GUI is not frozen, and as a cancellable task).
         """
         if self._find_iter is None:
@@ -480,18 +507,20 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
                 if (step % 20) == 0:
                     self.statusBar().showMessage('Searching'+'.'*(step/20))
                 step += 1
-                QtCore.QTimer.singleShot(0, lambda self=self, step=(step % 80): self.find_next(step))
+                QtCore.QTimer.singleShot(0, lambda self=self, text=text, step=(step % 80): self.find_next(text, step))
             else:
                 self.statusBar().clearMessage()
+                self.find_toolbar.setCancelEnabled(False)
+                
                 rev, filename, pos = next_find
-                if self.current_ctx.rev() != rev:
+                if self.filelistmodel.current_ctx.rev() != rev:
                     idx = self.repomodel.indexFromRev(rev)
                     if idx is not None:
                         self.tableView_revisions.setCurrentIndex(idx)
 
                 if filename != self.filelistmodel.fileFromIndex(self.tableView_filelist.currentIndex()):
                     self.tableView_filelist.keyboardSearch(filename)
-                    self.highlight_search_string()
+                    self.highlight_search_string(text)
 
                 w = self.textview_status
                 line = w.SendScintilla(w.SCI_LINEFROMPOSITION, pos)
@@ -499,32 +528,27 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
                 w.ensureLineVisible(line)
                 w.SendScintilla(w.SCI_SETINDICATORCURRENT, 9)
                 w.SendScintilla(w.SCI_INDICATORCLEARRANGE, 0, pos)
-                w.SendScintilla(w.SCI_INDICATORFILLRANGE, pos, len(self._find_text))
-                self._frame_find_timer.start()
+                w.SendScintilla(w.SCI_INDICATORFILLRANGE, pos, len(text))
             return
         self.statusBar().showMessage('No more matches found in repository', 2000)
+        self.find_toolbar.setCancelEnabled(False)
         self._find_iter = None
-        self._frame_find_timer.start()
 
     def on_find_text_changed(self, newtext):
         """
-        Callback called when the content of the find text entry is changed
+        callback called by 'Find' quicktoolbar (on find signal)
         """
         newtext = unicode(newtext)
-        if not newtext.strip():
-            self._find_text = None
+        if newtext.strip():
             self._find_iter = None
             self.clear_highlights()
-        if self._find_text != newtext:
-            self._find_text = newtext
-            self._find_iter = None
-            self.clear_highlights()
-            if not self.highlight_search_string():
+            if not self.highlight_search_string(newtext):
                 self.statusBar().showMessage('Search string not found in current diff. '
                                              'Hit "Find next" button to start searching '
                                              'in the repository', 2000)
-        self._frame_find_timer.start()
-
+        else:
+            self.clear_highlights()
+            
 
     def on_about(self, *args):
         """ Display about dialog """

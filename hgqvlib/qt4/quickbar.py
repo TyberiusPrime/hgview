@@ -21,13 +21,13 @@ from PyQt4 import QtCore, QtGui
 Qt = QtCore.Qt
 connect = QtCore.QObject.connect
 SIGNAL = QtCore.SIGNAL
+from hgqvlib.qt4 import icon as geticon
 
 class QuickBar(QtGui.QToolBar):
     def __init__(self, name, key, desc=None, parent=None):
         self.original_parent = parent
         self._focusw = None
         QtGui.QToolBar.__init__(self, name, parent)
-        self._icons = {}
         self.setIconSize(QtCore.QSize(16,16))
         self.setFloatable(False)
         self.setMovable(False)
@@ -57,9 +57,8 @@ class QuickBar(QtGui.QToolBar):
         connect(self.open_shortcut, SIGNAL('activated()'),
                 self.setVisible)
 
-        self._icons['close'] = QtGui.QIcon(':/icons/close.png')
         closeact = QtGui.QAction('Close', self)
-        closeact.setIcon(self._icons['close'])
+        closeact.setIcon(geticon('close'))
         connect(closeact, SIGNAL('triggered()'),
                 lambda self=self: self.setVisible(False))
                 
@@ -73,7 +72,8 @@ class QuickBar(QtGui.QToolBar):
                 self._actions['close'].trigger)
 
     def setVisible(self, visible=True):
-        if visible:
+        if visible and not self.isVisible():
+            self.emit(SIGNAL('visible'))
             self._focusw = QtGui.QApplication.focusWidget()
         QtGui.QToolBar.setVisible(self, visible)
         self.esc_shortcut.setEnabled(visible)
@@ -84,6 +84,9 @@ class QuickBar(QtGui.QToolBar):
 
     def createContent(self):
         self.addAction(self._actions['close'])
+
+    def hide(self):
+        self.setVisible(False)
 
 if __name__ == "__main__":
     import sys
