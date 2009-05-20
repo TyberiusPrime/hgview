@@ -143,10 +143,10 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
             self.gr_fill_timer.stop()
             self._fill_iter = None
             self.emit(QtCore.SIGNAL('fillingover()'))
-            self.emit(QtCore.SIGNAL('layoutChanged()'))
         finally:
             self.endInsertRows()
-
+            self.emit(QtCore.SIGNAL('layoutChanged()'))
+            
     def rowCount(self, parent=None):
         return len(self.graph)
 
@@ -307,7 +307,8 @@ class FileRevModel(HgRepoListModel):
     def setFilename(self, filename):
         self.filename = filename
         self.filelog = self.repo.file(filename)
-        self.nmax = len(self.filelog)
+        self.nmax = len(self.repo.changelog)
+        #self.nmax = len(self.filelog)
         grapher = filelog_grapher(self.repo, self.filename)
 
         self._user_colors = {}

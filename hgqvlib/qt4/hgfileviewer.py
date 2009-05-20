@@ -428,16 +428,10 @@ class FileDiffViewer(QtGui.QMainWindow, HgDialogMixin):
     def revision_selected(self, index, side):
         row = index.row()
         rev = self.filerevmodel.graph[row].rev
-        # XXX not very nice (probably not robust over hg evolution)
-        for i, idx in enumerate(self.filerevmodel.filelog.index):
-            if idx[4] == rev:
-                break
-        else:
-            return
-        node = self.filerevmodel.filelog.node(i)
-        self.filedata[side] = self.filerevmodel.filelog.read(node).splitlines()
+        path = self.filerevmodel.graph[row].extra[0]
+        fc = self.repo.changectx(rev).filectx(path)
+        self.filedata[side] = fc.data().splitlines()
         self.update_diff()
-
 
 
 if __name__ == '__main__':

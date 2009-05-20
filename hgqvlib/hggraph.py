@@ -157,22 +157,27 @@ def filelog_grapher(repo, path):
     up as breaks in the graph.
     '''
     filerev = len(repo.file(path)) - 1
+    rev = repo.filectx(path, fileid=filerev).rev()
+    
     revs = []
     rev_color = {}
     nextcolor = 0
-    while filerev >= 0:
-        fctx = repo.filectx(path, fileid=filerev)
+    _paths = {}
+    while rev >= 0:
+        fctx = repo.filectx(_paths.get(rev, path), changeid=rev)
 
         # Compute revs and next_revs.
-        if filerev not in revs:
-            revs.append(filerev)
-            rev_color[filerev] = nextcolor ; nextcolor += 1
-        curcolor = rev_color[filerev]
-        index = revs.index(filerev)
+        if rev not in revs:
+            revs.append(rev)
+            rev_color[rev] = nextcolor ; nextcolor += 1
+        curcolor = rev_color[rev]
+        index = revs.index(rev)
         next_revs = revs[:]
 
         # Add parents to next_revs.
-        parents = [f.filerev() for f in fctx.parents() if f.path() == path]
+        for f in fctx.parents():
+            _paths[f.rev()] = f.path()
+        parents = [f.rev() for f in fctx.parents()]# if f.path() == path]
         parents_to_add = []
         for parent in parents:
             if parent not in next_revs:
@@ -185,27 +190,39 @@ def filelog_grapher(repo, path):
         next_revs[index:index + 1] = parents_to_add
 
         lines = []
-        for i, rev in enumerate(revs):
-            if rev in next_revs:
-                color = rev_color[rev]
-                lines.append( (i, next_revs.index(rev), color) )
-            elif rev == filerev:
+        for i, nrev in enumerate(revs):
+            if nrev in next_revs:
+                color = rev_color[nrev]
+                lines.append( (i, next_revs.index(nrev), color) )
+            elif nrev == rev:
                 for parent in parents:
                     color = rev_color[parent]
                     lines.append( (i, next_revs.index(parent), color) )
 
         pcrevs = [pfc.rev() for pfc in fctx.parents()]
-        yield (fctx.rev(), index, curcolor, lines, pcrevs)
+        yield (fctx.rev(), index, curcolor, lines, pcrevs, _paths.get(fctx.rev(), path))
         revs = next_revs
-        filerev -= 1
 
-
+        if rev in revs:
+            # XXX I'm pretty sure this is useless, since rev cannot be
+            # in revs at this point
+            revid = revs.index(rev)
+            if revid == 0:
+                rev = -1
+            else:
+                rev = revs[revid-1]
+        else:
+            if revs:
+                rev = revs[-1]
+            else:
+                rev = -1
+            
 class GraphNode(object):
     """
     Simple class to encapsulate e hg node in the revision graph. Does
     nothing but declaring attributes.
     """
-    def __init__(self, rev, xposition, color, lines, parents, ncols=None):
+    def __init__(self, rev, xposition, color, lines, parents, ncols=None, extra=None):
         self.rev = rev
         self.x = xposition
         self.color = color
@@ -215,6 +232,7 @@ class GraphNode(object):
         self.parents = parents
         self.bottomlines = lines
         self.toplines = []
+        self.extra = extra
 
 class Graph(object):
     """
@@ -245,10 +263,10 @@ class Graph(object):
                 v = self.grapher.next()
                 if v is None:
                     continue
-                nrev, xpos, color, lines, parents = v
+                nrev, xpos, color, lines, parents = v[:5]
                 if nrev >= self.maxlog:
                     continue
-                gnode = GraphNode(nrev, xpos, color, lines, parents)
+                gnode = GraphNode(nrev, xpos, color, lines, parents, extra=v[5:])
                 if self.nodes:
                     gnode.toplines = self.nodes[-1].bottomlines
                 self.nodes.append(gnode)
@@ -286,7 +304,7 @@ class Graph(object):
 
     def __len__(self):
         # len(graph) is the number of actually built graph nodes
-        return max(len(self.nodes), 0)
+        return len(self.nodes)
 
 
 if __name__ == "__main__":
