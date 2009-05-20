@@ -26,6 +26,7 @@ from hgqvlib.config import HgConfig
 from hgqvlib.qt4.lexers import get_lexer
 from hgqvlib.qt4 import HgDialogMixin
 from hgqvlib.qt4 import hgrepoview
+from hgqvlib.qt4 import icon as geticon
 from hgqvlib.qt4.quickbar import QuickBar
 
 # dirty hack to please PyQt4 uic
@@ -100,7 +101,8 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
         HgDialogMixin.__init__(self)
 
         self.setWindowTitle('hgqv: %s' % os.path.abspath(self.repo.root))
-
+        self.menubar.hide()
+        
         self.setup_statusbar()
         self.splitter_2.setStretchFactor(0, 2)
         self.splitter_2.setStretchFactor(1, 1)
@@ -162,10 +164,15 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
                 self.on_about)
         connect(self.actionQuit, SIGNAL('triggered()'),
                 self.close)
+        self.actionQuit.setIcon(geticon('quit'))
+        self.actionRefresh.setIcon(geticon('reload'))
         
     def setup_statusbar(self):
         # setup the status bar, with a progress bar in it
-        self.pb = QtGui.QProgressBar(self.statusBar())
+        sbar = self.statusBar()
+        h = sbar.height()
+        self.pb = QtGui.QProgressBar(sbar)
+        self.pb.setMaximumHeight(h-2)
         self.pb.setTextVisible(False)
         self.pb.hide()
         self.statusBar().addPermanentWidget(self.pb)
@@ -385,7 +392,6 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
 
     def reload_repository(self):
         self.repo = hg.repository(self.repo.ui, self.repo.root)
-        self.init_variables()
         self.setup_branch_combo()
         self.setup_models()        
         self.refresh_revision_table()

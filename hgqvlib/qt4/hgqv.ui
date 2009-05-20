@@ -16,9 +16,9 @@
    <property name="geometry" >
     <rect>
      <x>0</x>
-     <y>45</y>
+     <y>69</y>
      <width>730</width>
-     <height>578</height>
+     <height>554</height>
     </rect>
    </property>
    <layout class="QVBoxLayout" name="verticalLayout_3" >
@@ -162,8 +162,21 @@
            <property name="orientation" >
             <enum>Qt::Vertical</enum>
            </property>
-           <widget class="RevDisplay" name="textview_header" />
+           <widget class="RevDisplay" name="textview_header" >
+            <property name="sizePolicy" >
+             <sizepolicy vsizetype="Preferred" hsizetype="Expanding" >
+              <horstretch>0</horstretch>
+              <verstretch>1</verstretch>
+             </sizepolicy>
+            </property>
+           </widget>
            <widget class="QFrame" name="textview_frame" >
+            <property name="sizePolicy" >
+             <sizepolicy vsizetype="Expanding" hsizetype="Expanding" >
+              <horstretch>0</horstretch>
+              <verstretch>2</verstretch>
+             </sizepolicy>
+            </property>
             <property name="frameShape" >
              <enum>QFrame::NoFrame</enum>
             </property>
@@ -224,16 +237,37 @@
     </rect>
    </property>
   </widget>
+  <widget class="QToolBar" name="toolBar_file" >
+   <property name="geometry" >
+    <rect>
+     <x>0</x>
+     <y>30</y>
+     <width>85</width>
+     <height>39</height>
+    </rect>
+   </property>
+   <property name="windowTitle" >
+    <string>toolBar</string>
+   </property>
+   <attribute name="toolBarArea" >
+    <enum>TopToolBarArea</enum>
+   </attribute>
+   <attribute name="toolBarBreak" >
+    <bool>false</bool>
+   </attribute>
+   <addaction name="actionQuit" />
+   <addaction name="actionRefresh" />
+  </widget>
   <widget class="QToolBar" name="toolBar_edit" >
    <property name="enabled" >
     <bool>true</bool>
    </property>
    <property name="geometry" >
     <rect>
-     <x>0</x>
+     <x>85</x>
      <y>30</y>
      <width>15</width>
-     <height>15</height>
+     <height>39</height>
     </rect>
    </property>
    <property name="windowTitle" >
@@ -252,10 +286,10 @@
    </property>
    <property name="geometry" >
     <rect>
-     <x>15</x>
+     <x>100</x>
      <y>30</y>
-     <width>715</width>
-     <height>15</height>
+     <width>630</width>
+     <height>39</height>
     </rect>
    </property>
    <property name="windowTitle" >
@@ -277,6 +311,10 @@
    </property>
   </action>
   <action name="actionRefresh" >
+   <property name="icon" >
+    <iconset resource="hgqv.qrc" >
+     <normaloff>:/icons/reload.svg</normaloff>:/icons/reload.svg</iconset>
+   </property>
    <property name="text" >
     <string>&amp;Refresh</string>
    </property>
@@ -285,6 +323,10 @@
    </property>
   </action>
   <action name="actionQuit" >
+   <property name="icon" >
+    <iconset resource="hgqv.qrc" >
+     <normaloff>:/icons/quit.svg</normaloff>:/icons/quit.svg</iconset>
+   </property>
    <property name="text" >
     <string>&amp;Quit</string>
    </property>
