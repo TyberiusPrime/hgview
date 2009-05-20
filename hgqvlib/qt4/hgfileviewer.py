@@ -42,11 +42,11 @@ sides = ('left', 'right')
 otherside = {'left': 'right', 'right': 'left'}
 
 
-class FileViewer(QtGui.QDialog, HgDialogMixin):
+class FileViewer(QtGui.QMainWindow, HgDialogMixin):
     _uifile = 'fileviewer.ui'
     def __init__(self, repo, filename, noderev=None):
         self.repo = repo
-        QtGui.QDialog.__init__(self)
+        QtGui.QMainWindow.__init__(self)
         HgDialogMixin.__init__(self)
 
         # hg repo
@@ -73,6 +73,11 @@ class FileViewer(QtGui.QDialog, HgDialogMixin):
                      SIGNAL('revisionSelected'),
                      self.revisionSelected)
 
+    def accept(self):
+        self.close()
+    def reject(self):
+        self.close()
+        
     def revisionSelected(self, rev):
         filectx = self.repo.filectx(self.filename, changeid=rev)
         data = filectx.data()
@@ -94,14 +99,14 @@ class FileViewer(QtGui.QDialog, HgDialogMixin):
 
 
         
-class ManifestViewer(QtGui.QDialog, HgDialogMixin):
+class ManifestViewer(QtGui.QMainWindow, HgDialogMixin):
     """
     Qt4 dialog to display all files of a repo at a given revision
     """
     _uifile = 'manifestviewer.ui'
     def __init__(self, repo, noderev):
         self.repo = repo
-        QtGui.QDialog.__init__(self)
+        QtGui.QMainWindow.__init__(self)
         HgDialogMixin.__init__(self)
         self.actionClose.setShortcuts([self.actionClose.shortcut(), Qt.Key_Escape])
         self.connect(self.actionClose, QtCore.SIGNAL('triggered(bool)'),
@@ -157,14 +162,14 @@ class ManifestViewer(QtGui.QDialog, HgDialogMixin):
         self.textView.setText(data)
         
     
-class FileDiffViewer(QtGui.QDialog, HgDialogMixin):
+class FileDiffViewer(QtGui.QMainWindow, HgDialogMixin):
     """
     Qt4 dialog to display diffs between different mercurial revisions of a file.
     """
     _uifile = 'filediffviewer.ui'
     def __init__(self, repo, filename, noderev=None):
         self.repo = repo
-        QtGui.QDialog.__init__(self)
+        QtGui.QMainWindow.__init__(self)
         HgDialogMixin.__init__(self)
         
         self.connect(self.actionClose, QtCore.SIGNAL('triggered(bool)'),
@@ -269,7 +274,7 @@ class FileDiffViewer(QtGui.QDialog, HgDialogMixin):
             if event.key() == Qt.Key_Escape:
                 self.actionClose.trigger()
                 return True
-        return QtGui.QDialog.eventFilter(self, watched, event)
+        return QtGui.QMainWindow.eventFilter(self, watched, event)
 
     def update_page_steps(self):
         for side in sides:

@@ -20,6 +20,9 @@ if not osp.isfile(pyfile) or osp.isfile(rcfile) and osp.getmtime(pyfile) < osp.g
 # extension (.svg or .png)
 from PyQt4 import QtCore
 from PyQt4 import QtGui, uic
+connect = QtCore.QObject.connect
+SIGNAL = QtCore.SIGNAL
+Qt = QtCore.Qt
 import hgqv_rc
 
 _icons = {}
@@ -30,7 +33,11 @@ def _load_icons():
         if name not in _icons or ext == ".svg":
             _icons[name] = QtGui.QIcon(':/icons/%s' % icn)
 
-def icon(name):    
+def icon(name):
+    """
+    Return a QIcon for the resource named 'name.(svg|png)' (the given
+    'name' parameter must *not* provide the extension).
+    """
     if not _icons:
         _load_icons()
     return _icons.get(name)
@@ -38,6 +45,12 @@ def icon(name):
 from hgqvlib.config import HgConfig
 
 class HgDialogMixin(object):
+    """
+    Mixin for QDialogs defined from a .ui file, wich automates the
+    setup of the UI from the ui file, and the loading of user
+    preferences.
+    The main class must define a '_ui_file' class attribute.
+    """
     def __init__(self):
         # self.repo must be defined in actual class before calling __init__
         assert self.repo is not None
@@ -59,6 +72,30 @@ class HgDialogMixin(object):
                              "Check your installation.")
         uifile = osp.join(osp.dirname(__file__), ui_file)
         self.ui = uic.loadUi(uifile, self)
+
+        # we explicitely create a QShortcut so we can disable it
+        # when a "helper context toolbar" is activated (which can be
+        # closed hitting the Esc shortcut)
+        self.esc_shortcut = QtGui.QShortcut(self)
+        self.esc_shortcut.setKey(Qt.Key_Escape)
+        connect(self.esc_shortcut, SIGNAL('activated()'),
+                self.close)
+        self._quickbars = []
+
+    def attachQuickBar(self, qbar):
+        qbar.setParent(self)
+        self._quickbars.append(qbar)
+        connect(qbar, SIGNAL('escShortcutDisabled(bool)'),
+                self.esc_shortcut.setEnabled)
+        self.addToolBar(Qt.BottomToolBarArea, qbar)
+        connect(qbar, SIGNAL('visible'),
+                self.ensureOneQuickBar)
+
+    def ensureOneQuickBar(self):
+        tb = self.sender()
+        for w in self._quickbars:
+            if w is not tb:
+                w.hide()
         
     def load_config(self):
         cfg = HgConfig(self.repo.ui)
@@ -68,7 +105,7 @@ class HgDialogMixin(object):
             if not font.fromString(fontstr):
                 raise Exception
         except:
-            print "bad font name '%s'"%fontstr
+            print "bad font name '%s'" % fontstr
             font.setFamily("Monospace")
             font.setFixedPitch(True)
             font.setPointSize(10)
@@ -77,3 +114,10 @@ class HgDialogMixin(object):
         self.rowheight = cfg.getRowHeight()
         self.users, self.aliases = cfg.getUsers()
         return cfg
+
+    def accept(self):
+        self.close()
+    def reject(self):
+        self.close()
+
+        

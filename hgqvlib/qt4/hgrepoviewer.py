@@ -48,7 +48,6 @@ class FindQuickBar(QuickBar):
         self._actions['findnext'].setShortcut(QtGui.QKeySequence("Ctrl+N"))
         connect(self._actions['findnext'], SIGNAL('triggered()'), self.find)
         self._actions['cancel'] = QtGui.QAction("Cancel", self)
-        #self._actions['cancel'].setShortcut(QtGui.QKeySequence("Ctrl+N"))
         connect(self._actions['cancel'], SIGNAL('triggered()'), self.cancel)
 
     def find(self, *args):
@@ -145,7 +144,6 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
 
     def createToolbars(self):
         self._find_iter = None
-        self._toolbars = []
         self.find_toolbar = FindQuickBar(self)
         connect(self.find_toolbar, SIGNAL('find'),
                 self.on_find_text_changed)
@@ -153,19 +151,9 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
                 self.on_find)
         connect(self.find_toolbar, SIGNAL('cancel'),
                 self.on_cancelsearch)
-        connect(self.find_toolbar, SIGNAL('escShortcutDisabled(bool)'),
-                self.esc_shortcut.setEnabled)
-        connect(self.find_toolbar, SIGNAL('visible'),
-                self.ensureOneQuickToolBar)
         
-        self._toolbars.append(self.find_toolbar)
+        self.attachQuickBar(self.find_toolbar)
 
-    def ensureOneQuickToolBar(self):
-        tb = self.sender()
-        for w in self._toolbars:
-            if w is not tb:
-                w.hide()
-    
     def createActions(self):
         # main window actions (from .ui file)
         connect(self.actionRefresh, SIGNAL('triggered()'),
@@ -173,13 +161,6 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
         connect(self.actionAbout, SIGNAL('triggered()'),
                 self.on_about)
         connect(self.actionQuit, SIGNAL('triggered()'),
-                self.close)
-        # we explicitely create a QShortcut so we can disable it
-        # when a "helper context toolbar" is activated (which can be
-        # closed hitting the Esc shortcut)
-        self.esc_shortcut = QtGui.QShortcut(self)
-        self.esc_shortcut.setKey(Qt.Key_Escape)
-        connect(self.esc_shortcut, SIGNAL('activated()'),
                 self.close)
         
     def setup_statusbar(self):
@@ -257,13 +238,7 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
         connect(view, SIGNAL('revisionSelected'), self.revision_selected)
         connect(view, SIGNAL('revisionActivated'), self.revision_activated)
         connect(self.textview_header, SIGNAL('revisionSelected'), view.goto)
-        connect(view.goto_toolbar, SIGNAL('escShortcutDisabled(bool)'),
-                self.esc_shortcut.setEnabled)
-        view.goto_toolbar.setParent(self)
-        self.addToolBar(Qt.BottomToolBarArea, view.goto_toolbar)
-        connect(view.goto_toolbar, SIGNAL('visible'),
-                self.ensureOneQuickToolBar)
-        self._toolbars.append(view.goto_toolbar)
+        self.attachQuickBar(view.goto_toolbar)
         
     def setup_filelist_table(self):
         filetable = self.tableView_filelist
