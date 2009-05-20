@@ -44,6 +44,7 @@ def icon(name):
 
 from hgqvlib.config import HgConfig
 
+    
 class HgDialogMixin(object):
     """
     Mixin for QDialogs defined from a .ui file, wich automates the

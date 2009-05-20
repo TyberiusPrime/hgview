@@ -37,6 +37,7 @@ from hgqvlib.qt4 import HgDialogMixin
 from hgqvlib.qt4.hgrepomodel import FileRevModel, ManifestModel
 from hgqvlib.qt4.blockmatcher import BlockList, BlockMatch
 from hgqvlib.qt4.lexers import get_lexer
+from hgqvlib.qt4 import icon as geticon
 
 sides = ('left', 'right')
 otherside = {'left': 'right', 'right': 'left'}
@@ -172,8 +173,7 @@ class FileDiffViewer(QtGui.QMainWindow, HgDialogMixin):
         QtGui.QMainWindow.__init__(self)
         HgDialogMixin.__init__(self)
         
-        self.connect(self.actionClose, QtCore.SIGNAL('triggered(bool)'),
-                     self.close)
+        self.createActions()
         # hg repo
         self.filename = filename
 
@@ -264,6 +264,17 @@ class FileDiffViewer(QtGui.QMainWindow, HgDialogMixin):
         self.setTabOrder(table, self.viewers['left'])
         self.setTabOrder(self.viewers['left'], self.viewers['right'])
 
+    def createActions(self):
+        self.connect(self.actionClose, QtCore.SIGNAL('triggered()'),
+                     self.close)
+        connect(self.actionReload, SIGNAL('triggered()'),
+                self.reload)
+        self.actionClose.setIcon(geticon('quit'))
+        self.actionReload.setIcon(geticon('reload'))
+
+    def reload(self):
+        pass
+    
     def modelFilled(self):
         self.set_init_selections()
         self.setup_columns_size()

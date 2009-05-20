@@ -365,7 +365,8 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
             dlg = FileDiffViewer(self.repo, sel_file)
             dlg.setWindowTitle('Hg file log viewer')
             dlg.show()
-
+            self._dlg = dlg # keep a reference on the dlg
+            
     def file_section_resized(self, idx, oldsize, newsize):
         if idx == 2:
             self.filelistmodel.setDiffWidth(newsize)
