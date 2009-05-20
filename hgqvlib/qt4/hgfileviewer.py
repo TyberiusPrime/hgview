@@ -180,7 +180,7 @@ class FileDiffViewer(QtGui.QMainWindow, HgDialogMixin):
         self.filedata = {'left': None, 'right': None}
         self._previous = None
         self._invbarchanged = False
-
+        
         # try to find a lexer for our file.
         f = self.repo.file(self.filename)
         head = f.heads()[0]
@@ -252,13 +252,12 @@ class FileDiffViewer(QtGui.QMainWindow, HgDialogMixin):
                      self.modelFilled)
         for side in sides:
             table = getattr(self, 'tableView_revisions_%s' % side)
-            table.verticalHeader().setDefaultSectionSize(self.rowheight)
             table.setTabKeyNavigation(False)
             table.setModel(self.filerevmodel)
-            table.verticalHeader().hide()
-            self.connect(table.selectionModel(),
-                         QtCore.SIGNAL('currentRowChanged(const QModelIndex &, const QModelIndex &)'),
-                         getattr(self, 'revision_selected_%s' % side))
+            #table.installEventFilter(self)        
+            connect(table, SIGNAL('revisionSelected'), self.revision_selected)
+            connect(table, SIGNAL('revisionActivated'), self.revision_activated)
+
             self.connect(self.viewers[side].verticalScrollBar(),
                          QtCore.SIGNAL('valueChanged(int)'),
                          lambda value, side=side: self.vbar_changed(value, side))
@@ -269,17 +268,13 @@ class FileDiffViewer(QtGui.QMainWindow, HgDialogMixin):
         self.set_init_selections()
         self.setup_columns_size()
 
-    def eventFilter(self, watched, event):
-        if event.type() == event.KeyPress:
-            if event.key() == Qt.Key_Escape:
-                self.actionClose.trigger()
-                return True
-        return QtGui.QMainWindow.eventFilter(self, watched, event)
-
-    def update_page_steps(self):
+    def update_page_steps(self, keeppos=None):
         for side in sides:
             self.block[side].syncPageStep()
         self.diffblock.syncPageStep()
+        if keeppos:
+            side, pos = keeppos
+            self.viewers[side].verticalScrollBar().setValue(pos)
 
     def idle_fill_files(self):
         # we make a burst of diff-lines computed at once, but we
@@ -342,17 +337,16 @@ class FileDiffViewer(QtGui.QMainWindow, HgDialogMixin):
             self.viewers[side].setUpdatesEnabled(True)
             self.block[side].setUpdatesEnabled(True)
         self.diffblock.setUpdatesEnabled(True)
-        # force diff-block displayers to recompute their pageStep
-        # according the document size (since this cannot be done using
-        # signal/slot, since there is no 'pageStepChanged(int)' signal
-        # for scroll bars...
-        QtCore.QTimer.singleShot(0, self.update_page_steps)
-
-    def update_diff(self):
+        
+    def update_diff(self, keeppos=None):
         """
         Recompute the diff, display files and starts the timer
         responsible for filling diff markers
         """
+        if keeppos:
+            actualpos = self.viewers[keeppos].verticalScrollBar().value()
+            keeppos = (keeppos, actualpos)
+            
         for side in sides:
             self.viewers[side].clear()
             self.block[side].clear()
@@ -372,6 +366,7 @@ class FileDiffViewer(QtGui.QMainWindow, HgDialogMixin):
                                'right': [x[3:5] for x in blocks]}
             for side in sides:
                 self.viewers[side].setText('\n'.join(self.filedata[side]))
+            self.update_page_steps(keeppos)
             self.timer.start()
 
     def set_init_selections(self):
@@ -420,18 +415,21 @@ class FileDiffViewer(QtGui.QMainWindow, HgDialogMixin):
         vbar.setValue(bvalue)
         self._invbarchanged = False
 
-    def revision_selected_left(self, index, oldindex):
-        self.revision_selected(index, 'left')
-    def revision_selected_right(self, index, oldindex):
-        self.revision_selected(index, 'right')
-
-    def revision_selected(self, index, side):
-        row = index.row()
-        rev = self.filerevmodel.graph[row].rev
-        path = self.filerevmodel.graph[row].extra[0]
+    def revision_selected(self, rev):
+        if self.sender() is self.tableView_revisions_right:
+            side = 'right'
+        else:
+            side = 'left'
+        path = self.filerevmodel.graph.nodesdict[rev].extra[0]
         fc = self.repo.changectx(rev).filectx(path)
         self.filedata[side] = fc.data().splitlines()
-        self.update_diff()
+        self.update_diff(keeppos=otherside[side])
+
+    def revision_activated(self, rev):
+        """
+        Callback called when a revision is double-clicked in the revisions table        
+        """
+        ManifestViewer(self.repo, rev).show()
 
 
 if __name__ == '__main__':

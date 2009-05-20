@@ -30,7 +30,7 @@
       <widget class="QWidget" name="layoutWidget" >
        <layout class="QHBoxLayout" name="horizontalLayout" >
         <item>
-         <widget class="QTableView" name="tableView_revisions_left" >
+         <widget class="HgRepoView" name="tableView_revisions_left" >
           <property name="alternatingRowColors" >
            <bool>true</bool>
           </property>
@@ -46,7 +46,7 @@
          </widget>
         </item>
         <item>
-         <widget class="QTableView" name="tableView_revisions_right" >
+         <widget class="HgRepoView" name="tableView_revisions_right" >
           <property name="alternatingRowColors" >
            <bool>true</bool>
           </property>
@@ -103,6 +103,13 @@
    </property>
   </action>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>HgRepoView</class>
+   <extends>QTableView</extends>
+   <header>hgrepoview.h</header>
+  </customwidget>
+ </customwidgets>
  <tabstops>
   <tabstop>tableView_revisions_left</tabstop>
   <tabstop>tableView_revisions_right</tabstop>
