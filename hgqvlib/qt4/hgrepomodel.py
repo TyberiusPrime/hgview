@@ -37,12 +37,19 @@ nullvariant = QtCore.QVariant()
 # XXX make this better than a poor hard written list...
 COLORS = [ "blue", "darkgreen", "red", "green", "darkblue", "purple",
            "cyan", "magenta", "darkred", "darkmagenta"]
+COLORS = [str(QtGui.QColor(x).name()) for x in COLORS]
 #COLORS = [str(color) for color in QtGui.QColor.colorNames()]
-def get_color(n):
+
+def get_color(n, ignore=()):
     """
-    Return a color at index 'n' rotating in the available colors
+    Return a color at index 'n' rotating in the available
+    colors. 'ignore' is a list of colors not to be chosen.
     """
-    return COLORS[n % len(COLORS)]
+    ignore = [str(QtGui.QColor(x).name()) for x in ignore]
+    colors = [x for x in COLORS if x not in ignore]
+    if not colors: # ghh, no more available colors...
+        colors = COLORS
+    return colors[n % len(colors)]
 
 def cvrt_date(date):
     """
@@ -164,11 +171,14 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
             user = self._aliases[user]
         if user in self._users:
             try:
-                return QtGui.QColor(self._users[user]['color'])
+                color = self._users[user]['color']
+                color = QtGui.QColor(color).name()
+                self._user_colors[user] = color
             except:
                 pass
         if user not in self._user_colors:
-            self._user_colors[user] = get_color(len(self._user_colors))
+            self._user_colors[user] = get_color(len(self._user_colors),
+                                                self._user_colors.values())
         return self._user_colors[user]
 
     def user_name(self, user):
