@@ -80,6 +80,9 @@ class HgRepoView(QtGui.QTableView):
 
         self.createActions()
         self.createToolbars()
+        connect(self,
+                SIGNAL('doubleClicked (const QModelIndex &)'),
+                self.revisionActivated)
 
     def createToolbars(self):
         self.goto_toolbar = GotoQuickBar(self)
@@ -138,9 +141,6 @@ class HgRepoView(QtGui.QTableView):
         connect(self.selectionModel(),
                 QtCore.SIGNAL('currentRowChanged (const QModelIndex & , const QModelIndex & )'),
                 self.revisionSelected)
-        connect(self,
-                SIGNAL('doubleClicked (const QModelIndex &)'),
-                self.revisionActivated)
         self.goto_toolbar.compl_model.setStringList(model.repo.tags().keys())
 
     def resizeEvent(self, event):
@@ -154,6 +154,8 @@ class HgRepoView(QtGui.QTableView):
         col1_width = self.viewport().width()
         fontm = QtGui.QFontMetrics(self.font())
         model = self.model()
+        if not model:
+            return
         tot_stretch = 0.0
         for c in range(model.columnCount()):
             if model._columns[c] in model._stretchs:

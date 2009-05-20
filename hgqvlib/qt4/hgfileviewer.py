@@ -25,6 +25,7 @@ import difflib
 
 from mercurial.node import hex, short as short_hex
 from mercurial.revlog import LookupError
+from mercurial import ui, hg
 
 from PyQt4 import QtGui, QtCore, uic, Qsci
 from PyQt4.QtCore import Qt
@@ -176,11 +177,31 @@ class FileDiffViewer(QtGui.QMainWindow, HgDialogMixin):
         self.createActions()
         # hg repo
         self.filename = filename
+        self.findLexer()
 
-        self.filedata = {'left': None, 'right': None}
-        self._previous = None
-        self._invbarchanged = False
+        self.setupUi()
+
+        # timer used to fill viewers with diff block markers during GUI idle time
+        self.timer = QtCore.QTimer()
+        self.timer.setSingleShot(False)
+        self.connect(self.timer, QtCore.SIGNAL("timeout()"),
+                     self.idle_fill_files)
+        self.setupModels()
         
+    def reload(self):
+        self.repo = hg.repository(self.repo.ui, self.repo.root)
+        self.setupModels()        
+        
+    def setupModels(self):
+        self.filedata = {'left': None, 'right': None}
+        self._invbarchanged = False
+        self.filerevmodel = FileRevModel(self.repo, self.filename)
+        self.connect(self.filerevmodel, QtCore.SIGNAL('fillingover()'),
+                     self.modelFilled)
+        self.tableView_revisions_left.setModel(self.filerevmodel)
+        self.tableView_revisions_right.setModel(self.filerevmodel)
+
+    def findLexer(self):
         # try to find a lexer for our file.
         f = self.repo.file(self.filename)
         head = f.heads()[0]
@@ -193,77 +214,7 @@ class FileDiffViewer(QtGui.QMainWindow, HgDialogMixin):
             lexer.setDefaultFont(self.font)
             lexer.setFont(self.font)
         self.lexer = lexer
-        # viewers are Scintilla editors
-        self.viewers = {}
-        # block are diff-block displayers
-        self.block = {}
-        self.diffblock = BlockMatch(self.frame)
-        lay = QtGui.QHBoxLayout(self.frame)
-        lay.setSpacing(0)
-        lay.setContentsMargins(0, 0, 0, 0)
-        for side, idx  in (('left', 0), ('right', 3)):
-            sci = Qsci.QsciScintilla(self.frame)
-            sci.setFont(self.font)
-            sci.verticalScrollBar().setFocusPolicy(Qt.StrongFocus)
-            sci.setFocusProxy(sci.verticalScrollBar())
-            sci.verticalScrollBar().installEventFilter(self)
-            sci.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
-            sci.setFrameShape(QtGui.QFrame.NoFrame)
-            sci.setMarginLineNumbers(1, True)
-            sci.SendScintilla(sci.SCI_SETSELEOLFILLED, True)
-            if lexer:
-                sci.setLexer(lexer)
-
-            sci.setReadOnly(True)
-            lay.addWidget(sci)
-            
-            # hide margin 0 (markers)
-            sci.SendScintilla(sci.SCI_SETMARGINTYPEN, 0, 0)
-            sci.SendScintilla(sci.SCI_SETMARGINWIDTHN, 0, 0)
-            # setup margin 1 for line numbers only
-            sci.SendScintilla(sci.SCI_SETMARGINTYPEN, 1, 1)
-            sci.SendScintilla(sci.SCI_SETMARGINWIDTHN, 1, 20)
-            sci.SendScintilla(sci.SCI_SETMARGINMASKN, 1, 0)
-
-            # define markers for colorize zones of diff
-            self.markerplus = sci.markerDefine(Qsci.QsciScintilla.Background)
-            sci.SendScintilla(sci.SCI_MARKERSETBACK, self.markerplus, 0xB0FFA0)
-            self.markerminus = sci.markerDefine(Qsci.QsciScintilla.Background)
-            sci.SendScintilla(sci.SCI_MARKERSETBACK, self.markerminus, 0xA0A0FF)
-            self.markertriangle = sci.markerDefine(Qsci.QsciScintilla.Background)
-            sci.SendScintilla(sci.SCI_MARKERSETBACK, self.markertriangle, 0xFFA0A0)
-            
-            self.viewers[side] = sci
-            blk = BlockList(self.frame)
-            blk.linkScrollBar(sci.verticalScrollBar())
-            self.diffblock.linkScrollBar(sci.verticalScrollBar(), side)
-            lay.insertWidget(idx, blk)
-            self.block[side] = blk
-        lay.insertWidget(2, self.diffblock)
-
-        # timer used to fill viewers with diff block markers during GUI idle time
-        self.timer = QtCore.QTimer()
-        self.timer.setSingleShot(False)
-        self.connect(self.timer, QtCore.SIGNAL("timeout()"),
-                     self.idle_fill_files)
-
-        self.filerevmodel = FileRevModel(self.repo, self.filename, noderev)
-        self.connect(self.filerevmodel, QtCore.SIGNAL('fillingover()'),
-                     self.modelFilled)
-        for side in sides:
-            table = getattr(self, 'tableView_revisions_%s' % side)
-            table.setTabKeyNavigation(False)
-            table.setModel(self.filerevmodel)
-            #table.installEventFilter(self)        
-            connect(table, SIGNAL('revisionSelected'), self.revision_selected)
-            connect(table, SIGNAL('revisionActivated'), self.revision_activated)
-
-            self.connect(self.viewers[side].verticalScrollBar(),
-                         QtCore.SIGNAL('valueChanged(int)'),
-                         lambda value, side=side: self.vbar_changed(value, side))
-        self.setTabOrder(table, self.viewers['left'])
-        self.setTabOrder(self.viewers['left'], self.viewers['right'])
-
+        
     def createActions(self):
         self.connect(self.actionClose, QtCore.SIGNAL('triggered()'),
                      self.close)
@@ -272,9 +223,6 @@ class FileDiffViewer(QtGui.QMainWindow, HgDialogMixin):
         self.actionClose.setIcon(geticon('quit'))
         self.actionReload.setIcon(geticon('reload'))
 
-    def reload(self):
-        pass
-    
     def modelFilled(self):
         self.set_init_selections()
         self.setup_columns_size()
@@ -426,7 +374,7 @@ class FileDiffViewer(QtGui.QMainWindow, HgDialogMixin):
         vbar.setValue(bvalue)
         self._invbarchanged = False
 
-    def revision_selected(self, rev):
+    def revisionSelected(self, rev):
         if self.sender() is self.tableView_revisions_right:
             side = 'right'
         else:
@@ -436,13 +384,75 @@ class FileDiffViewer(QtGui.QMainWindow, HgDialogMixin):
         self.filedata[side] = fc.data().splitlines()
         self.update_diff(keeppos=otherside[side])
 
-    def revision_activated(self, rev):
+    def revisionActivated(self, rev):
         """
         Callback called when a revision is double-clicked in the revisions table        
         """
         ManifestViewer(self.repo, rev).show()
 
 
+    def setupUi(self):
+        # viewers are Scintilla editors
+        self.viewers = {}
+        # block are diff-block displayers
+        self.block = {}
+        self.diffblock = BlockMatch(self.frame)
+        lay = QtGui.QHBoxLayout(self.frame)
+        lay.setSpacing(0)
+        lay.setContentsMargins(0, 0, 0, 0)
+        for side, idx  in (('left', 0), ('right', 3)):
+            sci = Qsci.QsciScintilla(self.frame)
+            sci.setFont(self.font)
+            sci.verticalScrollBar().setFocusPolicy(Qt.StrongFocus)
+            sci.setFocusProxy(sci.verticalScrollBar())
+            sci.verticalScrollBar().installEventFilter(self)
+            sci.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+            sci.setFrameShape(QtGui.QFrame.NoFrame)
+            sci.setMarginLineNumbers(1, True)
+            sci.SendScintilla(sci.SCI_SETSELEOLFILLED, True)
+            if self.lexer:
+                sci.setLexer(self.lexer)
+
+            sci.setReadOnly(True)
+            lay.addWidget(sci)
+            
+            # hide margin 0 (markers)
+            sci.SendScintilla(sci.SCI_SETMARGINTYPEN, 0, 0)
+            sci.SendScintilla(sci.SCI_SETMARGINWIDTHN, 0, 0)
+            # setup margin 1 for line numbers only
+            sci.SendScintilla(sci.SCI_SETMARGINTYPEN, 1, 1)
+            sci.SendScintilla(sci.SCI_SETMARGINWIDTHN, 1, 20)
+            sci.SendScintilla(sci.SCI_SETMARGINMASKN, 1, 0)
+
+            # define markers for colorize zones of diff
+            self.markerplus = sci.markerDefine(Qsci.QsciScintilla.Background)
+            sci.SendScintilla(sci.SCI_MARKERSETBACK, self.markerplus, 0xB0FFA0)
+            self.markerminus = sci.markerDefine(Qsci.QsciScintilla.Background)
+            sci.SendScintilla(sci.SCI_MARKERSETBACK, self.markerminus, 0xA0A0FF)
+            self.markertriangle = sci.markerDefine(Qsci.QsciScintilla.Background)
+            sci.SendScintilla(sci.SCI_MARKERSETBACK, self.markertriangle, 0xFFA0A0)
+            
+            self.viewers[side] = sci
+            blk = BlockList(self.frame)
+            blk.linkScrollBar(sci.verticalScrollBar())
+            self.diffblock.linkScrollBar(sci.verticalScrollBar(), side)
+            lay.insertWidget(idx, blk)
+            self.block[side] = blk
+        lay.insertWidget(2, self.diffblock)
+
+        for side in sides:
+            table = getattr(self, 'tableView_revisions_%s' % side)
+            table.setTabKeyNavigation(False)
+            #table.installEventFilter(self)        
+            connect(table, SIGNAL('revisionSelected'), self.revisionSelected)
+            connect(table, SIGNAL('revisionActivated'), self.revisionActivated)
+
+            self.connect(self.viewers[side].verticalScrollBar(),
+                         QtCore.SIGNAL('valueChanged(int)'),
+                         lambda value, side=side: self.vbar_changed(value, side))
+        self.setTabOrder(table, self.viewers['left'])
+        self.setTabOrder(self.viewers['left'], self.viewers['right'])
+        
 if __name__ == '__main__':
     from mercurial import ui, hg
     from optparse import OptionParser
