@@ -69,12 +69,14 @@ class HgConfig(object):
         """
         users = {}
         aliases = {}
-        usersfile = self.ui.config(self.section, 'users', None)
+        usersfile = self.ui.config(self.section, 'users',
+                                   os.path.join('~', ".hgusers"))
         cfgfile = None
         if usersfile:
             try:
                 cfgfile = open(os.path.expanduser(usersfile))
-            except IOError:
+            except IOError, e:
+                print "Cannot open file %s: please configure the 'users' parameter of the '[hgqv]' section in your .hgrc file" % usersfile
                 cfgfile = None
 
         if cfgfile:
