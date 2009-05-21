@@ -320,6 +320,7 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
             ctx = self.repomodel.repo.changectx(rev)
             self.textview_header.displayRevision(ctx)            
             self.filelistmodel.setSelectedRev(ctx)
+            self.tableView_filelist.resizeRowsToContents()
             if len(self.filelistmodel):
                 self.tableView_filelist.selectRow(0)
                 self.file_selected(self.filelistmodel.createIndex(0, 0, None), None)
@@ -339,7 +340,7 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
         if index is None:
             index = self.tableView_filelist.currentIndex()
         row = index.row()
-        sel_file = ctx.files()[row]
+        sel_file = self.tableView_filelist.model().file(row)
         flag, data = self.get_file_data(sel_file)
         lexer = None
         if flag == "M":
@@ -368,7 +369,7 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
             self._dlg = dlg # keep a reference on the dlg
             
     def file_section_resized(self, idx, oldsize, newsize):
-        if idx == 2:
+        if idx == 1:
             self.filelistmodel.setDiffWidth(newsize)
 
     #@timeit
@@ -377,11 +378,11 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
             ctx = self.filelistmodel.current_ctx
         data = ""
         flag = self.filelistmodel.fileflag(filename, ctx)
+        fc = ctx.filectx(filename)
+        if fc.size() > 100000:
+            data = "File too big"
+            return flag, data
         if flag in ('M', 'A'):
-            fc = ctx.filectx(filename)
-            if fc.size() > 100000:
-                data = "File too big"
-                return flag, data
             if flag == "M":
                 # return the diff but the 3 first lines
                 data = revdiff(self.repo, ctx, files=[filename])
