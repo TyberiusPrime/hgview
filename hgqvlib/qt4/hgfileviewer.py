@@ -81,6 +81,7 @@ class FileViewer(QtGui.QMainWindow, HgDialogMixin):
         self.close()
         
     def revisionSelected(self, rev):
+        pos = self.textBrowser_filecontent.verticalScrollBar().value()
         filectx = self.repo.filectx(self.filename, changeid=rev)
         data = filectx.data()
 
@@ -94,6 +95,7 @@ class FileViewer(QtGui.QMainWindow, HgDialogMixin):
         nlines = data.count('\n')
         self.textBrowser_filecontent.setMarginWidth(1, str(nlines)+'00')
         self.textBrowser_filecontent.setText(data)
+        self.textBrowser_filecontent.verticalScrollBar().setValue(pos)
 
         #self.textBrowser_filecontent.markerDeleteAll()
         #self.textBrowser_filecontent.markerAdd(1, self.markerplus)
@@ -303,8 +305,8 @@ class FileDiffViewer(QtGui.QMainWindow, HgDialogMixin):
         responsible for filling diff markers
         """
         if keeppos:
-            actualpos = self.viewers[keeppos].verticalScrollBar().value()
-            keeppos = (keeppos, actualpos)
+            pos = self.viewers[keeppos].verticalScrollBar().value()
+            keeppos = (keeppos, pos)
             
         for side in sides:
             self.viewers[side].clear()
