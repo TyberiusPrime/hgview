@@ -28,10 +28,12 @@ from mercurial.revlog import LookupError
 from hgqvlib.hggraph import Graph, diff as revdiff
 from hgqvlib.hggraph import revision_grapher, filelog_grapher
 from hgqvlib.config import HgConfig
+from hgqvlib.qt4 import icon as geticon
 from hgqvlib.decorators import timeit
 
 from PyQt4 import QtCore, QtGui
 connect = QtCore.QObject.connect
+SIGNAL = QtCore.SIGNAL
 nullvariant = QtCore.QVariant()
 
 # XXX make this better than a poor hard written list...
@@ -79,7 +81,9 @@ _maxwidth = {'ID': lambda r: str(len(r.changelog)),
 
 def datacached(meth):
     """
-    decorator used to cache 'data' method of Qt models
+    decorator used to cache 'data' method of Qt models. It will *not*
+    cache nullvariant return values (so costly non-null values 
+    can be computed and filled as a background process)
     """
     def data(self, index, role):
         if not index.isValid():
@@ -89,7 +93,8 @@ def datacached(meth):
         if (row, col, role) in self._datacache:
             return self._datacache[(row, col, role)]
         result = meth(self, index, role)
-        self._datacache[(row, col, role)] = result
+        if result is not nullvariant:
+            self._datacache[(row, col, role)] = result
         return result
     return data
 
@@ -338,7 +343,14 @@ class HgFileListModel(QtCore.QAbstractTableModel):
         self.current_ctx = None
         self._files = []
         self.diffwidth = 100
-
+        self._fulllist = False
+        self._fill_iter = None
+        
+    def toggleFullFileList(self):
+        self._fulllist = not self._fulllist
+        self.loadFiles()        
+        self.emit(QtCore.SIGNAL('layoutChanged()'))
+        
     def load_config(self):
         cfg = HgConfig(self.repo.ui)
         self._flagcolor = {}
@@ -367,15 +379,46 @@ class HgFileListModel(QtCore.QAbstractTableModel):
 
     def file(self, row):
         return self._files[row]['path']
-    
-    def loadFiles(self):
-        self._files = []
-        ctx = self.current_ctx
+
+    def fileflag(self, fn, ctx=None):
+        if ctx is None:
+            return self._filesdict[fn]['flag']
+                
         changes = self.repo.status(ctx.parents()[0].node(), ctx.node())[:5]
         modified, added, removed, deleted, unknown = changes
+        for fl, lst in zip(["=","+","-","-","?"],
+                           [modified, added, removed, deleted, unknown]):
+            if fn in lst:
+                return fl
+        return ''
+
+    def fileparentctx(self, fn, ctx=None):
+        if ctx is None:
+            return self._filesdict[fn]['parent']
+        return ctx.parents()[0]
+    
+    def fileFromIndex(self, index):
+        if not index.isValid() or index.row()>len(self) or not self.current_ctx:
+            return None
+        row = index.row()
+        return self._files[row]['path']
+
+    def _filterFile(self, filename):
+        if self._fulllist:
+            return True
+        return filename in self.current_ctx.files()
+
+    def _buildDesc(self, parent, fromside):
+        _files = []
+        ctx = self.current_ctx
+        ctxfiles = ctx.files()
+        changes = self.repo.status(parent.node(), ctx.node())[:5]
+        modified, added, removed, deleted, unknown = changes
         removed += deleted
-        for f in added:
-            desc = {'path':f, 'flag': '+', 'desc':f}
+        for f in [x for x in added if self._filterFile(x)]:
+            desc = {'path':f, 'flag': '+', 'desc':f,
+                    'parent': parent, 'fromside': fromside,
+                    'infiles': f in ctxfiles}
             m = ctx.filectx(f).renamed()
             if m:
                 oldname, node = m
@@ -383,38 +426,75 @@ class HgFileListModel(QtCore.QAbstractTableModel):
                 desc['renamedfrom'] = (oldname, node)
                 desc['flag'] = '='
                 desc['desc'] += '\n(was %s)' % oldname
-            self._files.append(desc)
-        for f in modified:
-            self._files.append({'path':f, 'flag': '=', 'desc':f})
-        for f in removed:
-            self._files.append({'path':f, 'flag': '-', 'desc':f})
-            
+            _files.append(desc)
+        for f in [x for x in modified if self._filterFile(x)]:
+            _files.append({'path':f, 'flag': '=', 'desc':f,
+                           'parent': parent, 'fromside': fromside,
+                           'infiles': f in ctxfiles})
+        for f in [x for x in removed if self._filterFile(x)]:
+            _files.append({'path':f, 'flag': '-', 'desc':f,
+                           'parent': parent, 'fromside': fromside,
+                           'infiles': f in ctxfiles})
+        return _files
+    
+    def loadFiles(self):
+        self._fill_iter = None
+        self._files = []
+        self._datacache = {}
+        self._files = self._buildDesc(self.current_ctx.parents()[0], 'left')
+        if self.current_ctx.parents()[1]:
+            _paths = [x['path'] for x in self._files]
+            _files = self._buildDesc(self.current_ctx.parents()[1], 'right')
+            self._files += [x for x in _files if x['path'] not in _paths] 
+        self._filesdict = dict([(f['path'], f) for f in self._files])
+        self.fillFileStats()
+        
     def setSelectedRev(self, ctx):
         if ctx != self.current_ctx:
             self.current_ctx = ctx
             self._datacache = {}
             self.loadFiles()
-            #self.changes = [self.repo.status(ctx.parents()[0].node(), ctx.node())[:5], None]
-            # XXX will we need this?
-            #if ctx.parents()[1]:
-            #    self.changes[1] = self.repo.status(ctx.parents()[1].node(), ctx.node())[:5]
             self.emit(QtCore.SIGNAL("layoutChanged()"))
 
-    def fileflag(self, fn, ctx):
-        changes = self.repo.status(ctx.parents()[0].node(), ctx.node())[:5]
-        modified, added, removed, deleted, unknown = changes
-        for fl, lst in zip(["M","A","R","D","?"],
-                           [modified, added, removed, deleted, unknown]):
-            if fn in lst:
-                return fl
-        return ''
+    def fillFileStats(self):
+        """
+        Method called to start the background process of computing
+        file stats, which are to be displayed in the 'Stats' column
+        """
+        self._fill_iter = self._fill()
+        self._fill_one_step()
 
-    def fileFromIndex(self, index):
-        if not index.isValid() or index.row()>len(self) or not self.current_ctx:
-            return None
-        row = index.row()
-        return self._files[row]['path']
+    def _fill_one_step(self):
+        if self._fill_iter is None:
+            return
+        try:
+            row = self._fill_iter.next()
+            idx = self.index(row, 2)
+            self.emit(SIGNAL('dataChanged(const QModelIndex&, const QModelIndex&)'),
+                      idx, idx)
+            QtCore.QTimer.singleShot(0, lambda self=self: self._fill_one_step())
 
+        except StopIteration:
+            self._fill_iter = None
+
+    def _fill(self):
+        # the generator used to fill file stats as a background process
+        for row, desc in enumerate(self._files):
+            filename = desc['path']
+            diff = revdiff(self.repo, self.current_ctx, desc['parent'],
+                           files=[filename])
+            try:
+                fdata = self.current_ctx.filectx(filename).data()
+                tot = len(fdata.splitlines())
+            except LookupError:
+                tot = 0
+            add = len(replus.findall(diff))
+            rem = len(reminus.findall(diff))
+            if tot == 0:
+                tot = max(add + rem, 1)
+            desc['stats'] = (tot, add, rem)
+            yield row
+        
     @datacached
     def data(self, index, role):
         if not index.isValid() or index.row()>len(self) or not self.current_ctx:
@@ -424,20 +504,10 @@ class HgFileListModel(QtCore.QAbstractTableModel):
         
         current_file_desc = self._files[row]
         current_file = current_file_desc['path']
+        stats = current_file_desc.get('stats')
         if column == 1:
-            if role == QtCore.Qt.DecorationRole:
-                # graph display of the diff
-                diff = revdiff(self.repo, self.current_ctx, files=[current_file])
-                try:
-                    fdata = self.current_ctx.filectx(current_file).data()
-                    tot = len(fdata.splitlines())
-                except LookupError:
-                    tot = 0
-                add = len(replus.findall(diff))
-                rem = len(reminus.findall(diff))
-                if tot == 0:
-                    tot = max(add + rem, 1)
-
+            if stats is not None and role == QtCore.Qt.DecorationRole:
+                tot, add, rem = stats
                 w = self.diffwidth - 20
                 h = 20
 
@@ -464,10 +534,24 @@ class HgFileListModel(QtCore.QAbstractTableModel):
                 painter.drawRect(5, 0, w+1, h-3)
                 painter.end()
                 return QtCore.QVariant(pix)
-        else:
+        elif column == 0:
             if role == QtCore.Qt.DisplayRole:
-                if column == 0:
-                    return QtCore.QVariant(current_file_desc['desc'])
+                return QtCore.QVariant(current_file_desc['desc'])
+            elif role == QtCore.Qt.DecorationRole:
+                if self._fulllist:
+                    if current_file_desc['infiles']:
+                        icn = geticon('leftright')
+                    elif current_file_desc['fromside'] == 'left':
+                        icn = geticon('left')
+                    elif current_file_desc['fromside'] == 'right':
+                        icn = geticon('right')
+                    return QtCore.QVariant(icn.pixmap(20,20))
+            elif role == QtCore.Qt.FontRole:
+                if self._fulllist and current_file_desc['infiles']:
+                    font = QtGui.QFont()
+                    font.setBold(True)
+                    return QtCore.QVariant(font)
+
 ##             elif role == QtCore.Qt.ForegroundRole:
 ##                 if column == 0:
 ##                     color = self._flagcolor.get(self.fileflag(current_file), 'black')
@@ -476,8 +560,16 @@ class HgFileListModel(QtCore.QAbstractTableModel):
         return nullvariant
 
     def headerData(self, section, orientation, role):
+        if self.current_ctx and self.current_ctx.parents()[1]:
+            if self._fulllist:
+                header = ('File (all)', 'Diff')
+            else:
+                header = ('File (merged only)', 'Diff')
+        else:
+            header = ('File', 'Diff')
+            
         if orientation == QtCore.Qt.Horizontal and role == QtCore.Qt.DisplayRole:
-            return QtCore.QVariant(['File', 'Diff'][section])
+            return QtCore.QVariant(header[section])
 
         return nullvariant
 
@@ -512,7 +604,6 @@ class TreeItem(object):
     def row(self):
         if self.parentItem:
             return self.parentItem.childItems.index(self)
-
         return 0
 
     def __getitem__(self, idx):

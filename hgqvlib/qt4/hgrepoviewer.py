@@ -250,9 +250,15 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
     def setup_filelist_table(self):
         filetable = self.tableView_filelist
         filetable.setFocusPolicy(QtCore.Qt.NoFocus)
-
+        filetable.setTextElideMode(Qt.ElideLeft)
+        filetable.horizontalHeader().setMinimumSectionSize(80)
+        connect(filetable.horizontalHeader(), SIGNAL('sectionDoubleClicked(int)'),
+                self.toggleFullFileList)
+        filetable.horizontalHeader().setToolTip('Double click to toggle merge mode')
         self._setup_table(filetable)
 
+    def toggleFullFileList(self, *args):
+        self.filelistmodel.toggleFullFileList()
     def _setup_table(self, table):
         table.setTabKeyNavigation(False)
         table.verticalHeader().setDefaultSectionSize(self.rowheight)
@@ -343,10 +349,10 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
         sel_file = self.tableView_filelist.model().file(row)
         flag, data = self.get_file_data(sel_file)
         lexer = None
-        if flag == "M":
+        if flag == "=":
             lexer = Qsci.QsciLexerDiff()
             self.textview_status.setMarginWidth(1, 0)
-        elif flag == "A":
+        elif flag == "+":
             lexer = get_lexer(sel_file, data)
             nlines = data.count('\n')
             self.textview_status.setMarginWidth(1, str(nlines)+'0')            
@@ -374,20 +380,22 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
 
     #@timeit
     def get_file_data(self, filename, ctx=None):
-        if ctx is None:
-            ctx = self.filelistmodel.current_ctx
         data = ""
         flag = self.filelistmodel.fileflag(filename, ctx)
-        fc = ctx.filectx(filename)
-        if fc.size() > 100000:
-            data = "File too big"
-            return flag, data
-        if flag in ('M', 'A'):
-            if flag == "M":
+        parentctx = self.filelistmodel.fileparentctx(filename, ctx)
+
+        if ctx is None:
+            ctx = self.filelistmodel.current_ctx
+        if flag in ('=', '+'):
+            fc = ctx.filectx(filename)
+            if fc.size() > 100000:
+                data = "File too big"
+                return flag, data
+            if flag == "=":
                 # return the diff but the 3 first lines
-                data = revdiff(self.repo, ctx, files=[filename])
+                data = revdiff(self.repo, ctx, parentctx, files=[filename])
                 data = u'\n'.join(data.splitlines()[3:])
-            elif flag == "A":
+            elif flag == "+":
                 # return the whole file
                 data = unicode(fc.data(), errors='ignore') # XXX
         return flag, data

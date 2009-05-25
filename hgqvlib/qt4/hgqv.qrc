@@ -4,6 +4,9 @@
     <file>icons/reload.svg</file>
     <file>icons/back.svg</file>
     <file>icons/forward.svg</file>
+    <file>icons/left.svg</file>
+    <file>icons/right.svg</file>
+    <file>icons/leftright.svg</file>
     <file>icons/close.png</file>
   </qresource>
 </RCC>
