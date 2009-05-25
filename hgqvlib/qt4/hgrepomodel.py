@@ -349,16 +349,15 @@ class HgFileListModel(QtCore.QAbstractTableModel):
     def toggleFullFileList(self):
         self._fulllist = not self._fulllist
         self.loadFiles()        
-        self.emit(QtCore.SIGNAL('layoutChanged()'))
+        self.emit(SIGNAL('layoutChanged()'))
         
     def load_config(self):
         cfg = HgConfig(self.repo.ui)
         self._flagcolor = {}
-        self._flagcolor['M'] = cfg.getFileModifiedColor(default='blue')
-        self._flagcolor['R'] = cfg.getFileRemovedColor(default='red')
-        self._flagcolor['D'] = cfg.getFileDeletedColor(default='red')
-        self._flagcolor['A'] = cfg.getFileAddedColor(default='green')
-        self._flagcolor['?'] = "black"
+        self._flagcolor['='] = cfg.getFileModifiedColor(default='blue')
+        self._flagcolor['-'] = cfg.getFileRemovedColor(default='red')
+        self._flagcolor['-'] = cfg.getFileDeletedColor(default='red')
+        self._flagcolor['+'] = cfg.getFileAddedColor(default='green')
 
     def setDiffWidth(self, w):
         if w != self.diffwidth:
@@ -481,18 +480,18 @@ class HgFileListModel(QtCore.QAbstractTableModel):
         # the generator used to fill file stats as a background process
         for row, desc in enumerate(self._files):
             filename = desc['path']
-            diff = revdiff(self.repo, self.current_ctx, desc['parent'],
-                           files=[filename])
-            try:
-                fdata = self.current_ctx.filectx(filename).data()
-                tot = len(fdata.splitlines())
-            except LookupError:
-                tot = 0
-            add = len(replus.findall(diff))
-            rem = len(reminus.findall(diff))
-            if tot == 0:
-                tot = max(add + rem, 1)
-            desc['stats'] = (tot, add, rem)
+            if desc['flag'] == '=':
+                diff = revdiff(self.repo, self.current_ctx, desc['parent'],
+                               files=[filename])
+                try:
+                    tot = self.current_ctx.filectx(filename).data().count('\n')
+                except LookupError:
+                    tot = 0
+                add = len(replus.findall(diff))
+                rem = len(reminus.findall(diff))
+                if tot == 0:
+                    tot = max(add + rem, 1)
+                desc['stats'] = (tot, add, rem)
             yield row
         
     @datacached
@@ -506,34 +505,42 @@ class HgFileListModel(QtCore.QAbstractTableModel):
         current_file = current_file_desc['path']
         stats = current_file_desc.get('stats')
         if column == 1:
-            if stats is not None and role == QtCore.Qt.DecorationRole:
-                tot, add, rem = stats
-                w = self.diffwidth - 20
-                h = 20
+            if stats is not None:
+                if role == QtCore.Qt.DecorationRole:
+                    tot, add, rem = stats
+                    w = self.diffwidth - 20
+                    h = 20
 
-                np = int(w*add/tot)
-                nm = int(w*rem/tot)
-                nd = w-np-nm
+                    np = int(w*add/tot)
+                    nm = int(w*rem/tot)
+                    nd = w-np-nm
 
-                pix = QtGui.QPixmap(w+10, h)
-                pix.fill(QtGui.QColor(0,0,0,0))
-                painter = QtGui.QPainter(pix)
-                #painter.setRenderHint(QtGui.QPainter.Antialiasing)
+                    pix = QtGui.QPixmap(w+10, h)
+                    pix.fill(QtGui.QColor(0,0,0,0))
+                    painter = QtGui.QPainter(pix)
 
-                for x0,w0, color in ((0, nm, 'red'),
-                                     (nm, np, 'green'),
-                                     (nm+np, nd, 'gray')):
-                    color = QtGui.QColor(color)
-                    painter.setBrush(color)
-                    painter.setPen(color)
-                    painter.drawRect(x0+5, 0, w0, h-3)
-                painter.setBrush(QtGui.QColor(0,0,0,0))
-                pen = QtGui.QPen(QtCore.Qt.black)
-                pen.setWidth(0)
-                painter.setPen(pen)
-                painter.drawRect(5, 0, w+1, h-3)
-                painter.end()
-                return QtCore.QVariant(pix)
+                    for x0,w0, color in ((0, nm, 'red'),
+                                         (nm, np, 'green'),
+                                         (nm+np, nd, 'gray')):
+                        color = QtGui.QColor(color)
+                        painter.setBrush(color)
+                        painter.setPen(color)
+                        painter.drawRect(x0+5, 0, w0, h-3)
+                    painter.setBrush(QtGui.QColor(0,0,0,0))
+                    pen = QtGui.QPen(QtCore.Qt.black)
+                    pen.setWidth(0)
+                    painter.setPen(pen)
+                    painter.drawRect(5, 0, w+1, h-3)
+                    painter.end()
+                    return QtCore.QVariant(pix)
+                elif role == QtCore.Qt.ToolTipRole:
+                    tot, add, rem = stats
+                    msg = "Diff stats:<br>"
+                    msg += "&nbsp;<b>File:&nbsp;</b>%s lines<br>" % tot
+                    msg += "&nbsp;<b>added lines:&nbsp;</b> %s<br>" % add
+                    msg += "&nbsp;<b>removed lines:&nbsp;</b> %s" % rem
+                    return QtCore.QVariant(msg)
+                
         elif column == 0:
             if role == QtCore.Qt.DisplayRole:
                 return QtCore.QVariant(current_file_desc['desc'])
@@ -551,12 +558,10 @@ class HgFileListModel(QtCore.QAbstractTableModel):
                     font = QtGui.QFont()
                     font.setBold(True)
                     return QtCore.QVariant(font)
-
-##             elif role == QtCore.Qt.ForegroundRole:
-##                 if column == 0:
-##                     color = self._flagcolor.get(self.fileflag(current_file), 'black')
-##                     if color is not None:
-##                         return QtCore.QVariant(QtGui.QColor(color))
+            elif role == QtCore.Qt.ForegroundRole:
+                color = self._flagcolor.get(current_file_desc['flag'], 'black')
+                if color is not None:
+                    return QtCore.QVariant(QtGui.QColor(color))
         return nullvariant
 
     def headerData(self, section, orientation, role):

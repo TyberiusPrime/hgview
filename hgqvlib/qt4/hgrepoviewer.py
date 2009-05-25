@@ -239,6 +239,9 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
                 SIGNAL('sectionResized(int, int, int)'),
                 self.file_section_resized)        
 
+        connect(self.filelistmodel, SIGNAL('layoutChanged()'),
+                self.file_selected)
+
     def setup_revision_table(self):
         view = self.tableView_revisions
         view.installEventFilter(self)        
@@ -329,11 +332,9 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
             self.tableView_filelist.resizeRowsToContents()
             if len(self.filelistmodel):
                 self.tableView_filelist.selectRow(0)
-                self.file_selected(self.filelistmodel.createIndex(0, 0, None), None)
             else:
                 self.textview_status.clear()
 
-    #@timeit
     def file_selected(self, index=None, index_from=None):
         """
         Callback called when a filename is selected in the file list
