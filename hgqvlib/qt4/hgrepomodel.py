@@ -546,7 +546,7 @@ class HgFileListModel(QtCore.QAbstractTableModel):
             if role == QtCore.Qt.DisplayRole:
                 return QtCore.QVariant(current_file_desc['desc'])
             elif role == QtCore.Qt.DecorationRole:
-                if self._fulllist:
+                if self._fulllist and self.current_ctx.parents()[1]:
                     if current_file_desc['infiles']:
                         icn = geticon('leftright')
                     elif current_file_desc['fromside'] == 'left':
