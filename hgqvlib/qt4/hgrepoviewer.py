@@ -341,13 +341,11 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
         """
         w = self.textview_status
         w.clear()
-        ctx = self.filelistmodel.current_ctx
-        if ctx is None:
-            return
         if index is None:
             index = self.tableView_filelist.currentIndex()
-        row = index.row()
-        sel_file = self.tableView_filelist.model().file(row)
+        sel_file = self.filelistmodel.fileFromIndex(index)
+        if sel_file is None:
+            return
         flag, data = self.get_file_data(sel_file)
         lexer = None
         if flag == "=":

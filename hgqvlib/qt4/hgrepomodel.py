@@ -112,8 +112,8 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
         QtCore.QAbstractTableModel.__init__(self, parent)
         self._datacache = {}
         self.gr_fill_timer = QtCore.QTimer()
-        self.connect(self.gr_fill_timer, QtCore.SIGNAL('timeout()'),
-                     self.fillGraph)
+        connect(self.gr_fill_timer, SIGNAL('timeout()'),
+                self.fillGraph)
         self.setRepo(repo, branch)
 
     #@timeit
@@ -134,24 +134,24 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
     def fillGraph(self):
         step = self.fill_step
         if self._fill_iter is None:
-            self.emit(QtCore.SIGNAL('filling(int)'), self.nmax)
+            self.emit(SIGNAL('filling(int)'), self.nmax)
             self._fill_iter = self.graph.fill(step=step)
-            self.emit(QtCore.SIGNAL('layoutChanged()'))
+            self.emit(SIGNAL('layoutChanged()'))
             QtGui.QApplication.processEvents()
         try:
             n = len(self.graph)
             nm = min(n+step, self.nmax)
             self.beginInsertRows(QtCore.QModelIndex(), n, nm)
             nfilled = self._fill_iter.next()
-            self.emit(QtCore.SIGNAL('filled(int)'), nfilled)
+            self.emit(SIGNAL('filled(int)'), nfilled)
         except StopIteration:
             self.gr_fill_timer.stop()
             self._fill_iter = None
-            self.emit(QtCore.SIGNAL('fillingover()'))
+            self.emit(SIGNAL('fillingover()'))
         finally:
             self.endInsertRows()
-            self.emit(QtCore.SIGNAL('layoutChanged()'))
-            
+            self.emit(SIGNAL('layoutChanged()'))
+        
     def rowCount(self, parent=None):
         return len(self.graph)
 
@@ -286,7 +286,7 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
         self.notify_data_changed()
 
     def notify_data_changed(self):
-        self.emit(QtCore.SIGNAL("layoutChanged()"))
+        self.emit(SIGNAL("layoutChanged()"))
 
 class FileRevModel(HgRepoListModel):
     """
@@ -314,14 +314,15 @@ class FileRevModel(HgRepoListModel):
         self.filelog = self.repo.file(filename)
         self.nmax = len(self.repo.changelog)
         #self.nmax = len(self.filelog)
-        grapher = filelog_grapher(self.repo, self.filename)
-
         self._user_colors = {}
         self._branch_colors = {}
+        
+        grapher = filelog_grapher(self.repo, self.filename)
         self.graph = Graph(self.repo, grapher)
         self.heads = [self.repo.changectx(x).rev() for x in self.repo.heads()]
         self._datacache = {}
         self._fill_iter = None
+        print "starting filling graph"
         self.gr_fill_timer.start()
 
 
@@ -363,7 +364,7 @@ class HgFileListModel(QtCore.QAbstractTableModel):
         if w != self.diffwidth:
             self.diffwidth = w
             self._datacache = {}
-            self.emit(QtCore.SIGNAL('dataChanged(const QModelIndex &, const QModelIndex & )'),
+            self.emit(SIGNAL('dataChanged(const QModelIndex &, const QModelIndex & )'),
                       self.index(2, 0),
                       self.index(2, self.rowCount()))
 
@@ -397,7 +398,7 @@ class HgFileListModel(QtCore.QAbstractTableModel):
         return ctx.parents()[0]
     
     def fileFromIndex(self, index):
-        if not index.isValid() or index.row()>len(self) or not self.current_ctx:
+        if not index.isValid() or index.row()>=len(self) or not self.current_ctx:
             return None
         row = index.row()
         return self._files[row]['path']
@@ -453,7 +454,7 @@ class HgFileListModel(QtCore.QAbstractTableModel):
             self.current_ctx = ctx
             self._datacache = {}
             self.loadFiles()
-            self.emit(QtCore.SIGNAL("layoutChanged()"))
+            self.emit(SIGNAL("layoutChanged()"))
 
     def fillFileStats(self):
         """
