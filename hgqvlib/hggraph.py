@@ -163,9 +163,8 @@ def filelog_grapher(repo, path):
     rev_color = {}
     nextcolor = 0
     _paths = {}
-    while rev >= 0:
-        fctx = repo.filectx(_paths.get(rev, path), changeid=rev)
 
+    while rev >= 0:
         # Compute revs and next_revs.
         if rev not in revs:
             revs.append(rev)
@@ -174,7 +173,8 @@ def filelog_grapher(repo, path):
         index = revs.index(rev)
         next_revs = revs[:]
 
-        # Add parents to next_revs.
+        # Add parents to next_revs. 
+        fctx = repo.filectx(_paths.get(rev, path), changeid=rev)
         for f in fctx.parents():
             _paths[f.rev()] = f.path()
         parents = [f.rev() for f in fctx.parents()]# if f.path() == path]
@@ -202,20 +202,11 @@ def filelog_grapher(repo, path):
         pcrevs = [pfc.rev() for pfc in fctx.parents()]
         yield (fctx.rev(), index, curcolor, lines, pcrevs, _paths.get(fctx.rev(), path))
         revs = next_revs
-
-        if rev in revs:
-            # XXX I'm pretty sure this is useless, since rev cannot be
-            # in revs at this point
-            revid = revs.index(rev)
-            if revid == 0:
-                rev = -1
-            else:
-                rev = revs[revid-1]
+        
+        if revs:
+            rev = max(revs)
         else:
-            if revs:
-                rev = revs[-1]
-            else:
-                rev = -1
+            rev = -1
             
 class GraphNode(object):
     """
