@@ -27,9 +27,9 @@ On the other hand, installing ``hgqv`` is simply done using usual
 Last, you can add the following to your main .hgrc file::
 
   [extensions]
-  qtview=path/to/hqgv/qtview.py
+  qtview=path/to/hqgv/hgext/hgqv.py
 
-  [qtview]
+  [hgqv]
   # your hgqv configs statements like: 
   dotradius=6
   # type hg qv-config to list available options
