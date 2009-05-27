@@ -70,6 +70,12 @@ _columnmap = {'ID': lambda ctx: ctx.rev(),
               'Branch': lambda ctx: ctx.branch(),
               }
 
+def auth_width(model, repo):
+    auths = model._aliases.values()
+    if not auths:
+        return None
+    return sorted(auths, cmp=lambda x,y: cmp(len(x), len(y)))[-1]
+
 # in following lambdas, r is a hg repo
 _maxwidth = {'ID': lambda self, r: str(len(r.changelog)),
              'Date': lambda self, r: cvrt_date(r.changectx(0).date()),
@@ -77,8 +83,7 @@ _maxwidth = {'ID': lambda self, r: str(len(r.changelog)),
                                             cmp=lambda x,y: cmp(len(x), len(y)))[-1],
              'Branch': lambda self, r: sorted(r.branchtags().keys(),
                                               cmp=lambda x,y: cmp(len(x), len(y)))[-1],
-             'Author': lambda self, r: sorted(self._aliases.values(),
-                                              cmp=lambda x,y: cmp(len(x), len(y)))[-1],
+             'Author': auth_width,
              }
 
 def datacached(meth):
