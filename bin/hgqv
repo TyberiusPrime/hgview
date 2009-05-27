@@ -21,7 +21,7 @@ except ImportError:
                                         os.readlink(execpath)))
     sys.path.append(pos.abspath(pos.join(pos.dirname(execpath), "..")))
 
-from hgqvlib.qt4.main import main 
+from hgqvlib.qt4.hgrepoviewer import main 
 
 main()
 
