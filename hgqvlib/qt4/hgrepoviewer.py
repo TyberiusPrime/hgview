@@ -10,19 +10,16 @@
 Main Qt4 application for hgqv
 """
 import sys, os
-import time
 import re
 
 from PyQt4 import QtCore, QtGui, Qsci
 
-from mercurial import ui, hg, patch
-from mercurial.node import hex, short as short_hex, bin as short_bin
+from mercurial import ui, hg
 
 from hgqvlib.qt4.hgrepomodel import HgRepoListModel, HgFileListModel
-from hgqvlib.qt4.hgfileviewer import FileViewer, FileDiffViewer, ManifestViewer
+from hgqvlib.qt4.hgfileviewer import ManifestViewer
 from hgqvlib.hggraph import diff as revdiff
 from hgqvlib.decorators import timeit
-from hgqvlib.config import HgConfig
 from hgqvlib.qt4.lexers import get_lexer
 from hgqvlib.qt4 import HgDialogMixin
 from hgqvlib.qt4 import hgrepoview, hgfileview
@@ -94,8 +91,8 @@ class FindQuickBar(QuickBar):
         
         
 class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
-    _uifile = 'hgqv.ui'
     """hg repository viewer/browser application"""
+    _uifile = 'hgqv.ui'
     def __init__(self, repo, filerex = None):
         self.repo = repo
         QtGui.QMainWindow.__init__(self)
@@ -173,7 +170,7 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
     def setupDiffview(self):
         lay = QtGui.QHBoxLayout(self.textview_frame)
         lay.setSpacing(0)
-        lay.setContentsMargins(0,0,0,0)
+        lay.setContentsMargins(0, 0, 0, 0)
         sci = Qsci.QsciScintilla(self.textview_frame)
         lay.addWidget(sci)
         sci.setMarginLineNumbers(1, True)
@@ -363,7 +360,7 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
             branch = self.branch_comboBox.currentText()
         branch = str(branch)
         self.repomodel.setRepo(self.repo, branch=branch)
-        self.tableView_revisions.setCurrentIndex(self.tableView_revisions.model().index(0,0))
+        self.tableView_revisions.setCurrentIndex(self.tableView_revisions.model().index(0, 0))
 
     # methods to manage searching
     def highlight_search_string(self, text):
@@ -396,7 +393,7 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
             files = ctx.files()
             if fromfile is not None and fromfile in files:
                 files = files[files.index(fromfile):]
-                fromfile=None
+                fromfile = None
             for filename in files:
                 flag, data = self.get_file_data(filename, ctx)
                 while True:
@@ -489,11 +486,12 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
             hgversion = get_version()
         except:
             from mercurial.__version__ import version as hgversion
-            
-        QtGui.QMessageBox.about(self, self.tr("About hgqv"),
-                                "<h2>About hgqv %s</h2> (using hg %s)" % (version, hgversion) +
-                                "<p><i>%s</i></p>" % short_desc.capitalize() +
-                                "<p>%s</p>" % long_desc)
+
+        msg = "<h2>About %(appname)s %(version)s</h2> (using hg %(hgversion)s)" % \
+              {"appname": modname, "version": version, "hgversion": hgversion}
+        msg += "<p><i>%s</i></p>" % short_desc.capitalize()
+        msg += "<p>%s</p>" % long_desc
+        QtGui.QMessageBox.about(self, "About %s" % modname, msg)
 
 def find_repository(path):
     """returns <path>'s mercurial repository
