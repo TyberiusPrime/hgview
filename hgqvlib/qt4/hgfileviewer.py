@@ -267,22 +267,6 @@ class FileDiffViewer(QtGui.QMainWindow, HgDialogMixin):
     def modelFilled(self):
         self.set_init_selections()
 
-    def setup_columns_size(self):
-        """
-        Recompute column sizes for rev list ListViews, using
-        autoresize for all columns but the 'description' one, and
-        making this latter takes the remaining space.
-        """
-        ncols = self.filerevmodel.columnCount()
-        cols = [x for x in range(ncols) if x != 1]
-        hleft = self.tableView_revisions_left.horizontalHeader()
-        hright = self.tableView_revisions_right.horizontalHeader()
-        for c in cols:
-            hleft.setResizeMode(c, hleft.ResizeToContents)
-            hright.setResizeMode(c, hleft.ResizeToContents)
-        hleft.setResizeMode(1, hleft.Stretch)
-        hright.setResizeMode(1, hleft.Stretch)
-
     def update_page_steps(self, keeppos=None):
         for side in sides:
             self.block[side].syncPageStep()
@@ -493,6 +477,8 @@ class FileDiffViewer(QtGui.QMainWindow, HgDialogMixin):
             self.connect(self.viewers[side].verticalScrollBar(),
                          QtCore.SIGNAL('valueChanged(int)'),
                          lambda value, side=side: self.vbar_changed(value, side))
+            self.attachQuickBar(table.goto_toolbar)
+
         self.setTabOrder(table, self.viewers['left'])
         self.setTabOrder(self.viewers['left'], self.viewers['right'])
         
