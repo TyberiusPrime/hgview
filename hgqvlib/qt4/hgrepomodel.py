@@ -714,14 +714,14 @@ class ManifestModel(QtCore.QAbstractItemModel):
                 else:
                     node = node.addChild(TreeItem([p], node))
 
-    def pathForIndex(self, index):
+    def pathFromIndex(self, index):
         idxs = []
         while index.isValid():
             idxs.insert(0, index)
             index = self.parent(index)
         return osp.sep.join([index.internalPointer().data(0) for index in idxs])
 
-
+            
 if __name__ == "__main__":
     from mercurial import ui, hg
     from optparse import OptionParser

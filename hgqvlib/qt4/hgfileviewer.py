@@ -112,20 +112,29 @@ class ManifestViewer(QtGui.QMainWindow, HgDialogMixin):
         self.repo = repo
         QtGui.QMainWindow.__init__(self)
         HgDialogMixin.__init__(self)
-        self.actionClose.setShortcuts([self.actionClose.shortcut(), Qt.Key_Escape])
-        self.connect(self.actionClose, QtCore.SIGNAL('triggered(bool)'),
-                     self.close)
+        self.setWindowTitle('Hg manifest viewer - %s:%s' % (repo.root, noderev))
+
         # hg repo
+        self.repo = repo
         self.rev = noderev
+        self.setupModels()
+
+        self.createActions()        
+        self.setupTextview()
+
+    def setupModels(self):
         self.treemodel = ManifestModel(self.repo, self.rev)
         self.treeView.setModel(self.treemodel)
-        self.connect(self.treeView.selectionModel(),
-                     QtCore.SIGNAL('currentChanged(const QModelIndex &, const QModelIndex &)'),
-                     self.file_selected)
-        self.setup_textview()
-        self.setWindowTitle('Hg manifest viewer - %s:%s' % (repo.root, self.rev))
-
-    def setup_textview(self):
+        connect(self.treeView.selectionModel(),
+                SIGNAL('currentChanged(const QModelIndex &, const QModelIndex &)'),
+                self.fileSelected)
+        
+    def createActions(self):
+        connect(self.actionClose, SIGNAL('triggered()'),
+                self.close)
+        self.actionClose.setIcon(geticon('quit'))
+        
+    def setupTextview(self):
         lay = QtGui.QHBoxLayout(self.mainFrame)
         lay.setSpacing(0)
         lay.setContentsMargins(0,0,0,0)
@@ -139,10 +148,10 @@ class ManifestViewer(QtGui.QMainWindow, HgDialogMixin):
         sci.SendScintilla(sci.SCI_SETSELEOLFILLED, True)
         self.textView = sci
         
-    def file_selected(self, index, *args):
+    def fileSelected(self, index, *args):
         if not index.isValid():
             return
-        path = self.treemodel.pathForIndex(index)
+        path = self.treemodel.pathFromIndex(index)
         try:
             fc = self.repo.changectx(self.rev).filectx(path)
         except LookupError:
@@ -164,6 +173,20 @@ class ManifestViewer(QtGui.QMainWindow, HgDialogMixin):
         nlines = data.count('\n')
         self.textView.setMarginWidth(1, str(nlines)+'00')
         self.textView.setText(data)
+
+    def setCurrentFile(self, filename):
+        index = QtCore.QModelIndex()
+        path = filename.split(osp.sep)
+        for p in path:
+            self.treeView.expand(index)
+            for row in range(self.treemodel.rowCount(index)):
+                newindex = self.treemodel.index(row, 0, index)
+                if newindex.internalPointer().data(0) == p:
+                    index = newindex
+                    break
+        self.treeView.setCurrentIndex(index)
+                
+        
         
     
 class FileDiffViewer(QtGui.QMainWindow, HgDialogMixin):
@@ -218,8 +241,8 @@ class FileDiffViewer(QtGui.QMainWindow, HgDialogMixin):
         self.lexer = lexer
         
     def createActions(self):
-        self.connect(self.actionClose, QtCore.SIGNAL('triggered()'),
-                     self.close)
+        connect(self.actionClose, SIGNAL('triggered()'),
+                self.close)
         connect(self.actionReload, SIGNAL('triggered()'),
                 self.reload)
         self.actionClose.setIcon(geticon('quit'))
@@ -390,7 +413,9 @@ class FileDiffViewer(QtGui.QMainWindow, HgDialogMixin):
         """
         Callback called when a revision is double-clicked in the revisions table        
         """
-        ManifestViewer(self.repo, rev).show()
+        dlg = ManifestViewer(self.repo, rev)
+        dlg.setCurrentFile(self.filename)
+        dlg.show()
 
 
     def setupUi(self):
