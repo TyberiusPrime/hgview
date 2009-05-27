@@ -1,3 +1,11 @@
+hgqv (1.1.0-1) unstable; urgency=low
+
+  * major rewrite of many parts of the code
+  * several bug fixes
+  * make dialogs consistants
+
+ -- David Douard <david.douard@logilab.fr>  Wed, 27 May 2009 19:15:27 +0200
+
 hgqv (1.0.0-1) unstable; urgency=low
   * first stable release
   * add a manifest viewer
