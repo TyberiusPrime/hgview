@@ -87,7 +87,10 @@ class TeXLexerSelector(_FilenameLexerSelector):
     
 lexers = [cls() for clsname, cls in globals().items() if not clsname.startswith('_') and isinstance(cls, type) and \
           issubclass(cls, (_LexerSelector, _FilenameLexerSelector, _ScriptLexerSelector))]
-def get_lexer(filename, filedata):
+
+def get_lexer(filename, filedata, fileflag=None):
+    if fileflag == "=":
+        return Qsci.QsciLexerDiff
     for lselector in lexers:
         if lselector.match(filename, filedata):
             return lselector.lexer()

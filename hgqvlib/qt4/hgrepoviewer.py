@@ -25,12 +25,13 @@ from hgqvlib.decorators import timeit
 from hgqvlib.config import HgConfig
 from hgqvlib.qt4.lexers import get_lexer
 from hgqvlib.qt4 import HgDialogMixin
-from hgqvlib.qt4 import hgrepoview
+from hgqvlib.qt4 import hgrepoview, hgfileview
 from hgqvlib.qt4 import icon as geticon
 from hgqvlib.qt4.quickbar import QuickBar
 
 # dirty hack to please PyQt4 uic
 sys.modules['hgrepoview'] = hgrepoview
+sys.modules['hgfileview'] = hgfileview
 
 Qt = QtCore.Qt
 bold = QtGui.QFont.Bold
@@ -106,43 +107,32 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
         self.setup_statusbar()
         self.splitter_2.setStretchFactor(0, 2)
         self.splitter_2.setStretchFactor(1, 1)
-        connect(self.splitter_2, SIGNAL('splitterMoved (int, int)'),
-                self.resize_filelist_columns)
 
         self.createActions()
         self.createToolbars()
 
         # text viewer
-        self.setup_diffview()
+        self.setupDiffview()
         # filter frame
-        self.setup_filterframe()
-
-        self.setup_navigation_buttons()
+        self.setupFilterFrame()
 
         # setup tables and views
-        self.setup_header_textview()
+        self.setupHeaderTextview()
+        self.tableView_filelist.setFocusPolicy(QtCore.Qt.NoFocus)
+        self.setupBranchCombo()
+        self.setupModels()
 
-        self.setup_branch_combo()
-        self.setup_models()
+        self.setupRevisionTable()
 
-        self.setup_revision_table()
-        self.setup_filelist_table()
-
-        self.refresh_revision_table()
+        self.refreshRevisionTable()
         
-    def setup_branch_combo(self):
+    def setupBranchCombo(self):
         branches = sorted(self.repo.branchtags().keys())
         if len(branches) == 1:
             self.branch_comboBox.setEnabled(False)
         else:
             self.branchesmodel = QtGui.QStringListModel([''] + branches)
             self.branch_comboBox.setModel(self.branchesmodel)
-
-    def setup_navigation_buttons(self):
-        self.toolBar_edit.addAction(self.tableView_revisions._actions['back'])
-        self.toolBar_edit.addAction(self.tableView_revisions._actions['forward'])
-        #self.toolBar_edit.addAction(self.find_toolbar._actions['open'])
-        #self.toolBar_edit.addAction(self.tableView_revisions.goto_toolbar._actions['open'])
 
     def createToolbars(self):
         self._find_iter = None
@@ -156,10 +146,13 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
         
         self.attachQuickBar(self.find_toolbar)
 
+        self.toolBar_edit.addAction(self.tableView_revisions._actions['back'])
+        self.toolBar_edit.addAction(self.tableView_revisions._actions['forward'])
+
     def createActions(self):
         # main window actions (from .ui file)
         connect(self.actionRefresh, SIGNAL('triggered()'),
-                self.reload_repository)
+                self.reload)
         connect(self.actionAbout, SIGNAL('triggered()'),
                 self.on_about)
         connect(self.actionQuit, SIGNAL('triggered()'),
@@ -177,7 +170,7 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
         self.pb.hide()
         self.statusBar().addPermanentWidget(self.pb)
 
-    def setup_diffview(self):
+    def setupDiffview(self):
         lay = QtGui.QHBoxLayout(self.textview_frame)
         lay.setSpacing(0)
         lay.setContentsMargins(0,0,0,0)
@@ -202,9 +195,9 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
         cfg = HgDialogMixin.load_config(self)
         self.hidefinddelay = cfg.getHideFindDelay()
 
-    def setup_filterframe(self):
+    def setupFilterFrame(self):
         connect(self.branch_comboBox, SIGNAL('activated(const QString &)'),
-                self.refresh_revision_table)
+                self.refreshRevisionTable)
         self.frame_branch_action = self.toolBar_treefilters.addWidget(self.frame_branch)
         self.frame_revrange_action = self.toolBar_treefilters.addWidget(self.frame_revrange)
         self.frame_filter_action = self.toolBar_treefilters.addWidget(self.frame_filter)
@@ -223,26 +216,16 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
 
         self.filelistmodel = HgFileListModel(self.repo)
 
-    def setup_models(self):
+    def setupModels(self):
         self.create_models()
         self.tableView_revisions.setModel(self.repomodel)
         self.tableView_filelist.setModel(self.filelistmodel)
 
         filetable = self.tableView_filelist
-        connect(filetable.selectionModel(),
-                SIGNAL('currentRowChanged (const QModelIndex & , const QModelIndex & )'),
-                self.file_selected)
-        connect(filetable,
-                SIGNAL('doubleClicked (const QModelIndex &)'),
-                self.file_activated)
-        connect(filetable.horizontalHeader(),
-                SIGNAL('sectionResized(int, int, int)'),
-                self.file_section_resized)        
+        connect(filetable, SIGNAL('fileSelected'),
+                self.fileSelected)
 
-        connect(self.filelistmodel, SIGNAL('layoutChanged()'),
-                self.file_selected)
-
-    def setup_revision_table(self):
+    def setupRevisionTable(self):
         view = self.tableView_revisions
         view.installEventFilter(self)        
         connect(view, SIGNAL('revisionSelected'), self.revision_selected)
@@ -250,18 +233,6 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
         connect(self.textview_header, SIGNAL('revisionSelected'), view.goto)
         self.attachQuickBar(view.goto_toolbar)
         
-    def setup_filelist_table(self):
-        filetable = self.tableView_filelist
-        filetable.setFocusPolicy(QtCore.Qt.NoFocus)
-        filetable.setTextElideMode(Qt.ElideLeft)
-        filetable.horizontalHeader().setMinimumSectionSize(80)
-        connect(filetable.horizontalHeader(), SIGNAL('sectionDoubleClicked(int)'),
-                self.toggleFullFileList)
-        filetable.horizontalHeader().setToolTip('Double click to toggle merge mode')
-        self._setup_table(filetable)
-
-    def toggleFullFileList(self, *args):
-        self.filelistmodel.toggleFullFileList()
     def _setup_table(self, table):
         table.setTabKeyNavigation(False)
         table.verticalHeader().setDefaultSectionSize(self.rowheight)
@@ -271,17 +242,12 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
         table.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
         table.setAlternatingRowColors(True)
 
-    def setup_header_textview(self):
+    def setupHeaderTextview(self):
         self.header_diff_format = QtGui.QTextCharFormat()
         self.header_diff_format.setFont(self.font)
         self.header_diff_format.setFontWeight(bold)
         self.header_diff_format.setForeground(Qt.black)
         self.header_diff_format.setBackground(Qt.gray)
-
-    def resizeEvent(self, event):
-        # we catch this event to resize smartly tables' columns
-        QtGui.QMainWindow.resizeEvent(self, event)
-        self.resize_filelist_columns()
 
     def eventFilter(self, watched, event):
         if watched == self.tableView_revisions:
@@ -296,7 +262,7 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
                     table.setCurrentIndex(model.index(min(row+1, model.rowCount()-1), 0))
                     return True
                 elif event.key() in [Qt.Key_Return, Qt.Key_Enter]:
-                    self.file_activated(table.currentIndex())
+                    table.fileActivated(table.currentIndex())
                     return True
         return QtGui.QMainWindow.eventFilter(self, watched, event)
 
@@ -329,30 +295,27 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
             ctx = self.repomodel.repo.changectx(rev)
             self.textview_header.displayRevision(ctx)            
             self.filelistmodel.setSelectedRev(ctx)
-            self.tableView_filelist.resizeRowsToContents()
+            #self.tableView_filelist.resizeRowsToContents()
             if len(self.filelistmodel):
                 self.tableView_filelist.selectRow(0)
             else:
                 self.textview_status.clear()
 
-    def file_selected(self, index=None, index_from=None):
+    def fileSelected(self, filename=None):
         """
         Callback called when a filename is selected in the file list
         """
         w = self.textview_status
         w.clear()
-        if index is None:
-            index = self.tableView_filelist.currentIndex()
-        sel_file = self.filelistmodel.fileFromIndex(index)
-        if sel_file is None:
+        if filename is None:
             return
-        flag, data = self.get_file_data(sel_file)
+        flag, data = self.get_file_data(filename)
         lexer = None
         if flag == "=":
             lexer = Qsci.QsciLexerDiff()
             self.textview_status.setMarginWidth(1, 0)
         elif flag == "+":
-            lexer = get_lexer(sel_file, data)
+            lexer = get_lexer(filename, data)
             nlines = data.count('\n')
             self.textview_status.setMarginWidth(1, str(nlines)+'0')            
         if lexer:
@@ -364,18 +327,6 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
         self.textview_status.setText(data)
         if self.find_toolbar.text():
             self.highlight_search_string(self.find_toolbar.text())
-
-    def file_activated(self, index):
-        sel_file = self.filelistmodel.fileFromIndex(index)
-        if sel_file is not None and len(self.repo.file(sel_file))>1:
-            dlg = FileDiffViewer(self.repo, sel_file)
-            dlg.setWindowTitle('Hg file log viewer')
-            dlg.show()
-            self._dlg = dlg # keep a reference on the dlg
-            
-    def file_section_resized(self, idx, oldsize, newsize):
-        if idx == 1:
-            self.filelistmodel.setDiffWidth(newsize)
 
     #@timeit
     def get_file_data(self, filename, ctx=None):
@@ -399,30 +350,20 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
                 data = unicode(fc.data(), errors='ignore') # XXX
         return flag, data
 
-    def reload_repository(self):
+    def reload(self):
         self.repo = hg.repository(self.repo.ui, self.repo.root)
-        self.setup_branch_combo()
-        self.setup_models()        
-        self.refresh_revision_table()
+        self.setupBranchCombo()
+        self.setupModels()        
+        self.refreshRevisionTable()
 
     #@timeit
-    def refresh_revision_table(self, branch=None):
+    def refreshRevisionTable(self, branch=None):
         """Starts the process of filling the HgModel"""
         if branch is None:
             branch = self.branch_comboBox.currentText()
         branch = str(branch)
         self.repomodel.setRepo(self.repo, branch=branch)
         self.tableView_revisions.setCurrentIndex(self.tableView_revisions.model().index(0,0))
-
-    def resize_filelist_columns(self, *args):
-        # resize columns the smart way: the first column holding file
-        # names is resized according to the total widget size.
-        self.tableView_filelist.resizeColumnToContents(1)
-        vp_width = self.tableView_filelist.viewport().width()
-        col_widths = [self.tableView_filelist.columnWidth(i) \
-                      for i in range(1, self.filelistmodel.columnCount())]
-        col_width = vp_width - sum(col_widths)
-        self.tableView_filelist.setColumnWidth(0, col_width)
 
     # methods to manage searching
     def highlight_search_string(self, text):

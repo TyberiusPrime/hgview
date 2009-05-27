@@ -249,6 +249,9 @@ class HgRepoView(QtGui.QTableView):
         
     
 class RevDisplay(QtGui.QFrame):
+    """
+    Display metadata for one revision (rev, author, description, etc.)
+    """
     def __init__(self, parent=None):
         QtGui.QFrame.__init__(self, parent)
         l = QtGui.QVBoxLayout(self)

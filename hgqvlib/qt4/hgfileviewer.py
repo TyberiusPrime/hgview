@@ -48,12 +48,18 @@ class FileViewer(QtGui.QMainWindow, HgDialogMixin):
     _uifile = 'fileviewer.ui'
     def __init__(self, repo, filename, noderev=None):
         self.repo = repo
+        self.rev = noderev
         QtGui.QMainWindow.__init__(self)
         HgDialogMixin.__init__(self)
 
         # hg repo
         self.filename = filename
-
+        self.createActions()
+        
+        self.setupUi()
+        self.setupModels()
+        
+    def setupUi(self):
         lay = QtGui.QHBoxLayout(self.frame)
         lay.setSpacing(0)
 
@@ -69,16 +75,26 @@ class FileViewer(QtGui.QMainWindow, HgDialogMixin):
         self.markerminus = self.textBrowser_filecontent.markerDefine(Qsci.QsciScintilla.Minus)
         lay.addWidget(self.textBrowser_filecontent)
 
-        self.filerevmodel = FileRevModel(self.repo, self.filename, noderev)
+        self.attachQuickBar(self.tableView_revisions.goto_toolbar)
+
+    def setupModels(self):
+        self.filerevmodel = FileRevModel(self.repo, self.filename, self.rev)
         self.tableView_revisions.setModel(self.filerevmodel)
         self.connect(self.tableView_revisions,
                      SIGNAL('revisionSelected'),
                      self.revisionSelected)
 
-    def accept(self):
-        self.close()
-    def reject(self):
-        self.close()
+    def createActions(self):
+        connect(self.actionClose, SIGNAL('triggered()'),
+                self.close)
+        connect(self.actionReload, SIGNAL('triggered()'),
+                self.reload)
+        self.actionClose.setIcon(geticon('quit'))
+        self.actionReload.setIcon(geticon('reload'))
+
+    def reload(self):
+        self.repo = hg.repository(self.repo.ui, self.repo.root)
+        self.setupModels()        
         
     def revisionSelected(self, rev):
         pos = self.textBrowser_filecontent.verticalScrollBar().value()

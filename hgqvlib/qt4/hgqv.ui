@@ -185,7 +185,7 @@
             </property>
            </widget>
           </widget>
-          <widget class="QTableView" name="tableView_filelist" />
+          <widget class="HgFileListView" name="tableView_filelist" />
          </widget>
         </item>
        </layout>
@@ -353,6 +353,11 @@
    <class>RevDisplay</class>
    <extends>QTextBrowser</extends>
    <header>hgrepoview.h</header>
+  </customwidget>
+  <customwidget>
+   <class>HgFileListView</class>
+   <extends>QTableView</extends>
+   <header>hgfileview.h</header>
   </customwidget>
  </customwidgets>
  <resources>
