@@ -72,6 +72,9 @@ def start_hgqv(ui, repo, *args, **kwargs):
         cmd = ui.config("hgqv", "path", "hgqv") 
         os.system(cmd + " " + " ".join(args))
     else:
+        # make Ctrl+C works
+        import signal
+        signal.signal(signal.SIGINT, signal.SIG_DFL)        
         app = QtGui.QApplication(sys.argv)
         if len(args) == 1:
             # should be a filename of a file managed in the repo

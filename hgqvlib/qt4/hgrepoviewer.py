@@ -538,6 +538,10 @@ def main():
         print "You are not in a repo, are you?"
         sys.exit(1)
 
+    # make Ctrl+C works
+    import signal
+    signal.signal(signal.SIGINT, signal.SIG_DFL)
+
     app = QtGui.QApplication(sys.argv)
     mainwindow = HgRepoViewer(repo, filerex)
     mainwindow.show()

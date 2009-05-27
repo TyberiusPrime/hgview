@@ -166,7 +166,8 @@ class HgRepoView(QtGui.QTableView):
                 w = fontm.width(unicode(w) + 'w')
                 self.setColumnWidth(c, w)
             else:
-                self.setColumnWidth(c, 140)
+                w = self.sizeHintForColumn(c)
+                self.setColumnWidth(c, w)
             col1_width -= self.columnWidth(c)
 
         for c in range(model.columnCount()):

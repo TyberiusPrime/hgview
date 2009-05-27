@@ -68,6 +68,15 @@ def __get_parents(repo, rev, branch=None):
             if (x != nullrev and repo.changectx(rev).branch() == branch)]
 
 
+def ismerge(ctx):
+    """
+    Return True if the changecontext ctx is a merge mode (should work
+    with hg 1.0 and 1.2)
+    """
+    if ctx:
+        return len(ctx.parents()) == 2 and ctx.parents()[1]
+    return False
+
 def revision_grapher(repo, start_rev=None, stop_rev=0, branch=None):
     """incremental revision grapher
 
