@@ -74,11 +74,11 @@ _columnmap = {'ID': lambda ctx: ctx.rev(),
 _maxwidth = {'ID': lambda self, r: str(len(r.changelog)),
              'Date': lambda self, r: cvrt_date(r.changectx(0).date()),
              'Tags': lambda self, r: sorted(r.tags().keys(),
-                                            cmp=lambda x,y: cmp(len(x), len(y)))[-1],
+                                            key=lambda x: len(x))[-1],
              'Branch': lambda self, r: sorted(r.branchtags().keys(),
-                                              cmp=lambda x,y: cmp(len(x), len(y)))[-1],
+                                              key=lambda x: len(x))[-1],
              'Author': lambda self, r: sorted(self._aliases.values(),
-                                              cmp=lambda x,y: cmp(len(x), len(y)))[-1],
+                                              key=lambda x: len(x))[-1],
              }
 
 def datacached(meth):
