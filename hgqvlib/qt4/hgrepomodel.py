@@ -25,7 +25,7 @@ from mercurial.node import nullrev
 from mercurial.node import hex, short as short_hex
 from mercurial.revlog import LookupError
 
-from hgqvlib.hggraph import Graph, diff as revdiff
+from hgqvlib.hggraph import Graph, ismerge, diff as revdiff
 from hgqvlib.hggraph import revision_grapher, filelog_grapher
 from hgqvlib.config import HgConfig
 from hgqvlib.qt4 import icon as geticon
@@ -443,7 +443,7 @@ class HgFileListModel(QtCore.QAbstractTableModel):
         self._files = []
         self._datacache = {}
         self._files = self._buildDesc(self.current_ctx.parents()[0], 'left')
-        if self.current_ctx.parents()[1]:
+        if ismerge(self.current_ctx):
             _paths = [x['path'] for x in self._files]
             _files = self._buildDesc(self.current_ctx.parents()[1], 'right')
             self._files += [x for x in _files if x['path'] not in _paths] 
@@ -547,7 +547,7 @@ class HgFileListModel(QtCore.QAbstractTableModel):
             if role == QtCore.Qt.DisplayRole:
                 return QtCore.QVariant(current_file_desc['desc'])
             elif role == QtCore.Qt.DecorationRole:
-                if self._fulllist and self.current_ctx.parents()[1]:
+                if self._fulllist and ismerge(self.current_ctx):
                     if current_file_desc['infiles']:
                         icn = geticon('leftright')
                     elif current_file_desc['fromside'] == 'left':
@@ -567,7 +567,7 @@ class HgFileListModel(QtCore.QAbstractTableModel):
         return nullvariant
 
     def headerData(self, section, orientation, role):
-        if self.current_ctx and self.current_ctx.parents()[1]:
+        if ismerge(self.current_ctx):
             if self._fulllist:
                 header = ('File (all)', 'Diff')
             else:
