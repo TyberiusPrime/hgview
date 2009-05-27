@@ -250,7 +250,22 @@ class FileDiffViewer(QtGui.QMainWindow, HgDialogMixin):
 
     def modelFilled(self):
         self.set_init_selections()
-        self.setup_columns_size()
+
+    def setup_columns_size(self):
+        """
+        Recompute column sizes for rev list ListViews, using
+        autoresize for all columns but the 'description' one, and
+        making this latter takes the remaining space.
+        """
+        ncols = self.filerevmodel.columnCount()
+        cols = [x for x in range(ncols) if x != 1]
+        hleft = self.tableView_revisions_left.horizontalHeader()
+        hright = self.tableView_revisions_right.horizontalHeader()
+        for c in cols:
+            hleft.setResizeMode(c, hleft.ResizeToContents)
+            hright.setResizeMode(c, hleft.ResizeToContents)
+        hleft.setResizeMode(1, hleft.Stretch)
+        hright.setResizeMode(1, hleft.Stretch)
 
     def update_page_steps(self, keeppos=None):
         for side in sides:
@@ -357,21 +372,6 @@ class FileDiffViewer(QtGui.QMainWindow, HgDialogMixin):
         self.tableView_revisions_left.setCurrentIndex(self.filerevmodel.index(1, 0))
         self.tableView_revisions_right.setCurrentIndex(self.filerevmodel.index(0, 0))
 
-    def setup_columns_size(self):
-        """
-        Recompute column sizes for rev list ListViews, using
-        autoresize for all columns but the 'description' one, and
-        making this latter takes the remaining space.
-        """
-        ncols = self.filerevmodel.columnCount()
-        cols = [x for x in range(ncols) if x != 1]
-        hleft = self.tableView_revisions_left.horizontalHeader()
-        hright = self.tableView_revisions_right.horizontalHeader()
-        for c in cols:
-            hleft.setResizeMode(c, hleft.ResizeToContents)
-            hright.setResizeMode(c, hleft.ResizeToContents)
-        hleft.setResizeMode(1, hleft.Stretch)
-        hright.setResizeMode(1, hleft.Stretch)
 
     def vbar_changed(self, value, side):
         """

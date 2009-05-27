@@ -71,12 +71,14 @@ _columnmap = {'ID': lambda ctx: ctx.rev(),
               }
 
 # in following lambdas, r is a hg repo
-_maxwidth = {'ID': lambda r: str(len(r.changelog)),
-             'Date': lambda r: cvrt_date(r.changectx(0).date()),
-             'Tags': lambda r: sorted(r.tags().keys(),
-                                      cmp=lambda x,y: cmp(len(x), len(y)))[-1],
-             'Branch': lambda r: sorted(r.branchtags().keys(),
-                                        cmp=lambda x,y: cmp(len(x), len(y)))[-1],
+_maxwidth = {'ID': lambda self, r: str(len(r.changelog)),
+             'Date': lambda self, r: cvrt_date(r.changectx(0).date()),
+             'Tags': lambda self, r: sorted(r.tags().keys(),
+                                            cmp=lambda x,y: cmp(len(x), len(y)))[-1],
+             'Branch': lambda self, r: sorted(r.branchtags().keys(),
+                                              cmp=lambda x,y: cmp(len(x), len(y)))[-1],
+             'Author': lambda self, r: sorted(self._aliases.values(),
+                                              cmp=lambda x,y: cmp(len(x), len(y)))[-1],
              }
 
 def datacached(meth):
@@ -102,7 +104,7 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
     """
     Model used for displaying the revisions of a Hg *local* repository
     """
-    _columns = 'ID','Log','Author','Date','Tags', 'Branch'
+    _columns = ('ID', 'Log', 'Author', 'Date', 'Tags', 'Branch',)
     _stretchs = {'Log': 1, }
 
     def __init__(self, repo, branch='', parent=None):
@@ -168,7 +170,7 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
     def maxWidthValueForColumn(self, column):
         column = self._columns[column]
         if column in _maxwidth:
-            return _maxwidth[column](self.repo)
+            return _maxwidth[column](self, self.repo)
         return None
 
     def user_color(self, user):
@@ -293,8 +295,8 @@ class FileRevModel(HgRepoListModel):
     Model used to manage the list of revisions of a file, in file
     viewer of in diff-file viewer dialogs.
     """
-    _columns = ('ID', 'Log', 'Author', 'Date')
-    _stretchs = {'Log': 1}
+    _columns = ('ID', 'Log', 'Author', 'Date',)
+    _stretchs = {'Log': 1, }
 
     def __init__(self, repo, filename, noderev=None, parent=None):
         """
@@ -322,7 +324,6 @@ class FileRevModel(HgRepoListModel):
         self.heads = [self.repo.changectx(x).rev() for x in self.repo.heads()]
         self._datacache = {}
         self._fill_iter = None
-        print "starting filling graph"
         self.gr_fill_timer.start()
 
 
