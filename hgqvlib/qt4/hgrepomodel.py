@@ -59,7 +59,7 @@ def cvrt_date(date):
     formatted QString
     """
     date, tzdelay = date
-    return QtCore.QDateTime.fromTime_t(int(date)).toString(QtCore.Qt.ISODate)
+    return QtCore.QDateTime.fromTime_t(int(date)).toString(QtCore.Qt.LocaleDate)
 
 # in following lambdas, ctx is a hg changectx
 _columnmap = {'ID': lambda ctx: ctx.rev(),
@@ -215,6 +215,8 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
         if role == QtCore.Qt.DisplayRole:
             if column == 'Author': #author
                 return QtCore.QVariant(self.user_name(_columnmap[column](ctx)))
+            return QtCore.QVariant(_columnmap[column](ctx))
+        elif role == QtCore.Qt.ToolTipRole:
             return QtCore.QVariant(_columnmap[column](ctx))
         elif role == QtCore.Qt.ForegroundRole:
             if column == 'Author': #author
@@ -552,7 +554,7 @@ class HgFileListModel(QtCore.QAbstractTableModel):
                     return QtCore.QVariant(msg)
                 
         elif column == 0:
-            if role == QtCore.Qt.DisplayRole:
+            if role in (QtCore.Qt.DisplayRole, QtCore.Qt.ToolTipRole):
                 return QtCore.QVariant(current_file_desc['desc'])
             elif role == QtCore.Qt.DecorationRole:
                 if self._fulllist and ismerge(self.current_ctx):
