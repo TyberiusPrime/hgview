@@ -23,22 +23,23 @@ import os.path as osp
 
 import difflib
 
+from mercurial import ui, hg
 from mercurial.node import hex, short as short_hex
 from mercurial.revlog import LookupError
-from mercurial import ui, hg
 
-from PyQt4 import QtGui, QtCore, uic, Qsci
+from PyQt4 import QtGui, QtCore, Qsci
 from PyQt4.QtCore import Qt
-connect = QtCore.QObject.connect
-SIGNAL = QtCore.SIGNAL
-nullvariant = QtCore.QVariant()
 
-from hgqvlib.config import HgConfig
-from hgqvlib.qt4 import HgDialogMixin
+from hgqvlib.qt4 import icon as geticon
+from hgqvlib.qt4.hgdialogmixin import HgDialogMixin
 from hgqvlib.qt4.hgrepomodel import FileRevModel, ManifestModel
 from hgqvlib.qt4.blockmatcher import BlockList, BlockMatch
 from hgqvlib.qt4.lexers import get_lexer
-from hgqvlib.qt4 import icon as geticon
+from hgqvlib.qt4.quickbar import FindInGraphlogQuickBar
+
+connect = QtCore.QObject.connect
+SIGNAL = QtCore.SIGNAL
+nullvariant = QtCore.QVariant()
 
 sides = ('left', 'right')
 otherside = {'left': 'right', 'right': 'left'}
@@ -55,35 +56,37 @@ class FileViewer(QtGui.QMainWindow, HgDialogMixin):
         # hg repo
         self.filename = filename
         self.createActions()
-        
-        self.setupUi()
+        self.createToolbars()
+
+        self.textView.setFont(self._font)
         self.setupModels()
         
-    def setupUi(self):
-        lay = QtGui.QHBoxLayout(self.frame)
-        lay.setSpacing(0)
+    def createToolbars(self):
+        self.find_toolbar = FindInGraphlogQuickBar(self)
+        self.find_toolbar.attachFileView(self.textView)
+        connect(self.find_toolbar, SIGNAL('revisionSelected'),
+                self.tableView_revisions.goto)
+        connect(self.find_toolbar, SIGNAL('showMessage'),
+                self.statusBar().showMessage)
+        self.attachQuickBar(self.find_toolbar)
 
-        lay.setContentsMargins(0, 0, 0, 0)
-        sci = Qsci.QsciScintilla(self.frame)
-        sci.setFrameShape(QtGui.QFrame.NoFrame)
-        sci.setMarginLineNumbers(1, True)
-        sci.setFont(self.font)
-        sci.setReadOnly(True)
-        sci.SendScintilla(sci.SCI_SETSELEOLFILLED, True)
-        self.textBrowser_filecontent = sci
-        self.markerplus = self.textBrowser_filecontent.markerDefine(Qsci.QsciScintilla.Plus)
-        self.markerminus = self.textBrowser_filecontent.markerDefine(Qsci.QsciScintilla.Minus)
-        lay.addWidget(self.textBrowser_filecontent)
+        self.toolBar_edit.addAction(self.tableView_revisions._actions['back'])
+        self.toolBar_edit.addAction(self.tableView_revisions._actions['forward'])
 
         self.attachQuickBar(self.tableView_revisions.goto_toolbar)
-
+        
     def setupModels(self):
         self.filerevmodel = FileRevModel(self.repo, self.filename, self.rev)
         self.tableView_revisions.setModel(self.filerevmodel)
         self.connect(self.tableView_revisions,
                      SIGNAL('revisionSelected'),
                      self.revisionSelected)
-
+        self.textView.setMode('file')
+        self.textView.setModel(self.filerevmodel)
+        self.find_toolbar.setModel(self.filerevmodel)
+        self.find_toolbar.setFilterFiles([self.filename])
+        self.find_toolbar.setMode('file')
+        
     def createActions(self):
         connect(self.actionClose, SIGNAL('triggered()'),
                 self.close)
@@ -97,26 +100,11 @@ class FileViewer(QtGui.QMainWindow, HgDialogMixin):
         self.setupModels()        
         
     def revisionSelected(self, rev):
-        pos = self.textBrowser_filecontent.verticalScrollBar().value()
-        filectx = self.repo.filectx(self.filename, changeid=rev)
-        data = filectx.data()
-
-        lexer = get_lexer(self.filename, data)
-        if lexer:
-            lexer.setDefaultFont(self.font)
-            lexer.setFont(self.font)
-            self.textBrowser_filecontent.setLexer(lexer)
-        self.lexer = lexer
-
-        nlines = data.count('\n')
-        self.textBrowser_filecontent.setMarginWidth(1, str(nlines)+'00')
-        self.textBrowser_filecontent.setText(data)
-        self.textBrowser_filecontent.verticalScrollBar().setValue(pos)
-
-        #self.textBrowser_filecontent.markerDeleteAll()
-        #self.textBrowser_filecontent.markerAdd(1, self.markerplus)
-        #self.textBrowser_filecontent.markerAdd(2, self.markerminus)
-
+        pos = self.textView.verticalScrollBar().value()
+        ctx = self.filerevmodel.repo.changectx(rev)
+        self.textView.setContext(ctx)
+        self.textView.displayFile(self.filename)
+        self.textView.verticalScrollBar().setValue(pos)
 
         
 class ManifestViewer(QtGui.QMainWindow, HgDialogMixin):
@@ -159,7 +147,7 @@ class ManifestViewer(QtGui.QMainWindow, HgDialogMixin):
         sci.setMarginLineNumbers(1, True)
         sci.setMarginWidth(1, '000')
         sci.setReadOnly(True)
-        sci.setFont(self.font)
+        sci.setFont(self._font)
 
         sci.SendScintilla(sci.SCI_SETSELEOLFILLED, True)
         self.textView = sci
@@ -183,7 +171,7 @@ class ManifestViewer(QtGui.QMainWindow, HgDialogMixin):
             data = unicode(fc.data(), errors='ignore') # XXX
             lexer = get_lexer(path, data)
             if lexer:
-                lexer.setFont(self.font)
+                lexer.setFont(self._font)
                 self.textView.setLexer(lexer)
             self._cur_lexer = lexer
         nlines = data.count('\n')
@@ -252,8 +240,8 @@ class FileDiffViewer(QtGui.QMainWindow, HgDialogMixin):
             data = '' # too big
         lexer = get_lexer(self.filename, data)
         if lexer:
-            lexer.setDefaultFont(self.font)
-            lexer.setFont(self.font)
+            lexer.setDefaultFont(self._font)
+            lexer.setFont(self._font)
         self.lexer = lexer
         
     def createActions(self):
@@ -429,7 +417,7 @@ class FileDiffViewer(QtGui.QMainWindow, HgDialogMixin):
         lay.setContentsMargins(0, 0, 0, 0)
         for side, idx  in (('left', 0), ('right', 3)):
             sci = Qsci.QsciScintilla(self.frame)
-            sci.setFont(self.font)
+            sci.setFont(self._font)
             sci.verticalScrollBar().setFocusPolicy(Qt.StrongFocus)
             sci.setFocusProxy(sci.verticalScrollBar())
             sci.verticalScrollBar().installEventFilter(self)

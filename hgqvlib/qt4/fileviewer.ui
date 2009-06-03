@@ -47,19 +47,12 @@
         <enum>Qt::NoPen</enum>
        </property>
       </widget>
-      <widget class="QFrame" name="frame" >
-       <property name="frameShape" >
-        <enum>QFrame::StyledPanel</enum>
-       </property>
-       <property name="frameShadow" >
-        <enum>QFrame::Sunken</enum>
-       </property>
-      </widget>
+      <widget class="HgFileView" native="1" name="textView" />
      </widget>
     </item>
    </layout>
   </widget>
-  <widget class="QToolBar" name="toolBar" >
+  <widget class="QToolBar" name="toolBar_edit" >
    <property name="geometry" >
     <rect>
      <x>0</x>
@@ -102,6 +95,12 @@
    <class>HgRepoView</class>
    <extends>QTableView</extends>
    <header>hgrepoview.h</header>
+  </customwidget>
+  <customwidget>
+   <class>HgFileView</class>
+   <extends>QWidget</extends>
+   <header>hgfileview.h</header>
+   <container>1</container>
   </customwidget>
  </customwidgets>
  <resources/>

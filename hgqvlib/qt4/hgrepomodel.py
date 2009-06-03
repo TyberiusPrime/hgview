@@ -63,8 +63,8 @@ def cvrt_date(date):
 
 # in following lambdas, ctx is a hg changectx
 _columnmap = {'ID': lambda ctx: ctx.rev(),
-              'Log': lambda ctx: ctx.description(),
-              'Author': lambda ctx: ctx.user(),
+              'Log': lambda ctx: unicode(ctx.description(), 'utf-8', 'replace'),
+              'Author': lambda ctx: unicode(ctx.user(), 'utf-8', 'replace'),
               'Date': lambda ctx: cvrt_date(ctx.date()),
               'Tags': lambda ctx: ",".join(ctx.tags()),
               'Branch': lambda ctx: ctx.branch(),
@@ -386,17 +386,8 @@ class HgFileListModel(QtCore.QAbstractTableModel):
     def file(self, row):
         return self._files[row]['path']
 
-    def fileflag(self, fn, ctx=None):
-        if ctx is None:
-            return self._filesdict[fn]['flag']
-                
-        changes = self.repo.status(ctx.parents()[0].node(), ctx.node())[:5]
-        modified, added, removed, deleted, unknown = changes
-        for fl, lst in zip(["=","+","-","-","?"],
-                           [modified, added, removed, deleted, unknown]):
-            if fn in lst:
-                return fl
-        return ''
+    def fileflag(self, fn):
+        return self._filesdict[fn]['flag']
 
     def fileparentctx(self, fn, ctx=None):
         if ctx is None:
@@ -409,6 +400,12 @@ class HgFileListModel(QtCore.QAbstractTableModel):
         row = index.row()
         return self._files[row]['path']
 
+    def indexFromFile(self, filename):
+        if filename in self._filesdict:
+            row = self._files.index(self._filesdict[filename])
+            return self.index(row, 0)
+        return QtCore.QModelIndex()
+            
     def _filterFile(self, filename):
         if self._fulllist:
             return True
