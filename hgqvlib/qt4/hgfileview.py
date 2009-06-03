@@ -253,6 +253,7 @@ class HgFileListView(QtGui.QTableView):
         col_widths = [self.columnWidth(i) \
                       for i in range(1, self.model().columnCount())]
         col_width = vp_width - sum(col_widths)
+        col_width = max(col_width, 50)
         self.setColumnWidth(0, col_width)
 
     def sectionResized(self, idx, oldsize, newsize):
