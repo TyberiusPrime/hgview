@@ -425,10 +425,16 @@ class HgFileListModel(QtCore.QAbstractTableModel):
             m = ctx.filectx(f).renamed()
             if m:
                 oldname, node = m
-                removed.remove(oldname)
-                desc['renamedfrom'] = (oldname, node)
-                desc['flag'] = '='
-                desc['desc'] += '\n(was %s)' % oldname
+                if oldname in removed:
+                    removed.remove(oldname)
+                    desc['renamedfrom'] = (oldname, node)
+                    desc['flag'] = '='
+                    desc['desc'] += '\n(was %s)' % oldname
+                else:
+                    desc['copiedfrom'] = (oldname, node)
+                    desc['flag'] = '='
+                    desc['desc'] += '\n (copy of %s)' % oldname
+                    
             _files.append(desc)
         for f in [x for x in modified if self._filterFile(x)]:
             _files.append({'path':f, 'flag': '=', 'desc':f,
