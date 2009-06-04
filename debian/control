@@ -2,10 +2,9 @@ Source: hgqv
 Section: devel
 Priority: optional
 Maintainer: David Douard <david.douard@logilab.fr>
-Build-Depends: debhelper (>= 5.0.38), python-qt4, mercurial (>= 0.9.3), python (>=2.3.5-7), python-central (>= 0.5.6), xmlto, asciidoc
+Build-Depends: debhelper (>= 5.0.38), python-qt4, mercurial (>= 0.9.3), python (>=2.3.5-7), python-support (>= 0.5.3), xmlto, asciidoc
 Build-Depends-Indep: 
 Standards-Version: 3.7.3
-XS-Python-Version: current
 Vcs-Hg: http://www.logilab.org/cgi-bin/hgwebdir.cgi/hgqv
 Vcs-Browser: http://www.logilab.org/cgi-bin/hgwebdir.cgi/hgqv
 Homepage: http://www.logilab.org/project/hgqv

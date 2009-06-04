@@ -1,35 +1,54 @@
-2009-05-27  -- 1.1.0
 
+
+2009-06-01  --  1.1.0
     * major rewrite of many parts of the code
+
     * several bug fixes
+
     * make dialogs consistants
 
-	
+
+
 2009-04-21  --  1.0.0
     * first released version of hgqv since it forked from hgview
+
     * pure qt4
+
     * mostly rewrote the revision navigator
+
     * add a file revision comparator
+
     * add a manifest viewer
+
 
 
 2008-10-06  --  0.9.0
     * support branches
+
     * make filter text search on files and log description tree.
+
     * bugfixes
+
 
 
 2008-05-15  --  0.3.1
     * added logic to resolve symbolic links to hgview executable
+
     * make hgview less verbose
+
     * allow home installation
+
     * let the diff's scroll window resize when it's packed in the HPaned
+
     * fix Windows related bug
+
 
 
 2007-05-29  --  0.3.0
     * add a Qt4 version of hgview
+
     * bugfixes
+
 
 
 2007-05-29  --  0.2.0
