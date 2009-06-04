@@ -160,7 +160,6 @@ class MyInstallLib(install_lib.install_lib):
 
 class QtBuild(build):
     def compile_ui(self, ui_file, py_file=None):
-        return # disabled for now
         # Search for pyuic4 in python bin dir, then in the $Path.
         if py_file is None:
             py_file = splitext(ui_file)[0] + "_ui.py"
@@ -169,6 +168,7 @@ class QtBuild(build):
             fp = open(py_file, 'w')
             uic.compileUi(ui_file, fp)
             fp.close()
+            print "compiled", ui_file, "into", py_file
         except Exception, e:
             print 'Unable to compile user interface', e
             return
