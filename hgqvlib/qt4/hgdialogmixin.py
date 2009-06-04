@@ -30,7 +30,6 @@ Qt = QtCore.Qt
 
 from hgqvlib.config import HgConfig
 
-    
 class HgDialogMixin(object):
     """
     Mixin for QDialogs defined from a .ui file, wich automates the
@@ -42,24 +41,25 @@ class HgDialogMixin(object):
         # self.repo must be defined in actual class before calling __init__
         assert self.repo is not None
         self.load_config()
+
+        _path = osp.dirname(__file__)
+        uifile = osp.join(_path, self._uifile)
+        try:
+            ui_class, base_class = uic.loadUiType(uifile)
+        except IOError:
+            modname = osp.splitext(osp.basename(uifile))[0] + "_ui"
+            modname = "hgqvlib.qt4.%s" % modname
+            mod = __import__(modname, fromlist=['Ui_MainWindow'])
+            ui_class = mod.Ui_MainWindow
+        if ui_class not in self.__class__.__bases__:
+            # hacking by adding the form class from ui file or pyuic4
+            # generated module because we cannot use metaclass here,
+            # due to "QObject" not being a subclass of "object"
+            self.__class__.__bases__ = self.__class__.__bases__ + (ui_class,)
+        self.setupUi(self)
         self.load_ui()
         
     def load_ui(self):
-        # load qt designer ui file
-        for _path in [osp.dirname(__file__),
-                      osp.join(sys.exec_prefix, 'share/hgqv'),
-                      osp.expanduser('~/share/hgqv'),
-                      osp.join(osp.dirname(__file__), "../../../../../share/hgqv"),
-                      ]:
-            ui_file = osp.join(_path, self._uifile)
-            if osp.isfile(ui_file):
-                break
-        else:
-            raise ValueError("Unable to find hgqv.ui\n"
-                             "Check your installation.")
-        uifile = osp.join(osp.dirname(__file__), ui_file)
-        self.ui = uic.loadUi(uifile, self)
-
         # we explicitely create a QShortcut so we can disable it
         # when a "helper context toolbar" is activated (which can be
         # closed hitting the Esc shortcut)

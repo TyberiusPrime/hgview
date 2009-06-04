@@ -204,7 +204,8 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
         """
         Callback called when a revision is double-clicked in the revisions table        
         """
-        ManifestViewer(self.repo, rev).show()
+        self._manifestdlg = ManifestViewer(self.repo, rev)
+        self._manifestdlg.show()
     
     def revision_selected(self, rev):
         """

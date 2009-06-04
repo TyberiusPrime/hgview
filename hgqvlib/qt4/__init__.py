@@ -16,7 +16,7 @@
 # 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #
-# make sur the Qt rc files are converted into python modules, then load them
+# make sure the Qt rc files are converted into python modules, then load them
 # this must be done BEFORE other hgqv qt4 modules are loaded.
 import os
 import os.path as osp

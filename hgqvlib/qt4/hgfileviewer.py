@@ -208,7 +208,7 @@ class FileDiffViewer(QtGui.QMainWindow, HgDialogMixin):
         self.filename = filename
         self.findLexer()
 
-        self.setupUi()
+        self.setupViews()
 
         # timer used to fill viewers with diff block markers during GUI idle time
         self.timer = QtCore.QTimer()
@@ -404,9 +404,9 @@ class FileDiffViewer(QtGui.QMainWindow, HgDialogMixin):
         dlg = ManifestViewer(self.repo, rev)
         dlg.setCurrentFile(self.filename)
         dlg.show()
+        self._manifestdlg = dlg
 
-
-    def setupUi(self):
+    def setupViews(self):
         # viewers are Scintilla editors
         self.viewers = {}
         # block are diff-block displayers
