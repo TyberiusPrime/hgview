@@ -27,11 +27,11 @@ connect = QtCore.QObject.connect
 SIGNAL = QtCore.SIGNAL
 nullvariant = QtCore.QVariant()
 
-from hgqvlib.decorators import timeit
-from hgqvlib.qt4 import icon as geticon
-from hgqvlib.qt4.hgfileviewer import FileViewer, FileDiffViewer, ManifestViewer
-from hgqvlib.qt4.quickbar import QuickBar
-from hgqvlib.qt4.lexers import get_lexer
+from hgviewlib.decorators import timeit
+from hgviewlib.qt4 import icon as geticon
+from hgviewlib.qt4.hgfileviewer import FileViewer, FileDiffViewer, ManifestViewer
+from hgviewlib.qt4.quickbar import QuickBar
+from hgviewlib.qt4.lexers import get_lexer
 
 class HgFileView(Qsci.QsciScintilla):
     def __init__(self, parent=None):

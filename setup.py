@@ -17,7 +17,7 @@
 # You should have received a copy of the GNU General Public License along with
 # this program; if not, write to the Free Software Foundation, Inc.,
 # 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
-""" Generic Setup script, takes package info from hgqv.__pkginfo__.py file """
+""" Generic Setup script, takes package info from hgviewlib.__pkginfo__.py file """
 
 from __future__ import nested_scopes
 
@@ -31,31 +31,31 @@ from os.path import isdir, exists, join, walk, splitext
 
 
 # import required features
-from hgqvlib.__pkginfo__ import modname, version, license, short_desc, long_desc, \
+from hgviewlib.__pkginfo__ import modname, version, license, short_desc, long_desc, \
      web, author, author_email
 # import optional features
 try:
-    from hgqvlib.__pkginfo__ import distname
+    from hgviewlib.__pkginfo__ import distname
 except ImportError:
     distname = modname
 try:
-    from hgqvlib.__pkginfo__ import scripts
+    from hgviewlib.__pkginfo__ import scripts
 except ImportError:
     scripts = []
 try:
-    from hgqvlib.__pkginfo__ import data_files
+    from hgviewlib.__pkginfo__ import data_files
 except ImportError:
     data_files = None
 try:
-    from hgqvlib.__pkginfo__ import subpackage_of
+    from hgviewlib.__pkginfo__ import subpackage_of
 except ImportError:
     subpackage_of = None
 try:
-    from hgqvlib.__pkginfo__ import include_dirs
+    from hgviewlib.__pkginfo__ import include_dirs
 except ImportError:
     include_dirs = []
 try:
-    from hgqvlib.__pkginfo__ import ext_modules
+    from hgviewlib.__pkginfo__ import ext_modules
 except ImportError:
     ext_modules = None
 
@@ -181,7 +181,7 @@ class QtBuild(build):
             print "Unable to generate python module for resource file", qrc_file
         
     def run(self):
-        for dirpath, _, filenames in os.walk(join('hgqvlib', 'qt4')):
+        for dirpath, _, filenames in os.walk(join('hgviewlib', 'qt4')):
             for filename in filenames:
                 if filename.endswith('.ui'):
                     self.compile_ui(join(dirpath, filename))
@@ -197,15 +197,15 @@ def install():
     #from setuptools import setup
     if os.name in ['nt']:
         # the msi will automatically install the qct.py plugin into hgext
-        kwargs['data_files'] = [('lib/site-packages/hgext', ['hgext/hgqv.py']),
-                ('mercurial/hgrc.d', ['hgqv.rc']),
-                ('share/hgqv', ['doc/hgqv.1.html', 'README', 'README.mercurial'])]
-        scripts = ['win32/hgqv_postinstall.py']
+        kwargs['data_files'] = [('lib/site-packages/hgext', ['hgext/hgview.py']),
+                ('mercurial/hgview.d', ['hgview.rc']),
+                ('share/hgview', ['doc/hgview.1.html', 'README', 'README.mercurial'])]
+        scripts = ['win32/hgview_postinstall.py']
     else:
-        scripts = ['bin/hgqv']
+        scripts = ['bin/hgview']
 
     kwargs['package_dir'] = {modname : modname}
-    packages = ['hgqvlib', 'hgqvlib.qt4'] # [modname] + get_packages(modname, modname)
+    packages = ['hgviewlib', 'hgviewlib.qt4'] # [modname] + get_packages(modname, modname)
     kwargs['packages'] = packages
     return setup(name=distname,
                  version=version,

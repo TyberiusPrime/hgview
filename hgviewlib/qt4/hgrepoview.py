@@ -26,10 +26,10 @@ connect = QtCore.QObject.connect
 SIGNAL = QtCore.SIGNAL
 nullvariant = QtCore.QVariant()
 
-from hgqvlib.decorators import timeit
-from hgqvlib.qt4 import icon as geticon
-from hgqvlib.qt4.hgfileviewer import ManifestViewer
-from hgqvlib.qt4.quickbar import QuickBar
+from hgviewlib.decorators import timeit
+from hgviewlib.qt4 import icon as geticon
+from hgviewlib.qt4.hgfileviewer import ManifestViewer
+from hgviewlib.qt4.quickbar import QuickBar
 
 class GotoQuickBar(QuickBar):
     def __init__(self, parent):
@@ -320,7 +320,7 @@ class RevDisplay(QtGui.QFrame):
 if __name__ == "__main__":
     from mercurial import ui, hg
     from optparse import OptionParser
-    from hgqvlib.qt4.hgrepomodel import FileRevModel, HgRepoListModel
+    from hgviewlib.qt4.hgrepomodel import FileRevModel, HgRepoListModel
     p = OptionParser()
     p.add_option('-R', '--root', default='.',
                  dest='root',

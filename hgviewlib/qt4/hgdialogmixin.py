@@ -17,7 +17,7 @@
 
 #
 # make sur the Qt rc files are converted into python modules, then load them
-# this must be done BEFORE other hgqv qt4 modules are loaded.
+# this must be done BEFORE other hgview qt4 modules are loaded.
 import os
 import os.path as osp
 import sys
@@ -28,7 +28,7 @@ connect = QtCore.QObject.connect
 SIGNAL = QtCore.SIGNAL
 Qt = QtCore.Qt
 
-from hgqvlib.config import HgConfig
+from hgviewlib.config import HgConfig
 
 class HgDialogMixin(object):
     """
@@ -48,7 +48,7 @@ class HgDialogMixin(object):
             ui_class, base_class = uic.loadUiType(uifile)
         except IOError:
             modname = osp.splitext(osp.basename(uifile))[0] + "_ui"
-            modname = "hgqvlib.qt4.%s" % modname
+            modname = "hgviewlib.qt4.%s" % modname
             mod = __import__(modname, fromlist=['Ui_MainWindow'])
             ui_class = mod.Ui_MainWindow
         if ui_class not in self.__class__.__bases__:

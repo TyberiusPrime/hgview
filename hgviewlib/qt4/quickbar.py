@@ -21,7 +21,7 @@ from mercurial import util
 
 from PyQt4 import QtCore, QtGui
 
-from hgqvlib.qt4 import icon as geticon
+from hgviewlib.qt4 import icon as geticon
 
 Qt = QtCore.Qt
 connect = QtCore.QObject.connect
@@ -286,7 +286,7 @@ class FindInGraphlogQuickBar(FindQuickBar):
 
 if __name__ == "__main__":
     import sys
-    import hgqvlib.qt4 # to force importation of resource module w/ icons
+    import hgviewlib.qt4 # to force importation of resource module w/ icons
     app = QtGui.QApplication(sys.argv)
     root = QtGui.QMainWindow()
     w = QtGui.QFrame()

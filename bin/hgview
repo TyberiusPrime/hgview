@@ -10,7 +10,7 @@ import sys, os
 import os.path as pos
 
 try:
-    import hgqvlib
+    import hgviewlib
 except ImportError:
     import stat
     execpath = pos.abspath(__file__)
@@ -21,7 +21,7 @@ except ImportError:
                                         os.readlink(execpath)))
     sys.path.append(pos.abspath(pos.join(pos.dirname(execpath), "..")))
 
-from hgqvlib.qt4.hgrepoviewer import main 
+from hgviewlib.qt4.hgrepoviewer import main 
 
 main()
 

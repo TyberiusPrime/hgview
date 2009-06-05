@@ -1,24 +1,24 @@
-hgqv(1)
-=======
+hgview(1)
+=========
 David Douard <david.douard@logilab.fr>
 
 NAME
 ----
-hgqv - Qt based mercurial repository browser
+hgview - Qt based mercurial repository browser
 
 SYNOPSIS
 --------
-'hgqv' [filename]
+'hgview' [filename]
 
 DESCRIPTION
 -----------
 
-hgqv(1) is a GUI application usually invoked from the command
+hgview(1) is a GUI application usually invoked from the command
 line. The simplest way to use it is to install it as a hg
 extension. Alternatively, it can be used as a standalone application
 by calling it from a mercurial repository.
 
-If [filename] is given, hgqv will start in file-diff mode, in which
+If [filename] is given, hgview will start in file-diff mode, in which
 user can easily compare arbitrary revisions of a file.
 
 FILES
@@ -43,7 +43,7 @@ Written by David Douard <david.douard@logilab.fr>
 
 RESOURCES
 ---------
-http://www.logilab.org/project/hgqv
+http://www.logilab.org/project/hgview
 
 COPYING
 -------

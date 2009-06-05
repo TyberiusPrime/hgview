@@ -7,7 +7,7 @@
 # This software may be used and distributed according to the terms
 # of the GNU General Public License, incorporated herein by reference.
 """
-Main Qt4 application for hgqv
+Main Qt4 application for hgview
 """
 import sys, os
 import re
@@ -17,15 +17,15 @@ from PyQt4 import QtCore, QtGui, Qsci
 from mercurial import ui, hg
 from mercurial import util
 
-from hgqvlib.util import tounicode
-from hgqvlib.hggraph import diff as revdiff
-from hgqvlib.decorators import timeit
+from hgviewlib.util import tounicode
+from hgviewlib.hggraph import diff as revdiff
+from hgviewlib.decorators import timeit
 
-from hgqvlib.qt4 import icon as geticon
-from hgqvlib.qt4.hgrepomodel import HgRepoListModel, HgFileListModel
-from hgqvlib.qt4.hgfileviewer import ManifestViewer
-from hgqvlib.qt4.hgdialogmixin import HgDialogMixin
-from hgqvlib.qt4.quickbar import FindInGraphlogQuickBar
+from hgviewlib.qt4 import icon as geticon
+from hgviewlib.qt4.hgrepomodel import HgRepoListModel, HgFileListModel
+from hgviewlib.qt4.hgfileviewer import ManifestViewer
+from hgviewlib.qt4.hgdialogmixin import HgDialogMixin
+from hgviewlib.qt4.quickbar import FindInGraphlogQuickBar
 
 Qt = QtCore.Qt
 bold = QtGui.QFont.Bold
@@ -41,7 +41,7 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
         QtGui.QMainWindow.__init__(self)
         HgDialogMixin.__init__(self)
 
-        self.setWindowTitle('hgqv: %s' % os.path.abspath(self.repo.root))
+        self.setWindowTitle('hgview: %s' % os.path.abspath(self.repo.root))
         self.menubar.hide()
         
         self.setup_statusbar()
@@ -237,7 +237,7 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
 
     def on_about(self, *args):
         """ Display about dialog """
-        from hgqvlib.__pkginfo__ import modname, version, short_desc, long_desc
+        from hgviewlib.__pkginfo__ import modname, version, short_desc, long_desc
         try:
             from mercurial.version import get_version
             hgversion = get_version()

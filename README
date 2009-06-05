@@ -21,16 +21,16 @@ It is very simple to use ``hgview`` from the hg repository::
 On the other hand, installing ``hgview`` is simply done using usual
 ``distutils`` script::
 
-  cd $PATH_TO_HGQV_DIR
+  cd $PATH_TO_HGVIEW_DIR
   python setup.py install
 
 Last, you can add the following to your main .hgrc file::
 
   [extensions]
-  view=path/to/hqgv/hgext/hgqv.py
+  view=path/to/hqgv/hgext/hgview.py
 
-  [hgqv]
-  # your hgqv configs statements like: 
+  [hgview]
+  # your hgview configs statements like: 
   dotradius=6
   # type hg qv-config to list available options
 

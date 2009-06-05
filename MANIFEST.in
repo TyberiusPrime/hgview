@@ -6,16 +6,16 @@ include ChangeLog
 include COPYING
 include README
 
-include bin/hgqv
-include bin/hgqv.bat
+include bin/hgview
+include bin/hgview.bat
 
-include hgqvlib/qt4/hgqv.ui
-include hgqvlib/qt4/filediffviewer.ui
-include hgqvlib/qt4/fileviewer.ui
-include hgqvlib/qt4/manifestviewer.ui
+include hgviewlib/qt4/hgqv.ui
+include hgviewlib/qt4/filediffviewer.ui
+include hgviewlib/qt4/fileviewer.ui
+include hgviewlib/qt4/manifestviewer.ui
 
-include doc/hgqv.1
-include hgext/hgqv.py
-include hgext/hgqv.rc
+include doc/hgview.1
+include hgext/hgview.py
+include hgext/hgview.rc
 
 recursive-include etc *

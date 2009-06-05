@@ -31,16 +31,16 @@ install: build
 	dh_testroot
 	dh_clean -k
 	dh_installdirs
-	mkdir -p debian/hgqv/usr/lib/`pyversions -d`/site-packages/
-	mkdir -p debian/hgqv/usr/share/python-support/hgqv/hgext/
-	python setup.py -q install --prefix=debian/hgqv/usr
-	rm -rf debian/hgqv/usr/lib/python*/site-packages/hgqv/test
-	mv debian/hgqv/usr/share/python-support/mercurial-common/hgext/hgqv.py debian/hgqv/usr/share/python-support/hgqv/hgext/hgqv.py
-	rm -rf debian/hgqv/usr/share/python-support/mercurial-common
-	install -d debian/hgqv/etc/mercurial/hgrc.d/
+	mkdir -p debian/hgview/usr/lib/`pyversions -d`/site-packages/
+	mkdir -p debian/hgview/usr/share/python-support/hgview/hgext/
+	python setup.py -q install --prefix=debian/hgview/usr
+	rm -rf debian/hgview/usr/lib/python*/site-packages/hgview/test
+	mv debian/hgview/usr/share/python-support/mercurial-common/hgext/hgview.py debian/hgview/usr/share/python-support/hgview/hgext/hgview.py
+	rm -rf debian/hgview/usr/share/python-support/mercurial-common
+	install -d debian/hgview/etc/mercurial/hgrc.d/
 	install -m 644 \
-		hgext/hgqv.rc \
-		debian/hgqv/etc/mercurial/hgrc.d/hgqv.rc
+		hgext/hgview.rc \
+		debian/hgview/etc/mercurial/hgrc.d/hgview.rc
 
 # Build architecture-independent files here.
 binary-indep: build install

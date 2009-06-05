@@ -17,8 +17,8 @@ http://www.logilab.fr/ -- mailto:contact@logilab.fr
 """
 
 import glob
-modname = 'hgqv'
-numversion = (1, 1, 0)
+modname = 'hgview'
+numversion = (1, 0, 0)
 version = '.'.join([str(num) for num in numversion])
 
 
@@ -34,7 +34,7 @@ long_desc = """
  (it should happily be able to handle the browsing of the Linux kernel
  source code repository).
 
- This is actually a major rework of the Qt version of hgqv.
+ This is actually a major rework of the Qt version of hgview.
 """
 
 author = "Logilab"
@@ -46,8 +46,8 @@ ftp = "ftp://ftp.logilab.org/pub/%s" % modname
 mailinglist = "mailto://python-projects@lists.logilab.org"
 
 
-scripts = ['bin/hgqv']
-debian_name = 'hgqv'
+scripts = ['bin/hgview']
+debian_name = 'hgview'
 debian_maintainer = 'Alexandre Fayolle' 
 debian_maintainer_email = 'alexandre.fayolle@logilab.fr'
 pyversions = ["2.5"]
@@ -56,14 +56,14 @@ debian_handler = 'python-dep-standalone'
  
 from os.path import join
 include_dirs = [] #join('tests', 'data'), join('tests', 'packages')]
-data_files = [ #('share/hgqv', ['hgqvlib/qt4/hgqv.ui',
-               #               'hgqvlib/qt4/filediffviewer.ui',
-               #               'hgqvlib/qt4/fileviewer.ui',
-               #               'hgqvlib/qt4/manifestviewer.ui',
+data_files = [ #('share/hgview', ['hgviewlib/qt4/hgqv.ui',
+               #               'hgviewlib/qt4/filediffviewer.ui',
+               #               'hgviewlib/qt4/fileviewer.ui',
+               #               'hgviewlib/qt4/manifestviewer.ui',
                #               ]),
-              ('share/man/man1', ['doc/hgqv.1',
+              ('share/man/man1', ['doc/hgview.1',
                                  ]),
-              ('share/python-support/mercurial-common/hgext', ['hgext/hgqv.py',]),
-              #('../etc/mercurial/hgrc.d', ['hgext/hgqv.rc',]),
+              ('share/python-support/mercurial-common/hgext', ['hgext/hgview.py',]),
+              #('../etc/mercurial/hgrc.d', ['hgext/hgview.rc',]),
               ]
 

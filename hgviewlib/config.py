@@ -18,7 +18,7 @@
 # pylint: disable-msg=C0103
 
 """
-Module for managing configuration parameters of hgqv using Hg's
+Module for managing configuration parameters of hgview using Hg's
 configuration system
 """
 import os
@@ -41,7 +41,7 @@ class HgConfig(object):
     """
     Class managing user configuration from hg standard configuration system (.hgrc) 
     """
-    def __init__(self, ui, section="hgqv"):
+    def __init__(self, ui, section="hgview"):
         self.ui = ui
         self.section = section
         self._cache = {}
@@ -76,7 +76,7 @@ class HgConfig(object):
             try:
                 cfgfile = open(os.path.expanduser(usersfile))
             except IOError, e:
-                print "Cannot open file %s: please configure the 'users' parameter of the '[hgqv]' section in your .hgrc file" % usersfile
+                print "Cannot open file %s: please configure the 'users' parameter of the '[hgview]' section in your .hgrc file" % usersfile
                 cfgfile = None
 
         if cfgfile:

@@ -25,11 +25,11 @@ from mercurial.node import nullrev
 from mercurial.node import hex, short as short_hex
 from mercurial.revlog import LookupError
 
-from hgqvlib.hggraph import Graph, ismerge, diff as revdiff
-from hgqvlib.hggraph import revision_grapher, filelog_grapher
-from hgqvlib.config import HgConfig
-from hgqvlib.qt4 import icon as geticon
-from hgqvlib.decorators import timeit
+from hgviewlib.hggraph import Graph, ismerge, diff as revdiff
+from hgviewlib.hggraph import revision_grapher, filelog_grapher
+from hgviewlib.config import HgConfig
+from hgviewlib.qt4 import icon as geticon
+from hgviewlib.decorators import timeit
 
 from PyQt4 import QtCore, QtGui
 connect = QtCore.QObject.connect

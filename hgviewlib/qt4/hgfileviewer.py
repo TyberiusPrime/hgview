@@ -30,12 +30,12 @@ from mercurial.revlog import LookupError
 from PyQt4 import QtGui, QtCore, Qsci
 from PyQt4.QtCore import Qt
 
-from hgqvlib.qt4 import icon as geticon
-from hgqvlib.qt4.hgdialogmixin import HgDialogMixin
-from hgqvlib.qt4.hgrepomodel import FileRevModel, ManifestModel
-from hgqvlib.qt4.blockmatcher import BlockList, BlockMatch
-from hgqvlib.qt4.lexers import get_lexer
-from hgqvlib.qt4.quickbar import FindInGraphlogQuickBar
+from hgviewlib.qt4 import icon as geticon
+from hgviewlib.qt4.hgdialogmixin import HgDialogMixin
+from hgviewlib.qt4.hgrepomodel import FileRevModel, ManifestModel
+from hgviewlib.qt4.blockmatcher import BlockList, BlockMatch
+from hgviewlib.qt4.lexers import get_lexer
+from hgviewlib.qt4.quickbar import FindInGraphlogQuickBar
 
 connect = QtCore.QObject.connect
 SIGNAL = QtCore.SIGNAL

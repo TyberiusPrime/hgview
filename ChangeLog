@@ -1,20 +1,11 @@
 
 
-2009-06-01  --  1.1.0
-    * major rewrite of many parts of the code
-
-    * several bug fixes
+2009-06-05  --  1.0.0
+    * almost complete rewrite of hgview (only using Qt for now)
 
     * make dialogs consistants
 
-
-
-2009-04-21  --  1.0.0
-    * first released version of hgqv since it forked from hgview
-
     * pure qt4
-
-    * mostly rewrote the revision navigator
 
     * add a file revision comparator
 

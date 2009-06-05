@@ -25,8 +25,8 @@ from StringIO import StringIO
 from mercurial.node import nullrev
 from mercurial import patch, util
 
-import hgqvlib # force apply monkeypatches
-from hgqvlib.util import tounicode
+import hgviewlib # force apply monkeypatches
+from hgviewlib.util import tounicode
 
 def diff(repo, ctx1, ctx2=None, files=None):
     """

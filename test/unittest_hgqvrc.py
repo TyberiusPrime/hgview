@@ -6,7 +6,7 @@ from ConfigParser import SafeConfigParser as ConfigParser
 from tempfile import NamedTemporaryFile, TemporaryFile, mkdtemp
 from shutil import copyfileobj
 
-from hgqvlib import config
+from hgviewlib import config
 
 DATADIR= 'data'
 def input_path(path=''):

@@ -42,6 +42,7 @@ SIGNAL = QtCore.SIGNAL
 Qt = QtCore.Qt
 import hgqv_rc
 
+
 _icons = {}
 def _load_icons():
     d = QtCore.QDir(':/icons')
