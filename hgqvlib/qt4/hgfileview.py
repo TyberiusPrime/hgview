@@ -19,8 +19,9 @@ Qt4 high level widgets for hg repo changelogs and filelogs
 import sys
 
 from mercurial.node import hex, short as short_hex, bin as short_bin
+from mercurial import util
 
-from PyQt4 import QtCore, QtGui
+from PyQt4 import QtCore, QtGui, Qsci
 Qt = QtCore.Qt
 connect = QtCore.QObject.connect
 SIGNAL = QtCore.SIGNAL
@@ -30,7 +31,119 @@ from hgqvlib.decorators import timeit
 from hgqvlib.qt4 import icon as geticon
 from hgqvlib.qt4.hgfileviewer import FileViewer, FileDiffViewer, ManifestViewer
 from hgqvlib.qt4.quickbar import QuickBar
+from hgqvlib.qt4.lexers import get_lexer
 
+class HgFileView(Qsci.QsciScintilla):
+    def __init__(self, parent=None):
+        Qsci.QsciScintilla.__init__(self, parent)
+        self.setMarginLineNumbers(1, True)
+        self.setMarginWidth(1, '000')
+        self.setReadOnly(True)
+        #self.setFont(self.font)
+
+        self.SendScintilla(self.SCI_INDICSETSTYLE, 8, self.INDIC_ROUNDBOX)
+        self.SendScintilla(self.SCI_INDICSETUNDER, 8, True)
+        self.SendScintilla(self.SCI_INDICSETFORE, 8, 0xBBFFFF)
+        self.SendScintilla(self.SCI_INDICSETSTYLE, 9, self.INDIC_PLAIN)
+        self.SendScintilla(self.SCI_INDICSETUNDER, 9, False)
+        self.SendScintilla(self.SCI_INDICSETFORE, 9, 0x0000FF)
+
+        self.SendScintilla(self.SCI_SETSELEOLFILLED, True)
+
+        self._model = None
+        self._ctx = None
+        self._filename = None
+        self._find_text = None
+        self._mode = "diff" # can be 'diff' or 'file' 
+
+    def setMode(self, mode):
+        assert mode in ('diff', 'file')
+        if mode != self._mode:
+            self._mode = mode
+            self.displayFile(self._filename)
+        
+    def setModel(self, model):
+        # XXX we really need only the "Graph" instance 
+        self._model = model
+        self.clear()
+        
+    def setContext(self, ctx):
+        self._ctx = ctx
+        self.clear()
+
+    def rev(self):
+        return self._ctx.rev()
+
+    def filename(self):
+        return self._filename
+    
+    def displayFile(self, filename):
+        self._filename = filename
+        self.clear()
+        if filename is None:
+            return
+        if self._mode == 'file':
+            flag = "+"            
+            data = self._ctx.filectx(filename).data()
+            if util.binary(data):
+                data = "binary file"
+        else:
+            flag, data = self._model.graph.filedata(filename, self._ctx.rev())
+        lexer = None
+        if flag == "+":
+            lexer = get_lexer(filename, data)
+            nlines = data.count('\n')
+            self.setMarginWidth(1, str(nlines)+'0')            
+        elif flag == "=":
+            lexer = Qsci.QsciLexerDiff()
+            self.setMarginWidth(1, 0)
+        if lexer:
+            lexer.setDefaultFont(self.font())
+            lexer.setFont(self.font())
+        self.setLexer(lexer)
+        self._cur_lexer = lexer
+
+        self.setText(data)
+        if self._find_text:
+            self.highlightSearchString(self._find_text)
+        
+    def searchString(self, text):
+        self._find_text = text
+        self.clearHighlights()
+        if self._find_text:
+            for pos in self.highlightSearchString(self._find_text):
+                if not self._find_text: # XXX is this required to handle "cancellation"?
+                    break                
+                self.highlightCurrentSearchString(pos, self._find_text)
+                yield self._ctx.rev(), self._filename, pos
+                
+    def clearHighlights(self):
+        n = self.length()
+        self.SendScintilla(self.SCI_SETINDICATORCURRENT, 8) # highlight
+        self.SendScintilla(self.SCI_INDICATORCLEARRANGE, 0, n)
+        self.SendScintilla(self.SCI_SETINDICATORCURRENT, 9) # current found occurrence
+        self.SendScintilla(self.SCI_INDICATORCLEARRANGE, 0, n)
+
+    def highlightSearchString(self, text):
+        data = unicode(self.text())
+        self.SendScintilla(self.SCI_SETINDICATORCURRENT, 8)
+        pos = [data.find(text)]
+        n = len(text)
+        while pos[-1] > -1:
+            self.SendScintilla(self.SCI_INDICATORFILLRANGE, pos[-1], n)
+            pos.append(data.find(text, pos[-1]+1))
+        pos = [x for x in pos if x > -1]
+        return pos
+        
+    def highlightCurrentSearchString(self, pos, text):
+        line = self.SendScintilla(self.SCI_LINEFROMPOSITION, pos)
+        #line, idx = w.lineIndexFromPosition(nextpos)
+        self.ensureLineVisible(line)
+        self.SendScintilla(self.SCI_SETINDICATORCURRENT, 9)
+        self.SendScintilla(self.SCI_INDICATORCLEARRANGE, 0, pos)
+        self.SendScintilla(self.SCI_INDICATORFILLRANGE, pos, len(text))
+
+        
 class HgFileListView(QtGui.QTableView):
     """
     A QTableView for displaying a HgFileListModel
@@ -75,6 +188,9 @@ class HgFileListView(QtGui.QTableView):
             index = self.currentIndex()
         sel_file = self.model().fileFromIndex(index)
         self.emit(SIGNAL('fileSelected'), sel_file)
+
+    def selectFile(self, filename):
+        self.setCurrentIndex(self.model().indexFromFile(filename))
 
     def fileActivated(self, index):
         sel_file = self.model().fileFromIndex(index)
@@ -137,6 +253,7 @@ class HgFileListView(QtGui.QTableView):
         col_widths = [self.columnWidth(i) \
                       for i in range(1, self.model().columnCount())]
         col_width = vp_width - sum(col_widths)
+        col_width = max(col_width, 50)
         self.setColumnWidth(0, col_width)
 
     def sectionResized(self, idx, oldsize, newsize):

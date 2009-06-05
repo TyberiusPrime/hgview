@@ -170,18 +170,12 @@
              </sizepolicy>
             </property>
            </widget>
-           <widget class="QFrame" name="textview_frame" >
+           <widget class="HgFileView" native="1" name="textview_status" >
             <property name="sizePolicy" >
              <sizepolicy vsizetype="Expanding" hsizetype="Expanding" >
               <horstretch>0</horstretch>
               <verstretch>2</verstretch>
              </sizepolicy>
-            </property>
-            <property name="frameShape" >
-             <enum>QFrame::NoFrame</enum>
-            </property>
-            <property name="frameShadow" >
-             <enum>QFrame::Raised</enum>
             </property>
            </widget>
           </widget>
@@ -358,6 +352,12 @@
    <class>HgFileListView</class>
    <extends>QTableView</extends>
    <header>hgfileview.h</header>
+  </customwidget>
+  <customwidget>
+   <class>HgFileView</class>
+   <extends>QWidget</extends>
+   <header>hgfileview.h</header>
+   <container>1</container>
   </customwidget>
  </customwidgets>
  <resources>

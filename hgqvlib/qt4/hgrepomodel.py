@@ -59,12 +59,12 @@ def cvrt_date(date):
     formatted QString
     """
     date, tzdelay = date
-    return QtCore.QDateTime.fromTime_t(int(date)).toString(QtCore.Qt.ISODate)
+    return QtCore.QDateTime.fromTime_t(int(date)).toString(QtCore.Qt.LocaleDate)
 
 # in following lambdas, ctx is a hg changectx
 _columnmap = {'ID': lambda ctx: ctx.rev(),
-              'Log': lambda ctx: ctx.description(),
-              'Author': lambda ctx: ctx.user(),
+              'Log': lambda ctx: unicode(ctx.description(), 'utf-8', 'replace'),
+              'Author': lambda ctx: unicode(ctx.user(), 'utf-8', 'replace'),
               'Date': lambda ctx: cvrt_date(ctx.date()),
               'Tags': lambda ctx: ",".join(ctx.tags()),
               'Branch': lambda ctx: ctx.branch(),
@@ -215,6 +215,8 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
         if role == QtCore.Qt.DisplayRole:
             if column == 'Author': #author
                 return QtCore.QVariant(self.user_name(_columnmap[column](ctx)))
+            return QtCore.QVariant(_columnmap[column](ctx))
+        elif role == QtCore.Qt.ToolTipRole:
             return QtCore.QVariant(_columnmap[column](ctx))
         elif role == QtCore.Qt.ForegroundRole:
             if column == 'Author': #author
@@ -386,17 +388,8 @@ class HgFileListModel(QtCore.QAbstractTableModel):
     def file(self, row):
         return self._files[row]['path']
 
-    def fileflag(self, fn, ctx=None):
-        if ctx is None:
-            return self._filesdict[fn]['flag']
-                
-        changes = self.repo.status(ctx.parents()[0].node(), ctx.node())[:5]
-        modified, added, removed, deleted, unknown = changes
-        for fl, lst in zip(["=","+","-","-","?"],
-                           [modified, added, removed, deleted, unknown]):
-            if fn in lst:
-                return fl
-        return ''
+    def fileflag(self, fn):
+        return self._filesdict[fn]['flag']
 
     def fileparentctx(self, fn, ctx=None):
         if ctx is None:
@@ -409,6 +402,12 @@ class HgFileListModel(QtCore.QAbstractTableModel):
         row = index.row()
         return self._files[row]['path']
 
+    def indexFromFile(self, filename):
+        if filename in self._filesdict:
+            row = self._files.index(self._filesdict[filename])
+            return self.index(row, 0)
+        return QtCore.QModelIndex()
+            
     def _filterFile(self, filename):
         if self._fulllist:
             return True
@@ -428,10 +427,16 @@ class HgFileListModel(QtCore.QAbstractTableModel):
             m = ctx.filectx(f).renamed()
             if m:
                 oldname, node = m
-                removed.remove(oldname)
-                desc['renamedfrom'] = (oldname, node)
-                desc['flag'] = '='
-                desc['desc'] += '\n(was %s)' % oldname
+                if oldname in removed:
+                    removed.remove(oldname)
+                    desc['renamedfrom'] = (oldname, node)
+                    desc['flag'] = '='
+                    desc['desc'] += '\n(was %s)' % oldname
+                else:
+                    desc['copiedfrom'] = (oldname, node)
+                    desc['flag'] = '='
+                    desc['desc'] += '\n (copy of %s)' % oldname
+                    
             _files.append(desc)
         for f in [x for x in modified if self._filterFile(x)]:
             _files.append({'path':f, 'flag': '=', 'desc':f,
@@ -549,7 +554,7 @@ class HgFileListModel(QtCore.QAbstractTableModel):
                     return QtCore.QVariant(msg)
                 
         elif column == 0:
-            if role == QtCore.Qt.DisplayRole:
+            if role in (QtCore.Qt.DisplayRole, QtCore.Qt.ToolTipRole):
                 return QtCore.QVariant(current_file_desc['desc'])
             elif role == QtCore.Qt.DecorationRole:
                 if self._fulllist and ismerge(self.current_ctx):

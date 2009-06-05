@@ -1,7 +1,7 @@
-hgqv intallation notes
-======================
+hgview intallation notes
+=========================
 
-hgqv can be used either as a hg extension, or as a standalone
+hgview can be used either as a hg extension, or as a standalone
 application.
 
 It depends on:
@@ -11,14 +11,14 @@ It depends on:
 - QScintilla and PyQScintilla
 - mx.DateTime
 
-It is very simple to use ``hgqv`` from the hg repository::
+It is very simple to use ``hgview`` from the hg repository::
 
-  hg clone http://www.logilab.org/hg/hgqv
+  hg clone http://www.logilab.org/hg/hgview
   
   cd <ANY_HG_REPO>
-  $PATH_TO_HGQV_DIR/bin/hgqv
+  $PATH_TO_HGVIEW_DIR/bin/hgview
 
-On the other hand, installing ``hgqv`` is simply done using usual
+On the other hand, installing ``hgview`` is simply done using usual
 ``distutils`` script::
 
   cd $PATH_TO_HGQV_DIR
@@ -27,7 +27,7 @@ On the other hand, installing ``hgqv`` is simply done using usual
 Last, you can add the following to your main .hgrc file::
 
   [extensions]
-  qtview=path/to/hqgv/hgext/hgqv.py
+  view=path/to/hqgv/hgext/hgqv.py
 
   [hgqv]
   # your hgqv configs statements like: 

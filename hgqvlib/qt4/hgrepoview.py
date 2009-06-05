@@ -169,7 +169,7 @@ class HgRepoView(QtGui.QTableView):
                 w = self.sizeHintForColumn(c)
                 self.setColumnWidth(c, w)
             col1_width -= self.columnWidth(c)
-
+        col1_width = max(col1_width, 100)
         for c in range(model.columnCount()):
             if model._columns[c] in model._stretchs:
                 w = model._stretchs[model._columns[c]] / tot_stretch
@@ -283,7 +283,7 @@ class RevDisplay(QtGui.QFrame):
         
         buf += '<td><b>Author:</b>&nbsp;'\
                '%s</td>'\
-               '\n' %  ctx.user()
+               '\n' %  unicode(ctx.user(), 'utf-8', 'replace')
         buf += '<td><b>Branch:</b>&nbsp;%s</td>' % ctx.branch()
         buf += '</tr>'
         buf += "</table>\n"
@@ -291,7 +291,7 @@ class RevDisplay(QtGui.QFrame):
         for p in ctx.parents():
             if p.rev() > -1:
                 short = short_hex(p.node())
-                desc = p.description()
+                desc = unicode(p.description(), 'utf-8', 'replace')
                 if len(desc) > self.descwidth:
                     desc = desc[:self.descwidth] + '...'
                 buf += '<tr><td width=50 class="label"><b>Parent:</b></td>'\
@@ -302,7 +302,7 @@ class RevDisplay(QtGui.QFrame):
         for p in ctx.children():
             if p.rev() > -1:
                 short = short_hex(p.node())
-                desc = p.description()
+                desc = unicode(p.description(), 'utf-8', 'replace')
                 if len(desc) > self.descwidth:
                     desc = desc[:self.descwidth] + '...'
                 buf += '<tr><td class="label"><b>Child:</b></td>'\
@@ -312,7 +312,8 @@ class RevDisplay(QtGui.QFrame):
                        '\n' % (p.rev(), p.rev(), short, desc)
 
         buf += "</table>\n"
-        buf += '<div class="diff_desc"><p>%s</p></div>\n' % ctx.description().replace('\n', '<br/>\n')
+        desc = unicode(ctx.description().replace('\n', '<br/>\n'), 'utf-8', 'replace')
+        buf += '<div class="diff_desc"><p>%s</p></div>\n' % desc
         self.textview.setHtml(buf)
 
         

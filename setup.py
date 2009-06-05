@@ -29,14 +29,6 @@ from distutils.command import install_lib
 from distutils.command.build import build
 from os.path import isdir, exists, join, walk, splitext
 
-try:
-    from setuptools import setup
-    from setuptools.command import install_lib
-    USE_SETUPTOOLS = 1
-except ImportError:    
-    from distutils.core import setup
-    from distutils.command import install_lib
-    USE_SETUPTOOLS = 0
 
 # import required features
 from hgqvlib.__pkginfo__ import modname, version, license, short_desc, long_desc, \
@@ -168,7 +160,6 @@ class MyInstallLib(install_lib.install_lib):
 
 class QtBuild(build):
     def compile_ui(self, ui_file, py_file=None):
-        return # disabled for now
         # Search for pyuic4 in python bin dir, then in the $Path.
         if py_file is None:
             py_file = splitext(ui_file)[0] + "_ui.py"
@@ -177,6 +168,7 @@ class QtBuild(build):
             fp = open(py_file, 'w')
             uic.compileUi(ui_file, fp)
             fp.close()
+            print "compiled", ui_file, "into", py_file
         except Exception, e:
             print 'Unable to compile user interface', e
             return
@@ -200,25 +192,16 @@ class QtBuild(build):
         
 def install():
     """setup entry point"""
-    try:
-        if USE_SETUPTOOLS:
-            sys.argv.remove('--force-manifest')
-    except:
-        pass
     kwargs = {}
-    try:
-        # to generate qct MSI installer, you run python setup.py bdist_msi
-        from setuptools import setup
-        if os.name in ['nt']:
-            # the msi will automatically install the qct.py plugin into hgext
-            kwargs['data_files'] = [('lib/site-packages/hgext', ['hgext/hgqv.py']),
-                    ('mercurial/hgrc.d', ['hgqv.rc']),
-                    ('share/hgqv', ['doc/hgqv.1.html', 'README', 'README.mercurial'])]
-            scripts = ['win32/hgqv_postinstall.py']
-        else:
-            scripts = ['bin/hgqv']
-    except ImportError:
-        from distutils.core import setup
+    # to generate qct MSI installer, you run python setup.py bdist_msi
+    #from setuptools import setup
+    if os.name in ['nt']:
+        # the msi will automatically install the qct.py plugin into hgext
+        kwargs['data_files'] = [('lib/site-packages/hgext', ['hgext/hgqv.py']),
+                ('mercurial/hgrc.d', ['hgqv.rc']),
+                ('share/hgqv', ['doc/hgqv.1.html', 'README', 'README.mercurial'])]
+        scripts = ['win32/hgqv_postinstall.py']
+    else:
         scripts = ['bin/hgqv']
 
     kwargs['package_dir'] = {modname : modname}

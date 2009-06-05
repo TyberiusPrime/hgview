@@ -26,6 +26,7 @@ from mercurial.node import nullrev
 from mercurial import patch, util
 
 import hgqvlib # force apply monkeypatches
+from hgqvlib.util import tounicode
 
 def diff(repo, ctx1, ctx2=None, files=None):
     """
@@ -290,6 +291,9 @@ class Graph(object):
         yield len(self)
 
     def __getitem__(self, idx):
+        if isinstance(idx, slice):
+            # XXX TODO: ensure nodes are built
+            return self.nodes.__getitem__(idx)
         if idx >= len(self.nodes):
             # build as many graph nodes as required to answer the
             # requested idx
@@ -306,6 +310,56 @@ class Graph(object):
         # len(graph) is the number of actually built graph nodes
         return len(self.nodes)
 
+    def index(self, rev):
+        if rev in self.nodesdict:
+            return self.nodes.index(self.nodesdict[rev])
+        return -1
+        
+    def fileflag(self, filename, rev):
+        ctx = self.repo.changectx(rev)
+        changes = self.repo.status(ctx.parents()[0].node(), ctx.node())[:5]
+        modified, added, removed, deleted, unknown = changes
+        for fl, lst in zip(["=","+","-","-","?"],
+                           [modified, added, removed, deleted, unknown]):
+            if filename in lst:
+                return fl
+        return ''
+
+    def filedata(self, filename, rev):
+        data = ""
+        flag = self.fileflag(filename, rev)
+        ctx = self.repo.changectx(rev)
+
+        if flag in ('=', '+'):
+            fc = ctx.filectx(filename)
+            if fc.size() > 100000:
+                data = "File too big"
+                return flag, data
+            if flag == "=":
+                parent = self.fileparent(filename, rev)
+                parentctx = self.repo.changectx(parent)
+                # return the diff but the 3 first lines
+                data = diff(self.repo, ctx, parentctx, files=[filename])
+                data = u'\n'.join(data.splitlines()[3:])
+            elif flag == "+":
+                # return the whole file
+                data = fc.data()
+                if util.binary(data):
+                    data = "binary file"
+                else: # hg stores utf-8 strings
+                    data = tounicode(data)
+        return flag, data
+
+    def fileparent(self, filename, rev):
+        node = self.repo.changelog.node(rev)
+        for parent in self.nodesdict[rev].parents:
+            pnode = self.repo.changelog.node(parent)
+            changes = self.repo.status(pnode, node)[:5]
+            allchanges = []
+            [allchanges.extend(e) for e in changes]
+            if filename in allchanges:
+                return parent
+        return None
 
 if __name__ == "__main__":
     # pylint: disable-msg=C0103

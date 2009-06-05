@@ -50,17 +50,17 @@ scripts = ['bin/hgqv']
 debian_name = 'hgqv'
 debian_maintainer = 'Alexandre Fayolle' 
 debian_maintainer_email = 'alexandre.fayolle@logilab.fr'
-pyversions = ["2.4", "2.5"]
+pyversions = ["2.5"]
 
 debian_handler = 'python-dep-standalone'
  
 from os.path import join
 include_dirs = [] #join('tests', 'data'), join('tests', 'packages')]
-data_files = [('share/hgqv', ['hgqvlib/qt4/hgqv.ui',
-                              'hgqvlib/qt4/filediffviewer.ui',
-                              'hgqvlib/qt4/fileviewer.ui',
-                              'hgqvlib/qt4/manifestviewer.ui',
-                              ]),
+data_files = [ #('share/hgqv', ['hgqvlib/qt4/hgqv.ui',
+               #               'hgqvlib/qt4/filediffviewer.ui',
+               #               'hgqvlib/qt4/fileviewer.ui',
+               #               'hgqvlib/qt4/manifestviewer.ui',
+               #               ]),
               ('share/man/man1', ['doc/hgqv.1',
                                  ]),
               ('share/python-support/mercurial-common/hgext', ['hgext/hgqv.py',]),
