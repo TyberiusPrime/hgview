@@ -181,6 +181,8 @@ class QtBuild(build):
             print "Unable to generate python module for resource file", qrc_file
         
     def run(self):
+        # be sure to compile man page
+        os.system('make -C doc') 
         for dirpath, _, filenames in os.walk(join('hgviewlib', 'qt4')):
             for filename in filenames:
                 if filename.endswith('.ui'):
