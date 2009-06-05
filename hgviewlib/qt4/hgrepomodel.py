@@ -89,7 +89,7 @@ _maxwidth = {'ID': lambda self, r: str(len(r.changelog)),
 def datacached(meth):
     """
     decorator used to cache 'data' method of Qt models. It will *not*
-    cache nullvariant return values (so costly non-null values 
+    cache nullvariant return values (so costly non-null values
     can be computed and filled as a background process)
     """
     def data(self, index, role):
@@ -158,7 +158,7 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
         finally:
             self.endInsertRows()
             self.emit(SIGNAL('layoutChanged()'))
-        
+
     def rowCount(self, parent=None):
         return len(self.graph)
 
@@ -325,7 +325,7 @@ class FileRevModel(HgRepoListModel):
         #self.nmax = len(self.filelog)
         self._user_colors = {}
         self._branch_colors = {}
-        
+
         grapher = filelog_grapher(self.repo, self.filename)
         self.graph = Graph(self.repo, grapher)
         self.heads = [self.repo.changectx(x).rev() for x in self.repo.heads()]
@@ -354,12 +354,12 @@ class HgFileListModel(QtCore.QAbstractTableModel):
         self.diffwidth = 100
         self._fulllist = False
         self._fill_iter = None
-        
+
     def toggleFullFileList(self):
         self._fulllist = not self._fulllist
-        self.loadFiles()        
+        self.loadFiles()
         self.emit(SIGNAL('layoutChanged()'))
-        
+
     def load_config(self):
         cfg = HgConfig(self.repo.ui)
         self._flagcolor = {}
@@ -378,7 +378,7 @@ class HgFileListModel(QtCore.QAbstractTableModel):
 
     def __len__(self):
         return len(self._files)
- 
+
     def rowCount(self, parent=None):
         return len(self)
 
@@ -395,7 +395,7 @@ class HgFileListModel(QtCore.QAbstractTableModel):
         if ctx is None:
             return self._filesdict[fn]['parent']
         return ctx.parents()[0]
-    
+
     def fileFromIndex(self, index):
         if not index.isValid() or index.row()>=len(self) or not self.current_ctx:
             return None
@@ -407,7 +407,7 @@ class HgFileListModel(QtCore.QAbstractTableModel):
             row = self._files.index(self._filesdict[filename])
             return self.index(row, 0)
         return QtCore.QModelIndex()
-            
+
     def _filterFile(self, filename):
         if self._fulllist:
             return True
@@ -436,7 +436,7 @@ class HgFileListModel(QtCore.QAbstractTableModel):
                     desc['copiedfrom'] = (oldname, node)
                     desc['flag'] = '='
                     desc['desc'] += '\n (copy of %s)' % oldname
-                    
+
             _files.append(desc)
         for f in [x for x in modified if self._filterFile(x)]:
             _files.append({'path':f, 'flag': '=', 'desc':f,
@@ -447,7 +447,7 @@ class HgFileListModel(QtCore.QAbstractTableModel):
                            'parent': parent, 'fromside': fromside,
                            'infiles': f in ctxfiles})
         return _files
-    
+
     def loadFiles(self):
         self._fill_iter = None
         self._files = []
@@ -456,10 +456,10 @@ class HgFileListModel(QtCore.QAbstractTableModel):
         if ismerge(self.current_ctx):
             _paths = [x['path'] for x in self._files]
             _files = self._buildDesc(self.current_ctx.parents()[1], 'right')
-            self._files += [x for x in _files if x['path'] not in _paths] 
+            self._files += [x for x in _files if x['path'] not in _paths]
         self._filesdict = dict([(f['path'], f) for f in self._files])
         self.fillFileStats()
-        
+
     def setSelectedRev(self, ctx):
         if ctx != self.current_ctx:
             self.current_ctx = ctx
@@ -505,14 +505,14 @@ class HgFileListModel(QtCore.QAbstractTableModel):
                     tot = max(add + rem, 1)
                 desc['stats'] = (tot, add, rem)
             yield row
-        
+
     @datacached
     def data(self, index, role):
         if not index.isValid() or index.row()>len(self) or not self.current_ctx:
             return nullvariant
         row = index.row()
         column = index.column()
-        
+
         current_file_desc = self._files[row]
         current_file = current_file_desc['path']
         stats = current_file_desc.get('stats')
@@ -552,7 +552,7 @@ class HgFileListModel(QtCore.QAbstractTableModel):
                     msg += "&nbsp;<b>added lines:&nbsp;</b> %s<br>" % add
                     msg += "&nbsp;<b>removed lines:&nbsp;</b> %s" % rem
                     return QtCore.QVariant(msg)
-                
+
         elif column == 0:
             if role in (QtCore.Qt.DisplayRole, QtCore.Qt.ToolTipRole):
                 return QtCore.QVariant(current_file_desc['desc'])
@@ -584,7 +584,7 @@ class HgFileListModel(QtCore.QAbstractTableModel):
                 header = ('File (merged only)', 'Diff')
         else:
             header = ('File', 'Diff')
-            
+
         if orientation == QtCore.Qt.Horizontal and role == QtCore.Qt.DisplayRole:
             return QtCore.QVariant(header[section])
 
@@ -602,7 +602,7 @@ class TreeItem(object):
         self.childItems.append(item)
         return item
     addChild = appendChild
-    
+
     def child(self, row):
         return self.childItems[row]
 
@@ -632,8 +632,8 @@ class TreeItem(object):
     def __iter__(self):
         for ch in self.childItems:
             yield ch
-            
-    
+
+
 class ManifestModel(QtCore.QAbstractItemModel):
     """
     Qt model to display a hg manifest, ie. the tree of files at a
@@ -716,7 +716,7 @@ class ManifestModel(QtCore.QAbstractItemModel):
         for path in sorted(self.changectx.manifest()):
             path = path.split(osp.sep)
             node = self.rootItem
-            
+
             for p in path:
                 for ch in node:
                     if ch.data(0) == p:
@@ -732,7 +732,7 @@ class ManifestModel(QtCore.QAbstractItemModel):
             index = self.parent(index)
         return osp.sep.join([index.internalPointer().data(0) for index in idxs])
 
-            
+
 if __name__ == "__main__":
     from mercurial import ui, hg
     from optparse import OptionParser

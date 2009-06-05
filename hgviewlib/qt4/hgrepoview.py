@@ -34,7 +34,7 @@ from hgviewlib.qt4.quickbar import QuickBar
 class GotoQuickBar(QuickBar):
     def __init__(self, parent):
         QuickBar.__init__(self, "Goto", "Ctrl+G", "Goto", parent)
-        
+
     def createActions(self, openkey, desc):
         QuickBar.createActions(self, openkey, desc)
         self._actions['go'] = QtGui.QAction("Go", self)
@@ -62,7 +62,7 @@ class GotoQuickBar(QuickBar):
             self.entry.setFocus()
             self.entry.selectAll()
 
-        
+
 class HgRepoView(QtGui.QTableView):
     """
     A QTableView for displaying a FileRevModel or a HgRepoListModel,
@@ -88,14 +88,14 @@ class HgRepoView(QtGui.QTableView):
         self.goto_toolbar = GotoQuickBar(self)
         connect(self.goto_toolbar, SIGNAL('goto'),
                 self.goto)
-        
+
     def _action_defs(self):
         a = [("back", self.tr("Back"), 'back', None, QtGui.QKeySequence(QtGui.QKeySequence.Back), self.back),
              ("forward", self.tr("Forward"), 'forward', None, QtGui.QKeySequence(QtGui.QKeySequence.Forward), self.forward),
              ("manifest", self.tr("Show at rev..."), None, self.tr("Show the manifest at selected revision"), None, self.showAtRev),
              ]
         return a
-    
+
     def createActions(self):
         self._actions = {}
         for name, desc, icon, tip, key, cb in self._action_defs():
@@ -110,10 +110,10 @@ class HgRepoView(QtGui.QTableView):
                 connect(act, SIGNAL('triggered()'), cb)
             self._actions[name] = act
             self.addAction(act)
-            
+
     def showAtRev(self):
         ManifestViewer(self.model().repo, self.current_rev).show()
-        
+
     def contextMenuEvent(self, event):
         menu = QtGui.QMenu(self)
         for act in ['manifest', None, 'back', 'forward']:
@@ -123,7 +123,7 @@ class HgRepoView(QtGui.QTableView):
                 menu.addSeparator()
         menu.addAction(self.goto_toolbar._actions['open'])
         menu.exec_(event.globalPos())
-        
+
     def init_variables(self):
         # member variables
         self.current_rev = None
@@ -134,7 +134,7 @@ class HgRepoView(QtGui.QTableView):
         # history. It is required cause we cannot known, in
         # "revision_selected", if we are crating a new branch in the
         # history navigation or if we are navigating the history
-        
+
     def setModel(self, model):
         self.init_variables()
         QtGui.QTableView.setModel(self, model)
@@ -179,7 +179,7 @@ class HgRepoView(QtGui.QTableView):
     def revisionActivated(self, index):
         if not index.isValid():
             return
-        model = self.model()            
+        model = self.model()
         if model and model.graph:
             row = index.row()
             gnode = model.graph[row]
@@ -189,7 +189,7 @@ class HgRepoView(QtGui.QTableView):
         """
         Callback called when a revision is selected in the revisions table
         """
-        model = self.model()            
+        model = self.model()
         if model and model.graph:
             row = index.row()
             gnode = model.graph[row]
@@ -247,8 +247,8 @@ class HgRepoView(QtGui.QTableView):
             idx = self.model().indexFromRev(rev)
             if idx is not None:
                 self.setCurrentIndex(idx)
-        
-    
+
+
 class RevDisplay(QtGui.QFrame):
     """
     Display metadata for one revision (rev, author, description, etc.)
@@ -271,7 +271,7 @@ class RevDisplay(QtGui.QFrame):
         """
         rev = int(qurl.toString())
         self.emit(SIGNAL('revisionSelected'), rev)
-        
+
     def displayRevision(self, ctx):
         rev = ctx.rev()
         buf = "<table width=100%>\n"
@@ -280,7 +280,7 @@ class RevDisplay(QtGui.QFrame):
                '<span class="rev_number">%d</span>:'\
                '<span class="rev_hash">%s</span></td>'\
                '\n' % (ctx.rev(), short_hex(ctx.node()))
-        
+
         buf += '<td><b>Author:</b>&nbsp;'\
                '%s</td>'\
                '\n' %  unicode(ctx.user(), 'utf-8', 'replace')
@@ -316,7 +316,7 @@ class RevDisplay(QtGui.QFrame):
         buf += '<div class="diff_desc"><p>%s</p></div>\n' % desc
         self.textview.setHtml(buf)
 
-        
+
 if __name__ == "__main__":
     from mercurial import ui, hg
     from optparse import OptionParser
@@ -342,7 +342,7 @@ if __name__ == "__main__":
     w = QtGui.QWidget()
     root.setCentralWidget(w)
     l = QtGui.QVBoxLayout(w)
-    
+
     view = HgRepoView(w)
     view.setModel(model)
     view.setWindowTitle("Simple Hg List Model")
@@ -351,7 +351,7 @@ if __name__ == "__main__":
     connect(view, SIGNAL('revisionSelected'), lambda rev: disp.displayRevision(repo.changectx(rev)))
     connect(disp, SIGNAL('revisionSelected'), view.goto)
     #connect(view, SIGNAL('revisionActivated'), rev_act)
-    
+
     l.addWidget(view, 2)
     l.addWidget(disp)
     root.show()

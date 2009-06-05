@@ -32,7 +32,7 @@ bold = QtGui.QFont.Bold
 connect = QtCore.QObject.connect
 SIGNAL = QtCore.SIGNAL
 
-    
+
 class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
     """hg repository viewer/browser application"""
     _uifile = 'hgqv.ui'
@@ -43,7 +43,7 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
 
         self.setWindowTitle('hgview: %s' % os.path.abspath(self.repo.root))
         self.menubar.hide()
-        
+
         self.setup_statusbar()
         self.splitter_2.setStretchFactor(0, 2)
         self.splitter_2.setStretchFactor(1, 1)
@@ -64,7 +64,7 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
         self.setupRevisionTable()
 
         self.refreshRevisionTable()
-        
+
     def setupBranchCombo(self):
         branches = sorted(self.repo.branchtags().keys())
         if len(branches) == 1:
@@ -97,7 +97,7 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
                 self.close)
         self.actionQuit.setIcon(geticon('quit'))
         self.actionRefresh.setIcon(geticon('reload'))
-        
+
     def setup_statusbar(self):
         # setup the status bar, with a progress bar in it
         sbar = self.statusBar()
@@ -146,12 +146,12 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
 
     def setupRevisionTable(self):
         view = self.tableView_revisions
-        view.installEventFilter(self)        
+        view.installEventFilter(self)
         connect(view, SIGNAL('revisionSelected'), self.revision_selected)
         connect(view, SIGNAL('revisionActivated'), self.revision_activated)
         connect(self.textview_header, SIGNAL('revisionSelected'), view.goto)
         self.attachQuickBar(view.goto_toolbar)
-        
+
     def _setup_table(self, table):
         table.setTabKeyNavigation(False)
         table.verticalHeader().setDefaultSectionSize(self.rowheight)
@@ -202,11 +202,11 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
 
     def revision_activated(self, rev):
         """
-        Callback called when a revision is double-clicked in the revisions table        
+        Callback called when a revision is double-clicked in the revisions table
         """
         self._manifestdlg = ManifestViewer(self.repo, rev)
         self._manifestdlg.show()
-    
+
     def revision_selected(self, rev):
         """
         Callback called when a revision is selected in the revisions table
@@ -214,7 +214,7 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
         if self.repomodel.graph:
             ctx = self.repomodel.repo.changectx(rev)
             self.textview_status.setContext(ctx)
-            self.textview_header.displayRevision(ctx)            
+            self.textview_header.displayRevision(ctx)
             self.filelistmodel.setSelectedRev(ctx)
             if len(self.filelistmodel):
                 self.tableView_filelist.selectRow(0)
@@ -223,7 +223,7 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
     def reload(self):
         self.repo = hg.repository(self.repo.ui, self.repo.root)
         self.setupBranchCombo()
-        self.setupModels()        
+        self.setupModels()
         self.refreshRevisionTable()
 
     #@timeit
