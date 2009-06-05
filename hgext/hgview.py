@@ -61,7 +61,8 @@ def start_hgview(ui, repo, *args, **kwargs):
     try:
         from PyQt4 import QtGui
         import hgviewlib.qt4.hgqv_rc
-        from hgviewlib.qt4 import hgrepoviewer as hgview
+        from hgviewlib.qt4.hgrepoviewer import HgRepoViewer
+        from hgviewlib.qt4.hgfileviewer import FileDiffViewer
     except ImportError, e:
         print e
         # If we're unable to import Qt4 and qctlib, try to
@@ -78,9 +79,9 @@ def start_hgview(ui, repo, *args, **kwargs):
         app = QtGui.QApplication(sys.argv)
         if len(args) == 1:
             # should be a filename of a file managed in the repo
-            mainwindow = hgview.FileDiffViewer(repo, args[0])
+            mainwindow = FileDiffViewer(repo, args[0])
         else:
-            mainwindow = hgview.HgRepoViewer(repo)
+            mainwindow = HgRepoViewer(repo)
         mainwindow.show()
         return app.exec_()
 
