@@ -65,3 +65,4 @@ def icon(name):
 import hgrepoview, hgfileview
 sys.modules['hgrepoview'] = hgrepoview
 sys.modules['hgfileview'] = hgfileview
+sys.modules['hgqv_rc'] = hgqv_rc
