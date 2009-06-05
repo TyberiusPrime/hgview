@@ -109,7 +109,7 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
     """
     Model used for displaying the revisions of a Hg *local* repository
     """
-    _columns = ('ID', 'Log', 'Author', 'Date', 'Tags', 'Branch',)
+    _columns = ('ID', 'Branch', 'Log', 'Author', 'Date', 'Tags',)
     _stretchs = {'Log': 1, }
 
     def __init__(self, repo, branch='', parent=None):
