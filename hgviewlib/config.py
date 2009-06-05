@@ -76,7 +76,7 @@ class HgConfig(object):
             try:
                 cfgfile = open(os.path.expanduser(usersfile))
             except IOError, e:
-                print "Cannot open file %s: please configure the 'users' parameter of the '[hgview]' section in your .hgrc file" % usersfile
+                #print "Cannot open file %s: please configure the 'users' parameter of the '[hgview]' section in your .hgrc file" % usersfile
                 cfgfile = None
 
         if cfgfile:
