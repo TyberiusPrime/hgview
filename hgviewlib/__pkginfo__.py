@@ -38,7 +38,7 @@ long_desc = """
 """
 
 author = "Logilab"
-author_email = "david.douard@logilab.fr"
+author_email = "contact@logilab.fr"
 
 # TODO - publish
 web = "http://www.logilab.org/projects/%s" % modname
