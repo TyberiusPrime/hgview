@@ -157,6 +157,7 @@ class HgFileListView(QtGui.QTableView):
         self.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
         self.setAlternatingRowColors(True)
         self.setTextElideMode(Qt.ElideLeft)
+
         self.horizontalHeader().setToolTip('Double click to toggle merge mode')
         
         self.createActions()
@@ -178,6 +179,7 @@ class HgFileListView(QtGui.QTableView):
         connect(self.selectionModel(),
                 SIGNAL('currentRowChanged (const QModelIndex & , const QModelIndex & )'),
                 self.fileSelected)
+        self.horizontalHeader().setResizeMode(1, QtGui.QHeaderView.Stretch)        
 
     def currentFile(self):
         index = self.currentIndex()
@@ -248,13 +250,13 @@ class HgFileListView(QtGui.QTableView):
         menu.exec_(event.globalPos())
         
     def resizeEvent(self, event):
-        QtGui.QTableView.resizeEvent(self, event)
         vp_width = self.viewport().width()
         col_widths = [self.columnWidth(i) \
                       for i in range(1, self.model().columnCount())]
         col_width = vp_width - sum(col_widths)
         col_width = max(col_width, 50)
         self.setColumnWidth(0, col_width)
+        QtGui.QTableView.resizeEvent(self, event)
 
     def sectionResized(self, idx, oldsize, newsize):
         if idx == 1:
