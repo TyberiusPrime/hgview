@@ -187,7 +187,6 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
                 
             else:
                 self._columns = tuple(validcols)
-        self.branchlabel = cfg.getBranchLabel()
         
     def maxWidthValueForColumn(self, column):
         column = self._columns[column]
