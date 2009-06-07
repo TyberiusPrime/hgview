@@ -133,6 +133,9 @@ class HgFileView(Qsci.QsciScintilla):
             self.SendScintilla(self.SCI_INDICATORFILLRANGE, pos[-1], n)
             pos.append(data.find(text, pos[-1]+1))
         pos = [x for x in pos if x > -1]
+        self.emit(SIGNAL('showMessage'),
+                  "Found %d occurrences of '%s' in current file or diff" % (len(pos), text),
+                  2000)
         return pos
         
     def highlightCurrentSearchString(self, pos, text):

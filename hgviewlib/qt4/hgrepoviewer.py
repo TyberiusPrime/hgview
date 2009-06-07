@@ -52,6 +52,9 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
         self.createToolbars()
 
         self.textview_status.setFont(self._font)
+        connect(self.textview_status, SIGNAL('showMessage'),
+                self.statusBar().showMessage)
+                
         # filter frame
         self.setupFilterFrame()
 

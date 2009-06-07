@@ -59,6 +59,8 @@ class FileViewer(QtGui.QMainWindow, HgDialogMixin):
         self.createToolbars()
 
         self.textView.setFont(self._font)
+        connect(self.textView, SIGNAL('showMessage'),
+                self.statusBar().showMessage)
         self.setupModels()
         
     def createToolbars(self):
