@@ -77,12 +77,17 @@ class HgRepoView(QtGui.QTableView):
         self.setSelectionMode(QtGui.QAbstractItemView.SingleSelection)
         self.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
         self.setAlternatingRowColors(True)
-
+                
         self.createActions()
         self.createToolbars()
         connect(self,
                 SIGNAL('doubleClicked (const QModelIndex &)'),
                 self.revisionActivated)
+
+        self._autoresize = True
+        connect(self.horizontalHeader(),
+                SIGNAL('sectionResized(int, int, int)'),
+                self.disableAutoResize)
 
     def createToolbars(self):
         self.goto_toolbar = GotoQuickBar(self)
@@ -142,20 +147,30 @@ class HgRepoView(QtGui.QTableView):
                 QtCore.SIGNAL('currentRowChanged (const QModelIndex & , const QModelIndex & )'),
                 self.revisionSelected)
         self.goto_toolbar.compl_model.setStringList(model.repo.tags().keys())
+        col = list(model._columns).index('Log')
+        self.horizontalHeader().setResizeMode(col, QtGui.QHeaderView.Stretch)
+
+    def enableAutoResize(self, *args):
+        self._autoresize =  True
+
+    def disableAutoResize(self, *args):
+        self._autoresize =  False
+        QtCore.QTimer.singleShot(100, self.enableAutoResize)
 
     def resizeEvent(self, event):
         # we catch this event to resize smartly tables' columns
         QtGui.QTableView.resizeEvent(self, event)
-        self.resizeColumns()
+        if self._autoresize:
+            self.resizeColumns()
 
     def resizeColumns(self, *args):
         # resize columns the smart way: the column holding Log
         # is resized according to the total widget size.
-        col1_width = self.viewport().width()
-        fontm = QtGui.QFontMetrics(self.font())
         model = self.model()
         if not model:
             return
+        col1_width = self.viewport().width()
+        fontm = QtGui.QFontMetrics(self.font())
         tot_stretch = 0.0
         for c in range(model.columnCount()):
             if model._columns[c] in model._stretchs:
@@ -174,7 +189,6 @@ class HgRepoView(QtGui.QTableView):
             if model._columns[c] in model._stretchs:
                 w = model._stretchs[model._columns[c]] / tot_stretch
                 self.setColumnWidth(c, col1_width * w)
-
 
     def revisionActivated(self, index):
         if not index.isValid():

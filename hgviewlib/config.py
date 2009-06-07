@@ -146,6 +146,28 @@ class HgConfig(object):
         """
         return int(self.ui.config(self.section, 'fillingstep', default))
 
+    @cached
+    def getChangelogColumns(self, default=None):
+        """
+        changelogcolumns: ordered list of displayed columns in changelog views; defaults to
+        ID, Branch, Log, Author, Date, Tags
+        """
+        cols = self.ui.config(self.section, 'changelogcolumns', default)
+        if cols is None:
+            return None        
+        return [col.strip() for col in cols.split(',') if col.strip()]
+
+    @cached
+    def getFilelogColumns(self, default=None):
+        """
+        filelogcolumns: ordered list of displayed columns in filelog views; defaults to
+        ID, Log, Author, Date
+        """
+        cols = self.ui.config(self.section, 'filelogcolumns', default)
+        if cols is None:
+            return None        
+        return [col.strip() for col in cols.split(',') if col.strip()]
+    
 _HgConfig = HgConfig
 # HgConfig is instanciated only once (singleton)
 #

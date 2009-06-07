@@ -109,8 +109,10 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
     """
     Model used for displaying the revisions of a Hg *local* repository
     """
+    _allcolumns = ('ID', 'Branch', 'Log', 'Author', 'Date', 'Tags',)
     _columns = ('ID', 'Branch', 'Log', 'Author', 'Date', 'Tags',)
     _stretchs = {'Log': 1, }
+    _getcolumns = "getChangelogColumns"
 
     def __init__(self, repo, branch='', parent=None):
         """
@@ -172,6 +174,21 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
         self.rowheight = cfg.getRowHeight()
         self.fill_step = cfg.getFillingStep()
 
+        cols = getattr(cfg, self._getcolumns)()
+        if cols is not None:
+            validcols = [col for col in cols if col in self._allcolumns]
+            if len(validcols) != len(cols):
+                wrongcols = [col for col in cols if col not in self._allcolumns]
+                print "WARNING! %s are not valid column names. Check your configuration." % ','.join(wrongcols)
+                print "         reverting to default columns configuration"
+            elif 'Log' not in validcols or 'ID' not in validcols:
+                print "WARNING! 'Log' and 'ID' are mandatory. Check your configuration."
+                print "         reverting to default columns configuration"
+                
+            else:
+                self._columns = tuple(validcols)
+        self.branchlabel = cfg.getBranchLabel()
+        
     def maxWidthValueForColumn(self, column):
         column = self._columns[column]
         if column in _maxwidth:
@@ -215,9 +232,16 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
         if role == QtCore.Qt.DisplayRole:
             if column == 'Author': #author
                 return QtCore.QVariant(self.user_name(_columnmap[column](ctx)))
+            elif column == 'Log':
+                msg = _columnmap[column](ctx)
+                if gnode.rev in self.heads:
+                    msg = "[%s] " % ctx.branch() + msg
+                return QtCore.QVariant(msg)                
             return QtCore.QVariant(_columnmap[column](ctx))
         elif role == QtCore.Qt.ToolTipRole:
-            return QtCore.QVariant(_columnmap[column](ctx))
+            msg = "<b>[%s]</b><br>\n" % ctx.branch()
+            msg += _columnmap[column](ctx)
+            return QtCore.QVariant(msg)
         elif role == QtCore.Qt.ForegroundRole:
             if column == 'Author': #author
                 return QtCore.QVariant(QtGui.QColor(self.user_color(ctx.user())))
@@ -241,9 +265,8 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
                 pen.setWidth(2)
                 painter.setPen(pen)
 
-                color = "black"
                 lpen = QtGui.QPen(pen)
-                lpen.setColor(QtGui.QColor(color))
+                lpen.setColor(QtCore.Qt.black)
                 painter.setPen(lpen)
 
                 for y1, y2, lines in ((0, h, gnode.bottomlines),
@@ -256,15 +279,22 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
                         x1 = self.col2x(start)
                         x2 = self.col2x(end)
                         painter.drawLine(x1, dot_y + y1, x2, dot_y + y2)
+
+                dot_color = QtGui.QColor(self.namedbranch_color(ctx.branch()))
+                dotcolor = QtGui.QColor(dot_color)
                 if gnode.rev in self.heads:
-                    dot_color = "yellow"
+                    penradius = 2
+                    pencolor = dotcolor.darker()
                 else:
-                    dot_color = QtGui.QColor(self.namedbranch_color(ctx.branch()))
+                    penradius = 1
+                    pencolor = QtCore.Qt.black
 
                 dot_y = (h/2) - radius / 2
 
-                painter.setBrush(QtGui.QColor(dot_color))
-                painter.setPen(QtCore.Qt.black)
+                painter.setBrush(dotcolor)
+                pen = QtGui.QPen(pencolor)
+                pen.setWidth(penradius)
+                painter.setPen(pen)
                 painter.drawEllipse(dot_x, dot_y, radius, radius)
                 painter.end()
                 ret = QtCore.QVariant(pix)
@@ -304,6 +334,7 @@ class FileRevModel(HgRepoListModel):
     """
     _columns = ('ID', 'Log', 'Author', 'Date',)
     _stretchs = {'Log': 1, }
+    _getcolumns = "getFilelogColumns"
 
     def __init__(self, repo, filename, noderev=None, parent=None):
         """
