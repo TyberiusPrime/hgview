@@ -299,11 +299,7 @@ class Graph(object):
             # requested idx
             self._build_nodes(idx)
         if idx > len(self):
-            print "ARGHH, ", idx, len(self)
-            import traceback
-            traceback.print_stack()
             return self.nodes[-1]
-            return None
         return self.nodes[idx]
 
     def __len__(self):
