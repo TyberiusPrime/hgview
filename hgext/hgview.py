@@ -62,7 +62,7 @@ def start_hgview(ui, repo, *args, **kwargs):
         from PyQt4 import QtGui
         import hgviewlib.qt4.hgqv_rc
         from hgviewlib.qt4.hgrepoviewer import HgRepoViewer
-        from hgviewlib.qt4.hgfileviewer import FileDiffViewer
+        from hgviewlib.qt4.hgfileviewer import FileDiffViewer, FileViewer
     except ImportError, e:
         print e
         # If we're unable to import Qt4 and qctlib, try to
@@ -79,7 +79,10 @@ def start_hgview(ui, repo, *args, **kwargs):
         app = QtGui.QApplication(sys.argv)
         if len(args) == 1:
             # should be a filename of a file managed in the repo
-            mainwindow = FileDiffViewer(repo, args[0])
+            if kwargs.get('navigate'):
+                mainwindow = FileViewer(repo, args[0])
+            else:
+                mainwindow = FileDiffViewer(repo, args[0])
         else:
             mainwindow = HgRepoViewer(repo)
         mainwindow.show()
@@ -122,7 +125,8 @@ def display_options(ui, repo, *args, **kwargs):
     
 cmdtable = {
     "^hgview|hgv|qv": (start_hgview,
-            [],
+                       [('n', 'navigate', False, '(with filename) start in navigation mode'),
+                        ],
             "hg hgview [options] [filename]"),
     "^hgview-options|qv-options|qv-config|qv-cfg": (display_options,
                                      [],
