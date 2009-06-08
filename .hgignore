@@ -1,3 +1,6 @@
 syntax: glob
 build/
 *.pyc
+*.orig
+*_ui.py
+*_rc.py
