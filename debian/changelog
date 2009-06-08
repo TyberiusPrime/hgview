@@ -1,4 +1,11 @@
+hgview (1.0.1-1) unstable; urgency=low
+
+  * updated to mainstream 1.0.1
+
+ -- David Douard <david.douard@logilab.fr>  Mon, 08 Jun 2009 07:14:55 +0200
+
 hgview (1.0.0-1) unstable; urgency=low
+
   * first stable release
 
  -- David Douard <david.douard@logilab.fr>  Thu, 05 May 2009 14:58:23 +0100
