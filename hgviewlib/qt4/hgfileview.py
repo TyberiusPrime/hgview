@@ -17,6 +17,7 @@
 Qt4 high level widgets for hg repo changelogs and filelogs
 """
 import sys
+import difflib
 
 from mercurial.node import hex, short as short_hex, bin as short_bin
 from mercurial import util
@@ -32,29 +33,58 @@ from hgviewlib.qt4 import icon as geticon
 from hgviewlib.qt4.hgfileviewer import FileViewer, FileDiffViewer, ManifestViewer
 from hgviewlib.qt4.quickbar import QuickBar
 from hgviewlib.qt4.lexers import get_lexer
+from hgviewlib.qt4.blockmatcher import BlockList
 
-class HgFileView(Qsci.QsciScintilla):
+qsci = Qsci.QsciScintilla
+class HgFileView(QtGui.QFrame):
     def __init__(self, parent=None):
-        Qsci.QsciScintilla.__init__(self, parent)
-        self.setMarginLineNumbers(1, True)
-        self.setMarginWidth(1, '000')
-        self.setReadOnly(True)
+        QtGui.QFrame.__init__(self, parent)
+        l = QtGui.QHBoxLayout(self)        
+        l.setContentsMargins(0,0,0,0)
+        self.sci = Qsci.QsciScintilla(self)
+        l.addWidget(self.sci)
+        
+        self.sci.setMarginLineNumbers(1, True)
+        self.sci.setMarginWidth(1, '000')
+        self.sci.setReadOnly(True)
         #self.setFont(self.font)
 
-        self.SendScintilla(self.SCI_INDICSETSTYLE, 8, self.INDIC_ROUNDBOX)
-        self.SendScintilla(self.SCI_INDICSETUNDER, 8, True)
-        self.SendScintilla(self.SCI_INDICSETFORE, 8, 0xBBFFFF)
-        self.SendScintilla(self.SCI_INDICSETSTYLE, 9, self.INDIC_PLAIN)
-        self.SendScintilla(self.SCI_INDICSETUNDER, 9, False)
-        self.SendScintilla(self.SCI_INDICSETFORE, 9, 0x0000FF)
+        self.sci.SendScintilla(qsci.SCI_INDICSETSTYLE, 8, qsci.INDIC_ROUNDBOX)
+        self.sci.SendScintilla(qsci.SCI_INDICSETUNDER, 8, True)
+        self.sci.SendScintilla(qsci.SCI_INDICSETFORE, 8, 0xBBFFFF)
+        self.sci.SendScintilla(qsci.SCI_INDICSETSTYLE, 9, qsci.INDIC_PLAIN)
+        self.sci.SendScintilla(qsci.SCI_INDICSETUNDER, 9, False)
+        self.sci.SendScintilla(qsci.SCI_INDICSETFORE, 9, 0x0000FF)
 
-        self.SendScintilla(self.SCI_SETSELEOLFILLED, True)
+        self.sci.SendScintilla(qsci.SCI_SETSELEOLFILLED, True)
+
+        # hide margin 0 (markers)
+        self.sci.SendScintilla(qsci.SCI_SETMARGINTYPEN, 0, 0)
+        self.sci.SendScintilla(qsci.SCI_SETMARGINWIDTHN, 0, 0)
+
+        # define markers for colorize zones of diff
+        self.markerplus = self.sci.markerDefine(Qsci.QsciScintilla.Background)
+        self.sci.SendScintilla(qsci.SCI_MARKERSETBACK, self.markerplus, 0xB0FFA0)
+        self.markerminus = self.sci.markerDefine(Qsci.QsciScintilla.Background)
+        self.sci.SendScintilla(qsci.SCI_MARKERSETBACK, self.markerminus, 0xA0A0FF)
+        self.markertriangle = self.sci.markerDefine(Qsci.QsciScintilla.Background)
+        self.sci.SendScintilla(qsci.SCI_MARKERSETBACK, self.markertriangle, 0xFFA0A0)
+
+        self.blk = BlockList(self)
+        self.blk.linkScrollBar(self.sci.verticalScrollBar())
+        l.insertWidget(0, self.blk)
 
         self._model = None
         self._ctx = None
         self._filename = None
         self._find_text = None
         self._mode = "diff" # can be 'diff' or 'file' 
+        self.filedata = None
+
+        self.timer = QtCore.QTimer()
+        self.timer.setSingleShot(False)
+        self.connect(self.timer, QtCore.SIGNAL("timeout()"),
+                     self.idle_fill_files)
 
     def setMode(self, mode):
         if isinstance(mode, bool):
@@ -62,16 +92,17 @@ class HgFileView(Qsci.QsciScintilla):
         assert mode in ('diff', 'file')
         if mode != self._mode:
             self._mode = mode
+            self.blk.setVisible(self._mode == 'file')
             self.displayFile(self._filename)
         
     def setModel(self, model):
         # XXX we really need only the "Graph" instance 
         self._model = model
-        self.clear()
+        self.sci.clear()
         
     def setContext(self, ctx):
         self._ctx = ctx
-        self.clear()
+        self.sci.clear()
 
     def rev(self):
         return self._ctx.rev()
@@ -81,7 +112,7 @@ class HgFileView(Qsci.QsciScintilla):
     
     def displayFile(self, filename):
         self._filename = filename
-        self.clear()
+        self.sci.clear()
         if filename is None:
             return
         flag, data = self._model.graph.filedata(filename, self._ctx.rev(), self._mode)
@@ -89,20 +120,45 @@ class HgFileView(Qsci.QsciScintilla):
         if flag == "+":
             lexer = get_lexer(filename, data)
             nlines = data.count('\n')
-            self.setMarginWidth(1, str(nlines)+'0')            
+            self.sci.setMarginWidth(1, str(nlines)+'0')            
         elif flag == "=":
             lexer = Qsci.QsciLexerDiff()
-            self.setMarginWidth(1, 0)
+            self.sci.setMarginWidth(1, 0)
         if lexer:
             lexer.setDefaultFont(self.font())
             lexer.setFont(self.font())
-        self.setLexer(lexer)
+        self.sci.setLexer(lexer)
         self._cur_lexer = lexer
-
-        self.setText(data)
+        if data not in ('file too big', 'binary file'):
+            self.filedata = data
+        else:
+            self.filedata = None
+        
+        self.sci.setText(data)
         if self._find_text:
             self.highlightSearchString(self._find_text)
+        self.updateDiff()
         
+    def updateDiff(self):
+        """
+        Recompute the diff, display files and starts the timer
+        responsible for filling diff markers
+        """
+        self.blk.clear()
+        if self._mode == 'file' and self.filedata is not None:
+            if self.timer.isActive():
+                self.timer.stop()
+
+            parent = self._model.graph.fileparent(self._filename, self._ctx.rev())
+            _, parentdata = self._model.graph.filedata(self._filename,
+                                                       parent, 'file')
+            filedata = self.filedata.splitlines()
+            parentdata = parentdata.splitlines()
+            self._diff = difflib.SequenceMatcher(None, filedata,
+                                                 parentdata)
+            self.blk.syncPageStep()
+            self.timer.start()
+                    
     def searchString(self, text):
         self._find_text = text
         self.clearHighlights()
@@ -114,19 +170,19 @@ class HgFileView(Qsci.QsciScintilla):
                 yield self._ctx.rev(), self._filename, pos
                 
     def clearHighlights(self):
-        n = self.length()
-        self.SendScintilla(self.SCI_SETINDICATORCURRENT, 8) # highlight
-        self.SendScintilla(self.SCI_INDICATORCLEARRANGE, 0, n)
-        self.SendScintilla(self.SCI_SETINDICATORCURRENT, 9) # current found occurrence
-        self.SendScintilla(self.SCI_INDICATORCLEARRANGE, 0, n)
+        n = self.sci.length()
+        self.sci.SendScintilla(qsci.SCI_SETINDICATORCURRENT, 8) # highlight
+        self.sci.SendScintilla(qsci.SCI_INDICATORCLEARRANGE, 0, n)
+        self.sci.SendScintilla(qsci.SCI_SETINDICATORCURRENT, 9) # current found occurrence
+        self.sci.SendScintilla(qsci.SCI_INDICATORCLEARRANGE, 0, n)
 
     def highlightSearchString(self, text):
         data = unicode(self.text())
-        self.SendScintilla(self.SCI_SETINDICATORCURRENT, 8)
+        self.sci.SendScintilla(qsci.SCI_SETINDICATORCURRENT, 8)
         pos = [data.find(text)]
         n = len(text)
         while pos[-1] > -1:
-            self.SendScintilla(self.SCI_INDICATORFILLRANGE, pos[-1], n)
+            self.sci.SendScintilla(qsci.SCI_INDICATORFILLRANGE, pos[-1], n)
             pos.append(data.find(text, pos[-1]+1))
         pos = [x for x in pos if x > -1]
         self.emit(SIGNAL('showMessage'),
@@ -135,12 +191,58 @@ class HgFileView(Qsci.QsciScintilla):
         return pos
         
     def highlightCurrentSearchString(self, pos, text):
-        line = self.SendScintilla(self.SCI_LINEFROMPOSITION, pos)
+        line = self.sci.SendScintilla(qsci.SCI_LINEFROMPOSITION, pos)
         #line, idx = w.lineIndexFromPosition(nextpos)
-        self.ensureLineVisible(line)
-        self.SendScintilla(self.SCI_SETINDICATORCURRENT, 9)
-        self.SendScintilla(self.SCI_INDICATORCLEARRANGE, 0, pos)
-        self.SendScintilla(self.SCI_INDICATORFILLRANGE, pos, len(text))
+        self.sci.ensureLineVisible(line)
+        self.sci.SendScintilla(qsci.SCI_SETINDICATORCURRENT, 9)
+        self.sci.SendScintilla(qsci.SCI_INDICATORCLEARRANGE, 0, pos)
+        self.sci.SendScintilla(qsci.SCI_INDICATORFILLRANGE, pos, len(text))
+
+    def verticalScrollBar(self):
+        return self.sci.verticalScrollBar()
+
+
+    def idle_fill_files(self):
+        # we make a burst of diff-lines computed at once, but we
+        # disable GUI updates for efficiency reasons, then only
+        # refresh GUI at the end of the burst
+        self.sci.setUpdatesEnabled(False)
+        self.blk.setUpdatesEnabled(False)
+        for n in range(30): # burst pool
+            if self._diff is None or not self._diff.get_opcodes():
+                self._diff = None
+                self.timer.stop()
+                break
+
+            tag, alo, ahi, blo, bhi = self._diff.get_opcodes().pop(0)
+
+            if tag == 'replace':
+                self.blk.addBlock('x', blo, bhi)
+                for i in range(blo, bhi):
+                    self.sci.markerAdd(i, self.markertriangle)
+
+            elif tag == 'delete':
+                pass
+##                 self.block['left'].addBlock('-', alo, ahi)
+##                 self.diffblock.addBlock('-', alo, ahi, blo, bhi)
+##                 w = self.viewers['left']
+##                 for i in range(alo, ahi):
+##                     w.markerAdd(i, self.markerminus)
+
+            elif tag == 'insert':
+                self.blk.addBlock('+', blo, bhi)
+                for i in range(blo, bhi):
+                    self.sci.markerAdd(i, self.markerplus)
+
+            elif tag == 'equal':
+                pass
+
+            else:
+                raise ValueError, 'unknown tag %r' % (tag,)
+
+        # ok, let's enable GUI refresh for code viewers and diff-block displayers
+        self.sci.setUpdatesEnabled(True)
+        self.blk.setUpdatesEnabled(True)
 
         
 class HgFileListView(QtGui.QTableView):
