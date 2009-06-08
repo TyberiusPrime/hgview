@@ -16,9 +16,9 @@
    <property name="geometry" >
     <rect>
      <x>0</x>
-     <y>69</y>
+     <y>63</y>
      <width>730</width>
-     <height>554</height>
+     <height>560</height>
     </rect>
    </property>
    <layout class="QVBoxLayout" name="verticalLayout_3" >
@@ -236,8 +236,8 @@
     <rect>
      <x>0</x>
      <y>30</y>
-     <width>85</width>
-     <height>39</height>
+     <width>114</width>
+     <height>33</height>
     </rect>
    </property>
    <property name="windowTitle" >
@@ -258,10 +258,10 @@
    </property>
    <property name="geometry" >
     <rect>
-     <x>85</x>
+     <x>114</x>
      <y>30</y>
      <width>15</width>
-     <height>39</height>
+     <height>33</height>
     </rect>
    </property>
    <property name="windowTitle" >
@@ -280,10 +280,10 @@
    </property>
    <property name="geometry" >
     <rect>
-     <x>100</x>
+     <x>129</x>
      <y>30</y>
-     <width>630</width>
-     <height>39</height>
+     <width>601</width>
+     <height>33</height>
     </rect>
    </property>
    <property name="windowTitle" >
@@ -305,10 +305,6 @@
    </property>
   </action>
   <action name="actionRefresh" >
-   <property name="icon" >
-    <iconset resource="hgqv.qrc" >
-     <normaloff>:/icons/reload.svg</normaloff>:/icons/reload.svg</iconset>
-   </property>
    <property name="text" >
     <string>&amp;Refresh</string>
    </property>
@@ -317,10 +313,6 @@
    </property>
   </action>
   <action name="actionQuit" >
-   <property name="icon" >
-    <iconset resource="hgqv.qrc" >
-     <normaloff>:/icons/quit.svg</normaloff>:/icons/quit.svg</iconset>
-   </property>
    <property name="text" >
     <string>&amp;Quit</string>
    </property>
