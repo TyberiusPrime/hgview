@@ -62,12 +62,13 @@ def cvrt_date(date):
     return QtCore.QDateTime.fromTime_t(int(date)).toString(QtCore.Qt.LocaleDate)
 
 # in following lambdas, ctx is a hg changectx
-_columnmap = {'ID': lambda ctx: ctx.rev(),
-              'Log': lambda ctx: unicode(ctx.description(), 'utf-8', 'replace'),
-              'Author': lambda ctx: unicode(ctx.user(), 'utf-8', 'replace'),
-              'Date': lambda ctx: cvrt_date(ctx.date()),
-              'Tags': lambda ctx: ",".join(ctx.tags()),
-              'Branch': lambda ctx: ctx.branch(),
+_columnmap = {'ID': lambda ctx, gnode: ctx.rev(),
+              'Log': lambda ctx, gnode: unicode(ctx.description(), 'utf-8', 'replace'),
+              'Author': lambda ctx, gnode: unicode(ctx.user(), 'utf-8', 'replace'),
+              'Date': lambda ctx, gnode: cvrt_date(ctx.date()),
+              'Tags': lambda ctx, gnode: ",".join(ctx.tags()),
+              'Branch': lambda ctx, gnode: ctx.branch(),
+              'Filename': lambda ctx, gnode: gnode.extra[0],
               }
 
 def auth_width(model, repo):
@@ -84,6 +85,7 @@ _maxwidth = {'ID': lambda self, r: str(len(r.changelog)),
              'Branch': lambda self, r: sorted(r.branchtags().keys(),
                                               key=lambda x: len(x))[-1],
              'Author': auth_width,
+             'Filename': lambda self, r: self.filename,
              }
 
 def datacached(meth):
@@ -230,16 +232,16 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
         ctx = self.repo.changectx(gnode.rev)
         if role == QtCore.Qt.DisplayRole:
             if column == 'Author': #author
-                return QtCore.QVariant(self.user_name(_columnmap[column](ctx)))
+                return QtCore.QVariant(self.user_name(_columnmap[column](ctx, gnode)))
             elif column == 'Log':
-                msg = _columnmap[column](ctx)
+                msg = _columnmap[column](ctx, gnode)
                 if gnode.rev in self.heads:
                     msg = "[%s] " % ctx.branch() + msg
-                return QtCore.QVariant(msg)                
-            return QtCore.QVariant(_columnmap[column](ctx))
+                return QtCore.QVariant(msg)
+            return QtCore.QVariant(_columnmap[column](ctx, gnode))
         elif role == QtCore.Qt.ToolTipRole:
             msg = "<b>[%s]</b><br>\n" % ctx.branch()
-            msg += _columnmap[column](ctx)
+            msg += _columnmap[column](ctx, gnode)
             return QtCore.QVariant(msg)
         elif role == QtCore.Qt.ForegroundRole:
             if column == 'Author': #author
@@ -331,16 +333,16 @@ class FileRevModel(HgRepoListModel):
     Model used to manage the list of revisions of a file, in file
     viewer of in diff-file viewer dialogs.
     """
-    _columns = ('ID', 'Log', 'Author', 'Date',)
+    _allcolumns = ('ID', 'Branch', 'Log', 'Author', 'Date', 'Tags', 'Filename')
+    _columns = ('ID', 'Log', 'Author', 'Date', 'Filename')
     _stretchs = {'Log': 1, }
     _getcolumns = "getFilelogColumns"
 
-    def __init__(self, repo, filename, noderev=None, parent=None):
+    def __init__(self, repo, filename, parent=None):
         """
         data is a HgHLRepo instance
         """
         HgRepoListModel.__init__(self, repo, parent=parent)
-        self.filelog = self.repo.file(filename)
         self.setFilename(filename)
 
     def setRepo(self, repo, branch=''):
@@ -350,9 +352,7 @@ class FileRevModel(HgRepoListModel):
 
     def setFilename(self, filename):
         self.filename = filename
-        self.filelog = self.repo.file(filename)
         self.nmax = len(self.repo.changelog)
-        #self.nmax = len(self.filelog)
         self._user_colors = {}
         self._branch_colors = {}
 
@@ -461,7 +461,7 @@ class HgFileListModel(QtCore.QAbstractTableModel):
                     removed.remove(oldname)
                     desc['renamedfrom'] = (oldname, node)
                     desc['flag'] = '='
-                    desc['desc'] += '\n(was %s)' % oldname
+                    desc['desc'] += '\n (was %s)' % oldname
                 else:
                     desc['copiedfrom'] = (oldname, node)
                     desc['flag'] = '='

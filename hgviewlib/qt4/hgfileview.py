@@ -57,6 +57,8 @@ class HgFileView(Qsci.QsciScintilla):
         self._mode = "diff" # can be 'diff' or 'file' 
 
     def setMode(self, mode):
+        if isinstance(mode, bool):
+            mode = ['file', 'diff'][mode]
         assert mode in ('diff', 'file')
         if mode != self._mode:
             self._mode = mode
@@ -82,13 +84,7 @@ class HgFileView(Qsci.QsciScintilla):
         self.clear()
         if filename is None:
             return
-        if self._mode == 'file':
-            flag = "+"            
-            data = self._ctx.filectx(filename).data()
-            if util.binary(data):
-                data = "binary file"
-        else:
-            flag, data = self._model.graph.filedata(filename, self._ctx.rev())
+        flag, data = self._model.graph.filedata(filename, self._ctx.rev(), self._mode)
         lexer = None
         if flag == "+":
             lexer = get_lexer(filename, data)

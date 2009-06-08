@@ -47,9 +47,11 @@ otherside = {'left': 'right', 'right': 'left'}
 
 class FileViewer(QtGui.QMainWindow, HgDialogMixin):
     _uifile = 'fileviewer.ui'
-    def __init__(self, repo, filename, noderev=None):
+    def __init__(self, repo, filename):
+        """
+        A dialog showing a revision graph for a file.        
+        """
         self.repo = repo
-        self.rev = noderev
         QtGui.QMainWindow.__init__(self)
         HgDialogMixin.__init__(self)
 
@@ -74,11 +76,12 @@ class FileViewer(QtGui.QMainWindow, HgDialogMixin):
 
         self.toolBar_edit.addAction(self.tableView_revisions._actions['back'])
         self.toolBar_edit.addAction(self.tableView_revisions._actions['forward'])
-
+        self.toolBar_edit.addAction(self.actionDiffMode)
+        
         self.attachQuickBar(self.tableView_revisions.goto_toolbar)
         
     def setupModels(self):
-        self.filerevmodel = FileRevModel(self.repo, self.filename, self.rev)
+        self.filerevmodel = FileRevModel(self.repo, self.filename)
         self.tableView_revisions.setModel(self.filerevmodel)
         self.connect(self.tableView_revisions,
                      SIGNAL('revisionSelected'),
@@ -97,6 +100,12 @@ class FileViewer(QtGui.QMainWindow, HgDialogMixin):
         self.actionClose.setIcon(geticon('quit'))
         self.actionReload.setIcon(geticon('reload'))
 
+        self.actionDiffMode = QtGui.QAction('Diff mode', self)
+        self.actionDiffMode.setCheckable(True)
+        connect(self.actionDiffMode, SIGNAL('toggled(bool)'),
+                self.textView.setMode)
+                
+
     def reload(self):
         self.repo = hg.repository(self.repo.ui, self.repo.root)
         self.setupModels()        
@@ -105,7 +114,7 @@ class FileViewer(QtGui.QMainWindow, HgDialogMixin):
         pos = self.textView.verticalScrollBar().value()
         ctx = self.filerevmodel.repo.changectx(rev)
         self.textView.setContext(ctx)
-        self.textView.displayFile(self.filename)
+        self.textView.displayFile(self.filerevmodel.graph.filename(rev))
         self.textView.verticalScrollBar().setValue(pos)
 
         

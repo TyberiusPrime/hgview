@@ -325,7 +325,10 @@ class Graph(object):
                 return fl
         return ''
 
-    def filedata(self, filename, rev):
+    def filename(self, rev):
+        return self.nodesdict[rev].extra[0]
+        
+    def filedata(self, filename, rev, mode='diff'):
         data = ""
         flag = self.fileflag(filename, rev)
         ctx = self.repo.changectx(rev)
@@ -335,19 +338,20 @@ class Graph(object):
             if fc.size() > 100000:
                 data = "File too big"
                 return flag, data
-            if flag == "=":
-                parent = self.fileparent(filename, rev)
-                parentctx = self.repo.changectx(parent)
-                # return the diff but the 3 first lines
-                data = diff(self.repo, ctx, parentctx, files=[filename])
-                data = u'\n'.join(data.splitlines()[3:])
-            elif flag == "+":
+            if flag == "+" or mode == "file":
+                flag = '+'
                 # return the whole file
                 data = fc.data()
                 if util.binary(data):
                     data = "binary file"
                 else: # hg stores utf-8 strings
                     data = tounicode(data)
+            elif flag == "=":
+                parent = self.fileparent(filename, rev)
+                parentctx = self.repo.changectx(parent)
+                # return the diff but the 3 first lines
+                data = diff(self.repo, ctx, parentctx, files=[filename])
+                data = u'\n'.join(data.splitlines()[3:])
         return flag, data
 
     def fileparent(self, filename, rev):
