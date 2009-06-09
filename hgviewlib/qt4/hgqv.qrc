@@ -6,6 +6,8 @@
     <file>icons/forward.svg</file>
     <file>icons/left.svg</file>
     <file>icons/right.svg</file>
+    <file>icons/up.svg</file>
+    <file>icons/down.svg</file>
     <file>icons/leftright.svg</file>
     <file>icons/close.png</file>
   </qresource>

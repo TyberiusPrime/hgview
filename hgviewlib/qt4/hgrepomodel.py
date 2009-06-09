@@ -349,7 +349,7 @@ class FileRevModel(HgRepoListModel):
         self.repo = repo
         self._datacache = {}
         self.load_config()
-
+        
     def setFilename(self, filename):
         self.filename = filename
         self.nmax = len(self.repo.changelog)
@@ -358,7 +358,8 @@ class FileRevModel(HgRepoListModel):
 
         grapher = filelog_grapher(self.repo, self.filename)
         self.graph = Graph(self.repo, grapher)
-        self.heads = [self.repo.changectx(x).rev() for x in self.repo.heads()]
+        fl = self.repo.file(self.filename)
+        self.heads = [fl.linkrev(x) for x in fl.heads()]
         self._datacache = {}
         self._fill_iter = None
         self.gr_fill_timer.start()

@@ -38,6 +38,7 @@ from hgviewlib.qt4.lexers import get_lexer
 from hgviewlib.qt4.quickbar import FindInGraphlogQuickBar
 
 connect = QtCore.QObject.connect
+disconnect = QtCore.QObject.disconnect
 SIGNAL = QtCore.SIGNAL
 nullvariant = QtCore.QVariant()
 
@@ -64,6 +65,14 @@ class FileViewer(QtGui.QMainWindow, HgDialogMixin):
         connect(self.textView, SIGNAL('showMessage'),
                 self.statusBar().showMessage)
         self.setupModels()
+
+        connect(self.filerevmodel, SIGNAL('filled(int)'),
+                self.filled)
+
+    def filled(self, nfilled):
+        self.tableView_revisions.setCurrentIndex(self.filerevmodel.index(0,0))
+        disconnect(self.filerevmodel, SIGNAL('filled(int)'),
+                   self.filled)
         
     def createToolbars(self):
         self.find_toolbar = FindInGraphlogQuickBar(self)
@@ -74,9 +83,13 @@ class FileViewer(QtGui.QMainWindow, HgDialogMixin):
                 self.statusBar().showMessage)
         self.attachQuickBar(self.find_toolbar)
 
+        self.toolBar_edit.addSeparator()
         self.toolBar_edit.addAction(self.tableView_revisions._actions['back'])
         self.toolBar_edit.addAction(self.tableView_revisions._actions['forward'])
+        self.toolBar_edit.addSeparator()
         self.toolBar_edit.addAction(self.actionDiffMode)
+        self.toolBar_edit.addAction(self.actionNextDiff)
+        self.toolBar_edit.addAction(self.actionPrevDiff)
         
         self.attachQuickBar(self.tableView_revisions.goto_toolbar)
         
@@ -103,9 +116,32 @@ class FileViewer(QtGui.QMainWindow, HgDialogMixin):
         self.actionDiffMode = QtGui.QAction('Diff mode', self)
         self.actionDiffMode.setCheckable(True)
         connect(self.actionDiffMode, SIGNAL('toggled(bool)'),
-                self.textView.setMode)
+                self.setMode)
                 
+        self.actionNextDiff = QtGui.QAction(geticon('down'), 'Next diff', self)
+        self.actionNextDiff.setShortcut('Alt+Down')
+        self.actionPrevDiff = QtGui.QAction(geticon('up'), 'Previous diff', self)
+        self.actionPrevDiff.setShortcut('Alt+Up')
+        connect(self.actionNextDiff, SIGNAL('triggered()'),
+                self.nextDiff)
+        connect(self.actionPrevDiff, SIGNAL('triggered()'),
+                self.prevDiff)
 
+    def setMode(self, mode):
+        self.textView.setMode(mode)
+        self.actionNextDiff.setEnabled(not mode)
+        self.actionPrevDiff.setEnabled(not mode)
+        
+    def nextDiff(self):
+        notlast = self.textView.nextDiff()
+        self.actionNextDiff.setEnabled(self.textView.fileMode() and notlast and self.textView.nDiffs())
+        self.actionPrevDiff.setEnabled(self.textView.fileMode() and self.textView.nDiffs())
+    
+    def prevDiff(self):
+        notfirst = self.textView.prevDiff()
+        self.actionPrevDiff.setEnabled(self.textView.fileMode() and notfirst and self.textView.nDiffs())
+        self.actionNextDiff.setEnabled(self.textView.fileMode() and self.textView.nDiffs())
+        
     def reload(self):
         self.repo = hg.repository(self.repo.ui, self.repo.root)
         self.setupModels()        
@@ -116,7 +152,10 @@ class FileViewer(QtGui.QMainWindow, HgDialogMixin):
         self.textView.setContext(ctx)
         self.textView.displayFile(self.filerevmodel.graph.filename(rev))
         self.textView.verticalScrollBar().setValue(pos)
-
+        self.actionPrevDiff.setEnabled(False)
+        connect(self.textView, SIGNAL('filled'),
+                lambda self=self: self.actionNextDiff.setEnabled(self.textView.fileMode() and self.textView.nDiffs()))
+        
         
 class ManifestViewer(QtGui.QMainWindow, HgDialogMixin):
     """
@@ -416,7 +455,7 @@ class FileDiffViewer(QtGui.QMainWindow, HgDialogMixin):
         dlg.setCurrentFile(self.filename)
         dlg.show()
         self._manifestdlg = dlg
-
+        
     def setupViews(self):
         # viewers are Scintilla editors
         self.viewers = {}

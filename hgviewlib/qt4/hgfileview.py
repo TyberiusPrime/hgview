@@ -156,9 +156,44 @@ class HgFileView(QtGui.QFrame):
             parentdata = parentdata.splitlines()
             self._diff = difflib.SequenceMatcher(None, filedata,
                                                  parentdata)
+            self._diffs = []
             self.blk.syncPageStep()
             self.timer.start()
-                    
+
+    def nextDiff(self):
+        if self._mode == 'file':
+            row, column = self.sci.getCursorPosition()
+            for i, (lo, hi) in enumerate(self._diffs):
+                if lo > row:
+                    last = (i == (len(self._diffs)-1))
+                    break
+            else:
+                return False
+            self.sci.setCursorPosition(lo, 0)
+            self.sci.verticalScrollBar().setValue(lo)
+            return not last
+        
+    def prevDiff(self):
+        if self._mode == 'file':
+            row, column = self.sci.getCursorPosition()
+            for i, (lo, hi) in enumerate(reversed(self._diffs)):
+                if hi < row:
+                    first = (i == (len(self._diffs)-1))
+                    break
+            else:
+                return False
+            self.sci.setCursorPosition(lo, 0)
+            self.sci.verticalScrollBar().setValue(lo)
+            return not first
+        
+    def nDiffs(self):
+        return len(self._diffs)
+
+    def diffMode(self):
+        return self._mode == 'diff'
+    def fileMode(self):
+        return self._mode == 'file'
+        
     def searchString(self, text):
         self._find_text = text
         self.clearHighlights()
@@ -212,11 +247,12 @@ class HgFileView(QtGui.QFrame):
             if self._diff is None or not self._diff.get_opcodes():
                 self._diff = None
                 self.timer.stop()
+                self.emit(SIGNAL('filled'))
                 break
 
             tag, alo, ahi, blo, bhi = self._diff.get_opcodes().pop(0)
-
             if tag == 'replace':
+                self._diffs.append([blo, bhi])
                 self.blk.addBlock('x', blo, bhi)
                 for i in range(blo, bhi):
                     self.sci.markerAdd(i, self.markertriangle)
@@ -230,6 +266,7 @@ class HgFileView(QtGui.QFrame):
 ##                     w.markerAdd(i, self.markerminus)
 
             elif tag == 'insert':
+                self._diffs.append([blo, bhi])
                 self.blk.addBlock('+', blo, bhi)
                 for i in range(blo, bhi):
                     self.sci.markerAdd(i, self.markerplus)
