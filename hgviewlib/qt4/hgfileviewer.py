@@ -50,7 +50,7 @@ class FileViewer(QtGui.QMainWindow, HgDialogMixin):
     _uifile = 'fileviewer.ui'
     def __init__(self, repo, filename):
         """
-        A dialog showing a revision graph for a file.        
+        A dialog showing a revision graph for a file.
         """
         self.repo = repo
         QtGui.QMainWindow.__init__(self)
@@ -59,7 +59,7 @@ class FileViewer(QtGui.QMainWindow, HgDialogMixin):
         # hg repo
         self.filename = filename
         self.createActions()
-        self.createToolbars()
+        self.setupToolbars()
 
         self.textView.setFont(self._font)
         connect(self.textView, SIGNAL('showMessage'),
@@ -73,8 +73,8 @@ class FileViewer(QtGui.QMainWindow, HgDialogMixin):
         self.tableView_revisions.setCurrentIndex(self.filerevmodel.index(0,0))
         disconnect(self.filerevmodel, SIGNAL('filled(int)'),
                    self.filled)
-        
-    def createToolbars(self):
+
+    def setupToolbars(self):
         self.find_toolbar = FindInGraphlogQuickBar(self)
         self.find_toolbar.attachFileView(self.textView)
         connect(self.find_toolbar, SIGNAL('revisionSelected'),
@@ -90,9 +90,10 @@ class FileViewer(QtGui.QMainWindow, HgDialogMixin):
         self.toolBar_edit.addAction(self.actionDiffMode)
         self.toolBar_edit.addAction(self.actionNextDiff)
         self.toolBar_edit.addAction(self.actionPrevDiff)
-        
+
         self.attachQuickBar(self.tableView_revisions.goto_toolbar)
-        
+
+
     def setupModels(self):
         self.filerevmodel = FileRevModel(self.repo, self.filename)
         self.tableView_revisions.setModel(self.filerevmodel)
@@ -104,7 +105,7 @@ class FileViewer(QtGui.QMainWindow, HgDialogMixin):
         self.find_toolbar.setModel(self.filerevmodel)
         self.find_toolbar.setFilterFiles([self.filename])
         self.find_toolbar.setMode('file')
-        
+
     def createActions(self):
         connect(self.actionClose, SIGNAL('triggered()'),
                 self.close)
@@ -117,7 +118,7 @@ class FileViewer(QtGui.QMainWindow, HgDialogMixin):
         self.actionDiffMode.setCheckable(True)
         connect(self.actionDiffMode, SIGNAL('toggled(bool)'),
                 self.setMode)
-                
+
         self.actionNextDiff = QtGui.QAction(geticon('down'), 'Next diff', self)
         self.actionNextDiff.setShortcut('Alt+Down')
         self.actionPrevDiff = QtGui.QAction(geticon('up'), 'Previous diff', self)
@@ -131,21 +132,21 @@ class FileViewer(QtGui.QMainWindow, HgDialogMixin):
         self.textView.setMode(mode)
         self.actionNextDiff.setEnabled(not mode)
         self.actionPrevDiff.setEnabled(not mode)
-        
+
     def nextDiff(self):
         notlast = self.textView.nextDiff()
         self.actionNextDiff.setEnabled(self.textView.fileMode() and notlast and self.textView.nDiffs())
         self.actionPrevDiff.setEnabled(self.textView.fileMode() and self.textView.nDiffs())
-    
+
     def prevDiff(self):
         notfirst = self.textView.prevDiff()
         self.actionPrevDiff.setEnabled(self.textView.fileMode() and notfirst and self.textView.nDiffs())
         self.actionNextDiff.setEnabled(self.textView.fileMode() and self.textView.nDiffs())
-        
+
     def reload(self):
         self.repo = hg.repository(self.repo.ui, self.repo.root)
-        self.setupModels()        
-        
+        self.setupModels()
+
     def revisionSelected(self, rev):
         pos = self.textView.verticalScrollBar().value()
         ctx = self.filerevmodel.repo.changectx(rev)
@@ -155,8 +156,8 @@ class FileViewer(QtGui.QMainWindow, HgDialogMixin):
         self.actionPrevDiff.setEnabled(False)
         connect(self.textView, SIGNAL('filled'),
                 lambda self=self: self.actionNextDiff.setEnabled(self.textView.fileMode() and self.textView.nDiffs()))
-        
-        
+
+
 class ManifestViewer(QtGui.QMainWindow, HgDialogMixin):
     """
     Qt4 dialog to display all files of a repo at a given revision
@@ -173,7 +174,7 @@ class ManifestViewer(QtGui.QMainWindow, HgDialogMixin):
         self.rev = noderev
         self.setupModels()
 
-        self.createActions()        
+        self.createActions()
         self.setupTextview()
 
     def setupModels(self):
@@ -182,12 +183,12 @@ class ManifestViewer(QtGui.QMainWindow, HgDialogMixin):
         connect(self.treeView.selectionModel(),
                 SIGNAL('currentChanged(const QModelIndex &, const QModelIndex &)'),
                 self.fileSelected)
-        
+
     def createActions(self):
         connect(self.actionClose, SIGNAL('triggered()'),
                 self.close)
         self.actionClose.setIcon(geticon('quit'))
-        
+
     def setupTextview(self):
         lay = QtGui.QHBoxLayout(self.mainFrame)
         lay.setSpacing(0)
@@ -201,7 +202,7 @@ class ManifestViewer(QtGui.QMainWindow, HgDialogMixin):
 
         sci.SendScintilla(sci.SCI_SETSELEOLFILLED, True)
         self.textView = sci
-        
+
     def fileSelected(self, index, *args):
         if not index.isValid():
             return
@@ -213,7 +214,7 @@ class ManifestViewer(QtGui.QMainWindow, HgDialogMixin):
             self.textView.setMarginWidth(1, '00')
             self.textView.setText('')
             return
-        
+
         if fc.size() > 100000: # XXX how to detect binary files?
             data = "File too big"
         else:
@@ -239,10 +240,10 @@ class ManifestViewer(QtGui.QMainWindow, HgDialogMixin):
                     index = newindex
                     break
         self.treeView.setCurrentIndex(index)
-                
-        
-        
-    
+
+
+
+
 class FileDiffViewer(QtGui.QMainWindow, HgDialogMixin):
     """
     Qt4 dialog to display diffs between different mercurial revisions of a file.
@@ -252,8 +253,9 @@ class FileDiffViewer(QtGui.QMainWindow, HgDialogMixin):
         self.repo = repo
         QtGui.QMainWindow.__init__(self)
         HgDialogMixin.__init__(self)
-        
+
         self.createActions()
+        self.setupToolbars()
         # hg repo
         self.filename = filename
         self.findLexer()
@@ -263,14 +265,14 @@ class FileDiffViewer(QtGui.QMainWindow, HgDialogMixin):
         # timer used to fill viewers with diff block markers during GUI idle time
         self.timer = QtCore.QTimer()
         self.timer.setSingleShot(False)
-        self.connect(self.timer, QtCore.SIGNAL("timeout()"),
-                     self.idle_fill_files)
+        connect(self.timer, SIGNAL("timeout()"),
+                self.idle_fill_files)
         self.setupModels()
-        
+
     def reload(self):
         self.repo = hg.repository(self.repo.ui, self.repo.root)
-        self.setupModels()        
-        
+        self.setupModels()
+
     def setupModels(self):
         self.filedata = {'left': None, 'right': None}
         self._invbarchanged = False
@@ -293,7 +295,7 @@ class FileDiffViewer(QtGui.QMainWindow, HgDialogMixin):
             lexer.setDefaultFont(self._font)
             lexer.setFont(self._font)
         self.lexer = lexer
-        
+
     def createActions(self):
         connect(self.actionClose, SIGNAL('triggered()'),
                 self.close)
@@ -301,6 +303,33 @@ class FileDiffViewer(QtGui.QMainWindow, HgDialogMixin):
                 self.reload)
         self.actionClose.setIcon(geticon('quit'))
         self.actionReload.setIcon(geticon('reload'))
+
+        self.actionNextDiff = QtGui.QAction(geticon('down'), 'Next diff', self)
+        self.actionNextDiff.setShortcut('Alt+Down')
+        self.actionPrevDiff = QtGui.QAction(geticon('up'), 'Previous diff', self)
+        self.actionPrevDiff.setShortcut('Alt+Up')
+        connect(self.actionNextDiff, SIGNAL('triggered()'),
+                self.nextDiff)
+        connect(self.actionPrevDiff, SIGNAL('triggered()'),
+                self.prevDiff)
+        self.actionNextDiff.setEnabled(False)
+        self.actionPrevDiff.setEnabled(False)
+
+    def setupToolbars(self):
+        self.toolBar_edit.addSeparator()
+        self.toolBar_edit.addAction(self.actionNextDiff)
+        self.toolBar_edit.addAction(self.actionPrevDiff)
+
+    def setDiffNavActions(self, pos=0):
+        hasdiff = (self.diffblock.nDiffs() > 0)
+        self.actionNextDiff.setEnabled(hasdiff and pos != 1)
+        self.actionPrevDiff.setEnabled(hasdiff and pos != -1)
+
+    def nextDiff(self):
+        self.setDiffNavActions(self.diffblock.nextDiff())
+
+    def prevDiff(self):
+        self.setDiffNavActions(self.diffblock.prevDiff())
 
     def modelFilled(self):
         self.set_init_selections()
@@ -326,6 +355,8 @@ class FileDiffViewer(QtGui.QMainWindow, HgDialogMixin):
             if self._diff is None or not self._diff.get_opcodes():
                 self._diff = None
                 self.timer.stop()
+                self.setDiffNavActions(-1)
+                self.emit(SIGNAL('diffFilled'))
                 break
 
             tag, alo, ahi, blo, bhi = self._diff.get_opcodes().pop(0)
@@ -374,7 +405,7 @@ class FileDiffViewer(QtGui.QMainWindow, HgDialogMixin):
             self.viewers[side].setUpdatesEnabled(True)
             self.block[side].setUpdatesEnabled(True)
         self.diffblock.setUpdatesEnabled(True)
-        
+
     def update_diff(self, keeppos=None):
         """
         Recompute the diff, display files and starts the timer
@@ -383,7 +414,7 @@ class FileDiffViewer(QtGui.QMainWindow, HgDialogMixin):
         if keeppos:
             pos = self.viewers[keeppos].verticalScrollBar().value()
             keeppos = (keeppos, pos)
-            
+
         for side in sides:
             self.viewers[side].clear()
             self.block[side].clear()
@@ -409,7 +440,6 @@ class FileDiffViewer(QtGui.QMainWindow, HgDialogMixin):
     def set_init_selections(self):
         self.tableView_revisions_left.setCurrentIndex(self.filerevmodel.index(1, 0))
         self.tableView_revisions_right.setCurrentIndex(self.filerevmodel.index(0, 0))
-
 
     def vbar_changed(self, value, side):
         """
@@ -449,13 +479,13 @@ class FileDiffViewer(QtGui.QMainWindow, HgDialogMixin):
 
     def revisionActivated(self, rev):
         """
-        Callback called when a revision is double-clicked in the revisions table        
+        Callback called when a revision is double-clicked in the revisions table
         """
         dlg = ManifestViewer(self.repo, rev)
         dlg.setCurrentFile(self.filename)
         dlg.show()
         self._manifestdlg = dlg
-        
+
     def setupViews(self):
         # viewers are Scintilla editors
         self.viewers = {}
@@ -480,7 +510,7 @@ class FileDiffViewer(QtGui.QMainWindow, HgDialogMixin):
 
             sci.setReadOnly(True)
             lay.addWidget(sci)
-            
+
             # hide margin 0 (markers)
             sci.SendScintilla(sci.SCI_SETMARGINTYPEN, 0, 0)
             sci.SendScintilla(sci.SCI_SETMARGINWIDTHN, 0, 0)
@@ -496,7 +526,7 @@ class FileDiffViewer(QtGui.QMainWindow, HgDialogMixin):
             sci.SendScintilla(sci.SCI_MARKERSETBACK, self.markerminus, 0xA0A0FF)
             self.markertriangle = sci.markerDefine(Qsci.QsciScintilla.Background)
             sci.SendScintilla(sci.SCI_MARKERSETBACK, self.markertriangle, 0xFFA0A0)
-            
+
             self.viewers[side] = sci
             blk = BlockList(self.frame)
             blk.linkScrollBar(sci.verticalScrollBar())
@@ -508,7 +538,7 @@ class FileDiffViewer(QtGui.QMainWindow, HgDialogMixin):
         for side in sides:
             table = getattr(self, 'tableView_revisions_%s' % side)
             table.setTabKeyNavigation(False)
-            #table.installEventFilter(self)        
+            #table.installEventFilter(self)
             connect(table, SIGNAL('revisionSelected'), self.revisionSelected)
             connect(table, SIGNAL('revisionActivated'), self.revisionActivated)
 
@@ -519,7 +549,7 @@ class FileDiffViewer(QtGui.QMainWindow, HgDialogMixin):
 
         self.setTabOrder(table, self.viewers['left'])
         self.setTabOrder(self.viewers['left'], self.viewers['right'])
-        
+
 if __name__ == '__main__':
     from mercurial import ui, hg
     from optparse import OptionParser

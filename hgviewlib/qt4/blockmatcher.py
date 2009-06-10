@@ -127,6 +127,45 @@ class BlockMatch(BlockList):
         self.sizePolicy().setControlType(QtGui.QSizePolicy.Slider)
         self.setMinimumWidth(20)
 
+    def nDiffs(self):
+        return len(self._blocks)
+
+    def showDiff(self, delta):
+        ps_l = float(self._pagestep['left'])
+        ps_r = float(self._pagestep['right'])
+        mv_l = self._value['left']
+        mv_r = self._value['right']
+        Mv_l = mv_l + ps_l
+        Mv_r = mv_r + ps_r
+
+        vblocks = []
+        blocks = sorted(self._blocks, key=lambda x:(x[1],x[3],x[2],x[4]))
+        for i, (typ, alo, ahi, blo, bhi) in enumerate(blocks):
+            if (mv_l<=alo<=Mv_l or mv_l<=ahi<=Mv_l or mv_r<=blo<=Mv_r or mv_r<=bhi<=Mv_r):
+                break
+        else:
+            i = -1
+        i += delta
+
+        if i < 0:
+            return -1
+        if i >= len(blocks):
+            return 1
+        typ, alo, ahi, blo, bhi = blocks[i]
+        self.setValue(alo, "left")
+        self.setValue(blo, "right")
+        if i == 0:
+            return -1
+        if i == len(blocks)-1:
+            return 1
+        return 0
+            
+    def nextDiff(self):
+        return self.showDiff(+1)
+        
+    def prevDiff(self):
+        return self.showDiff(-1)            
+            
     def addBlock(self, typ, alo, ahi, blo=None, bhi=None):
         if bhi is None:
             bhi = ahi
