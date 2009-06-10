@@ -41,13 +41,14 @@ class HgFileView(QtGui.QFrame):
         QtGui.QFrame.__init__(self, parent)
         l = QtGui.QHBoxLayout(self)        
         l.setContentsMargins(0,0,0,0)
+        l.setSpacing(0)
         self.sci = Qsci.QsciScintilla(self)
         l.addWidget(self.sci)
+        self.sci.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
         
         self.sci.setMarginLineNumbers(1, True)
         self.sci.setMarginWidth(1, '000')
         self.sci.setReadOnly(True)
-        #self.setFont(self.font)
 
         self.sci.SendScintilla(qsci.SCI_INDICSETSTYLE, 8, qsci.INDIC_ROUNDBOX)
         self.sci.SendScintilla(qsci.SCI_INDICSETUNDER, 8, True)
@@ -70,9 +71,17 @@ class HgFileView(QtGui.QFrame):
         self.markertriangle = self.sci.markerDefine(Qsci.QsciScintilla.Background)
         self.sci.SendScintilla(qsci.SCI_MARKERSETBACK, self.markertriangle, 0xFFA0A0)
 
+        ll = QtGui.QVBoxLayout()
+        ll.setContentsMargins(0, 0, 0, 0)
+        ll.setSpacing(0)
+        l.insertLayout(0, ll)
+        
         self.blk = BlockList(self)
         self.blk.linkScrollBar(self.sci.verticalScrollBar())
-        l.insertWidget(0, self.blk)
+        ll.addWidget(self.blk)
+        w = QtGui.QWidget(self)
+        ll.addWidget(w)
+        self._spacer = w
 
         self._model = None
         self._ctx = None
@@ -86,6 +95,12 @@ class HgFileView(QtGui.QFrame):
         self.connect(self.timer, QtCore.SIGNAL("timeout()"),
                      self.idle_fill_files)
 
+    def resizeEvent(self, event):
+        QtGui.QFrame.resizeEvent(self, event)
+        h = self.sci.horizontalScrollBar().height()
+        self._spacer.setMinimumHeight(h)
+        self._spacer.setMaximumHeight(h)
+        
     def setMode(self, mode):
         if isinstance(mode, bool):
             mode = ['file', 'diff'][mode]
@@ -150,12 +165,18 @@ class HgFileView(QtGui.QFrame):
                 self.timer.stop()
 
             parent = self._model.graph.fileparent(self._filename, self._ctx.rev())
-            _, parentdata = self._model.graph.filedata(self._filename,
+            m = self._ctx.filectx(self._filename).renamed()
+            if m:
+                pfilename, pnode = m
+            else:
+                pfilename = self._filename
+            _, parentdata = self._model.graph.filedata(pfilename,
                                                        parent, 'file')
             filedata = self.filedata.splitlines()
             parentdata = parentdata.splitlines()
-            self._diff = difflib.SequenceMatcher(None, filedata,
-                                                 parentdata)
+            self._diff = difflib.SequenceMatcher(None,
+                                                 parentdata,
+                                                 filedata,)
             self._diffs = []
             self.blk.syncPageStep()
             self.timer.start()
@@ -345,7 +366,7 @@ class HgFileListView(QtGui.QTableView):
     def navigate(self, filename=None):
         if filename is None:
             filename = self.currentFile()
-        if  len(self.model().repo.file(filename))>1:
+        if  len(self.model().repo.file(filename))>0:
             dlg = FileViewer(self.model().repo, filename)
             dlg.setWindowTitle('Hg file log viewer')
             dlg.show()
@@ -354,7 +375,7 @@ class HgFileListView(QtGui.QTableView):
     def diffNavigate(self, filename=None):
         if filename is None:
             filename = self.currentFile()
-        if  len(self.model().repo.file(filename))>1:
+        if  len(self.model().repo.file(filename))>0:
             dlg = FileDiffViewer(self.model().repo, filename)
             dlg.setWindowTitle('Hg file log viewer')
             dlg.show()

@@ -20,7 +20,8 @@ Based on graphlog's algorithm, with insipration stolen to TortoiseHg
 revision grapher.
 """
 
-from StringIO import StringIO
+from cStringIO import StringIO
+import difflib
 
 from mercurial.node import nullrev
 from mercurial import patch, util
@@ -318,6 +319,10 @@ class Graph(object):
         for fl, lst in zip(["=","+","-","-","?"],
                            [modified, added, removed, deleted, unknown]):
             if filename in lst:
+                if fl == "+":
+                    m = ctx.filectx(filename).renamed()
+                    if m:
+                        return m
                 return fl
         return ''
 
@@ -329,7 +334,7 @@ class Graph(object):
         flag = self.fileflag(filename, rev)
         ctx = self.repo.changectx(rev)
 
-        if flag in ('=', '+'):
+        if flag not in ('-', '?'):
             fc = ctx.filectx(filename)
             if fc.size() > 100000:
                 data = "File too big"
@@ -348,6 +353,17 @@ class Graph(object):
                 # return the diff but the 3 first lines
                 data = diff(self.repo, ctx, parentctx, files=[filename])
                 data = u'\n'.join(data.splitlines()[3:])
+            else:
+                oldname, node = flag
+                newdata = fc.data().splitlines()
+                olddata = self.repo.filectx(oldname, fileid=node).data().splitlines()
+                data = list(difflib.unified_diff(olddata, newdata, oldname, filename))[2:]
+                if data:
+                    flag = "="
+                else:
+                    data = newdata
+                    flag = "+"
+                data = u'\n'.join(data)
         return flag, data
 
     def fileparent(self, filename, rev):

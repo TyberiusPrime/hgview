@@ -32,6 +32,9 @@
       </property>
       <widget class="QWidget" name="layoutWidget" >
        <layout class="QHBoxLayout" name="horizontalLayout" >
+        <property name="spacing" >
+         <number>0</number>
+        </property>
         <item>
          <widget class="HgRepoView" name="tableView_revisions_left" >
           <property name="alternatingRowColors" >
