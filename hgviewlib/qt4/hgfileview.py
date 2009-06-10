@@ -52,9 +52,9 @@ class HgFileView(QtGui.QFrame):
         self.sci.SendScintilla(qsci.SCI_INDICSETSTYLE, 8, qsci.INDIC_ROUNDBOX)
         self.sci.SendScintilla(qsci.SCI_INDICSETUNDER, 8, True)
         self.sci.SendScintilla(qsci.SCI_INDICSETFORE, 8, 0xBBFFFF)
-        self.sci.SendScintilla(qsci.SCI_INDICSETSTYLE, 9, qsci.INDIC_PLAIN)
-        self.sci.SendScintilla(qsci.SCI_INDICSETUNDER, 9, False)
-        self.sci.SendScintilla(qsci.SCI_INDICSETFORE, 9, 0x0000FF)
+        self.sci.SendScintilla(qsci.SCI_INDICSETSTYLE, 9, qsci.INDIC_ROUNDBOX)
+        self.sci.SendScintilla(qsci.SCI_INDICSETUNDER, 9, True)
+        self.sci.SendScintilla(qsci.SCI_INDICSETFORE, 9, 0x58A8FF)
 
         self.sci.SendScintilla(qsci.SCI_SETSELEOLFILLED, True)
 
@@ -212,7 +212,7 @@ class HgFileView(QtGui.QFrame):
         self.sci.SendScintilla(qsci.SCI_INDICATORCLEARRANGE, 0, n)
 
     def highlightSearchString(self, text):
-        data = unicode(self.text())
+        data = unicode(self.sci.text())
         self.sci.SendScintilla(qsci.SCI_SETINDICATORCURRENT, 8)
         pos = [data.find(text)]
         n = len(text)
