@@ -61,6 +61,7 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
         # setup tables and views
         self.setupHeaderTextview()
         self.tableView_filelist.setFocusPolicy(QtCore.Qt.NoFocus)
+        self.textview_header.setFocusPolicy(QtCore.Qt.NoFocus)
         self.setupBranchCombo()
         self.setupModels()
 
@@ -184,7 +185,8 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
                     table.setCurrentIndex(model.index(min(row+1, model.rowCount()-1), 0))
                     return True
                 elif event.key() in [Qt.Key_Return, Qt.Key_Enter]:
-                    table.fileActivated(table.currentIndex())
+                    table.fileActivated(table.currentIndex(),
+                                        alternate=event.modifiers() & Qt.AltModifier)
                     return True
         return QtGui.QMainWindow.eventFilter(self, watched, event)
 

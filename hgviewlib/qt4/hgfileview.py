@@ -332,9 +332,12 @@ class HgFileListView(QtGui.QTableView):
     def selectFile(self, filename):
         self.setCurrentIndex(self.model().indexFromFile(filename))
 
-    def fileActivated(self, index):
+    def fileActivated(self, index, alternate=False):
         sel_file = self.model().fileFromIndex(index)
-        self.diffNavigate(sel_file)
+        if alternate:
+            self.navigate(sel_file)
+        else:
+            self.diffNavigate(sel_file)
         
     def toggleFullFileList(self, *args):
         self.model().toggleFullFileList()

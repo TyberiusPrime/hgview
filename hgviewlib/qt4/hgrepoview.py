@@ -263,19 +263,14 @@ class HgRepoView(QtGui.QTableView):
                 self.setCurrentIndex(idx)
 
 
-class RevDisplay(QtGui.QFrame):
+class RevDisplay(QtGui.QTextBrowser):
     """
     Display metadata for one revision (rev, author, description, etc.)
     """
     def __init__(self, parent=None):
-        QtGui.QFrame.__init__(self, parent)
-        l = QtGui.QVBoxLayout(self)
-        l.setSpacing(0)
-        l.setContentsMargins(0,0,0,0)
-        self.textview = QtGui.QTextBrowser(self)
-        l.addWidget(self.textview)
+        QtGui.QTextBrowser.__init__(self, parent)
         self.descwidth = 60 # number of chars displayed for parent/child descriptions
-        connect(self.textview,
+        connect(self,
                 SIGNAL('anchorClicked(const QUrl &)'),
                 self.anchorClicked)
 
@@ -328,7 +323,7 @@ class RevDisplay(QtGui.QFrame):
         buf += "</table>\n"
         desc = unicode(ctx.description().replace('\n', '<br/>\n'), 'utf-8', 'replace')
         buf += '<div class="diff_desc"><p>%s</p></div>\n' % desc
-        self.textview.setHtml(buf)
+        self.setHtml(buf)
 
 
 if __name__ == "__main__":
