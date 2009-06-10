@@ -359,7 +359,10 @@ class FileRevModel(HgRepoListModel):
         grapher = filelog_grapher(self.repo, self.filename)
         self.graph = Graph(self.repo, grapher)
         fl = self.repo.file(self.filename)
-        self.heads = [fl.linkrev(x) for x in fl.heads()]
+        # we use fl.index here (instead of linkrev) cause
+        # linkrev API changed between 1.0 and 1.?. So this
+        # works with both versions.
+        self.heads = [fl.index[fl.rev(x)][4] for x in fl.heads()]
         self._datacache = {}
         self._fill_iter = None
         self.gr_fill_timer.start()
