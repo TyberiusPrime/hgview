@@ -17,5 +17,12 @@ def tounicode(s):
             pass
     return unicode(s, 'utf-8', 'replace')
         
-        
+def has_closed_branch_support(repo):
+    try:
+        repo.heads(closed=True)
+        return True
+    except:
+        return False
+
+    
     

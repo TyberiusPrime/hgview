@@ -42,98 +42,6 @@
           </property>
          </widget>
         </item>
-        <item>
-         <layout class="QHBoxLayout" name="horizontalLayout_6" >
-          <item>
-           <widget class="QFrame" name="frame_branch" >
-            <property name="frameShape" >
-             <enum>QFrame::NoFrame</enum>
-            </property>
-            <property name="frameShadow" >
-             <enum>QFrame::Raised</enum>
-            </property>
-            <layout class="QHBoxLayout" name="horizontalLayout_2" >
-             <property name="margin" >
-              <number>0</number>
-             </property>
-             <item>
-              <widget class="QLabel" name="label_4" >
-               <property name="text" >
-                <string>Branch</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QComboBox" name="branch_comboBox" />
-             </item>
-            </layout>
-           </widget>
-          </item>
-          <item>
-           <widget class="QFrame" name="frame_revrange" >
-            <property name="frameShape" >
-             <enum>QFrame::NoFrame</enum>
-            </property>
-            <property name="frameShadow" >
-             <enum>QFrame::Raised</enum>
-            </property>
-            <layout class="QHBoxLayout" name="horizontalLayout_4" >
-             <property name="margin" >
-              <number>0</number>
-             </property>
-             <item>
-              <widget class="QLabel" name="label_3" >
-               <property name="enabled" >
-                <bool>true</bool>
-               </property>
-               <property name="text" >
-                <string>Revision range</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QSpinBox" name="spinbutton_rev_low" />
-             </item>
-             <item>
-              <widget class="QSpinBox" name="spinbutton_rev_high" />
-             </item>
-            </layout>
-           </widget>
-          </item>
-          <item>
-           <widget class="QFrame" name="frame_filter" >
-            <property name="frameShape" >
-             <enum>QFrame::NoFrame</enum>
-            </property>
-            <property name="frameShadow" >
-             <enum>QFrame::Raised</enum>
-            </property>
-            <layout class="QHBoxLayout" name="horizontalLayout_5" >
-             <property name="margin" >
-              <number>0</number>
-             </property>
-             <item>
-              <widget class="QLabel" name="label_2" >
-               <property name="text" >
-                <string>Filter (regex)</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QLineEdit" name="entry_file_filter" />
-             </item>
-             <item>
-              <widget class="QPushButton" name="button_filter" >
-               <property name="text" >
-                <string>Filter</string>
-               </property>
-              </widget>
-             </item>
-            </layout>
-           </widget>
-          </item>
-         </layout>
-        </item>
        </layout>
       </widget>
       <widget class="QFrame" name="frame_maincontent" >
@@ -326,6 +234,11 @@
   <action name="actionAbout" >
    <property name="text" >
     <string>About</string>
+   </property>
+  </action>
+  <action name="actionDisplayAllBranches" >
+   <property name="text" >
+    <string>displayAllBranches</string>
    </property>
   </action>
  </widget>

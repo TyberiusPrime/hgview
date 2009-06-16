@@ -17,7 +17,7 @@ from PyQt4 import QtCore, QtGui, Qsci
 from mercurial import ui, hg
 from mercurial import util
 
-from hgviewlib.util import tounicode
+from hgviewlib.util import tounicode, has_closed_branch_support
 from hgviewlib.hggraph import diff as revdiff
 from hgviewlib.decorators import timeit
 
@@ -38,6 +38,8 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
     _uifile = 'hgqv.ui'
     def __init__(self, repo, filerex = None):
         self.repo = repo
+        self._closed_branch_supp = has_closed_branch_support(self.repo)
+        
         QtGui.QMainWindow.__init__(self)
         HgDialogMixin.__init__(self)
 
@@ -55,9 +57,6 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
         connect(self.textview_status, SIGNAL('showMessage'),
                 self.statusBar().showMessage)
                 
-        # filter frame
-        self.setupFilterFrame()
-
         # setup tables and views
         self.setupHeaderTextview()
         self.tableView_filelist.setFocusPolicy(QtCore.Qt.NoFocus)
@@ -69,13 +68,31 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
 
         self.refreshRevisionTable()
 
-    def setupBranchCombo(self):
-        branches = sorted(self.repo.branchtags().keys())
+    def setupBranchCombo(self, *args):
+        allbranches = sorted(self.repo.branchtags().items())
+        if self._closed_branch_supp:
+            openbr = []
+            for branch, brnode in allbranches:
+                openbr.extend(self.repo.branchheads(branch, closed=False))
+            clbranches = [br for br, node in allbranches if node not in openbr]
+            branches = [br for br, node in allbranches if node in openbr]
+            self.branch_checkBox_action.setVisible(len(clbranches)>0)
+            if self.branch_checkBox.isChecked():
+                branches = branches + clbranches
+        else:
+            self.branch_checkBox_action.setVisible(False)
+            branches = [br for br, node in allbranches] # open branches
+            
         if len(branches) == 1:
-            self.branch_comboBox.setEnabled(False)
+            self.branch_label_action.setVisible(False)
+            self.branch_comboBox_action.setVisible(False)
         else:
             self.branchesmodel = QtGui.QStringListModel([''] + branches)
             self.branch_comboBox.setModel(self.branchesmodel)
+            self.branch_label_action.setVisible(True)
+            self.branch_label_action.setEnabled(True)
+            self.branch_comboBox_action.setVisible(True)
+            self.branch_comboBox_action.setEnabled(True)
 
     def createToolbars(self):
         self.find_toolbar = FindInGraphlogQuickBar(self)
@@ -90,6 +107,18 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
 
         self.toolBar_edit.addAction(self.tableView_revisions._actions['back'])
         self.toolBar_edit.addAction(self.tableView_revisions._actions['forward'])
+
+        self.branch_label = QtGui.QLabel("Branch")
+        self.branch_comboBox = QtGui.QComboBox()
+        self.branch_checkBox = QtGui.QCheckBox("Display closed branches")
+        connect(self.branch_comboBox, SIGNAL('activated(const QString &)'),
+                self.refreshRevisionTable)
+        connect(self.branch_checkBox, SIGNAL('toggled(bool)'),
+                self.setupBranchCombo)
+        self.branch_checkBox_action = self.toolBar_treefilters.addWidget(self.branch_checkBox)        
+        self.toolBar_treefilters.addSeparator()
+        self.branch_label_action = self.toolBar_treefilters.addWidget(self.branch_label)
+        self.branch_comboBox_action = self.toolBar_treefilters.addWidget(self.branch_comboBox)
 
     def createActions(self):
         # main window actions (from .ui file)
@@ -115,16 +144,6 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
     def load_config(self):
         cfg = HgDialogMixin.load_config(self)
         self.hidefinddelay = cfg.getHideFindDelay()
-
-    def setupFilterFrame(self):
-        connect(self.branch_comboBox, SIGNAL('activated(const QString &)'),
-                self.refreshRevisionTable)
-        self.frame_branch_action = self.toolBar_treefilters.addWidget(self.frame_branch)
-        self.frame_revrange_action = self.toolBar_treefilters.addWidget(self.frame_revrange)
-        self.frame_filter_action = self.toolBar_treefilters.addWidget(self.frame_filter)
-
-        self.frame_revrange_action.setVisible(False)
-        self.frame_filter_action.setVisible(False)
 
     def create_models(self):
         self.repomodel = HgRepoListModel(self.repo)
