@@ -29,6 +29,14 @@ from mercurial import patch, util
 import hgviewlib # force apply monkeypatches
 from hgviewlib.util import tounicode
 
+def unknown_encoding_tounicode(data):
+    for enc in ('utf-8', 'latin1'):
+        try:
+            return data.decode(enc)
+        except Exception, e:
+            pass
+    raise e
+
 def diff(repo, ctx1, ctx2=None, files=None):
     """
     Compute the diff of files between 2 changectx
@@ -330,6 +338,8 @@ class Graph(object):
         return self.nodesdict[rev].extra[0]
         
     def filedata(self, filename, rev, mode='diff'):
+        """XXX written under dubious encoding assumptions
+        """
         data = ""
         flag = self.fileflag(filename, rev)
         ctx = self.repo.changectx(rev)
@@ -346,6 +356,7 @@ class Graph(object):
                 if util.binary(data):
                     data = "binary file"
                 else: # hg stores utf-8 strings
+                    # XXX (auc) says who ?
                     data = tounicode(data)
             elif flag == "=":
                 parent = self.fileparent(filename, rev)
@@ -363,7 +374,8 @@ class Graph(object):
                 else:
                     data = newdata
                     flag = "+"
-                data = u'\n'.join(data)
+                data = u'\n'.join(unknown_encoding_tounicode(elt)
+                                  for elt in data)
         return flag, data
 
     def fileparent(self, filename, rev):
