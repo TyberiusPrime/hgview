@@ -25,4 +25,16 @@ def has_closed_branch_support(repo):
         return False
 
     
+def exec_flag_changed(filectx):
+    flag = filectx.isexec()
+    parents = filectx.parents()
+    if not parents:
+        return ""
     
+    pflag = parents[0].isexec()
+    if flag != pflag:
+        if flag:
+            return "set"
+        else:
+            return "unset"
+    return ""

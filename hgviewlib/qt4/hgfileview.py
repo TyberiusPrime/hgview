@@ -34,14 +34,29 @@ from hgviewlib.qt4.hgfileviewer import FileViewer, FileDiffViewer, ManifestViewe
 from hgviewlib.qt4.quickbar import QuickBar
 from hgviewlib.qt4.lexers import get_lexer
 from hgviewlib.qt4.blockmatcher import BlockList
+from hgviewlib.util import exec_flag_changed
 
 qsci = Qsci.QsciScintilla
 class HgFileView(QtGui.QFrame):
     def __init__(self, parent=None):
         QtGui.QFrame.__init__(self, parent)
-        l = QtGui.QHBoxLayout(self)        
+        framelayout = QtGui.QVBoxLayout(self)
+        framelayout.setContentsMargins(0,0,0,0)
+        framelayout.setSpacing(0)
+        
+        l = QtGui.QHBoxLayout()        
         l.setContentsMargins(0,0,0,0)
         l.setSpacing(0)
+        
+        self.topLayout = QtGui.QHBoxLayout()
+        self.filenamelabel = QtGui.QLabel()
+        self.execflaglabel = QtGui.QLabel()
+        self.topLayout.addWidget(self.filenamelabel)
+        self.topLayout.addStretch(1)
+        self.topLayout.addWidget(self.execflaglabel)
+        framelayout.addLayout(self.topLayout)
+        framelayout.addLayout(l, 1)
+        
         self.sci = Qsci.QsciScintilla(self)
         l.addWidget(self.sci)
         self.sci.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
@@ -128,6 +143,8 @@ class HgFileView(QtGui.QFrame):
     def displayFile(self, filename):
         self._filename = filename
         self.sci.clear()
+        self.filenamelabel.clear()
+        self.execflaglabel.clear()
         if filename is None:
             return
         flag, data = self._model.graph.filedata(filename, self._ctx.rev(), self._mode)
@@ -148,7 +165,17 @@ class HgFileView(QtGui.QFrame):
             self.filedata = data
         else:
             self.filedata = None
-        
+
+        filectx = self._ctx.filectx(self._filename)
+        flag = exec_flag_changed(filectx)
+        if flag:
+            self.execflaglabel.setText("<b>exec mode has been %s</b>" % flag)
+        labeltxt = "<b>%s</b>" % self._filename
+        renamed = filectx.renamed()
+        if renamed:
+            labeltxt += ' <i>(renamed from %s)</i>' % renamed[0]
+        self.filenamelabel.setText(labeltxt)
+            
         self.sci.setText(data)
         if self._find_text:
             self.highlightSearchString(self._find_text)
