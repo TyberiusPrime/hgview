@@ -16,6 +16,3 @@ def tounicode(s):
         except UnicodeDecodeError:
             pass
     return unicode(s, 'utf-8', 'replace')
-        
-        
-    

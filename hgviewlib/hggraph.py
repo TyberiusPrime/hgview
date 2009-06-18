@@ -29,14 +29,6 @@ from mercurial import patch, util
 import hgviewlib # force apply monkeypatches
 from hgviewlib.util import tounicode
 
-def unknown_encoding_tounicode(data):
-    for enc in ('utf-8', 'latin1'):
-        try:
-            return data.decode(enc)
-        except Exception, e:
-            pass
-    raise e
-
 def diff(repo, ctx1, ctx2=None, files=None):
     """
     Compute the diff of files between 2 changectx
@@ -347,7 +339,7 @@ class Graph(object):
         if flag not in ('-', '?'):
             fc = ctx.filectx(filename)
             if fc.size() > 100000:
-                data = "File too big"
+                data = "Big file."
                 return flag, data
             if flag == "+" or mode == "file":
                 flag = '+'
@@ -374,8 +366,7 @@ class Graph(object):
                 else:
                     data = newdata
                     flag = "+"
-                data = u'\n'.join(unknown_encoding_tounicode(elt)
-                                  for elt in data)
+                data = u'\n'.join(tounicode(elt) for elt in data)
         return flag, data
 
     def fileparent(self, filename, rev):

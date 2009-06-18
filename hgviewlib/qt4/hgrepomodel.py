@@ -63,7 +63,7 @@ def cvrt_date(date):
 
 # in following lambdas, ctx is a hg changectx
 _columnmap = {'ID': lambda ctx, gnode: ctx.rev(),
-              'Log': lambda ctx, gnode: unicode(ctx.description(), 'utf-8', 'replace'),
+              'Log': lambda ctx, gnode: unicode(ctx.description(), 'utf-8', 'ignore'),
               'Author': lambda ctx, gnode: unicode(ctx.user(), 'utf-8', 'replace'),
               'Date': lambda ctx, gnode: cvrt_date(ctx.date()),
               'Tags': lambda ctx, gnode: ",".join(ctx.tags()),
