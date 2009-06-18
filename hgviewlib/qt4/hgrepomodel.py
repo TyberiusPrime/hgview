@@ -28,6 +28,7 @@ from mercurial.revlog import LookupError
 from hgviewlib.hggraph import Graph, ismerge, diff as revdiff
 from hgviewlib.hggraph import revision_grapher, filelog_grapher
 from hgviewlib.config import HgConfig
+from hgviewlib.util import tounicode
 from hgviewlib.qt4 import icon as geticon
 from hgviewlib.decorators import timeit
 
@@ -63,8 +64,8 @@ def cvrt_date(date):
 
 # in following lambdas, ctx is a hg changectx
 _columnmap = {'ID': lambda ctx, gnode: ctx.rev(),
-              'Log': lambda ctx, gnode: unicode(ctx.description(), 'utf-8', 'ignore'),
-              'Author': lambda ctx, gnode: unicode(ctx.user(), 'utf-8', 'replace'),
+              'Log': lambda ctx, gnode: tounicode(ctx.description()),
+              'Author': lambda ctx, gnode: tounicode(ctx.user()),
               'Date': lambda ctx, gnode: cvrt_date(ctx.date()),
               'Tags': lambda ctx, gnode: ",".join(ctx.tags()),
               'Branch': lambda ctx, gnode: ctx.branch(),
