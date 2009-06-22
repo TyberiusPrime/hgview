@@ -18,19 +18,21 @@ def tounicode(s):
     return unicode(s, 'utf-8', 'replace')
         
 def has_closed_branch_support(repo):
-    try:
-        repo.heads(closed=True)
-        return True
-    except:
-        return False
+    # what a hack... 
+    return "closed" in repo.heads.im_func.func_code.co_varnames
+
+def isexec(filectx):
+    if hasattr(filectx, "isexec"):        
+        return filectx.isexec()
+    return "x" in filectx.flags()
     
 def exec_flag_changed(filectx):
-    flag = filectx.isexec()
+    flag = isexec(filectx)
     parents = filectx.parents()
     if not parents:
         return ""
     
-    pflag = parents[0].isexec()
+    pflag = isexec(parents[0])
     if flag != pflag:
         if flag:
             return "set"
