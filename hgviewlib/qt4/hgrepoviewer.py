@@ -66,8 +66,6 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
 
         self.setupRevisionTable()
 
-        self.refreshRevisionTable()
-
     def setupBranchCombo(self, *args):
         allbranches = sorted(self.repo.branchtags().items())
         if self._closed_branch_supp:
