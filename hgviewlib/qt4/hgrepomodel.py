@@ -466,13 +466,13 @@ class HgFileListModel(QtCore.QAbstractTableModel):
             return True
         return filename in self.current_ctx.files()
 
+    @timeit
     def _buildDesc(self, parent, fromside):
         _files = []
         ctx = self.current_ctx
         ctxfiles = ctx.files()
-        changes = self.repo.status(parent.node(), ctx.node())[:5]
-        modified, added, removed, deleted, unknown = changes
-        removed += deleted
+        changes = self.repo.status(parent.node(), ctx.node())[:3]
+        modified, added, removed = changes
         for f in [x for x in added if self._filterFile(x)]:
             desc = {'path':f, 'flag': '+', 'desc':f,
                     'parent': parent, 'fromside': fromside,
