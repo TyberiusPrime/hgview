@@ -171,10 +171,18 @@ class HgConfig(object):
     @cached
     def getDisplayDiffStats(self, default="yes"):
         """
-        fillingstep: number of nodes 'loaded' at a time when updating repo graph log
+        displaydiffstats: flag controllong the appearance of the
+                          'Diff' column in a revision's file list
         """
         val = str(self.ui.config(self.section, 'displaydiffstats', default))
         return val.lower() in ['true', 'yes', '1', 'on']
+
+    @cached
+    def getMaxFileSize(self, default=100000):
+        """
+        maxfilesize: max size of a file (for diff computations, display content, etc.)
+        """
+        return int(self.ui.config(self.section, 'maxfilesize', default))
     
 _HgConfig = HgConfig
 # HgConfig is instanciated only once (singleton)
@@ -193,6 +201,9 @@ def HgConfig(ui):
 
 
 def get_option_descriptions():
+    """
+    Extract options descriptions (docstrings of HgConfig methods)
+    """
     options = []
     for attr in dir(_HgConfig):
         if attr.startswith('get'):

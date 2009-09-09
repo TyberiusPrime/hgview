@@ -137,7 +137,7 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
         self._user_colors = {}
         self._branch_colors = {}
         grapher = revision_grapher(self.repo, branch=branch)
-        self.graph = Graph(self.repo, grapher)
+        self.graph = Graph(self.repo, grapher, self.max_file_size)
         self.nmax = len(self.repo.changelog)
         self.heads = [self.repo.changectx(x).rev() for x in self.repo.heads()]
         self._fill_iter = None
@@ -192,7 +192,8 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
         self.dot_radius = cfg.getDotRadius(default=8)
         self.rowheight = cfg.getRowHeight()
         self.fill_step = cfg.getFillingStep()
-
+        self.max_file_size = cfg.getMaxFileSize()
+        
         cols = getattr(cfg, self._getcolumns)()
         if cols is not None:
             validcols = [col for col in cols if col in self._allcolumns]
@@ -376,7 +377,7 @@ class FileRevModel(HgRepoListModel):
         self._branch_colors = {}
 
         grapher = filelog_grapher(self.repo, self.filename)
-        self.graph = Graph(self.repo, grapher)
+        self.graph = Graph(self.repo, grapher, self.max_file_size)
         fl = self.repo.file(self.filename)
         # we use fl.index here (instead of linkrev) cause
         # linkrev API changed between 1.0 and 1.?. So this

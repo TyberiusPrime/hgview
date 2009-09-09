@@ -243,7 +243,8 @@ class Graph(object):
     method to build the graph progressively.
     """
     #@timeit
-    def __init__(self, repo, grapher):
+    def __init__(self, repo, grapher, maxfilesize=100000):
+        self.maxfilesize = maxfilesize
         self.repo = repo
         self.maxlog = len(self.repo.changelog)
         self.grapher = grapher
@@ -340,7 +341,7 @@ class Graph(object):
 
         if flag not in ('-', '?'):
             fc = ctx.filectx(filename)
-            if fc.size() > 100000:
+            if fc.size() > self.maxfilesize:
                 data = "Big file."
                 return flag, data
             if flag == "+" or mode == "file":
