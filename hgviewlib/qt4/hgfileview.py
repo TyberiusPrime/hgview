@@ -49,12 +49,14 @@ class HgFileView(QtGui.QFrame):
         l.setContentsMargins(0,0,0,0)
         l.setSpacing(0)
         
-        self.topLayout = QtGui.QHBoxLayout()
+        self.topLayout = QtGui.QVBoxLayout()
         self.filenamelabel = QtGui.QLabel()
+        self.filenamelabel.setWordWrap(True)
         self.execflaglabel = QtGui.QLabel()
+        self.execflaglabel.setWordWrap(True)
         self.topLayout.addWidget(self.filenamelabel)
-        self.topLayout.addStretch(1)
         self.topLayout.addWidget(self.execflaglabel)
+        self.execflaglabel.hide()
         framelayout.addLayout(self.topLayout)
         framelayout.addLayout(l, 1)
         
@@ -173,7 +175,11 @@ class HgFileView(QtGui.QFrame):
 
         flag = exec_flag_changed(filectx)
         if flag:
-            self.execflaglabel.setText("<b>exec mode has been %s</b>" % flag)
+            self.execflaglabel.setText("<b>exec mode has been <font color='red'>%s</font></b>" % flag)
+            self.execflaglabel.show()
+        else:
+            self.execflaglabel.hide()
+
         labeltxt = "<b>%s</b>" % self._filename
         renamed = filectx.renamed()
         if renamed:
