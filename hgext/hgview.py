@@ -61,7 +61,13 @@ start hgview log viewer
     visually browse in the hg graph log, search in logs, and display
     diff between arbitrary revisions of a file.
 
-    Keyboard shortcuts:
+    If a filename is given, launch the filelog diff viewer for this file, 
+    and with the '-n' option, launch the filelog navigator for the file.
+
+    With the '-r' option, launch the manifest viexer for the given revision.
+
+    Keyboard shortcuts
+    ------------------
 
     Up/Down     - go to next/previous revision
     Left/Right  - display previous/next files of the current changeset
@@ -71,8 +77,6 @@ start hgview log viewer
     Enter       - run the diff viewer for the currently selected file
                   (display diff between revisions)
     Ctrl+R      - reread repo
-
-    If a filename is given, only launch the filelog viewer for this file.
 
     
     """
