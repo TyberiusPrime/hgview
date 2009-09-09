@@ -117,7 +117,7 @@ class HgRepoView(QtGui.QTableView):
             self.addAction(act)
 
     def showAtRev(self):
-        ManifestViewer(self.model().repo, self.current_rev).show()
+        self.emit(SIGNAL('revisionActivated'), self.current_rev)
 
     def contextMenuEvent(self, event):
         menu = QtGui.QMenu(self)
