@@ -21,6 +21,7 @@ import difflib
 
 from mercurial.node import hex, short as short_hex, bin as short_bin
 from mercurial import util
+from mercurial.error import LookupError
 
 from PyQt4 import QtCore, QtGui, Qsci
 Qt = QtCore.Qt
@@ -129,7 +130,7 @@ class HgFileView(QtGui.QFrame):
         # XXX we really need only the "Graph" instance 
         self._model = model
         self.sci.clear()
-        
+
     def setContext(self, ctx):
         self._ctx = ctx
         self.sci.clear()
@@ -146,6 +147,10 @@ class HgFileView(QtGui.QFrame):
         self.filenamelabel.clear()
         self.execflaglabel.clear()
         if filename is None:
+            return
+        try:
+            filectx = self._ctx.filectx(self._filename)
+        except LookupError: # occur on deleted files
             return
         flag, data = self._model.graph.filedata(filename, self._ctx.rev(), self._mode)
         lexer = None
@@ -166,7 +171,6 @@ class HgFileView(QtGui.QFrame):
         else:
             self.filedata = None
 
-        filectx = self._ctx.filectx(self._filename)
         flag = exec_flag_changed(filectx)
         if flag:
             self.execflaglabel.setText("<b>exec mode has been %s</b>" % flag)
