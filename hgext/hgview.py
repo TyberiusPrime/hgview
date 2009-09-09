@@ -15,9 +15,48 @@ from mercurial import hg, commands, dispatch
 # don't start with a dash.  If no default value is given in the parameter list,
 # they are required.
 
-def start_hgview(ui, repo, *args, **kwargs):
-    """start hgview log viewer
+def get_options_helpmsg():
+    """display hgview full list of configuration options
+    """
+    import sys
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+    from hgviewlib.config import get_option_descriptions
+    options = get_option_descriptions()
+    msg = """
+Configuration options available for hgview
+==========================================
+
+    These should be set under the [hgview] section of the hgrc config file.\n\n"""
+    msg += '\n'.join(["  - " + v for v in options]) + '\n'
+    msg += """
+    The 'users' config statement should be the path of a file
+    describing users, like:
+
+    -----------------------------------------------
+    # file ~/.hgusers
+    id=david
+    alias=david.douard@logilab.fr
+    alias=david@logilab.fr
+    alias=David Douard <david.douard@logilab.fr>
+    color=#FF0000
     
+    id=ludal
+    alias=ludovic.aubry@logilab.fr
+    alias=ludal@logilab.fr
+    alias=Ludovic Aubry <ludovic.aubry@logilab.fr>
+    color=#00FF00
+    -----------------------------------------------
+    
+    This allow to make several 'authors' under the same name, with the
+    same color, in the graphlog browser.
+    """
+    return msg
+
+def start_hgview(ui, repo, *args, **kwargs):
+    """
+start hgview log viewer
+=======================
+
     This command will launch the hgview log navigator, allowing to
     visually browse in the hg graph log, search in logs, and display
     diff between arbitrary revisions of a file.
@@ -33,14 +72,9 @@ def start_hgview(ui, repo, *args, **kwargs):
                   (display diff between revisions)
     Ctrl+R      - reread repo
 
-    Configuration:
-
-    Configuration statements goes under the section [hgview] of the
-    hgrc config file.
-
     If a filename is given, only launch the filelog viewer for this file.
+
     
-    Use 'hgview-options' command to display list of all configuration options.
     """
     rundir = repo.root
 
@@ -94,40 +128,8 @@ def start_hgview(ui, repo, *args, **kwargs):
         mainwindow.show()
         return app.exec_()
 
-def display_options(ui, repo, *args, **kwargs):
-    """display hgview full list of configuration options
-    """
-    import sys
-    sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
-    from hgviewlib.config import get_option_descriptions
-    options = get_option_descriptions()
-    msg = """\nConfiguration options available for hgview.
-    These should be set under the [hgview] section.\n\n"""
-    msg += '\n'.join(["  - " + v for v in options]) + '\n'
-    msg += """
-    The 'users' config statement should be the path of a file
-    describing users, like:
+start_hgview.__doc__ += get_options_helpmsg()
 
-    -----------------------------------------------
-    # file ~/.hgusers
-    id=david
-    alias=david.douard@logilab.fr
-    alias=david@logilab.fr
-    alias=David Douard <david.douard@logilab.fr>
-    color=#FF0000
-    
-    id=ludal
-    alias=ludovic.aubry@logilab.fr
-    alias=ludal@logilab.fr
-    alias=Ludovic Aubry <ludovic.aubry@logilab.fr>
-    color=#00FF00
-    -----------------------------------------------
-    
-    This allow to make several 'authors' under the same name, with the
-    same color, in the graphlog browser.
-    """
-    
-    ui.status(msg)
     
 cmdtable = {
     "^hgview|hgv|qv": (start_hgview,
@@ -135,8 +137,5 @@ cmdtable = {
                         ('r', 'rev', '', 'start in maifest navigation mode at rev R'),
                         ],
             "hg hgview [options] [filename]"),
-    "^hgview-options|qv-options|qv-config|qv-cfg": (display_options,
-                                     [],
-                                     "")
 }
     
