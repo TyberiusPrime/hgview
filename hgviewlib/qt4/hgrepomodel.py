@@ -129,7 +129,6 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
                 self.fillGraph)
         self.setRepo(repo, branch)
 
-    #@timeit
     def setRepo(self, repo, branch=''):
         self.repo = repo
         self._datacache = {}
@@ -160,7 +159,7 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
             if n == 0:
                 self.emit(SIGNAL('filled'))                
             if self._required and len(self.graph) > self._required:
-                self._required = None
+                self._requiredss = None
                 self.gr_fill_timer.stop()
                 self.emit(SIGNAL('showMessage'), '')            
         except StopIteration:
@@ -421,6 +420,7 @@ class HgFileListModel(QtCore.QAbstractTableModel):
         self._flagcolor['-'] = cfg.getFileRemovedColor(default='red')
         self._flagcolor['-'] = cfg.getFileDeletedColor(default='red')
         self._flagcolor['+'] = cfg.getFileAddedColor(default='green')
+        self._displaydiff = cfg.getDisplayDiffStats()
 
     def setDiffWidth(self, w):
         if w != self.diffwidth:
@@ -437,7 +437,7 @@ class HgFileListModel(QtCore.QAbstractTableModel):
         return len(self)
 
     def columnCount(self, parent=None):
-        return 2
+        return 1 + self._displaydiff
 
     def file(self, row):
         return self._files[row]['path']
@@ -467,7 +467,6 @@ class HgFileListModel(QtCore.QAbstractTableModel):
             return True
         return filename in self.current_ctx.files()
 
-    #@timeit
     def _buildDesc(self, parent, fromside):
         _files = []
         ctx = self.current_ctx
@@ -526,8 +525,9 @@ class HgFileListModel(QtCore.QAbstractTableModel):
         Method called to start the background process of computing
         file stats, which are to be displayed in the 'Stats' column
         """
-        self._fill_iter = self._fill()
-        self._fill_one_step()
+        if self._displaydiff:
+            self._fill_iter = self._fill()
+            self._fill_one_step()
 
     def _fill_one_step(self):
         if self._fill_iter is None:

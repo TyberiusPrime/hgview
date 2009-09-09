@@ -167,6 +167,14 @@ class HgConfig(object):
         if cols is None:
             return None        
         return [col.strip() for col in cols.split(',') if col.strip()]
+
+    @cached
+    def getDisplayDiffStats(self, default="yes"):
+        """
+        fillingstep: number of nodes 'loaded' at a time when updating repo graph log
+        """
+        val = str(self.ui.config(self.section, 'displaydiffstats', default))
+        return val.lower() in ['true', 'yes', '1', 'on']
     
 _HgConfig = HgConfig
 # HgConfig is instanciated only once (singleton)
