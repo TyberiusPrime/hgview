@@ -46,7 +46,6 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
         self.setWindowTitle('hgview: %s' % os.path.abspath(self.repo.root))
         self.menubar.hide()
 
-        self.setup_statusbar()
         self.splitter_2.setStretchFactor(0, 2)
         self.splitter_2.setStretchFactor(1, 1)
 
@@ -55,7 +54,8 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
 
         self.textview_status.setFont(self._font)
         connect(self.textview_status, SIGNAL('showMessage'),
-                self.statusBar().showMessage)
+                self.statusBar().showMessage,
+                Qt.QueuedConnection)
                 
         # setup tables and views
         self.setupHeaderTextview()
@@ -100,7 +100,9 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
         connect(self.find_toolbar, SIGNAL('fileSelected'),
                 self.tableView_filelist.selectFile)
         connect(self.find_toolbar, SIGNAL('showMessage'),
-                self.statusBar().showMessage)
+                self.statusBar().showMessage,
+                Qt.QueuedConnection)
+                
         self.attachQuickBar(self.find_toolbar)
 
         self.toolBar_edit.addAction(self.tableView_revisions._actions['back'])
@@ -113,7 +115,8 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
                 self.refreshRevisionTable)
         connect(self.branch_checkBox, SIGNAL('toggled(bool)'),
                 self.setupBranchCombo)
-        self.branch_checkBox_action = self.toolBar_treefilters.addWidget(self.branch_checkBox)        
+        
+        self.branch_checkBox_action = self.toolBar_treefilters.addWidget(self.branch_checkBox)
         self.toolBar_treefilters.addSeparator()
         self.branch_label_action = self.toolBar_treefilters.addWidget(self.branch_label)
         self.branch_comboBox_action = self.toolBar_treefilters.addWidget(self.branch_comboBox)
@@ -129,31 +132,20 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
         self.actionQuit.setIcon(geticon('quit'))
         self.actionRefresh.setIcon(geticon('reload'))
 
-    def setup_statusbar(self):
-        # setup the status bar, with a progress bar in it
-        sbar = self.statusBar()
-        h = sbar.height()
-        self.pb = QtGui.QProgressBar(sbar)
-        self.pb.setMaximumHeight(h-2)
-        self.pb.setTextVisible(False)
-        self.pb.hide()
-        self.statusBar().addPermanentWidget(self.pb)
-
     def load_config(self):
         cfg = HgDialogMixin.load_config(self)
         self.hidefinddelay = cfg.getHideFindDelay()
 
     def create_models(self):
         self.repomodel = HgRepoListModel(self.repo)
-        connect(self.repomodel, SIGNAL('filling(int)'),
-                self.start_filling)
-        connect(self.repomodel, SIGNAL('filled(int)'),
+        connect(self.repomodel, SIGNAL('filled'),
                 self.on_filled)
-        connect(self.repomodel, SIGNAL('fillingover()'),
-                self.pb.hide)
+        connect(self.repomodel, SIGNAL('showMessage'),
+                self.statusBar().showMessage,
+                Qt.QueuedConnection)                
 
         self.filelistmodel = HgFileListModel(self.repo)
-
+        
     def setupModels(self):
         self.create_models()
         self.tableView_revisions.setModel(self.repomodel)
@@ -207,20 +199,11 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
                     return True
         return QtGui.QMainWindow.eventFilter(self, watched, event)
 
-    def start_filling(self, nmax):
-        self.pb.setValue(0)
-        self.pb.setRange(0, nmax)
-        self.pb.show()
-
-    def on_filled(self, nfilled):
-        # callback called each time the revisions model filling has progressed
-        selectfirst = self.pb.value() == 0
-        self.pb.setValue(nfilled)
-        if selectfirst:
-            # if this is the first time the model is filled, we select
-            # the first available revision
-            tv = self.tableView_revisions
-            tv.setCurrentIndex(tv.model().index(0, 0))
+    def on_filled(self):
+        # called the first time the model is filled, so we select
+        # the first available revision
+        tv = self.tableView_revisions
+        tv.setCurrentIndex(tv.model().index(0, 0))
 
     def revision_activated(self, rev):
         """

@@ -308,6 +308,8 @@ class Graph(object):
         return len(self.nodes)
 
     def index(self, rev):
+        if rev < self.nodes[-1].rev:
+            self._build_nodes(self.nodes[-1].rev - rev)
         if rev in self.nodesdict:
             return self.nodes.index(self.nodesdict[rev])
         return -1
