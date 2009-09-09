@@ -63,6 +63,7 @@ def start_hgview(ui, repo, *args, **kwargs):
         import hgviewlib.qt4.hgqv_rc
         from hgviewlib.qt4.hgrepoviewer import HgRepoViewer
         from hgviewlib.qt4.hgfileviewer import FileDiffViewer, FileViewer
+        from hgviewlib.qt4.hgfileviewer import ManifestViewer
     except ImportError, e:
         print e
         # If we're unable to import Qt4 and qctlib, try to
@@ -84,7 +85,12 @@ def start_hgview(ui, repo, *args, **kwargs):
             else:
                 mainwindow = FileDiffViewer(repo, args[0])
         else:
-            mainwindow = HgRepoViewer(repo)
+            rev = kwargs.get('rev')
+            if rev:
+                rev = int(rev)
+                mainwindow = ManifestViewer(repo, rev)
+            else:
+                mainwindow = HgRepoViewer(repo)
         mainwindow.show()
         return app.exec_()
 
@@ -126,6 +132,7 @@ def display_options(ui, repo, *args, **kwargs):
 cmdtable = {
     "^hgview|hgv|qv": (start_hgview,
                        [('n', 'navigate', False, '(with filename) start in navigation mode'),
+                        ('r', 'rev', '', 'start in maifest navigation mode at rev R'),
                         ],
             "hg hgview [options] [filename]"),
     "^hgview-options|qv-options|qv-config|qv-cfg": (display_options,
