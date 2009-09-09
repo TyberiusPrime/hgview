@@ -123,6 +123,7 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
         """
         QtCore.QAbstractTableModel.__init__(self, parent)
         self._datacache = {}
+        self._required = None
         self.gr_fill_timer = QtCore.QTimer()
         connect(self.gr_fill_timer, SIGNAL('timeout()'),
                 self.fillGraph)
@@ -353,7 +354,7 @@ class FileRevModel(HgRepoListModel):
     viewer of in diff-file viewer dialogs.
     """
     _allcolumns = ('ID', 'Branch', 'Log', 'Author', 'Date', 'Tags', 'Filename')
-    _columns = ('ID', 'Log', 'Author', 'Date', 'Filename')
+    _columns = ('ID', 'Branch', 'Log', 'Author', 'Date', 'Filename')
     _stretchs = {'Log': 1, }
     _getcolumns = "getFilelogColumns"
 
