@@ -467,7 +467,7 @@ class HgFileListModel(QtCore.QAbstractTableModel):
             return True
         return filename in self.current_ctx.files()
 
-    @timeit
+    #@timeit
     def _buildDesc(self, parent, fromside):
         _files = []
         ctx = self.current_ctx
