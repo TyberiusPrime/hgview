@@ -26,19 +26,31 @@ license = 'GPL'
 copyright = '''Copyright © 2007-2009 LOGILAB S.A. (Paris, FRANCE).
 http://www.logilab.fr/ -- mailto:contact@logilab.fr'''
 
-short_desc = "mercurial interactive history viewer"
+
+classifiers =  ['Development Status :: 4 - Beta',
+                'Environment :: X11 Applications :: Qt',
+                'Environment :: Win32 (MS Windows)',
+                'Environment :: MacOS X',
+                'Intended Audience :: Developers',
+                'License :: OSI Approved :: GNU General Public License (GPL)',
+                'Operating System :: OS Independent',
+                'Programming Language :: Python',
+                'Topic :: Software Development :: Version Control',
+                ]
+
+
+short_desc = "Mercurial interactive history viewer"
 
 long_desc = """
- Its purpose is to easily navigate in a mercurial repository history. It has been
- written with efficiency in mind when dealing with big repositories
- (it should happily be able to handle the browsing of the Linux kernel
- source code repository).
+ Its purpose is to easily navigate in a Mercurial repository
+ history. It has been written with efficiency in mind, both in terms
+ of computational efficiency and user experience efficiency.
 
- This is actually a major rework of the Qt version of hgview.
+ It is written in Python, using PyQt4 and QScintilla.
 """
 
 author = "Logilab"
-author_email = "contact@logilab.fr"
+author_email = 'python-projects@lists.logilab.org'
 
 # TODO - publish
 web = "http://www.logilab.org/projects/%s" % modname

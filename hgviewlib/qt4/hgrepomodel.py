@@ -78,14 +78,15 @@ def auth_width(model, repo):
         return None
     return sorted(auths, cmp=lambda x,y: cmp(len(x), len(y)))[-1]
 
+
 # in following lambdas, r is a hg repo
 _maxwidth = {'ID': lambda self, r: str(len(r.changelog)),
              'Date': lambda self, r: cvrt_date(r.changectx(0).date()),
              'Tags': lambda self, r: sorted(r.tags().keys(),
-                                            key=lambda x: len(x))[-1],
+                                            key=lambda x: len(x))[-1][:10],
              'Branch': lambda self, r: sorted(r.branchtags().keys(),
                                               key=lambda x: len(x))[-1],
-             'Author': auth_width,
+             'Author': lambda self, r: 'author name',
              'Filename': lambda self, r: self.filename,
              }
 
@@ -204,10 +205,10 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
             elif 'Log' not in validcols or 'ID' not in validcols:
                 print "WARNING! 'Log' and 'ID' are mandatory. Check your configuration."
                 print "         reverting to default columns configuration"
-                
+
             else:
                 self._columns = tuple(validcols)
-        
+
     def maxWidthValueForColumn(self, column):
         column = self._columns[column]
         if column in _maxwidth:
@@ -369,7 +370,7 @@ class FileRevModel(HgRepoListModel):
         self.repo = repo
         self._datacache = {}
         self.load_config()
-        
+
     def setFilename(self, filename):
         self.filename = filename
         self.nmax = len(self.repo.changelog)

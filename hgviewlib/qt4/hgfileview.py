@@ -44,8 +44,8 @@ class HgFileView(QtGui.QFrame):
         framelayout = QtGui.QVBoxLayout(self)
         framelayout.setContentsMargins(0,0,0,0)
         framelayout.setSpacing(0)
-        
-        l = QtGui.QHBoxLayout()        
+
+        l = QtGui.QHBoxLayout()
         l.setContentsMargins(0,0,0,0)
         l.setSpacing(0)
         
@@ -59,11 +59,11 @@ class HgFileView(QtGui.QFrame):
         self.execflaglabel.hide()
         framelayout.addLayout(self.topLayout)
         framelayout.addLayout(l, 1)
-        
+
         self.sci = Qsci.QsciScintilla(self)
         l.addWidget(self.sci)
         self.sci.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
-        
+
         self.sci.setMarginLineNumbers(1, True)
         self.sci.setMarginWidth(1, '000')
         self.sci.setReadOnly(True)
@@ -93,7 +93,7 @@ class HgFileView(QtGui.QFrame):
         ll.setContentsMargins(0, 0, 0, 0)
         ll.setSpacing(0)
         l.insertLayout(0, ll)
-        
+
         self.blk = BlockList(self)
         self.blk.linkScrollBar(self.sci.verticalScrollBar())
         ll.addWidget(self.blk)
@@ -105,7 +105,7 @@ class HgFileView(QtGui.QFrame):
         self._ctx = None
         self._filename = None
         self._find_text = None
-        self._mode = "diff" # can be 'diff' or 'file' 
+        self._mode = "diff" # can be 'diff' or 'file'
         self.filedata = None
 
         self.timer = QtCore.QTimer()
@@ -118,7 +118,7 @@ class HgFileView(QtGui.QFrame):
         h = self.sci.horizontalScrollBar().height()
         self._spacer.setMinimumHeight(h)
         self._spacer.setMaximumHeight(h)
-        
+
     def setMode(self, mode):
         if isinstance(mode, bool):
             mode = ['file', 'diff'][mode]
@@ -127,9 +127,9 @@ class HgFileView(QtGui.QFrame):
             self._mode = mode
             self.blk.setVisible(self._mode == 'file')
             self.displayFile(self._filename)
-        
+
     def setModel(self, model):
-        # XXX we really need only the "Graph" instance 
+        # XXX we really need only the "Graph" instance
         self._model = model
         self.sci.clear()
 
@@ -142,7 +142,7 @@ class HgFileView(QtGui.QFrame):
 
     def filename(self):
         return self._filename
-    
+
     def displayFile(self, filename):
         self._filename = filename
         self.sci.clear()
@@ -159,7 +159,7 @@ class HgFileView(QtGui.QFrame):
         if flag == "+":
             lexer = get_lexer(filename, data)
             nlines = data.count('\n')
-            self.sci.setMarginWidth(1, str(nlines)+'0')            
+            self.sci.setMarginWidth(1, str(nlines)+'0')
         elif flag == "=":
             lexer = Qsci.QsciLexerDiff()
             self.sci.setMarginWidth(1, 0)
@@ -173,6 +173,9 @@ class HgFileView(QtGui.QFrame):
         else:
             self.filedata = None
 
+        if flag == '-':
+            return
+
         flag = exec_flag_changed(filectx)
         if flag:
             self.execflaglabel.setText("<b>exec mode has been <font color='red'>%s</font></b>" % flag)
@@ -185,12 +188,12 @@ class HgFileView(QtGui.QFrame):
         if renamed:
             labeltxt += ' <i>(renamed from %s)</i>' % renamed[0]
         self.filenamelabel.setText(labeltxt)
-            
+
         self.sci.setText(data)
         if self._find_text:
             self.highlightSearchString(self._find_text)
         self.updateDiff()
-        
+
     def updateDiff(self):
         """
         Recompute the diff, display files and starts the timer
@@ -230,7 +233,7 @@ class HgFileView(QtGui.QFrame):
             self.sci.setCursorPosition(lo, 0)
             self.sci.verticalScrollBar().setValue(lo)
             return not last
-        
+
     def prevDiff(self):
         if self._mode == 'file':
             row, column = self.sci.getCursorPosition()
@@ -243,7 +246,7 @@ class HgFileView(QtGui.QFrame):
             self.sci.setCursorPosition(lo, 0)
             self.sci.verticalScrollBar().setValue(lo)
             return not first
-        
+
     def nDiffs(self):
         return len(self._diffs)
 
@@ -251,17 +254,17 @@ class HgFileView(QtGui.QFrame):
         return self._mode == 'diff'
     def fileMode(self):
         return self._mode == 'file'
-        
+
     def searchString(self, text):
         self._find_text = text
         self.clearHighlights()
         if self._find_text:
             for pos in self.highlightSearchString(self._find_text):
                 if not self._find_text: # XXX is this required to handle "cancellation"?
-                    break                
+                    break
                 self.highlightCurrentSearchString(pos, self._find_text)
                 yield self._ctx.rev(), self._filename, pos
-                
+
     def clearHighlights(self):
         n = self.sci.length()
         self.sci.SendScintilla(qsci.SCI_SETINDICATORCURRENT, 8) # highlight
@@ -282,7 +285,7 @@ class HgFileView(QtGui.QFrame):
                   "Found %d occurrences of '%s' in current file or diff" % (len(pos), text),
                   2000)
         return pos
-        
+
     def highlightCurrentSearchString(self, pos, text):
         line = self.sci.SendScintilla(qsci.SCI_LINEFROMPOSITION, pos)
         #line, idx = w.lineIndexFromPosition(nextpos)
@@ -317,11 +320,11 @@ class HgFileView(QtGui.QFrame):
 
             elif tag == 'delete':
                 pass
-##                 self.block['left'].addBlock('-', alo, ahi)
-##                 self.diffblock.addBlock('-', alo, ahi, blo, bhi)
-##                 w = self.viewers['left']
-##                 for i in range(alo, ahi):
-##                     w.markerAdd(i, self.markerminus)
+                # self.block['left'].addBlock('-', alo, ahi)
+                # self.diffblock.addBlock('-', alo, ahi, blo, bhi)
+                # w = self.viewers['left']
+                # for i in range(alo, ahi):
+                #     w.markerAdd(i, self.markerminus)
 
             elif tag == 'insert':
                 self._diffs.append([blo, bhi])
@@ -339,7 +342,7 @@ class HgFileView(QtGui.QFrame):
         self.sci.setUpdatesEnabled(True)
         self.blk.setUpdatesEnabled(True)
 
-        
+
 class HgFileListView(QtGui.QTableView):
     """
     A QTableView for displaying a HgFileListModel
@@ -355,18 +358,18 @@ class HgFileListView(QtGui.QTableView):
         self.setTextElideMode(Qt.ElideLeft)
 
         self.horizontalHeader().setToolTip('Double click to toggle merge mode')
-        
+
         self.createActions()
-        
+
         connect(self.horizontalHeader(), SIGNAL('sectionDoubleClicked(int)'),
                 self.toggleFullFileList)
         connect(self,
                 SIGNAL('doubleClicked (const QModelIndex &)'),
                 self.fileActivated)
-        
+
         connect(self.horizontalHeader(),
                 SIGNAL('sectionResized(int, int, int)'),
-                self.sectionResized)        
+                self.sectionResized)
 
     def setModel(self, model):
         QtGui.QTableView.setModel(self, model)
@@ -375,12 +378,12 @@ class HgFileListView(QtGui.QTableView):
         connect(self.selectionModel(),
                 SIGNAL('currentRowChanged (const QModelIndex & , const QModelIndex & )'),
                 self.fileSelected)
-        self.horizontalHeader().setResizeMode(1, QtGui.QHeaderView.Stretch)        
+        self.horizontalHeader().setResizeMode(1, QtGui.QHeaderView.Stretch)
 
     def currentFile(self):
         index = self.currentIndex()
         return self.model().fileFromIndex(index)
-        
+
     def fileSelected(self, index=None, *args):
         if index is None:
             index = self.currentIndex()
@@ -396,7 +399,7 @@ class HgFileListView(QtGui.QTableView):
             self.navigate(sel_file)
         else:
             self.diffNavigate(sel_file)
-        
+
     def toggleFullFileList(self, *args):
         self.model().toggleFullFileList()
 
@@ -417,10 +420,12 @@ class HgFileListView(QtGui.QTableView):
             dlg.setWindowTitle('Hg file log viewer')
             dlg.show()
             self._dlg = dlg # keep a reference on the dlg
-    
+
     def _action_defs(self):
-        a = [("navigate", self.tr("Navigate"), None , self.tr('Navigate the revision tree of this file'), None, self.navigate),
-             ("diffnavigate", self.tr("Diff-mode navigate"), None , self.tr('Navigate the revision tree of this file in diff mode'), None, self.diffNavigate),
+        a = [("navigate", self.tr("Navigate"), None ,
+              self.tr('Navigate the revision tree of this file'), None, self.navigate),
+             ("diffnavigate", self.tr("Diff-mode navigate"), None,
+              self.tr('Navigate the revision tree of this file in diff mode'), None, self.diffNavigate),
              ]
         return a
 
@@ -438,7 +443,7 @@ class HgFileListView(QtGui.QTableView):
                 connect(act, SIGNAL('triggered()'), cb)
             self._actions[name] = act
             self.addAction(act)
-        
+
     def contextMenuEvent(self, event):
         menu = QtGui.QMenu(self)
         for act in ['navigate', 'diffnavigate']:
@@ -447,7 +452,7 @@ class HgFileListView(QtGui.QTableView):
             else:
                 menu.addSeparator()
         menu.exec_(event.globalPos())
-        
+
     def resizeEvent(self, event):
         vp_width = self.viewport().width()
         col_widths = [self.columnWidth(i) \
