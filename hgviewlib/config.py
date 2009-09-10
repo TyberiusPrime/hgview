@@ -183,6 +183,44 @@ class HgConfig(object):
         maxfilesize: max size of a file (for diff computations, display content, etc.)
         """
         return int(self.ui.config(self.section, 'maxfilesize', default))
+
+    @cached
+    def getDiffBGColor(self, default='black'):
+        """
+        diffbgcolor: background color of diffs
+        """
+        return self.ui.config(self.section, 'diffbgcolor', default)
+    @cached
+    def getDiffFGColor(self, default='white'):
+        """
+        difffgcolor: text color of diffs
+        """
+        return self.ui.config(self.section, 'difffgcolor', default)
+    @cached
+    def getDiffPlusColor(self, default='green'):
+        """
+        diffpluscolor: text color of added lines in diffs
+        """
+        return self.ui.config(self.section, 'diffpluscolor', default)
+    @cached
+    def getDiffMinusColor(self, default='red'):
+        """
+        diffminuscolor: text color of removed lines in diffs
+        """
+        return self.ui.config(self.section, 'diffminuscolor', default)
+    @cached
+    def getDiffSectionColor(self, default='magenta'):
+        """
+        diffsectioncolor: text color of new section in diffs
+        """
+        return self.ui.config(self.section, 'diffsectioncolor', default)
+    @cached
+    def getDiffFontSize(self, default=9):
+        """
+        difffontsize: text size in diff viewer
+        """
+        return int(self.ui.config(self.section, 'difffontsize', default))
+
     
 _HgConfig = HgConfig
 # HgConfig is instanciated only once (singleton)

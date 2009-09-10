@@ -36,6 +36,7 @@ from hgviewlib.qt4.quickbar import QuickBar
 from hgviewlib.qt4.lexers import get_lexer
 from hgviewlib.qt4.blockmatcher import BlockList
 from hgviewlib.util import exec_flag_changed
+from hgviewlib.config import HgConfig
 
 qsci = Qsci.QsciScintilla
 class HgFileView(QtGui.QFrame):
@@ -155,26 +156,20 @@ class HgFileView(QtGui.QFrame):
         except LookupError: # occur on deleted files
             return
         flag, data = self._model.graph.filedata(filename, self._ctx.rev(), self._mode)
-        lexer = None
+        if flag == '-':
+            return
+        
+        lexer = get_lexer(filename, data, flag, HgConfig(self._model.repo.ui))
         if flag == "+":
-            lexer = get_lexer(filename, data)
             nlines = data.count('\n')
             self.sci.setMarginWidth(1, str(nlines)+'0')
-        elif flag == "=":
-            lexer = Qsci.QsciLexerDiff()
-            self.sci.setMarginWidth(1, 0)
         if lexer:
-            lexer.setDefaultFont(self.font())
-            lexer.setFont(self.font())
-        self.sci.setLexer(lexer)
-        self._cur_lexer = lexer
+            self.sci.setLexer(lexer)
+            self._cur_lexer = lexer
         if data not in ('file too big', 'binary file'):
             self.filedata = data
         else:
             self.filedata = None
-
-        if flag == '-':
-            return
 
         flag = exec_flag_changed(filectx)
         if flag:
