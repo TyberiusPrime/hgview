@@ -1,16 +1,19 @@
 # -*- coding: utf-8 -*-
-
+"""
+Some useful decorator functions
+"""
 import time
 
-def timeit(f):
+def timeit(func):
     """Decorator used to time the execution of a function"""
     def timefunc(*args, **kwargs):
         """wrapper"""
-        t1 = time.time()
-        t2 = time.clock()
-        res = f(*args, **kwargs)
-        t3 = time.clock()
-        t4 = time.time()
-        print "%s: %.2fms (time) %.2fms (clock)" % (f.func_name, 1000*(t3 - t2), 1000*(t4 - t1))
+        t_1 = time.time()
+        t_2 = time.clock()
+        res = func(*args, **kwargs)
+        t_3 = time.clock()
+        t_4 = time.time()
+        print "%s: %.2fms (time) %.2fms (clock)" % \
+              (func.func_name, 1000*(t_3 - t_2), 1000*(t_4 - t_1))
         return res
     return timefunc

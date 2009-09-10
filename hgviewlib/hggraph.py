@@ -38,8 +38,8 @@ def diff(repo, ctx1, ctx2=None, files=None):
     if files is None:
         match = util.always
     else:
-        def match(fn):
-            return fn in files
+        def match(fname):
+            return fname in files
     # try/except for the sake of hg compatibility (API changes between
     # 1.0 and 1.1)
     try:
@@ -115,13 +115,13 @@ def revision_grapher(repo, start_rev=None, stop_rev=0, branch=None):
             revs.append(curr_rev)
             rev_color[curr_rev] = curcolor = nextcolor
             nextcolor += 1
-            r = __get_parents(repo, curr_rev, branch)
-            while r:
-                r0 = r[0]
-                if r0 < stop_rev or r0 in rev_color:
+            p_revs = __get_parents(repo, curr_rev, branch)
+            while p_revs:
+                rev0 = p_revs[0]
+                if rev0 < stop_rev or rev0 in rev_color:
                     break
-                rev_color[r0] = curcolor
-                r = __get_parents(repo, r0, branch)
+                rev_color[rev0] = curcolor
+                p_revs = __get_parents(repo, rev0, branch)
         curcolor = rev_color[curr_rev]
         rev_index = revs.index(curr_rev)
         next_revs = revs[:]
@@ -186,9 +186,9 @@ def filelog_grapher(repo, path):
 
         # Add parents to next_revs. 
         fctx = repo.filectx(_paths.get(rev, path), changeid=rev)
-        for f in fctx.parents():
-            _paths[f.rev()] = f.path()
-        parents = [f.rev() for f in fctx.parents()]# if f.path() == path]
+        for pfctx in fctx.parents():
+            _paths[pfctx.rev()] = pfctx.path()
+        parents = [pfctx.rev() for pfctx in fctx.parents()]# if f.path() == path]
         parents_to_add = []
         for parent in parents:
             if parent not in next_revs:
@@ -211,7 +211,8 @@ def filelog_grapher(repo, path):
                     lines.append( (i, next_revs.index(parent), color) )
 
         pcrevs = [pfc.rev() for pfc in fctx.parents()]
-        yield (fctx.rev(), index, curcolor, lines, pcrevs, _paths.get(fctx.rev(), path))
+        yield (fctx.rev(), index, curcolor, lines, pcrevs,
+               _paths.get(fctx.rev(), path))
         revs = next_revs
         
         if revs:
@@ -224,7 +225,8 @@ class GraphNode(object):
     Simple class to encapsulate e hg node in the revision graph. Does
     nothing but declaring attributes.
     """
-    def __init__(self, rev, xposition, color, lines, parents, ncols=None, extra=None):
+    def __init__(self, rev, xposition, color, lines, parents, ncols=None,
+                 extra=None):
         self.rev = rev
         self.x = xposition
         self.color = color
@@ -263,13 +265,14 @@ class Graph(object):
         mcol = [self.max_cols]
         for _ in xrange(nnodes):
             try:
-                v = self.grapher.next()
-                if v is None:
+                vnext = self.grapher.next()
+                if vnext is None:
                     continue
-                nrev, xpos, color, lines, parents = v[:5]
+                nrev, xpos, color, lines, parents = vnext[:5]
                 if nrev >= self.maxlog:
                     continue
-                gnode = GraphNode(nrev, xpos, color, lines, parents, extra=v[5:])
+                gnode = GraphNode(nrev, xpos, color, lines, parents,
+                                  extra=vnext[5:])
                 if self.nodes:
                     gnode.toplines = self.nodes[-1].bottomlines
                 self.nodes.append(gnode)
@@ -319,14 +322,14 @@ class Graph(object):
         ctx = self.repo.changectx(rev)
         changes = self.repo.status(ctx.parents()[0].node(), ctx.node())[:5]
         modified, added, removed, deleted, unknown = changes
-        for fl, lst in zip(["=","+","-","-","?"],
+        for flag, lst in zip(["=", "+", "-", "-", "?"],
                            [modified, added, removed, deleted, unknown]):
             if filename in lst:
-                if fl == "+":
-                    m = ctx.filectx(filename).renamed()
-                    if m:
-                        return m
-                return fl
+                if flag == "+":
+                    renamed = ctx.filectx(filename).renamed()
+                    if renamed:
+                        return renamed
+                return flag
         return ''
 
     def filename(self, rev):
@@ -340,14 +343,14 @@ class Graph(object):
         ctx = self.repo.changectx(rev)
 
         if flag not in ('-', '?'):
-            fc = ctx.filectx(filename)
-            if fc.size() > self.maxfilesize:
+            fctx = ctx.filectx(filename)
+            if fctx.size() > self.maxfilesize:
                 data = "Big file."
                 return flag, data
             if flag == "+" or mode == "file":
                 flag = '+'
                 # return the whole file
-                data = fc.data()
+                data = fctx.data()
                 if util.binary(data):
                     data = "binary file"
                 else: # hg stores utf-8 strings
@@ -361,9 +364,11 @@ class Graph(object):
                 data = u'\n'.join(data.splitlines()[3:])
             else:
                 oldname, node = flag
-                newdata = fc.data().splitlines()
-                olddata = self.repo.filectx(oldname, fileid=node).data().splitlines()
-                data = list(difflib.unified_diff(olddata, newdata, oldname, filename))[2:]
+                newdata = fctx.data().splitlines()
+                olddata = self.repo.filectx(oldname, fileid=node)
+                olddata = olddata.data().splitlines()
+                data = list(difflib.unified_diff(olddata, newdata, oldname,
+                                                 filename))[2:]
                 if data:
                     flag = "="
                 else:

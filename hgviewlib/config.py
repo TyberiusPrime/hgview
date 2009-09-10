@@ -75,8 +75,7 @@ class HgConfig(object):
         if usersfile:
             try:
                 cfgfile = open(os.path.expanduser(usersfile))
-            except IOError, e:
-                #print "Cannot open file %s: please configure the 'users' parameter of the '[hgview]' section in your .hgrc file" % usersfile
+            except IOError:
                 cfgfile = None
 
         if cfgfile:
@@ -94,7 +93,8 @@ class HgConfig(object):
                 elif cmd == "alias":
                     users[currid]['aliases'].add(val)
                     if val in aliases:
-                        print "W: alias %s is used in several user definitions" % val
+                        print ("W: alias %s is used in several "
+                               "user definitions" % val)
                     aliases[val] = currid
                 else:
                     users[currid][cmd] = val

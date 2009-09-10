@@ -39,7 +39,7 @@ nullvariant = QtCore.QVariant()
 
 # XXX make this better than a poor hard written list...
 COLORS = [ "blue", "darkgreen", "red", "green", "darkblue", "purple",
-           "cyan", "darkyellow", "magenta", "darkred", "darkmagenta",
+           "cyan", QtCore.Qt.darkYellow, "magenta", "darkred", "darkmagenta",
            "darkcyan", "gray", "yellow", ]
 COLORS = [str(QtGui.QColor(x).name()) for x in COLORS]
 #COLORS = [str(color) for color in QtGui.QColor.colorNames()]
