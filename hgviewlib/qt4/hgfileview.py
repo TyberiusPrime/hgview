@@ -96,6 +96,7 @@ class HgFileView(QtGui.QFrame):
         self.blk = BlockList(self)
         self.blk.linkScrollBar(self.sci.verticalScrollBar())
         ll.addWidget(self.blk)
+        self.blk.setVisible(False)
         w = QtGui.QWidget(self)
         ll.addWidget(w)
         self._spacer = w
