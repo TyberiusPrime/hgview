@@ -76,8 +76,6 @@ class HgFileView(QtGui.QFrame):
         self.sci.SendScintilla(qsci.SCI_INDICSETUNDER, 9, True)
         self.sci.SendScintilla(qsci.SCI_INDICSETFORE, 9, 0x58A8FF)
 
-        self.sci.SendScintilla(qsci.SCI_SETSELEOLFILLED, True)
-
         # hide margin 0 (markers)
         self.sci.SendScintilla(qsci.SCI_SETMARGINTYPEN, 0, 0)
         self.sci.SendScintilla(qsci.SCI_SETMARGINWIDTHN, 0, 0)
@@ -163,9 +161,8 @@ class HgFileView(QtGui.QFrame):
         if flag == "+":
             nlines = data.count('\n')
             self.sci.setMarginWidth(1, str(nlines)+'0')
-        if lexer:
-            self.sci.setLexer(lexer)
-            self._cur_lexer = lexer
+        self.sci.setLexer(lexer)
+        self._cur_lexer = lexer
         if data not in ('file too big', 'binary file'):
             self.filedata = data
         else:
