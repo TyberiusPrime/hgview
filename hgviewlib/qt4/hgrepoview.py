@@ -19,6 +19,7 @@ Qt4 high level widgets for hg repo changelogs and filelogs
 import sys
 
 from mercurial.node import hex, short as short_hex, bin as short_bin
+from mercurial.error import RepoError
 
 from PyQt4 import QtCore, QtGui
 Qt = QtCore.Qt
@@ -253,13 +254,15 @@ class HgRepoView(QtGui.QTableView):
         """
         Select revision 'rev' (can be anything understood by repo.changectx())
         """
+        repo = self.model().repo
         try:
-            rev = self.model().repo.changectx(rev).rev()
-        except:
-            self.emit(SIGNAL('showMessage(QString&, int)'), "Can't find revision '%s'"%rev, 2000)
+            rev = repo.changectx(rev).rev()
+        except RepoError:
+            self.emit(SIGNAL('showMessage'), "Can't find revision '%s'"%rev, 2000)
         else:
             idx = self.model().indexFromRev(rev)
             if idx is not None:
+                self.sender().setVisible(False)
                 self.setCurrentIndex(idx)
 
 

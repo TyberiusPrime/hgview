@@ -54,8 +54,9 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
 
         self.textview_status.setFont(self._font)
         connect(self.textview_status, SIGNAL('showMessage'),
-                self.statusBar().showMessage,
-                Qt.QueuedConnection)
+                self.statusBar().showMessage)
+        connect(self.tableView_revisions, SIGNAL('showMessage'),
+                self.statusBar().showMessage)
                 
         # setup tables and views
         self.setupHeaderTextview()

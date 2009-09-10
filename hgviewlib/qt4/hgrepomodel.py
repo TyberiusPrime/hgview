@@ -125,6 +125,7 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
         QtCore.QAbstractTableModel.__init__(self, parent)
         self._datacache = {}
         self._required = None
+        self.wd_rev = None
         self.gr_fill_timer = QtCore.QTimer()
         connect(self.gr_fill_timer, SIGNAL('timeout()'),
                 self.fillGraph)
