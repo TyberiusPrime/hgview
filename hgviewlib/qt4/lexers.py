@@ -126,8 +126,6 @@ class DiffLexerSelector(_ScriptLexerSelector):
         lexer.setFont(font, 5)
         lexer.setFont(font, 6)
 
-        lexer.setEolFill(True, -1)
-        
         return lexer
 
     
