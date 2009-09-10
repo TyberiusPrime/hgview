@@ -157,8 +157,9 @@ class HgFileView(QtGui.QFrame):
         flag, data = self._model.graph.filedata(filename, self._ctx.rev(), self._mode)
         if flag == '-':
             return
-        
-        lexer = get_lexer(filename, data, flag, HgConfig(self._model.repo.ui))
+
+        cfg = HgConfig(self._model.repo.ui)
+        lexer = get_lexer(filename, data, flag, cfg)
         if flag == "+":
             nlines = data.count('\n')
             self.sci.setMarginWidth(1, str(nlines)+'0')
@@ -181,6 +182,11 @@ class HgFileView(QtGui.QFrame):
         if renamed:
             labeltxt += ' <i>(renamed from %s)</i>' % renamed[0]
         self.filenamelabel.setText(labeltxt)
+
+        font = QtGui.QFont()
+        fontstr = cfg.getFont()
+        font.fromString(fontstr)
+        self.sci.setFont(font)
 
         self.sci.setText(data)
         if self._find_text:
