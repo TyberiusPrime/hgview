@@ -8,8 +8,24 @@ goto exit
 """
 # -------------------- Python section --------------------
 from PyQt4 import QtCore, QtGui
-from hgviewlib.qt4 import main as hgview
-hgview.main()
+import os
+import sys
+import os.path as pos
+
+try:
+    import hgviewlib
+except ImportError:
+    import stat
+    execpath = pos.abspath(__file__)
+    # resolve symbolic links
+    statinfo = os.lstat(execpath)
+    if stat.S_ISLNK(statinfo.st_mode):
+        execpath = pos.abspath(pos.join(pos.dirname(execpath),
+                                        os.readlink(execpath)))
+    sys.path.append(pos.abspath(pos.join(pos.dirname(execpath), "..")))
+
+from hgviewlib.qt4.hgrepoviewer import main 
+main()
 
 DosExitLabel = """
 :exit
