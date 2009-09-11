@@ -67,6 +67,15 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
 
         self.setupRevisionTable()
 
+        self._repodate = self._getrepomtime()
+        self._watchrepotimer = self.startTimer(500)
+
+    def timerEvent(self, event):
+        if event.timerId() == self._watchrepotimer:
+            mtime = self._getrepomtime()
+            if mtime > self._repodate:
+                self.reload()
+                
     def setupBranchCombo(self, *args):
         allbranches = sorted(self.repo.branchtags().items())
         if self._closed_branch_supp:
@@ -225,9 +234,15 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
             if len(self.filelistmodel):
                 self.tableView_filelist.selectRow(0)
 
-
+    def _getrepomtime(self):
+        """Return the last modification time for the repo""" 
+        dirstate = os.path.join(self.repo.root, ".hg", "dirstate")
+        return os.path.getmtime(dirstate)
+        
     def reload(self):
+        """Reload the repository"""
         self.repo = hg.repository(self.repo.ui, self.repo.root)
+        self._repodate = self._getrepomtime()
         self.setupBranchCombo()
         self.setupModels()
         self.refreshRevisionTable()
