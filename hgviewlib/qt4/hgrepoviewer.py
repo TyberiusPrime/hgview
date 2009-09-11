@@ -74,6 +74,8 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
         if event.timerId() == self._watchrepotimer:
             mtime = self._getrepomtime()
             if mtime > self._repodate:
+                self.statusBar().showMessage("Repository has been modified, "
+                                             "reloading...", 2000)
                 self.reload()
                 
     def setupBranchCombo(self, *args):
