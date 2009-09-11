@@ -59,13 +59,13 @@ class BlockList(QtGui.QWidget):
                   self._minimum, self._maximum)
         
     def setValue(self, val):
-        if v != self._value:
+        if val != self._value:
             self._value = val
             self.update()
             self.emit(SIGNAL('valueChanged(int)'), val)
 
     def setPageStep(self, pagestep):
-        if v != self._pagestep:
+        if pagestep != self._pagestep:
             self._pagestep = pagestep
             self.update()
             self.emit(SIGNAL('pageStepChanged(int)'), pagestep)
@@ -252,13 +252,13 @@ class BlockMatch(BlockList):
                 side = 'left'
             else:
                 side = 'right'
-        if v != self._value[side]:
+        if val != self._value[side]:
             self._value[side] = val
             self.update()
             self.emit(SIGNAL('valueChanged(int, const QString &)'), val, side)
 
     def setPageStep(self, pagestep, side):
-        if v != self._pagestep[side]:
+        if pagestep != self._pagestep[side]:
             self._pagestep[side] = pagestep
             self.update()
             self.emit(SIGNAL('pageStepChanged(int, const QString &)'),
