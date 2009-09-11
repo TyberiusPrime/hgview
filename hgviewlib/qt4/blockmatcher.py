@@ -1,4 +1,7 @@
 # -*- coding: utf-8 -*-
+"""
+Qt4 widgets to display diffs as blocks 
+"""
 import sys, os
 
 from PyQt4 import QtGui, QtCore
@@ -36,50 +39,53 @@ class BlockList(QtGui.QWidget):
     def addBlock(self, typ, alo, ahi):
         self._blocks.add((typ, alo, ahi))
 
-    def setMaximum(self, m):
-        self._maximum = m
+    def setMaximum(self, maximum):
+        self._maximum = maximum
         self.update()
-        self.emit(SIGNAL('rangeChanged(int, int)'), self._minimum, self._maximum)
+        self.emit(SIGNAL('rangeChanged(int, int)'),
+                  self._minimum, self._maximum)
 
-    def setMinimum(self, m):
-        self._minimum = m
+    def setMinimum(self, minimum):
+        self._minimum = minimum
         self.update()
-        self.emit(SIGNAL('rangeChanged(int, int)'), self._minimum, self._maximum)
+        self.emit(SIGNAL('rangeChanged(int, int)'),
+                  self._minimum, self._maximum)
 
-    def setRange(self, m, M):
-        self._minimum = m
-        self._maximum = M
+    def setRange(self, minimum, maximum):
+        self._minimum = minimum
+        self._maximum = maximum
         self.update()
-        self.emit(SIGNAL('rangeChanged(int, int)'), self._minimum, self._maximum)
+        self.emit(SIGNAL('rangeChanged(int, int)'),
+                  self._minimum, self._maximum)
         
-    def setValue(self, v):
+    def setValue(self, val):
         if v != self._value:
-            self._value = v
+            self._value = val
             self.update()
-            self.emit(SIGNAL('valueChanged(int)'), v)
+            self.emit(SIGNAL('valueChanged(int)'), val)
 
-    def setPageStep(self, v):
+    def setPageStep(self, pagestep):
         if v != self._pagestep:
-            self._pagestep = v
+            self._pagestep = pagestep
             self.update()
-            self.emit(SIGNAL('pageStepChanged(int)'), v)
+            self.emit(SIGNAL('pageStepChanged(int)'), pagestep)
 
-    def linkScrollBar(self, sb):
+    def linkScrollBar(self, sbar):
         """
         Make the block list displayer be linked to the scrollbar
         """
-        self._sbar = sb
+        self._sbar = sbar
         self.setUpdatesEnabled(False)
-        self.setMaximum(sb.maximum())
-        self.setMinimum(sb.minimum())
-        self.setPageStep(sb.pageStep())
-        self.setValue(sb.value())        
+        self.setMaximum(sbar.maximum())
+        self.setMinimum(sbar.minimum())
+        self.setPageStep(sbar.pageStep())
+        self.setValue(sbar.value())        
         self.setUpdatesEnabled(True)
-        self.connect(sb, SIGNAL('valueChanged(int)'), self.setValue)
-        self.connect(sb, SIGNAL('rangeChanged(int, int)'), self.setRange)
-        self.connect(self, SIGNAL('valueChanged(int)'), sb.setValue)
-        self.connect(self, SIGNAL('rangeChanged(int, int)'), sb.setRange)
-        self.connect(self, SIGNAL('pageStepChanged(int)'), sb.setPageStep)
+        self.connect(sbar, SIGNAL('valueChanged(int)'), self.setValue)
+        self.connect(sbar, SIGNAL('rangeChanged(int, int)'), self.setRange)
+        self.connect(self, SIGNAL('valueChanged(int)'), sbar.setValue)
+        self.connect(self, SIGNAL('rangeChanged(int, int)'), sbar.setRange)
+        self.connect(self, SIGNAL('pageStepChanged(int)'), sbar.setPageStep)
 
     def syncPageStep(self):
         self.setPageStep(self._sbar.pageStep())
@@ -141,7 +147,8 @@ class BlockMatch(BlockList):
         vblocks = []
         blocks = sorted(self._blocks, key=lambda x:(x[1],x[3],x[2],x[4]))
         for i, (typ, alo, ahi, blo, bhi) in enumerate(blocks):
-            if (mv_l<=alo<=Mv_l or mv_l<=ahi<=Mv_l or mv_r<=blo<=Mv_r or mv_r<=bhi<=Mv_r):
+            if (mv_l<=alo<=Mv_l or mv_l<=ahi<=Mv_l or
+                mv_r<=blo<=Mv_r or mv_r<=bhi<=Mv_r):
                 break
         else:
             i = -1
@@ -215,43 +222,47 @@ class BlockMatch(BlockList):
 
             p.restore()
 
-    def setMaximum(self, m, side):
-        self._maximum[side] = m
+    def setMaximum(self, maximum, side):
+        self._maximum[side] = maximum
         self.update()
-        self.emit(SIGNAL('rangeChanged(int, int, const QString &)'), self._minimum[side], self._maximum[side], side)
+        self.emit(SIGNAL('rangeChanged(int, int, const QString &)'),
+                  self._minimum[side], self._maximum[side], side)
 
-    def setMinimum(self, m, side):
-        self._minimum[side] = m
+    def setMinimum(self, minimum, side):
+        self._minimum[side] = minimum
         self.update()
-        self.emit(SIGNAL('rangeChanged(int, int, const QString &)'), self._minimum[side], self._maximum[side], side)
+        self.emit(SIGNAL('rangeChanged(int, int, const QString &)'),
+                  self._minimum[side], self._maximum[side], side)
 
-    def setRange(self, m, M, side=None):
+    def setRange(self, minimum, maximum, side=None):
         if side is None:
             if self.sender() == self._sbar['left']:
                 side = 'left'
             else:
                 side = 'right'
-        self._minimum[side] = m
-        self._maximum[side] = M
+        self._minimum[side] = minimum
+        self._maximum[side] = maximum
         self.update()
-        self.emit(SIGNAL('rangeChanged(int, int, const QString &)'), self._minimum[side], self._maximum[side], side)
+        self.emit(SIGNAL('rangeChanged(int, int, const QString &)'),
+                  self._minimum[side], self._maximum[side], side)
         
-    def setValue(self, v, side=None):
+    def setValue(self, val, side=None):
         if side is None:
             if self.sender() == self._sbar['left']:
                 side = 'left'
             else:
                 side = 'right'
         if v != self._value[side]:
-            self._value[side] = v
+            self._value[side] = val
             self.update()
-            self.emit(SIGNAL('valueChanged(int, const QString &)'), v, side)
+            self.emit(SIGNAL('valueChanged(int, const QString &)'), val, side)
 
-    def setPageStep(self, v, side):
+    def setPageStep(self, pagestep, side):
         if v != self._pagestep[side]:
-            self._pagestep[side] = v
+            self._pagestep[side] = pagestep
             self.update()
-            self.emit(SIGNAL('pageStepChanged(int, const QString &)'), v, side)
+            self.emit(SIGNAL('pageStepChanged(int, const QString &)'),
+                      pagestep, side)
 
     def syncPageStep(self):
         for side in ['left', 'right']:
@@ -276,9 +287,12 @@ class BlockMatch(BlockList):
         self.connect(sb, SIGNAL('valueChanged(int)'), self.setValue)
         self.connect(sb, SIGNAL('rangeChanged(int, int)'), self.setRange)
 
-        self.connect(self, SIGNAL('valueChanged(int, const QString &)'), lambda v, s: side==s and sb.setValue(v))
-        self.connect(self, SIGNAL('rangeChanged(int, int, const QString )'), lambda v1, v2, s: side==s and sb.setRange(v1, v2))
-        self.connect(self, SIGNAL('pageStepChanged(int, const QString )'), lambda v, s: side==s and sb.setPageStep(v))
+        self.connect(self, SIGNAL('valueChanged(int, const QString &)'),
+                     lambda v, s: side==s and sb.setValue(v))
+        self.connect(self, SIGNAL('rangeChanged(int, int, const QString )'),
+                     lambda v1, v2, s: side==s and sb.setRange(v1, v2))
+        self.connect(self, SIGNAL('pageStepChanged(int, const QString )'),
+                     lambda v, s: side==s and sb.setPageStep(v))
     
 if __name__ == '__main__':
     a = QtGui.QApplication([])
