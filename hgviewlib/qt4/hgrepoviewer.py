@@ -238,7 +238,7 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
 
     def _getrepomtime(self):
         """Return the last modification time for the repo""" 
-        dirstate = os.path.join(self.repo.root, ".hg", "dirstate")
+        dirstate = os.path.join(self.repo.root, ".hg", "store", "00changelog.i")
         return os.path.getmtime(dirstate)
         
     def reload(self):
