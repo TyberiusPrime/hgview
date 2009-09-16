@@ -282,10 +282,22 @@ class RevDisplay(QtGui.QTextBrowser):
         """
         Callback called when a link is clicked in the text browser
         """
-        rev = int(qurl.toString())
-        self.emit(SIGNAL('revisionSelected'), rev)
+        rev = str(qurl.toString())
+        if rev.startswith('diff_'):
+            self.diffrev = int(rev[5:])
+            self.refreshDisplay()
+            # TODO: emit a signal to recompute the diff
+            self.emit(SIGNAL('parentRevisionSelected'), self.diffrev)
+        else:            
+            self.emit(SIGNAL('revisionSelected'), int(rev))
 
     def displayRevision(self, ctx):
+        self.ctx = ctx
+        self.diffrev = ctx.parents()[0].rev()
+        self.refreshDisplay()
+        
+    def refreshDisplay(self):
+        ctx = self.ctx
         rev = ctx.rev()
         buf = "<table width=100%>\n"
         buf += '<tr>'
@@ -301,17 +313,42 @@ class RevDisplay(QtGui.QTextBrowser):
         buf += '</tr>'
         buf += "</table>\n"
         buf += "<table width=100%>\n"
-        for p in ctx.parents():
+        parents = [p for p in ctx.parents() if p]
+        for p in parents:
             if p.rev() > -1:
                 short = short_hex(p.node())
                 desc = unicode(p.description(), 'utf-8', 'replace')
                 if len(desc) > self.descwidth:
                     desc = desc[:self.descwidth] + '...'
+                p_rev = p.rev()
+                p_fmt = '<span class="rev_number">%s</span>:'\
+                        '<a href="%s" class="rev_hash">%s</a>'
+                if p_rev == self.diffrev:
+                    p_rev = '<b>%s</b>' % (p_fmt % (p_rev, p_rev, short))
+                else:
+                    p_rev = p_fmt % ('<a href="diff_%s" class="rev_diff">%s</a>' % (p_rev, p_rev), p_rev, short)
                 buf += '<tr><td width=50 class="label"><b>Parent:</b></td>'\
-                       '<td colspan=5><span class="rev_number">%d</span>:'\
-                       '<a href="%s" class="rev_hash">%s</a>&nbsp;'\
+                       '<td colspan=5>%s&nbsp;'\
                        '<span class="short_desc"><i>%s</i></span></td></tr>'\
-                       '\n' % (p.rev(), p.rev(), short, desc)
+                       '\n' % (p_rev, desc)
+        if len(parents) == 2:
+            p = parents[0].ancestor(parents[1])
+            short = short_hex(p.node())
+            desc = unicode(p.description(), 'utf-8', 'replace')
+            if len(desc) > self.descwidth:
+                desc = desc[:self.descwidth] + '...'
+            p_rev = p.rev()
+            p_fmt = '<span class="rev_number">%s</span>:'\
+                    '<a href="%s" class="rev_hash">%s</a>'
+            if p_rev == self.diffrev:
+                p_rev = '<b>%s</b>' % (p_fmt % (p_rev, p_rev, short))
+            else:
+                p_rev = p_fmt % ('<a href="diff_%s" class="rev_diff">%s</a>' % (p_rev, p_rev), p_rev, short)
+            buf += '<tr><td width=50 class="label"><b>Ancestor:</b></td>'\
+                   '<td colspan=5>%s&nbsp;'\
+                   '<span class="short_desc"><i>%s</i></span></td></tr>'\
+                   '\n' % (p_rev, desc)
+            
         for p in ctx.children():
             if p.rev() > -1:
                 short = short_hex(p.node())

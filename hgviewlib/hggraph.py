@@ -347,7 +347,7 @@ class Graph(object):
             if fctx.size() > self.maxfilesize:
                 data = "Big file."
                 return flag, data
-            if flag == "+" or mode == "file":
+            if flag == "+" or mode == 'file':
                 flag = '+'
                 # return the whole file
                 data = fctx.data()
@@ -357,8 +357,11 @@ class Graph(object):
                     # XXX (auc) says who ?
                     data = tounicode(data)
             elif flag == "=":
-                parent = self.fileparent(filename, rev)
-                parentctx = self.repo.changectx(parent)
+                if isinstance(mode, int):
+                    parentctx = self.repo.changectx(mode)
+                else:
+                    parent = self.fileparent(filename, rev)
+                    parentctx = self.repo.changectx(parent)
                 # return the diff but the 3 first lines
                 data = diff(self.repo, ctx, parentctx, files=[filename])
                 data = u'\n'.join(data.splitlines()[3:])

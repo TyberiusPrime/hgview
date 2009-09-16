@@ -135,6 +135,7 @@ class HgFileView(QtGui.QFrame):
 
     def setContext(self, ctx):
         self._ctx = ctx
+        self._p_rev = None
         self.sci.clear()
 
     def rev(self):
@@ -143,6 +144,10 @@ class HgFileView(QtGui.QFrame):
     def filename(self):
         return self._filename
 
+    def displayDiff(self, rev):
+        self._p_rev = rev
+        self.displayFile(self._filename)
+        
     def displayFile(self, filename):
         self._filename = filename
         self.sci.clear()
@@ -154,7 +159,11 @@ class HgFileView(QtGui.QFrame):
             filectx = self._ctx.filectx(self._filename)
         except LookupError: # occur on deleted files
             return
-        flag, data = self._model.graph.filedata(filename, self._ctx.rev(), self._mode)
+        if self._mode == 'diff' and self._p_rev is not None:
+            mode = self._p_rev
+        else:
+            mode = self._mode
+        flag, data = self._model.graph.filedata(filename, self._ctx.rev(), mode)
         if flag == '-':
             return
 
@@ -178,6 +187,8 @@ class HgFileView(QtGui.QFrame):
             self.execflaglabel.hide()
 
         labeltxt = "<b>%s</b>" % self._filename
+        if self._p_rev is not None:
+            labeltxt += ' (diff from rev %s)' % self._p_rev
         renamed = filectx.renamed()
         if renamed:
             labeltxt += ' <i>(renamed from %s)</i>' % renamed[0]
@@ -191,12 +202,12 @@ class HgFileView(QtGui.QFrame):
         self.sci.setText(data)
         if self._find_text:
             self.highlightSearchString(self._find_text)
-        self.updateDiff()
+        self.updateDiffDecorations()
 
-    def updateDiff(self):
+    def updateDiffDecorations(self):
         """
-        Recompute the diff, display files and starts the timer
-        responsible for filling diff markers
+        Recompute the diff and starts the timer
+        responsible for filling diff decoration markers
         """
         self.blk.clear()
         if self._mode == 'file' and self.filedata is not None:

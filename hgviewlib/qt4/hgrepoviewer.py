@@ -175,6 +175,7 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
         connect(view, SIGNAL('revisionSelected'), self.revision_selected)
         connect(view, SIGNAL('revisionActivated'), self.revision_activated)
         connect(self.textview_header, SIGNAL('revisionSelected'), view.goto)
+        connect(self.textview_header, SIGNAL('parentRevisionSelected'), self.textview_status.displayDiff)
         self.attachQuickBar(view.goto_toolbar)
 
     def _setup_table(self, table):
