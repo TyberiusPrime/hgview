@@ -238,9 +238,13 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
                 self.tableView_filelist.selectRow(0)
 
     def _getrepomtime(self):
-        """Return the last modification time for the repo""" 
-        dirstate = os.path.join(self.repo.root, ".hg", "store", "00changelog.i")
-        return os.path.getmtime(dirstate)
+        """Return the last modification time for the repo"""
+        watchedfiles = [(self.repo.root, ".hg", "store", "00changelog.i"),
+                        (self.repo.root, ".hg", "dirstate")]
+        watchedfiles = [os.path.join(*wf) for wf in watchedfiles]
+        mtime = max([os.path.getmtime(wf) for wf in watchedfiles \
+                     if os.path.isfile(wf)])
+        return mtime
         
     def reload(self):
         """Reload the repository"""
