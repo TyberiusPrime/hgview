@@ -39,7 +39,12 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
     def __init__(self, repo, filerex = None):
         self.repo = repo
         self._closed_branch_supp = has_closed_branch_support(self.repo)
+
+        # these are used to know where to go after a reload
+        self._reload_rev = None
+        self._reload_file = None
         
+
         QtGui.QMainWindow.__init__(self)
         HgDialogMixin.__init__(self)
 
@@ -216,6 +221,16 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
         # called the first time the model is filled, so we select
         # the first available revision
         tv = self.tableView_revisions
+        if self._reload_rev is not None:
+            torev = self._reload_rev
+            self._reload_rev = None
+            try:
+                tv.goto(torev)
+                self.tableView_filelist.selectFile(self._reload_file)
+                self._reload_file = None
+                return
+            except IndexError:
+                pass
         tv.setCurrentIndex(tv.model().index(0, 0))
 
     def revision_activated(self, rev):
@@ -242,12 +257,17 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
         watchedfiles = [(self.repo.root, ".hg", "store", "00changelog.i"),
                         (self.repo.root, ".hg", "dirstate")]
         watchedfiles = [os.path.join(*wf) for wf in watchedfiles]
-        mtime = max([os.path.getmtime(wf) for wf in watchedfiles \
-                     if os.path.isfile(wf)])
-        return mtime
+        mtime = [os.path.getmtime(wf) for wf in watchedfiles \
+                 if os.path.isfile(wf)]
+        if mtime: 
+            return max(mtime)
+        # humm, directory has probably been deleted, exiting...
+        self.close()
         
     def reload(self):
         """Reload the repository"""
+        self._reload_rev = self.tableView_revisions.current_rev
+        self._reload_file = self.tableView_filelist.currentFile()
         self.repo = hg.repository(self.repo.ui, self.repo.root)
         self._repodate = self._getrepomtime()
         self.setupBranchCombo()
@@ -261,8 +281,7 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
             branch = self.branch_comboBox.currentText()
         branch = str(branch)
         self.repomodel.setRepo(self.repo, branch=branch)
-        self.tableView_revisions.setCurrentIndex(self.tableView_revisions.model().index(0, 0))
-
+            
     def on_about(self, *args):
         """ Display about dialog """
         from hgviewlib.__pkginfo__ import modname, version, short_desc, long_desc
