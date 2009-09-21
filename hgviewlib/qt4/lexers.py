@@ -14,6 +14,17 @@ class _LexerSelector(object):
         return self.cfg_lexer(self._lexer(), cfg)
 
     def cfg_lexer(self, lexer, cfg=None):
+        if cfg:
+            font = QtGui.QFont()
+            fontstr = cfg.getFont()
+            font.fromString(fontstr)            
+            size = cfg.getFontSize()
+        else:
+            font = QtGui.QFont('Monospace')
+            size = 9
+
+        font.setPointSize(size)
+        lexer.setFont(font, -1)
         return lexer
 
 class _FilenameLexerSelector(_LexerSelector):

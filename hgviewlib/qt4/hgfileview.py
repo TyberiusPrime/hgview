@@ -197,11 +197,6 @@ class HgFileView(QtGui.QFrame):
             labeltxt += ' <i>(renamed from %s)</i>' % renamed[0]
         self.filenamelabel.setText(labeltxt)
 
-        font = QtGui.QFont()
-        fontstr = cfg.getFont()
-        font.fromString(fontstr)
-        self.sci.setFont(font)
-
         self.sci.setText(data)
         if self._find_text:
             self.highlightSearchString(self._find_text)

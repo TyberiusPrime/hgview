@@ -39,7 +39,7 @@ def cached(meth):
 
 class HgConfig(object):
     """
-    Class managing user configuration from hg standard configuration system (.hgrc) 
+    Class managing user configuration from hg standard configuration system (.hgrc)
     """
     def __init__(self, ui, section="hgview"):
         self.ui = ui
@@ -51,8 +51,14 @@ class HgConfig(object):
         """
         font: default font used to display diffs and files. Use Qt4 format.
         """
-        return self.ui.config(self.section, 'font',
-                              'Monospace,10,-1,5,50,0,0,0,1,0')
+        return self.ui.config(self.section, 'font', 'Monospace')
+
+    @cached
+    def getFontSize(self, default=9):
+        """
+        fontsize: text size in file content viewer
+        """
+        return int(self.ui.config(self.section, 'fontsize', default))
 
     @cached
     def getDotRadius(self, default=8):
@@ -154,7 +160,7 @@ class HgConfig(object):
         """
         cols = self.ui.config(self.section, 'changelogcolumns', default)
         if cols is None:
-            return None        
+            return None
         return [col.strip() for col in cols.split(',') if col.strip()]
 
     @cached
@@ -165,7 +171,7 @@ class HgConfig(object):
         """
         cols = self.ui.config(self.section, 'filelogcolumns', default)
         if cols is None:
-            return None        
+            return None
         return [col.strip() for col in cols.split(',') if col.strip()]
 
     @cached
@@ -190,30 +196,35 @@ class HgConfig(object):
         diffbgcolor: background color of diffs
         """
         return self.ui.config(self.section, 'diffbgcolor', default)
+
     @cached
     def getDiffFGColor(self, default='white'):
         """
         difffgcolor: text color of diffs
         """
         return self.ui.config(self.section, 'difffgcolor', default)
+
     @cached
     def getDiffPlusColor(self, default='green'):
         """
         diffpluscolor: text color of added lines in diffs
         """
         return self.ui.config(self.section, 'diffpluscolor', default)
+
     @cached
     def getDiffMinusColor(self, default='red'):
         """
         diffminuscolor: text color of removed lines in diffs
         """
         return self.ui.config(self.section, 'diffminuscolor', default)
+
     @cached
     def getDiffSectionColor(self, default='magenta'):
         """
         diffsectioncolor: text color of new section in diffs
         """
         return self.ui.config(self.section, 'diffsectioncolor', default)
+
     @cached
     def getDiffFontSize(self, default=9):
         """
@@ -221,7 +232,7 @@ class HgConfig(object):
         """
         return int(self.ui.config(self.section, 'difffontsize', default))
 
-    
+
 _HgConfig = HgConfig
 # HgConfig is instanciated only once (singleton)
 #
