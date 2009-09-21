@@ -67,6 +67,7 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
         self.setupHeaderTextview()
         self.tableView_filelist.setFocusPolicy(QtCore.Qt.NoFocus)
         self.textview_header.setFocusPolicy(QtCore.Qt.NoFocus)
+        self.textview_status.setFocusPolicy(QtCore.Qt.NoFocus)
         self.setupBranchCombo()
         self.setupModels()
 
@@ -137,6 +138,9 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
         self.toolBar_treefilters.addSeparator()
         self.branch_label_action = self.toolBar_treefilters.addWidget(self.branch_label)
         self.branch_comboBox_action = self.toolBar_treefilters.addWidget(self.branch_comboBox)
+        self.toolBar_diff.addAction(self.actionDiffMode)
+        self.toolBar_diff.addAction(self.actionNextDiff)
+        self.toolBar_diff.addAction(self.actionPrevDiff)
 
     def createActions(self):
         # main window actions (from .ui file)
@@ -148,6 +152,36 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
                 self.close)
         self.actionQuit.setIcon(geticon('quit'))
         self.actionRefresh.setIcon(geticon('reload'))
+
+        self.actionDiffMode = QtGui.QAction('Diff mode', self)
+        self.actionDiffMode.setCheckable(True)
+        connect(self.actionDiffMode, SIGNAL('toggled(bool)'),
+                self.setMode)
+
+        self.actionNextDiff = QtGui.QAction(geticon('down'), 'Next diff', self)
+        self.actionNextDiff.setShortcut('Alt+Down')
+        self.actionPrevDiff = QtGui.QAction(geticon('up'), 'Previous diff', self)
+        self.actionPrevDiff.setShortcut('Alt+Up')
+        connect(self.actionNextDiff, SIGNAL('triggered()'),
+                self.nextDiff)
+        connect(self.actionPrevDiff, SIGNAL('triggered()'),
+                self.prevDiff)
+        self.actionDiffMode.setChecked(True)
+
+    def setMode(self, mode):
+        self.textview_status.setMode(mode)
+        self.actionNextDiff.setEnabled(not mode)
+        self.actionPrevDiff.setEnabled(not mode)
+
+    def nextDiff(self):
+        notlast = self.textview_status.nextDiff()
+        self.actionNextDiff.setEnabled(self.textview_status.fileMode() and notlast and self.textview_status.nDiffs())
+        self.actionPrevDiff.setEnabled(self.textview_status.fileMode() and self.textview_status.nDiffs())
+
+    def prevDiff(self):
+        notfirst = self.textview_status.prevDiff()
+        self.actionPrevDiff.setEnabled(self.textview_status.fileMode() and notfirst and self.textview_status.nDiffs())
+        self.actionNextDiff.setEnabled(self.textview_status.fileMode() and self.textview_status.nDiffs())
 
     def load_config(self):
         cfg = HgDialogMixin.load_config(self)
