@@ -19,7 +19,10 @@ Qt4 high level widgets for hg repo changelogs and filelogs
 import sys
 
 from mercurial.node import hex, short as short_hex, bin as short_bin
-from mercurial.error import RepoError
+try:
+    from mercurial.error import RepoError
+except ImportError: # old API
+    from mercurial.repo import RepoError
 
 from PyQt4 import QtCore, QtGui
 Qt = QtCore.Qt

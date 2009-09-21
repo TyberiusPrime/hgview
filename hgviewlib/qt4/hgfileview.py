@@ -21,8 +21,11 @@ import difflib
 
 from mercurial.node import hex, short as short_hex, bin as short_bin
 from mercurial import util
-from mercurial.error import LookupError
-
+try:
+    from mercurial.error import LookupError
+except ImportError:
+    from mercurial.revlog import LookupError
+    
 from PyQt4 import QtCore, QtGui, Qsci
 Qt = QtCore.Qt
 connect = QtCore.QObject.connect
