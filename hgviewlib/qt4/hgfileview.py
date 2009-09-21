@@ -205,6 +205,7 @@ class HgFileView(QtGui.QFrame):
         self.sci.setText(data)
         if self._find_text:
             self.highlightSearchString(self._find_text)
+        self.emit(SIGNAL('fileDisplayed'), self._filename)
         self.updateDiffDecorations()
 
     def updateDiffDecorations(self):
@@ -260,6 +261,22 @@ class HgFileView(QtGui.QFrame):
             self.sci.verticalScrollBar().setValue(lo)
             return not first
 
+    def nextLine(self):
+        x, y = self.sci.getCursorPosition()
+        self.sci.setCursorPosition(x+1, y)
+
+    def prevLine(self):
+        x, y = self.sci.getCursorPosition()
+        self.sci.setCursorPosition(x-1, y)
+
+    def nextCol(self):
+        x, y = self.sci.getCursorPosition()
+        self.sci.setCursorPosition(x, y+1)
+
+    def prevCol(self):
+        x, y = self.sci.getCursorPosition()
+        self.sci.setCursorPosition(x, y-1)
+        
     def nDiffs(self):
         return len(self._diffs)
 
@@ -478,3 +495,11 @@ class HgFileListView(QtGui.QTableView):
     def sectionResized(self, idx, oldsize, newsize):
         if idx == 1:
             self.model().setDiffWidth(newsize)
+
+    def nextFile(self):
+        row = self.currentIndex().row()
+        self.setCurrentIndex(self.model().index(min(row+1,
+                             self.model().rowCount() - 1), 0))
+    def prevFile(self):
+        row = self.currentIndex().row()
+        self.setCurrentIndex(self.model().index(max(row - 1, 0), 0))

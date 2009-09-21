@@ -92,7 +92,7 @@ class HgRepoView(QtGui.QTableView):
         connect(self.horizontalHeader(),
                 SIGNAL('sectionResized(int, int, int)'),
                 self.disableAutoResize)
-
+        
     def createToolbars(self):
         self.goto_toolbar = GotoQuickBar(self)
         connect(self.goto_toolbar, SIGNAL('goto'),
@@ -268,6 +268,14 @@ class HgRepoView(QtGui.QTableView):
                 if self.sender() == self.goto_toolbar:
                     self.sender().setVisible(False)
                 self.setCurrentIndex(idx)
+
+    def nextRev(self):
+        row = self.currentIndex().row()
+        self.setCurrentIndex(self.model().index(min(row+1,
+                             self.model().rowCount() - 1), 0))
+    def prevRev(self):
+        row = self.currentIndex().row()
+        self.setCurrentIndex(self.model().index(max(row - 1, 0), 0))
 
 
 class RevDisplay(QtGui.QTextBrowser):

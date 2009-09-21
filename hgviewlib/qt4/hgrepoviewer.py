@@ -43,7 +43,7 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
         # these are used to know where to go after a reload
         self._reload_rev = None
         self._reload_file = None
-        
+
 
         QtGui.QMainWindow.__init__(self)
         HgDialogMixin.__init__(self)
@@ -62,12 +62,11 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
                 self.statusBar().showMessage)
         connect(self.tableView_revisions, SIGNAL('showMessage'),
                 self.statusBar().showMessage)
-                
+
         # setup tables and views
         self.setupHeaderTextview()
-        self.tableView_filelist.setFocusPolicy(QtCore.Qt.NoFocus)
-        self.textview_header.setFocusPolicy(QtCore.Qt.NoFocus)
-        self.textview_status.setFocusPolicy(QtCore.Qt.NoFocus)
+        connect(self.textview_status, SIGNAL('fileDisplayed'),
+                self.file_displayed)
         self.setupBranchCombo()
         self.setupModels()
 
@@ -83,7 +82,7 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
                 self.statusBar().showMessage("Repository has been modified, "
                                              "reloading...", 2000)
                 self.reload()
-                
+
     def setupBranchCombo(self, *args):
         allbranches = sorted(self.repo.branchtags().items())
         if self._closed_branch_supp:
@@ -98,7 +97,7 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
         else:
             self.branch_checkBox_action.setVisible(False)
             branches = [br for br, node in allbranches] # open branches
-            
+
         if len(branches) == 1:
             self.branch_label_action.setVisible(False)
             self.branch_comboBox_action.setVisible(False)
@@ -120,7 +119,7 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
         connect(self.find_toolbar, SIGNAL('showMessage'),
                 self.statusBar().showMessage,
                 Qt.QueuedConnection)
-                
+
         self.attachQuickBar(self.find_toolbar)
 
         self.toolBar_edit.addAction(self.tableView_revisions._actions['back'])
@@ -133,7 +132,7 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
                 self.refreshRevisionTable)
         connect(self.branch_checkBox, SIGNAL('toggled(bool)'),
                 self.setupBranchCombo)
-        
+
         self.branch_checkBox_action = self.toolBar_treefilters.addWidget(self.branch_checkBox)
         self.toolBar_treefilters.addSeparator()
         self.branch_label_action = self.toolBar_treefilters.addWidget(self.branch_label)
@@ -158,6 +157,7 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
         connect(self.actionDiffMode, SIGNAL('toggled(bool)'),
                 self.setMode)
 
+        # Next/Prev diff (in full file mode)
         self.actionNextDiff = QtGui.QAction(geticon('down'), 'Next diff', self)
         self.actionNextDiff.setShortcut('Alt+Down')
         self.actionPrevDiff = QtGui.QAction(geticon('up'), 'Previous diff', self)
@@ -167,6 +167,70 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
         connect(self.actionPrevDiff, SIGNAL('triggered()'),
                 self.prevDiff)
         self.actionDiffMode.setChecked(True)
+
+
+        # Next/Prev file
+        self.actionNextFile = QtGui.QAction('Next file', self)
+        self.actionNextFile.setShortcut('Right')
+        connect(self.actionNextFile, SIGNAL('triggered()'),
+                self.tableView_filelist.nextFile)
+        self.actionPrevFile = QtGui.QAction('Prev file', self)
+        self.actionPrevFile.setShortcut('Left')
+        connect(self.actionPrevFile, SIGNAL('triggered()'),
+                self.tableView_filelist.prevFile)
+        self.addAction(self.actionNextFile)
+        self.addAction(self.actionPrevFile)
+
+        # Next/Prev rev
+        self.actionNextRev = QtGui.QAction('Next revision', self)
+        self.actionNextRev.setShortcut('Down')
+        connect(self.actionNextRev, SIGNAL('triggered()'),
+                self.tableView_revisions.nextRev)
+        self.actionPrevRev = QtGui.QAction('Prev revision', self)
+        self.actionPrevRev.setShortcut('Up')
+        connect(self.actionPrevRev, SIGNAL('triggered()'),
+                self.tableView_revisions.prevRev)
+        self.addAction(self.actionNextRev)
+        self.addAction(self.actionPrevRev)
+
+
+        # navigate in file viewer
+        self.actionNextLine = QtGui.QAction('Next line', self)
+        self.actionNextLine.setShortcut(Qt.SHIFT + Qt.Key_Down)
+        connect(self.actionNextLine, SIGNAL('triggered()'),
+                self.textview_status.nextLine)
+        self.addAction(self.actionNextLine)
+        self.actionPrevLine = QtGui.QAction('Prev line', self)
+        self.actionPrevLine.setShortcut(Qt.SHIFT + Qt.Key_Up)
+        connect(self.actionPrevLine, SIGNAL('triggered()'),
+                self.textview_status.prevLine)
+        self.addAction(self.actionPrevLine)
+        self.actionNextCol = QtGui.QAction('Next column', self)
+        self.actionNextCol.setShortcut(Qt.SHIFT + Qt.Key_Right)
+        connect(self.actionNextCol, SIGNAL('triggered()'),
+                self.textview_status.nextCol)
+        self.addAction(self.actionNextCol)
+        self.actionPrevCol = QtGui.QAction('Prev column', self)
+        self.actionPrevCol.setShortcut(Qt.SHIFT + Qt.Key_Left)
+        connect(self.actionPrevCol, SIGNAL('triggered()'),
+                self.textview_status.prevCol)
+        self.addAction(self.actionPrevCol)
+
+        # Activate file (file diff navigator)
+        self.actionActivateFile = QtGui.QAction('Activate file', self)
+        self.actionActivateFile.setShortcuts([Qt.Key_Return, Qt.Key_Enter])
+        connect(self.actionActivateFile, SIGNAL('triggered()'),
+                lambda self=self:
+                self.tableView_filelist.fileActivated(self.tableView_filelist.currentIndex(),))
+        self.actionActivateFileAlt = QtGui.QAction('Activate alt. file', self)
+        self.actionActivateFileAlt.setShortcuts([Qt.ALT+Qt.Key_Return, Qt.ALT+Qt.Key_Enter])
+        connect(self.actionActivateFileAlt, SIGNAL('triggered()'),
+                lambda self=self:
+                self.tableView_filelist.fileActivated(self.tableView_filelist.currentIndex(),
+                                                      alternate=True))
+        self.addAction(self.actionActivateFile)
+        self.addAction(self.actionActivateFileAlt)
+
 
     def setMode(self, mode):
         self.textview_status.setMode(mode)
@@ -193,10 +257,10 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
                 self.on_filled)
         connect(self.repomodel, SIGNAL('showMessage'),
                 self.statusBar().showMessage,
-                Qt.QueuedConnection)                
+                Qt.QueuedConnection)
 
         self.filelistmodel = HgFileListModel(self.repo)
-        
+
     def setupModels(self):
         self.create_models()
         self.tableView_revisions.setModel(self.repomodel)
@@ -233,24 +297,6 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
         self.header_diff_format.setForeground(Qt.black)
         self.header_diff_format.setBackground(Qt.gray)
 
-    def eventFilter(self, watched, event):
-        if watched == self.tableView_revisions:
-            if event.type() == event.KeyPress:
-                model = self.filelistmodel
-                table = self.tableView_filelist
-                row = table.currentIndex().row()
-                if event.key() == Qt.Key_Left:
-                    table.setCurrentIndex(model.index(max(row-1, 0), 0))
-                    return True
-                elif event.key() == Qt.Key_Right:
-                    table.setCurrentIndex(model.index(min(row+1, model.rowCount()-1), 0))
-                    return True
-                elif event.key() in [Qt.Key_Return, Qt.Key_Enter]:
-                    table.fileActivated(table.currentIndex(),
-                                        alternate=event.modifiers() & Qt.AltModifier)
-                    return True
-        return QtGui.QMainWindow.eventFilter(self, watched, event)
-
     def on_filled(self):
         # called the first time the model is filled, so we select
         # the first available revision
@@ -274,6 +320,12 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
         self._manifestdlg = ManifestViewer(self.repo, rev)
         self._manifestdlg.show()
 
+    def file_displayed(self, filename):
+        self.actionPrevDiff.setEnabled(False)
+        connect(self.textview_status, SIGNAL('filled'),
+                lambda self=self: self.actionNextDiff.setEnabled(self.textview_status.fileMode() \
+                                                                 and self.textview_status.nDiffs()))
+
     def revision_selected(self, rev):
         """
         Callback called when a revision is selected in the revisions table
@@ -293,11 +345,11 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
         watchedfiles = [os.path.join(*wf) for wf in watchedfiles]
         mtime = [os.path.getmtime(wf) for wf in watchedfiles \
                  if os.path.isfile(wf)]
-        if mtime: 
+        if mtime:
             return max(mtime)
         # humm, directory has probably been deleted, exiting...
         self.close()
-        
+
     def reload(self):
         """Reload the repository"""
         self._reload_rev = self.tableView_revisions.current_rev
@@ -315,7 +367,7 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
             branch = self.branch_comboBox.currentText()
         branch = str(branch)
         self.repomodel.setRepo(self.repo, branch=branch)
-            
+
     def on_about(self, *args):
         """ Display about dialog """
         from hgviewlib.__pkginfo__ import modname, version, short_desc, long_desc
