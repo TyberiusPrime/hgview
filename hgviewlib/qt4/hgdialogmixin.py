@@ -58,6 +58,7 @@ class HgDialogMixin(object):
             self.__class__.__bases__ = self.__class__.__bases__ + (ui_class,)
         self.setupUi(self)
         self.load_ui()
+        self.disab_shortcuts = [self.esc_shortcut]
         
     def load_ui(self):
         # we explicitely create a QShortcut so we can disable it
@@ -73,11 +74,15 @@ class HgDialogMixin(object):
         qbar.setParent(self)
         self._quickbars.append(qbar)
         connect(qbar, SIGNAL('escShortcutDisabled(bool)'),
-                self.esc_shortcut.setEnabled)
+                self.setShortcutsEnabled)
         self.addToolBar(Qt.BottomToolBarArea, qbar)
         connect(qbar, SIGNAL('visible'),
                 self.ensureOneQuickBar)
 
+    def setShortcutsEnabled(self, enabled=True):
+        for sh in self.disab_shortcuts:
+            sh.setEnabled(enabled)
+        
     def ensureOneQuickBar(self):
         tb = self.sender()
         for w in self._quickbars:

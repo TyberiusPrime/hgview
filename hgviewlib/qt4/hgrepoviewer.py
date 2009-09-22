@@ -189,6 +189,8 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
                 self.tableView_filelist.prevFile)
         self.addAction(self.actionNextFile)
         self.addAction(self.actionPrevFile)
+        self.disab_shortcuts.append(self.actionNextFile)
+        self.disab_shortcuts.append(self.actionPrevFile)
 
         # Next/Prev rev
         self.actionNextRev = QtGui.QAction('Next revision', self)
@@ -201,6 +203,8 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
                 self.tableView_revisions.prevRev)
         self.addAction(self.actionNextRev)
         self.addAction(self.actionPrevRev)
+        self.disab_shortcuts.append(self.actionNextRev)
+        self.disab_shortcuts.append(self.actionPrevRev)
 
 
         # navigate in file viewer
@@ -244,6 +248,8 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
         self.addAction(self.actionActivateFile)
         self.addAction(self.actionActivateFileAlt)
         self.addAction(self.actionActivateRev)
+        self.disab_shortcuts.append(self.actionActivateFile)
+        self.disab_shortcuts.append(self.actionActivateRev)
 
 
     def setMode(self, mode):
