@@ -410,41 +410,74 @@ def find_repository(path):
 
 def main():
     from optparse import OptionParser
-    parser = OptionParser()
+    usage = '''%prog [options] [filename]
+
+    Starts a visual hg repository navigator.
+
+    - With no options, starts the main repository navigator.
+
+    - If a filename is given, starts in filelog diff mode (or in
+      filelog navigation mode if -n option is set).
+
+    - With -r option, starts in manifest viewer mode for given
+      revision.
+    '''
+    
+    parser = OptionParser(usage)
     parser.add_option('-R', '--repository', dest='repo',
-                       help='location of the repository to explore')
-    parser.add_option('-f', '--file', dest='filename',
-                       help='filter revisions which touch FILE', metavar="FILE")
-    parser.add_option('-g', '--regexp', dest='filerex',
-                       help='filter revisions which touch FILE matching regexp')
+                      help='location of the repository to explore')
+    parser.add_option('-r', '--rev', dest='rev', default='',
+                      help='start in manifest navigation mode at rev R')
+    parser.add_option('-n', '--navigate', dest='navigate', default=False,
+                      action="store_true",
+                      help='(with filename) start in navigation mode')
 
     opt, args = parser.parse_args()
+
+    if opt.navigate and len(args) != 1:
+        parser.error("You must provide a filename to start in navigate mode")
+
+    if len(args) > 1:
+        parser.error("Provide at most one file name")
+
     dir_ = None
     if opt.repo:
         dir_ = opt.repo
     else:
         dir_ = os.getcwd()
     dir_ = find_repository(dir_)
-    filerex = None
-    if opt.filename:
-        filerex = "^" + re.escape(opt.filename) + "$"
-    elif opt.filerex:
-        filerex = opt.filerex
 
     try:
         u = ui.ui()
         repo = hg.repository(u, dir_)
     except:
-        print "You are not in a repo, are you?"
-        sys.exit(1)
+        parser.erro("You are not in a repo, are you?")
 
     # make Ctrl+C works
     import signal
     signal.signal(signal.SIGINT, signal.SIG_DFL)
 
     app = QtGui.QApplication(sys.argv)
-    mainwindow = HgRepoViewer(repo, filerex)
-    mainwindow.show()
+
+    if len(args) == 1:
+        # should be a filename of a file managed in the repo
+        if opt.get('navigate'):
+            mainwindow = FileViewer(repo, args[0])
+        else:
+            mainwindow = FileDiffViewer(repo, args[0])
+    else:
+        rev = opt.rev
+        if rev is not None:
+            try:
+                repo.changectx(rev)
+            except RepoError, e:
+                parser.error("Cannot find revision %s" % rev)
+            else:
+                mainwindow = ManifestViewer(repo, rev)                
+        else:
+            mainwindow = HgRepoViewer(repo)
+
+    mainwindow.show()    
     sys.exit(app.exec_())
 
 
