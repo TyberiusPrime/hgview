@@ -436,7 +436,7 @@ def main():
     parser = OptionParser(usage)
     parser.add_option('-R', '--repository', dest='repo',
                       help='location of the repository to explore')
-    parser.add_option('-r', '--rev', dest='rev', default='',
+    parser.add_option('-r', '--rev', dest='rev', default=None,
                       help='start in manifest navigation mode at rev R')
     parser.add_option('-n', '--navigate', dest='navigate', default=False,
                       action="store_true",
