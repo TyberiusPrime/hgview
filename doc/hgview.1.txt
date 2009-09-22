@@ -8,18 +8,28 @@ hgview - Qt based mercurial repository browser
 
 SYNOPSIS
 --------
-'hgview' [filename]
+'hgview' [options] [filename]
 
 DESCRIPTION
 -----------
 
 hgview(1) is a GUI application usually invoked from the command
 line. The simplest way to use it is to install it as a hg
-extension. Alternatively, it can be used as a standalone application
-by calling it from a mercurial repository.
+extension. Alternatively, it can be used as a standalone application.
 
 If [filename] is given, hgview will start in file-diff mode, in which
 user can easily compare arbitrary revisions of a file.
+
+Use ``hg help hgview`` for an extended help description
+
+OPTIONS
+-------
+
+`-n`, --navigate
+    with a filename, starts in filelog navigation mode
+
+`-r REV`, --rev=REV
+    starts in manifest mode for given revision 
 
 FILES
 -----
