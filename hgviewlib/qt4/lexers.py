@@ -125,17 +125,21 @@ class DiffLexerSelector(_ScriptLexerSelector):
             lexer.setColor(QtGui.QColor(cfg.getDiffPlusColor()), 6)
             lexer.setColor(QtGui.QColor(cfg.getDiffMinusColor()), 5)
             lexer.setColor(QtGui.QColor(cfg.getDiffSectionColor()), 4)
+            font = QtGui.QFont()
+            fontstr = cfg.getFont()
+            font.fromString(fontstr)            
             size = cfg.getDiffFontSize()
         else:
+            font = QtGui.QFont('Monospace')
             size = 9
 
-        font = QtGui.QFont('Monospace')
         font.setPointSize(size)
         lexer.setFont(font, -1)
 
-        font.setBold(True)
-        lexer.setFont(font, 5)
-        lexer.setFont(font, 6)
+        bfont = QtGui.QFont(font)
+        bfont.setBold(True)
+        lexer.setFont(bfont, 5)
+        lexer.setFont(bfont, 6)
 
         return lexer
 
