@@ -25,10 +25,10 @@ Use ``hg help hgview`` for an extended help description
 OPTIONS
 -------
 
-`-n`, --navigate
-    with a filename, starts in filelog navigation mode
+`-n`, --navigate (require a filename)::
+    starts in filelog navigation mode
 
-`-r REV`, --rev=REV
+`-r REV`, --rev=REV::
     starts in manifest mode for given revision 
 
 FILES
