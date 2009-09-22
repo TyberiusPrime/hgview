@@ -26,6 +26,12 @@ from hgviewlib.qt4.hgrepomodel import HgRepoListModel, HgFileListModel
 from hgviewlib.qt4.hgfileviewer import ManifestViewer
 from hgviewlib.qt4.hgdialogmixin import HgDialogMixin
 from hgviewlib.qt4.quickbar import FindInGraphlogQuickBar
+from hgviewlib.qt4.helpviewer import HelpViewer
+
+try:
+    from mercurial.error import RepoError
+except ImportError: # old API
+    from mercurial.repo import RepoError
 
 Qt = QtCore.Qt
 bold = QtGui.QFont.Bold
@@ -36,7 +42,7 @@ SIGNAL = QtCore.SIGNAL
 class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
     """hg repository viewer/browser application"""
     _uifile = 'hgqv.ui'
-    def __init__(self, repo, filerex = None):
+    def __init__(self, repo):
         self.repo = repo
         self._closed_branch_supp = has_closed_branch_support(self.repo)
 
@@ -168,7 +174,6 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
                 self.prevDiff)
         self.actionDiffMode.setChecked(True)
 
-
         # Next/Prev file
         self.actionNextFile = QtGui.QAction('Next file', self)
         self.actionNextFile.setShortcut('Right')
@@ -228,8 +233,13 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
                 lambda self=self:
                 self.tableView_filelist.fileActivated(self.tableView_filelist.currentIndex(),
                                                       alternate=True))
+        self.actionActivateRev = QtGui.QAction('Activate rev.', self)
+        self.actionActivateRev.setShortcuts([Qt.SHIFT+Qt.Key_Return, Qt.SHIFT+Qt.Key_Enter])
+        connect(self.actionActivateRev, SIGNAL('triggered()'),
+                self.revision_activated)
         self.addAction(self.actionActivateFile)
         self.addAction(self.actionActivateFileAlt)
+        self.addAction(self.actionActivateRev)
 
 
     def setMode(self, mode):
@@ -313,10 +323,12 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
                 pass
         tv.setCurrentIndex(tv.model().index(0, 0))
 
-    def revision_activated(self, rev):
+    def revision_activated(self, rev=None):
         """
         Callback called when a revision is double-clicked in the revisions table
         """
+        if rev is None:
+            rev = self.tableView_revisions.current_rev
         self._manifestdlg = ManifestViewer(self.repo, rev)
         self._manifestdlg.show()
 
