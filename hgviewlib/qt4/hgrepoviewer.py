@@ -163,6 +163,10 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
         connect(self.actionDiffMode, SIGNAL('toggled(bool)'),
                 self.setMode)
 
+        self.actionHelp.setShortcut(Qt.Key_F1)
+        connect(self.actionHelp, SIGNAL('triggered()'),
+                self.on_help)
+        
         # Next/Prev diff (in full file mode)
         self.actionNextDiff = QtGui.QAction(geticon('down'), 'Next diff', self)
         self.actionNextDiff.setShortcut('Alt+Down')
@@ -395,6 +399,12 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
         msg += "<p>%s</p>" % long_desc
         QtGui.QMessageBox.about(self, "About %s" % modname, msg)
 
+    def on_help(self, *args):
+        w = HelpViewer(self.repo, self)
+        w.show()
+        w.raise_()
+        w.activateWindow()
+        
 def find_repository(path):
     """returns <path>'s mercurial repository
 

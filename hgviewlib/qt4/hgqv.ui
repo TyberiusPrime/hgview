@@ -113,6 +113,7 @@
      <string>&amp;Help</string>
     </property>
     <addaction name="actionAbout" />
+    <addaction name="actionHelp" />
    </widget>
    <widget class="QMenu" name="menu_Edit" >
     <property name="title" >
@@ -203,7 +204,7 @@
     <rect>
      <x>144</x>
      <y>30</y>
-     <width>586</width>
+     <width>15</width>
      <height>33</height>
     </rect>
    </property>
@@ -216,6 +217,26 @@
    <attribute name="toolBarBreak" >
     <bool>false</bool>
    </attribute>
+  </widget>
+  <widget class="QToolBar" name="toolBar_help" >
+   <property name="geometry" >
+    <rect>
+     <x>159</x>
+     <y>30</y>
+     <width>571</width>
+     <height>33</height>
+    </rect>
+   </property>
+   <property name="windowTitle" >
+    <string>toolBar</string>
+   </property>
+   <attribute name="toolBarArea" >
+    <enum>TopToolBarArea</enum>
+   </attribute>
+   <attribute name="toolBarBreak" >
+    <bool>false</bool>
+   </attribute>
+   <addaction name="actionHelp" />
   </widget>
   <action name="actionOpen_repository" >
    <property name="text" >
@@ -252,6 +273,11 @@
   <action name="actionDisplayAllBranches" >
    <property name="text" >
     <string>displayAllBranches</string>
+   </property>
+  </action>
+  <action name="actionHelp" >
+   <property name="text" >
+    <string>Help</string>
    </property>
   </action>
  </widget>
