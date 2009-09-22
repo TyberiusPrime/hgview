@@ -291,6 +291,8 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
         filetable = self.tableView_filelist
         connect(filetable, SIGNAL('fileSelected'),
                 self.textview_status.displayFile)
+        connect(self.textview_status, SIGNAL('revForDiffChanged'),
+                self.textview_header.setDiffRevision)
 
     def setupRevisionTable(self):
         view = self.tableView_revisions

@@ -464,6 +464,18 @@ class HgFileListModel(QtCore.QAbstractTableModel):
         row = index.row()
         return self._files[row]['path']
 
+    def revFromIndex(self, index):
+        if self._fulllist and ismerge(self.current_ctx):
+            if not index.isValid() or index.row()>=len(self) or not self.current_ctx:
+                return None
+            row = index.row()
+            current_file_desc = self._files[row]
+            if current_file_desc['fromside'] == 'right':
+                return self.current_ctx.parents()[1].rev()
+            else:
+                return self.current_ctx.parents()[0].rev()                
+        return None
+    
     def indexFromFile(self, filename):
         if filename in self._filesdict:
             row = self._files.index(self._filesdict[filename])

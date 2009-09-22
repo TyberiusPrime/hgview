@@ -338,6 +338,7 @@ class Graph(object):
     def filedata(self, filename, rev, mode='diff'):
         """XXX written under dubious encoding assumptions
         """
+        # XXX This really begins to be a dirty mess...
         data = ""
         flag = self.fileflag(filename, rev)
         ctx = self.repo.changectx(rev)
@@ -356,7 +357,8 @@ class Graph(object):
                 else: # hg stores utf-8 strings
                     # XXX (auc) says who ?
                     data = tounicode(data)
-            elif flag == "=":
+            elif flag == "=" or isinstance(mode, int):
+                flag = "="
                 if isinstance(mode, int):
                     parentctx = self.repo.changectx(mode)
                 else:
@@ -365,7 +367,9 @@ class Graph(object):
                 # return the diff but the 3 first lines
                 data = diff(self.repo, ctx, parentctx, files=[filename])
                 data = u'\n'.join(data.splitlines()[3:])
-            else:
+            elif flag == '':
+                data = ''
+            else: # file renamed
                 oldname, node = flag
                 newdata = fctx.data().splitlines()
                 olddata = self.repo.filectx(oldname, fileid=node)

@@ -302,6 +302,11 @@ class RevDisplay(QtGui.QTextBrowser):
         else:            
             self.emit(SIGNAL('revisionSelected'), int(rev))
 
+    def setDiffRevision(self, rev):
+        if rev != self.diffrev:
+            self.diffrev = rev
+            self.refreshDisplay()
+    
     def displayRevision(self, ctx):
         self.ctx = ctx
         self.diffrev = ctx.parents()[0].rev()

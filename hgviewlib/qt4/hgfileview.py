@@ -148,11 +148,14 @@ class HgFileView(QtGui.QFrame):
         return self._filename
 
     def displayDiff(self, rev):
-        self._p_rev = rev
-        self.displayFile(self._filename)
+        if rev != self._p_rev:
+            self.displayFile(self._filename, rev)
         
-    def displayFile(self, filename):
+    def displayFile(self, filename, rev=None):
         self._filename = filename
+        if rev is not None:
+            self._p_rev = rev
+            self.emit(SIGNAL('revForDiffChanged'), rev)
         self.sci.clear()
         self.filenamelabel.clear()
         self.execflaglabel.clear()
@@ -169,7 +172,9 @@ class HgFileView(QtGui.QFrame):
         flag, data = self._model.graph.filedata(filename, self._ctx.rev(), mode)
         if flag == '-':
             return
-
+        if flag == '':
+            return
+        
         cfg = HgConfig(self._model.repo.ui)
         lexer = get_lexer(filename, data, flag, cfg)
         if flag == "+":
@@ -202,6 +207,7 @@ class HgFileView(QtGui.QFrame):
             self.highlightSearchString(self._find_text)
         self.emit(SIGNAL('fileDisplayed'), self._filename)
         self.updateDiffDecorations()
+        return True
 
     def updateDiffDecorations(self):
         """
@@ -413,7 +419,8 @@ class HgFileListView(QtGui.QTableView):
         if index is None:
             index = self.currentIndex()
         sel_file = self.model().fileFromIndex(index)
-        self.emit(SIGNAL('fileSelected'), sel_file)
+        from_rev = self.model().revFromIndex(index)
+        self.emit(SIGNAL('fileSelected'), sel_file, from_rev)
 
     def selectFile(self, filename):
         self.setCurrentIndex(self.model().indexFromFile(filename))
@@ -440,7 +447,7 @@ class HgFileListView(QtGui.QTableView):
     def diffNavigate(self, filename=None):
         if filename is None:
             filename = self.currentFile()
-        if  len(self.model().repo.file(filename))>0:
+        if filename is not None and len(self.model().repo.file(filename))>0:
             dlg = FileDiffViewer(self.model().repo, filename)
             dlg.setWindowTitle('Hg file log viewer')
             dlg.show()
