@@ -22,6 +22,7 @@ Module for managing configuration parameters of hgview using Hg's
 configuration system
 """
 import os
+import re
 
 def cached(meth):
     """
@@ -155,8 +156,8 @@ class HgConfig(object):
     @cached
     def getChangelogColumns(self, default=None):
         """
-        changelogcolumns: ordered list of displayed columns in changelog views; defaults to
-        ID, Branch, Log, Author, Date, Tags
+        changelogcolumns: ordered list of displayed columns in changelog views;
+                    defaults to ID, Branch, Log, Author, Date, Tags
         """
         cols = self.ui.config(self.section, 'changelogcolumns', default)
         if cols is None:
@@ -166,8 +167,8 @@ class HgConfig(object):
     @cached
     def getFilelogColumns(self, default=None):
         """
-        filelogcolumns: ordered list of displayed columns in filelog views; defaults to
-        ID, Log, Author, Date
+        filelogcolumns: ordered list of displayed columns in filelog views;
+                  defaults to ID, Log, Author, Date
         """
         cols = self.ui.config(self.section, 'filelogcolumns', default)
         if cols is None:
@@ -178,7 +179,7 @@ class HgConfig(object):
     def getDisplayDiffStats(self, default="yes"):
         """
         displaydiffstats: flag controllong the appearance of the
-                          'Diff' column in a revision's file list
+                    'Diff' column in a revision's file list
         """
         val = str(self.ui.config(self.section, 'displaydiffstats', default))
         return val.lower() in ['true', 'yes', '1', 'on']
@@ -249,7 +250,7 @@ def HgConfig(ui):
     return _hgconfig
 
 
-def get_option_descriptions():
+def get_option_descriptions(rest=False):
     """
     Extract options descriptions (docstrings of HgConfig methods)
     """
@@ -260,6 +261,10 @@ def get_option_descriptions():
             if callable(meth):
                 doc = meth.__doc__
                 if doc and doc.strip():
-                    options.append(doc.strip())
+                    doc = doc.strip()
+                    if rest:
+                        doc = re.sub(r' *(?P<arg>.*) *: *(?P<desc>.*)', r'``\1`` \2', doc.strip())
+                        doc = ' '.join(doc.split()) # remove \n and other multiple whitespaces
+                    options.append(doc)
     return options
 

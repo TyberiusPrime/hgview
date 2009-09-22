@@ -15,44 +15,10 @@ from mercurial import hg, commands, dispatch
 # don't start with a dash.  If no default value is given in the parameter list,
 # they are required.
 
-def get_options_helpmsg():
-    """display hgview full list of configuration options
-    """
-    import sys
-    sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
-    from hgviewlib.config import get_option_descriptions
-    options = get_option_descriptions()
-    msg = """
-Configuration options available for hgview
-==========================================
 
-    These should be set under the [hgview] section of the hgrc config file.\n\n"""
-    msg += '\n'.join(["  - " + v for v in options]) + '\n'
-    msg += """
-    The 'users' config statement should be the path of a file
-    describing users, like:
-
-    -----------------------------------------------
-    # file ~/.hgusers
-    id=david
-    alias=david.douard@logilab.fr
-    alias=david@logilab.fr
-    alias=David Douard <david.douard@logilab.fr>
-    color=#FF0000
-    
-    id=ludal
-    alias=ludovic.aubry@logilab.fr
-    alias=ludal@logilab.fr
-    alias=Ludovic Aubry <ludovic.aubry@logilab.fr>
-    color=#00FF00
-    -----------------------------------------------
-    
-    This allow to make several 'authors' under the same name, with the
-    same color, in the graphlog browser.
-    """
-    return msg
 
 def start_hgview(ui, repo, *args, **kwargs):
+    # WARNING, this docstring is superseeded programatically 
     """
 start hgview log viewer
 =======================
@@ -66,20 +32,8 @@ start hgview log viewer
 
     With the '-r' option, launch the manifest viexer for the given revision.
 
-    Keyboard shortcuts
-    ------------------
-
-    Up/Down     - go to next/previous revision
-    Left/Right  - display previous/next files of the current changeset
-    Ctrl+F or / - display the search bar
-    Ctrl+G      - displa the 'goto rev' bar
-    Esc         - exit
-    Enter       - run the diff viewer for the currently selected file
-                  (display diff between revisions)
-    Ctrl+R      - reread repo
-
-    
     """
+    
     rundir = repo.root
 
     # If this user has a username validation hook enabled,
@@ -132,13 +86,16 @@ start hgview log viewer
         mainwindow.show()
         return app.exec_()
 
-start_hgview.__doc__ += get_options_helpmsg()
-
+import sys
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+import hgviewlib.hgviewhelp as hghelp
+    
+start_hgview.__doc__ = hghelp.long_help_msg
     
 cmdtable = {
     "^hgview|hgv|qv": (start_hgview,
                        [('n', 'navigate', False, '(with filename) start in navigation mode'),
-                        ('r', 'rev', '', 'start in maifest navigation mode at rev R'),
+                        ('r', 'rev', '', 'start in manifest navigation mode at rev R'),
                         ],
             "hg hgview [options] [filename]"),
 }
