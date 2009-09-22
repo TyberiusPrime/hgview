@@ -128,7 +128,7 @@ class DiffLexerSelector(_ScriptLexerSelector):
             font = QtGui.QFont()
             fontstr = cfg.getFont()
             font.fromString(fontstr)            
-            size = cfg.getDiffFontSize()
+            size = cfg.getFontSize()
         else:
             font = QtGui.QFont('Monospace')
             size = 9

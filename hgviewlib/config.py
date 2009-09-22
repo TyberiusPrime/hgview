@@ -226,12 +226,6 @@ class HgConfig(object):
         """
         return self.ui.config(self.section, 'diffsectioncolor', default)
 
-    @cached
-    def getDiffFontSize(self, default=9):
-        """
-        difffontsize: text size in diff viewer
-        """
-        return int(self.ui.config(self.section, 'difffontsize', default))
 
 
 _HgConfig = HgConfig
