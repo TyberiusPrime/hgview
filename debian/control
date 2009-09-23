@@ -11,7 +11,7 @@ Homepage: http://www.logilab.org/project/hgview
 
 Package: hgview
 Architecture: all
-Depends: python, python-qt4, python-qscintilla2, python-egenix-mxdatetime, mercurial (>= 0.9.3)
+Depends: python, python-qt4, python-qscintilla2, python-egenix-mxdatetime, mercurial (>= 0.9.3), python-docutils
 Enhances: mercurial
 XB-Python-Version: ${python:Versions}
 Description: mercurial interactive history viewer
