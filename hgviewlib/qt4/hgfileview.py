@@ -227,14 +227,15 @@ class HgFileView(QtGui.QFrame):
                 pfilename = self._filename
             _, parentdata = self._model.graph.filedata(pfilename,
                                                        parent, 'file')
-            filedata = self.filedata.splitlines()
-            parentdata = parentdata.splitlines()
-            self._diff = difflib.SequenceMatcher(None,
-                                                 parentdata,
-                                                 filedata,)
-            self._diffs = []
-            self.blk.syncPageStep()
-            self.timer.start()
+            if parentdata is not None:
+                filedata = self.filedata.splitlines()
+                parentdata = parentdata.splitlines()
+                self._diff = difflib.SequenceMatcher(None,
+                                                     parentdata,
+                                                     filedata,)
+                self._diffs = []
+                self.blk.syncPageStep()
+                self.timer.start()
 
     def nextDiff(self):
         if self._mode == 'file':
