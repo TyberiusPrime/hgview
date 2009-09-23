@@ -1,7 +1,31 @@
+2009-09-23  --  1.1.0
+    * add many configuration options
+
+    * removed 'hg hgview-options' command in favor of 'hg help hgview' 
+
+    * add ability to choose which parent to diff with for merge nodes
+
+    * dramatically improved UI behaviour (shortcuts)
+
+    * improved help
+
+    * make it possible not to display the diffstat column
+
+    * standalone application: improved command line options
+
+    * indicate working directory position in the graph
+
+    * add auto-reload feature (when repo is modified; pull, commit, etc.)
+
+    * fix many bugs 
+
+
+	
 2009-06-08  --  1.0.1
     * fix a bug on some PyQt versions, which also prevented hardy package from installing
 
 
+	
 2009-06-05  --  1.0.0
     * almost complete rewrite of hgview (only using Qt for now)
 
