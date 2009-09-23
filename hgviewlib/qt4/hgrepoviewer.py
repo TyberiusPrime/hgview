@@ -164,6 +164,7 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
                 self.setMode)
 
         self.actionHelp.setShortcut(Qt.Key_F1)
+        self.actionHelp.setIcon(geticon('help'))        
         connect(self.actionHelp, SIGNAL('triggered()'),
                 self.on_help)
         
