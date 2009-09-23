@@ -168,7 +168,13 @@ def filelog_grapher(repo, path):
     up as breaks in the graph.
     '''
     filerev = len(repo.file(path)) - 1
-    rev = repo.filectx(path, fileid=filerev).rev()
+    fctx = repo.filectx(path, fileid=filerev)
+    rev = fctx.rev()
+
+    flog = fctx.filelog()
+    heads = [repo.filectx(path, fileid=flog.rev(x)).rev() for x in flog.heads()]
+    assert rev in heads
+    heads.remove(rev)
     
     revs = []
     rev_color = {}
@@ -176,7 +182,7 @@ def filelog_grapher(repo, path):
     _paths = {}
 
     while rev >= 0:
-        # Compute revs and next_revs.
+        # Compute revs and next_revs
         if rev not in revs:
             revs.append(rev)
             rev_color[rev] = nextcolor ; nextcolor += 1
@@ -184,7 +190,7 @@ def filelog_grapher(repo, path):
         index = revs.index(rev)
         next_revs = revs[:]
 
-        # Add parents to next_revs. 
+        # Add parents to next_revs
         fctx = repo.filectx(_paths.get(rev, path), changeid=rev)
         for pfctx in fctx.parents():
             _paths[pfctx.rev()] = pfctx.path()
@@ -219,6 +225,8 @@ def filelog_grapher(repo, path):
             rev = max(revs)
         else:
             rev = -1
+        if heads and rev <= heads[-1]:
+            rev = heads.pop()
             
 class GraphNode(object):
     """
@@ -318,20 +326,35 @@ class Graph(object):
             return self.nodes.index(self.nodesdict[rev])
         return -1
         
-    def fileflag(self, filename, rev):
+    def fileflags(self, filename, rev):
+        """
+        Return a couple of flags ('=', '+', '-' or '?') depending on the nature
+        of the diff for filename between rev and its parents.        
+        """
         ctx = self.repo.changectx(rev)
-        changes = self.repo.status(ctx.parents()[0].node(), ctx.node())[:5]
-        modified, added, removed, deleted, unknown = changes
-        for flag, lst in zip(["=", "+", "-", "-", "?"],
-                           [modified, added, removed, deleted, unknown]):
-            if filename in lst:
-                if flag == "+":
-                    renamed = ctx.filectx(filename).renamed()
-                    if renamed:
-                        return renamed
-                return flag
-        return ''
+        flags = []
+        for p in ctx.parents():
+            changes = self.repo.status(p.node(), ctx.node())[:5]
+            # changes = modified, added, removed, deleted, unknown
+            for flag, lst in zip(["=", "+", "-", "-", "?"], changes):
+                if filename in lst:
+                    if flag == "+":
+                        renamed = ctx.filectx(filename).renamed()
+                        if renamed:
+                            flags.append(renamed)
+                            break
+                    flags.append(flag)
+                    break
+            else:
+                flags.append('')
+        return flags
 
+    def fileflag(self, filename, rev):
+        """
+        Return a flag (see fileflags) between rev and its forst parent
+        """
+        return self.fileflags(filename, rev)[0]
+    
     def filename(self, rev):
         return self.nodesdict[rev].extra[0]
         
@@ -345,8 +368,10 @@ class Graph(object):
 
         if flag not in ('-', '?'):
             fctx = ctx.filectx(filename)
+            if fctx.node() is None:
+                return '', None
             if fctx.size() > self.maxfilesize:
-                data = "Big file."
+                data = "file too big"
                 return flag, data
             if flag == "+" or mode == 'file':
                 flag = '+'
@@ -354,8 +379,7 @@ class Graph(object):
                 data = fctx.data()
                 if util.binary(data):
                     data = "binary file"
-                else: # hg stores utf-8 strings
-                    # XXX (auc) says who ?
+                else: # tries to convert to unicode
                     data = tounicode(data)
             elif flag == "=" or isinstance(mode, int):
                 flag = "="
