@@ -23,12 +23,14 @@ import os.path as osp
 
 import difflib
 
-from mercurial import ui, hg
+from mercurial import ui, hg, util
 from mercurial.node import hex, short as short_hex
 from mercurial.revlog import LookupError
 
 from PyQt4 import QtGui, QtCore, Qsci
 from PyQt4.QtCore import Qt
+
+from hgviewlib.util import tounicode
 
 from hgviewlib.qt4 import icon as geticon
 from hgviewlib.qt4.hgdialogmixin import HgDialogMixin
@@ -157,7 +159,7 @@ class FileViewer(QtGui.QMainWindow, HgDialogMixin):
         connect(self.textView, SIGNAL('filled'),
                 lambda self=self: self.actionNextDiff.setEnabled(self.textView.fileMode() and self.textView.nDiffs()))
 
-
+        
 class ManifestViewer(QtGui.QMainWindow, HgDialogMixin):
     """
     Qt4 dialog to display all files of a repo at a given revision
@@ -176,6 +178,10 @@ class ManifestViewer(QtGui.QMainWindow, HgDialogMixin):
 
         self.createActions()
         self.setupTextview()
+
+    def load_config(self):
+        cfg = HgDialogMixin.load_config(self)
+        self.max_file_size = cfg.getMaxFileSize()
 
     def setupModels(self):
         self.treemodel = ManifestModel(self.repo, self.rev)
@@ -215,16 +221,20 @@ class ManifestViewer(QtGui.QMainWindow, HgDialogMixin):
             self.textView.setText('')
             return
 
-        if fc.size() > 100000: # XXX how to detect binary files?
-            data = "File too big"
+        if fc.size() > self.max_file_size:
+            data = "file too big"
         else:
             # return the whole file
-            data = unicode(fc.data(), errors='ignore') # XXX
-            lexer = get_lexer(path, data)
-            if lexer:
-                lexer.setFont(self._font)
-                self.textView.setLexer(lexer)
-            self._cur_lexer = lexer
+            data = fc.data()
+            if util.binary(data):
+                data = "binary file"
+            else:
+                data = tounicode(data)
+                lexer = get_lexer(path, data)
+                if lexer:
+                    lexer.setFont(self._font)
+                    self.textView.setLexer(lexer)
+                self._cur_lexer = lexer
         nlines = data.count('\n')
         self.textView.setMarginWidth(1, str(nlines)+'00')
         self.textView.setText(data)
