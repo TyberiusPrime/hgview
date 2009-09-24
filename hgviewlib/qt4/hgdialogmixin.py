@@ -49,8 +49,14 @@ class HgDialogMixin(object):
         except IOError:
             modname = osp.splitext(osp.basename(uifile))[0] + "_ui"
             modname = "hgviewlib.qt4.%s" % modname
-            mod = __import__(modname, fromlist=['Ui_MainWindow'])
-            ui_class = mod.Ui_MainWindow
+            mod = __import__(modname, fromlist=['*'])
+            classnames = [x for x in dir(mod) if x.startswith('Ui_')]
+            if len(classnames) == 1:
+                ui_class = getattr(mod, classnames[0])
+            elif 'Ui_MainWindow' in classnames:
+                ui_class = getattr(mod, 'Ui_MainWindow')
+            else:
+                raise ValueError("Can't determine which main class to use in %s" % modname) 
         if ui_class not in self.__class__.__bases__:
             # hacking by adding the form class from ui file or pyuic4
             # generated module because we cannot use metaclass here,
