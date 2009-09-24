@@ -16,6 +16,4 @@ Enhances: mercurial
 XB-Python-Version: ${python:Versions}
 Description: mercurial interactive history viewer
  Its purpose is to easily navigate in a mercurial repository history. It has been
- written with efficiency in mind when dealing with big repositories
- (it should happily be able to handle the browsing of the Linux kernel
- source code repository).
+ written with efficiency in mind when dealing with quite big repositories.
