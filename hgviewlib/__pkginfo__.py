@@ -18,7 +18,7 @@ http://www.logilab.fr/ -- mailto:contact@logilab.fr
 
 import glob
 modname = 'hgview'
-numversion = (1, 0, 1)
+numversion = (1, 1, 0)
 version = '.'.join([str(num) for num in numversion])
 
 
@@ -61,7 +61,7 @@ mailinglist = "mailto://python-projects@lists.logilab.org"
 scripts = ['bin/hgview']
 debian_name = 'hgview'
 debian_maintainer = 'Alexandre Fayolle' 
-debian_maintainer_email = 'alexandre.fayolle@logilab.fr'
+debian_maintainer_email = 'afayolle@debian.org'
 pyversions = ["2.5"]
 
 debian_handler = 'python-dep-standalone'
