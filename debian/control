@@ -2,9 +2,10 @@ Source: hgview
 Section: devel
 Priority: optional
 Maintainer: David Douard <david.douard@logilab.fr>
+Uploaders: Alexandre Fayolle <afayolle@debian.org>
 Build-Depends: debhelper (>= 5.0.38), python-qt4, mercurial (>= 0.9.3), python (>=2.3.5-7), python-support (>= 0.5.3), xmlto, asciidoc
 Build-Depends-Indep: 
-Standards-Version: 3.7.3
+Standards-Version: 3.8.3
 Vcs-Hg: http://www.logilab.org/cgi-bin/hgwebdir.cgi/hgview
 Vcs-Browser: http://www.logilab.org/cgi-bin/hgwebdir.cgi/hgview
 Homepage: http://www.logilab.org/project/hgview
