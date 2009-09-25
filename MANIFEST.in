@@ -14,7 +14,8 @@ include hgviewlib/qt4/filediffviewer.ui
 include hgviewlib/qt4/fileviewer.ui
 include hgviewlib/qt4/manifestviewer.ui
 
-include doc/hgview.1
+include doc/hgview.1.txt
+include doc/Makefile
 include hgext/hgview.py
 include hgext/hgview.rc
 
