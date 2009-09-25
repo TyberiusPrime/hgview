@@ -1,7 +1,8 @@
-<ui version="4.0" >
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
  <class>MainWindow</class>
- <widget class="QMainWindow" name="MainWindow" >
-  <property name="geometry" >
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
    <rect>
     <x>0</x>
     <y>0</y>
@@ -9,79 +10,71 @@
     <height>646</height>
    </rect>
   </property>
-  <property name="windowTitle" >
+  <property name="windowTitle">
    <string>MainWindow</string>
   </property>
-  <widget class="QWidget" name="centralwidget" >
-   <property name="geometry" >
-    <rect>
-     <x>0</x>
-     <y>63</y>
-     <width>730</width>
-     <height>560</height>
-    </rect>
-   </property>
-   <layout class="QVBoxLayout" name="verticalLayout_3" >
-    <property name="spacing" >
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QVBoxLayout" name="verticalLayout_3">
+    <property name="spacing">
      <number>0</number>
     </property>
-    <property name="margin" >
+    <property name="margin">
      <number>0</number>
     </property>
     <item>
-     <widget class="QSplitter" name="splitter_3" >
-      <property name="orientation" >
+     <widget class="QSplitter" name="splitter_3">
+      <property name="orientation">
        <enum>Qt::Vertical</enum>
       </property>
-      <widget class="HgRepoView" name="tableView_revisions" >
-       <property name="frameShape" >
+      <widget class="HgRepoView" name="tableView_revisions">
+       <property name="frameShape">
         <enum>QFrame::StyledPanel</enum>
        </property>
       </widget>
-      <widget class="QFrame" name="frame_maincontent" >
-       <property name="sizePolicy" >
-        <sizepolicy vsizetype="Expanding" hsizetype="Preferred" >
+      <widget class="QFrame" name="frame_maincontent">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
          <horstretch>0</horstretch>
          <verstretch>0</verstretch>
         </sizepolicy>
        </property>
-       <property name="frameShape" >
+       <property name="frameShape">
         <enum>QFrame::NoFrame</enum>
        </property>
-       <property name="frameShadow" >
+       <property name="frameShadow">
         <enum>QFrame::Plain</enum>
        </property>
-       <layout class="QVBoxLayout" name="verticalLayout" >
-        <property name="margin" >
+       <layout class="QVBoxLayout" name="verticalLayout">
+        <property name="margin">
          <number>0</number>
         </property>
         <item>
-         <widget class="QSplitter" name="splitter_2" >
-          <property name="orientation" >
+         <widget class="QSplitter" name="splitter_2">
+          <property name="orientation">
            <enum>Qt::Horizontal</enum>
           </property>
-          <widget class="QSplitter" name="splitter" >
-           <property name="orientation" >
+          <widget class="QSplitter" name="splitter">
+           <property name="orientation">
             <enum>Qt::Vertical</enum>
            </property>
-           <widget class="RevDisplay" name="textview_header" >
-            <property name="sizePolicy" >
-             <sizepolicy vsizetype="Preferred" hsizetype="Expanding" >
+           <widget class="RevDisplay" name="textview_header">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
               <horstretch>0</horstretch>
               <verstretch>1</verstretch>
              </sizepolicy>
             </property>
            </widget>
-           <widget class="HgFileView" native="1" name="textview_status" >
-            <property name="sizePolicy" >
-             <sizepolicy vsizetype="Expanding" hsizetype="Expanding" >
+           <widget class="HgFileView" name="textview_status" native="true">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
               <horstretch>0</horstretch>
               <verstretch>2</verstretch>
              </sizepolicy>
             </property>
            </widget>
           </widget>
-          <widget class="HgFileListView" name="tableView_filelist" />
+          <widget class="HgFileListView" name="tableView_filelist"/>
          </widget>
         </item>
        </layout>
@@ -90,193 +83,144 @@
     </item>
    </layout>
   </widget>
-  <widget class="QMenuBar" name="menubar" >
-   <property name="geometry" >
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
     <rect>
      <x>0</x>
      <y>0</y>
      <width>730</width>
-     <height>30</height>
+     <height>26</height>
     </rect>
    </property>
-   <widget class="QMenu" name="menuFile" >
-    <property name="title" >
+   <widget class="QMenu" name="menuFile">
+    <property name="title">
      <string>&amp;File</string>
     </property>
-    <addaction name="actionOpen_repository" />
-    <addaction name="actionRefresh" />
-    <addaction name="separator" />
-    <addaction name="actionQuit" />
+    <addaction name="actionOpen_repository"/>
+    <addaction name="actionRefresh"/>
+    <addaction name="separator"/>
+    <addaction name="actionQuit"/>
    </widget>
-   <widget class="QMenu" name="menuHelp" >
-    <property name="title" >
+   <widget class="QMenu" name="menuHelp">
+    <property name="title">
      <string>&amp;Help</string>
     </property>
-    <addaction name="actionAbout" />
-    <addaction name="actionHelp" />
+    <addaction name="actionAbout"/>
+    <addaction name="actionHelp"/>
    </widget>
-   <widget class="QMenu" name="menu_Edit" >
-    <property name="title" >
+   <widget class="QMenu" name="menu_Edit">
+    <property name="title">
      <string>&amp;Edit</string>
     </property>
    </widget>
-   <addaction name="menuFile" />
-   <addaction name="menu_Edit" />
-   <addaction name="menuHelp" />
+   <addaction name="menuFile"/>
+   <addaction name="menu_Edit"/>
+   <addaction name="menuHelp"/>
   </widget>
-  <widget class="QStatusBar" name="statusbar" >
-   <property name="geometry" >
-    <rect>
-     <x>0</x>
-     <y>623</y>
-     <width>730</width>
-     <height>23</height>
-    </rect>
+  <widget class="QStatusBar" name="statusbar"/>
+  <widget class="QToolBar" name="toolBar_file">
+   <property name="windowTitle">
+    <string>File toolbar</string>
    </property>
-  </widget>
-  <widget class="QToolBar" name="toolBar_file" >
-   <property name="geometry" >
-    <rect>
-     <x>0</x>
-     <y>30</y>
-     <width>114</width>
-     <height>33</height>
-    </rect>
-   </property>
-   <property name="windowTitle" >
-    <string>toolBar</string>
-   </property>
-   <attribute name="toolBarArea" >
+   <attribute name="toolBarArea">
     <enum>TopToolBarArea</enum>
    </attribute>
-   <attribute name="toolBarBreak" >
+   <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
-   <addaction name="actionQuit" />
-   <addaction name="actionRefresh" />
+   <addaction name="actionQuit"/>
+   <addaction name="actionRefresh"/>
   </widget>
-  <widget class="QToolBar" name="toolBar_edit" >
-   <property name="enabled" >
+  <widget class="QToolBar" name="toolBar_edit">
+   <property name="enabled">
     <bool>true</bool>
    </property>
-   <property name="geometry" >
-    <rect>
-     <x>114</x>
-     <y>30</y>
-     <width>15</width>
-     <height>33</height>
-    </rect>
+   <property name="windowTitle">
+    <string>Edit toolbar</string>
    </property>
-   <property name="windowTitle" >
-    <string>toolBar</string>
-   </property>
-   <attribute name="toolBarArea" >
+   <attribute name="toolBarArea">
     <enum>TopToolBarArea</enum>
    </attribute>
-   <attribute name="toolBarBreak" >
+   <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
   </widget>
-  <widget class="QToolBar" name="toolBar_treefilters" >
-   <property name="enabled" >
+  <widget class="QToolBar" name="toolBar_treefilters">
+   <property name="enabled">
     <bool>true</bool>
    </property>
-   <property name="geometry" >
-    <rect>
-     <x>129</x>
-     <y>30</y>
-     <width>15</width>
-     <height>33</height>
-    </rect>
+   <property name="windowTitle">
+    <string>Filter toolbar</string>
    </property>
-   <property name="windowTitle" >
-    <string>toolBar_2</string>
-   </property>
-   <attribute name="toolBarArea" >
+   <attribute name="toolBarArea">
     <enum>TopToolBarArea</enum>
    </attribute>
-   <attribute name="toolBarBreak" >
+   <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
   </widget>
-  <widget class="QToolBar" name="toolBar_diff" >
-   <property name="geometry" >
-    <rect>
-     <x>144</x>
-     <y>30</y>
-     <width>15</width>
-     <height>33</height>
-    </rect>
+  <widget class="QToolBar" name="toolBar_diff">
+   <property name="windowTitle">
+    <string>Diff toolbar</string>
    </property>
-   <property name="windowTitle" >
-    <string>toolBar</string>
-   </property>
-   <attribute name="toolBarArea" >
+   <attribute name="toolBarArea">
     <enum>TopToolBarArea</enum>
    </attribute>
-   <attribute name="toolBarBreak" >
+   <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
   </widget>
-  <widget class="QToolBar" name="toolBar_help" >
-   <property name="geometry" >
-    <rect>
-     <x>159</x>
-     <y>30</y>
-     <width>571</width>
-     <height>33</height>
-    </rect>
+  <widget class="QToolBar" name="toolBar_help">
+   <property name="windowTitle">
+    <string>Help toolbar</string>
    </property>
-   <property name="windowTitle" >
-    <string>toolBar</string>
-   </property>
-   <attribute name="toolBarArea" >
+   <attribute name="toolBarArea">
     <enum>TopToolBarArea</enum>
    </attribute>
-   <attribute name="toolBarBreak" >
+   <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
-   <addaction name="actionHelp" />
+   <addaction name="actionHelp"/>
   </widget>
-  <action name="actionOpen_repository" >
-   <property name="text" >
+  <action name="actionOpen_repository">
+   <property name="text">
     <string>&amp;Open repository</string>
    </property>
-   <property name="shortcut" >
+   <property name="shortcut">
     <string>Ctrl+O</string>
    </property>
   </action>
-  <action name="actionRefresh" >
-   <property name="text" >
+  <action name="actionRefresh">
+   <property name="text">
     <string>&amp;Refresh</string>
    </property>
-   <property name="shortcut" >
+   <property name="shortcut">
     <string>Ctrl+R</string>
    </property>
   </action>
-  <action name="actionQuit" >
-   <property name="text" >
+  <action name="actionQuit">
+   <property name="text">
     <string>&amp;Quit</string>
    </property>
-   <property name="toolTip" >
+   <property name="toolTip">
     <string>Quit</string>
    </property>
-   <property name="shortcut" >
+   <property name="shortcut">
     <string>Ctrl+Q</string>
    </property>
   </action>
-  <action name="actionAbout" >
-   <property name="text" >
+  <action name="actionAbout">
+   <property name="text">
     <string>About</string>
    </property>
   </action>
-  <action name="actionDisplayAllBranches" >
-   <property name="text" >
+  <action name="actionDisplayAllBranches">
+   <property name="text">
     <string>displayAllBranches</string>
    </property>
   </action>
-  <action name="actionHelp" >
-   <property name="text" >
+  <action name="actionHelp">
+   <property name="text">
     <string>Help</string>
    </property>
   </action>
@@ -305,7 +249,7 @@
   </customwidget>
  </customwidgets>
  <resources>
-  <include location="hgqv.qrc" />
+  <include location="hgqv.qrc"/>
  </resources>
  <connections/>
 </ui>
