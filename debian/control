@@ -16,5 +16,6 @@ Depends: python, python-qt4, python-qscintilla2, python-egenix-mxdatetime, mercu
 Enhances: mercurial
 XB-Python-Version: ${python:Versions}
 Description: mercurial interactive history viewer
- Its purpose is to easily navigate in a mercurial repository history. It has been
- written with efficiency in mind when dealing with quite big repositories.
+ Its purpose is to easily navigate in a mercurial repository
+ history. It has been written with efficiency in mind when dealing
+ with quite big repositories.
