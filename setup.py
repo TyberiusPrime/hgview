@@ -207,7 +207,7 @@ def install():
         scripts = ['bin/hgview']
 
     kwargs['package_dir'] = {modname : modname}
-    packages = ['hgviewlib', 'hgviewlib.qt4'] # [modname] + get_packages(modname, modname)
+    packages = ['hgviewlib', 'hgviewlib.qt4', 'hgext'] # [modname] + get_packages(modname, modname)
     kwargs['packages'] = packages
     return setup(name=distname,
                  version=version,

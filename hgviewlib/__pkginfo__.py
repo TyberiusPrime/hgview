@@ -75,7 +75,7 @@ data_files = [ #('share/hgview', ['hgviewlib/qt4/hgqv.ui',
                #               ]),
               ('share/man/man1', ['doc/hgview.1',
                                  ]),
-              ('share/python-support/mercurial-common/hgext', ['hgext/hgview.py',]),
+              #('share/python-support/mercurial-common/hgext', ['hgext/hgview.py',]),
               #('../etc/mercurial/hgrc.d', ['hgext/hgview.rc',]),
               ]
 

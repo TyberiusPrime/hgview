@@ -3,7 +3,7 @@ Section: devel
 Priority: optional
 Maintainer: David Douard <david.douard@logilab.fr>
 Uploaders: Alexandre Fayolle <afayolle@debian.org>
-Build-Depends: debhelper (>= 5.0.38), pyqt4-dev-tools, python (>=2.4), xmlto, asciidoc
+Build-Depends: debhelper (>= 5.0.38), pyqt4-dev-tools, python (>=2.4), xmlto, asciidoc, mercurial  (>= 0.9.3)
 Build-Depends-Indep: python-support
 XS-Python-Version: all
 Standards-Version: 3.8.3

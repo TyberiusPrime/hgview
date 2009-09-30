@@ -34,16 +34,10 @@ install: build
 	dh_testroot
 	dh_clean -k
 	dh_installdirs
-	mkdir -p debian/hgview/usr/lib/`pyversions -d`/site-packages/
-	mkdir -p debian/hgview/usr/share/python-support/hgview/hgext/
 	python setup.py -q install --root=debian/hgview/usr --install-layout=deb
 	rm -rf debian/hgview/usr/lib/python*/site-packages/hgview/test
-	mv debian/hgview/usr/share/python-support/mercurial-common/hgext/hgview.py debian/hgview/usr/share/python-support/hgview/hgext/hgview.py
-	rm -rf debian/hgview/usr/share/python-support/mercurial-common
-	install -d debian/hgview/etc/mercurial/hgrc.d/
-	install -m 644 \
-		hgext/hgview.rc \
-		debian/hgview/etc/mercurial/hgrc.d/hgview.rc
+	rm -f debian/hgview/usr/lib/python*/site-packages/hgext/__init__.py*
+
 
 # Build architecture-independent files here.
 binary-indep: build install
