@@ -1,0 +1,8 @@
+To enable hgview as a mercurial extension (launchable with hg qv),
+include the following lines in your hgrc:
+
+[extensions]
+hgview=
+
+
+ -- Alexandre Fayolle <afayolle@debian.org>, Wed, 30 Sep 2009 12:53:24 +0200
