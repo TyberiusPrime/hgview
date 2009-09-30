@@ -5,7 +5,7 @@
 # adapted by Logilab for automatic generation by debianize
 # (part of the devtools project, http://www.logilab.org/projects/devtools)
 #
-# Copyright (c) 2003-2005 LOGILAB S.A. (Paris, FRANCE).
+# Copyright (c) 2003-2009 LOGILAB S.A. (Paris, FRANCE).
 # http://www.logilab.fr/ -- mailto:contact@logilab.fr
 
 # Uncomment this to turn on verbose mode.
@@ -34,7 +34,7 @@ install: build
 	dh_testroot
 	dh_clean -k
 	dh_installdirs
-	python setup.py -q install --no-compile --root=debian/hgview/usr --install-layout=deb
+	python setup.py -q install --no-compile --root=debian/hgview/ --install-layout=deb
 	rm -rf debian/hgview/usr/lib/python*/site-packages/hgview/test
 	rm -f debian/hgview/usr/lib/python*/site-packages/hgext/__init__.py*
 
@@ -45,10 +45,9 @@ binary-indep: build install
 	dh_testroot 
 	dh_install -i
 	dh_pysupport -i
-	gzip -9 -c ChangeLog > changelog.gz
-	dh_installchangelogs -i
+	dh_installchangelogs -i ChangeLog
 	dh_installexamples -i
-	dh_installdocs -i changelog.gz
+	dh_installdocs -i 
 	dh_installman -i
 	dh_link -i
 	dh_compress -i -X.py -X.ini -X.xml -Xtest
@@ -62,5 +61,5 @@ binary-indep: build install
 binary: binary-indep
 binary-arch:
 
-.PHONY: build clean binary binary-indep
+.PHONY: build clean binary binary-indep binary-arch
 
