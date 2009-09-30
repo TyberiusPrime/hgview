@@ -34,7 +34,7 @@ install: build
 	dh_testroot
 	dh_clean -k
 	dh_installdirs
-	python setup.py -q install --root=debian/hgview/usr --install-layout=deb
+	python setup.py -q install --no-compile --root=debian/hgview/usr --install-layout=deb
 	rm -rf debian/hgview/usr/lib/python*/site-packages/hgview/test
 	rm -f debian/hgview/usr/lib/python*/site-packages/hgext/__init__.py*
 
