@@ -1,3 +1,11 @@
+hgview (1.1.1-2) unstable; urgency=low
+
+  * debian/control:
+    - fixed build dependencies to include pyqt4-dev-tools
+    - added missing substvars in package dependencies (closes: #548522)
+
+ -- Alexandre Fayolle <afayolle@debian.org>  Wed, 30 Sep 2009 10:50:56 +0200
+
 hgview (1.1.1-1) unstable; urgency=low
 
   * new upstream release

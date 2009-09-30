@@ -36,7 +36,7 @@ install: build
 	dh_installdirs
 	mkdir -p debian/hgview/usr/lib/`pyversions -d`/site-packages/
 	mkdir -p debian/hgview/usr/share/python-support/hgview/hgext/
-	python setup.py -q install --prefix=debian/hgview/usr
+	python setup.py -q install --root=debian/hgview/usr --install-layout=deb
 	rm -rf debian/hgview/usr/lib/python*/site-packages/hgview/test
 	mv debian/hgview/usr/share/python-support/mercurial-common/hgext/hgview.py debian/hgview/usr/share/python-support/hgview/hgext/hgview.py
 	rm -rf debian/hgview/usr/share/python-support/mercurial-common
