@@ -470,7 +470,7 @@ def main():
         u = ui.ui()
         repo = hg.repository(u, dir_)
     except:
-        parser.erro("You are not in a repo, are you?")
+        parser.error("You are not in a repo, are you?")
 
     # make Ctrl+C works
     import signal
