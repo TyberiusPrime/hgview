@@ -151,7 +151,7 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
     def fillGraph(self):
         step = self.fill_step
         if self._fill_iter is None:
-            self.emit(SIGNAL('showMessage'), 'filling...')            
+            self.emit(SIGNAL('showMessage'), 'filling...')
             self._fill_iter = self.graph.fill(step=step)
             self.emit(SIGNAL('layoutChanged()'))
             QtGui.QApplication.processEvents()
@@ -161,15 +161,15 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
             self.beginInsertRows(QtCore.QModelIndex(), n, nm)
             nfilled = self._fill_iter.next()
             if n == 0:
-                self.emit(SIGNAL('filled'))                
+                self.emit(SIGNAL('filled'))
             if self._required and len(self.graph) > self._required:
-                self._requiredss = None
+                self._required = None
                 self.gr_fill_timer.stop()
-                self.emit(SIGNAL('showMessage'), '')            
+                self.emit(SIGNAL('showMessage'), '')
         except StopIteration:
             self.gr_fill_timer.stop()
             self._fill_iter = None
-            self.emit(SIGNAL('showMessage'), '')            
+            self.emit(SIGNAL('showMessage'), '')
         finally:
             self.endInsertRows()
             self.emit(SIGNAL('layoutChanged()'))
@@ -182,7 +182,7 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
                 self._required = len(self.graph) + self.fill_step + self.graph[-1].rev - rev
             if self._required is not None:
                 self.gr_fill_timer.start()
-                self.emit(SIGNAL('showMessage'), 'filling...')            
+                self.emit(SIGNAL('showMessage'), 'filling...')
 
     def rowCount(self, parent=None):
         return len(self.graph)
@@ -197,7 +197,7 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
         self.rowheight = cfg.getRowHeight()
         self.fill_step = cfg.getFillingStep()
         self.max_file_size = cfg.getMaxFileSize()
-        
+
         cols = getattr(cfg, self._getcolumns)()
         if cols is not None:
             validcols = [col for col in cols if col in self._allcolumns]
@@ -473,9 +473,9 @@ class HgFileListModel(QtCore.QAbstractTableModel):
             if current_file_desc['fromside'] == 'right':
                 return self.current_ctx.parents()[1].rev()
             else:
-                return self.current_ctx.parents()[0].rev()                
+                return self.current_ctx.parents()[0].rev()
         return None
-    
+
     def indexFromFile(self, filename):
         if filename in self._filesdict:
             row = self._files.index(self._filesdict[filename])
