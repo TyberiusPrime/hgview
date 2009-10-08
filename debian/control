@@ -1,5 +1,5 @@
 Source: hgview
-Section: devel
+Section: vcs
 Priority: optional
 Maintainer: David Douard <david.douard@logilab.fr>
 Uploaders: Alexandre Fayolle <afayolle@debian.org>
