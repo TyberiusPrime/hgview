@@ -9,10 +9,7 @@ include README
 include bin/hgview
 include bin/hgview.bat
 
-include hgviewlib/qt4/hgqv.ui
-include hgviewlib/qt4/filediffviewer.ui
-include hgviewlib/qt4/fileviewer.ui
-include hgviewlib/qt4/manifestviewer.ui
+include hgviewlib/qt4/*.ui
 include hgviewlib/qt4/hgqv.qrc
 
 include doc/hgview.1.txt
