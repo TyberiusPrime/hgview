@@ -480,7 +480,7 @@ def main():
 
     if len(args) == 1:
         # should be a filename of a file managed in the repo
-        if opt.get('navigate'):
+        if opt.navigate:
             mainwindow = FileViewer(repo, args[0])
         else:
             mainwindow = FileDiffViewer(repo, args[0])
