@@ -23,7 +23,7 @@ from hgviewlib.decorators import timeit
 
 from hgviewlib.qt4 import icon as geticon
 from hgviewlib.qt4.hgrepomodel import HgRepoListModel, HgFileListModel
-from hgviewlib.qt4.hgfileviewer import ManifestViewer
+from hgviewlib.qt4.hgfileviewer import ManifestViewer, FileViewer, FileDiffViewer
 from hgviewlib.qt4.hgdialogmixin import HgDialogMixin
 from hgviewlib.qt4.quickbar import FindInGraphlogQuickBar
 from hgviewlib.qt4.helpviewer import HelpViewer
@@ -480,7 +480,7 @@ def main():
 
     if len(args) == 1:
         # should be a filename of a file managed in the repo
-        if opt.get('navigate'):
+        if opt.navigate:
             mainwindow = FileViewer(repo, args[0])
         else:
             mainwindow = FileDiffViewer(repo, args[0])
