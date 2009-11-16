@@ -288,8 +288,7 @@ class HgRepoView(QtGui.QTableView):
         else:
             idx = self.model().indexFromRev(rev)
             if idx is not None:
-                if self.sender() == self.goto_toolbar:
-                    self.sender().setVisible(False)
+                self.goto_toolbar.setVisible(False)
                 self.setCurrentIndex(idx)
 
     def nextRev(self):
