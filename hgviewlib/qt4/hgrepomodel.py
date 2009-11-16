@@ -65,7 +65,7 @@ def cvrt_date(date):
     return QtCore.QDateTime.fromTime_t(int(date)).toString(QtCore.Qt.LocaleDate)
 
 # in following lambdas, ctx is a hg changectx
-_columnmap = {'ID': lambda ctx, gnode: ctx.rev(),
+_columnmap = {'ID': lambda ctx, gnode: str(ctx.rev()),
               'Log': lambda ctx, gnode: tounicode(ctx.description()),
               'Author': lambda ctx, gnode: tounicode(ctx.user()),
               'Date': lambda ctx, gnode: cvrt_date(ctx.date()),
@@ -73,6 +73,9 @@ _columnmap = {'ID': lambda ctx, gnode: ctx.rev(),
               'Branch': lambda ctx, gnode: ctx.branch(),
               'Filename': lambda ctx, gnode: gnode.extra[0],
               }
+
+_tooltips = {'ID': lambda ctx, gnode: ctx.hex(),
+             }
 
 def auth_width(model, repo):
     auths = model._aliases.values()
@@ -271,13 +274,13 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
                 return QtCore.QVariant(self.user_name(_columnmap[column](ctx, gnode)))
             elif column == 'Log':
                 msg = _columnmap[column](ctx, gnode)
-                if gnode.rev in self.heads:
-                    msg = "[%s] " % ctx.branch() + msg
                 return QtCore.QVariant(msg)
             return QtCore.QVariant(_columnmap[column](ctx, gnode))
         elif role == QtCore.Qt.ToolTipRole:
-            msg = "<b>[%s]</b><br>\n" % ctx.branch()
-            msg += _columnmap[column](ctx, gnode)
+            msg = "<b>Branch:</b> %s<br>\n" % ctx.branch()
+            if gnode.rev == self.wd_rev:
+                msg += " <i>Working Directory Position</i><br>\n"
+            msg += _tooltips.get(column, _columnmap[column])(ctx, gnode)
             return QtCore.QVariant(msg)
         elif role == QtCore.Qt.ForegroundRole:
             if column == 'Author': #author
