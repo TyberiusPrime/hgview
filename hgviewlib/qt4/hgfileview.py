@@ -33,13 +33,14 @@ SIGNAL = QtCore.SIGNAL
 nullvariant = QtCore.QVariant()
 
 from hgviewlib.decorators import timeit
+from hgviewlib.util import exec_flag_changed, isbfile, bfilepath
+from hgviewlib.config import HgConfig
+
 from hgviewlib.qt4 import icon as geticon
 from hgviewlib.qt4.hgfileviewer import FileViewer, FileDiffViewer, ManifestViewer
 from hgviewlib.qt4.quickbar import QuickBar
 from hgviewlib.qt4.lexers import get_lexer
 from hgviewlib.qt4.blockmatcher import BlockList
-from hgviewlib.util import exec_flag_changed
-from hgviewlib.config import HgConfig
 
 qsci = Qsci.QsciScintilla
 class HgFileView(QtGui.QFrame):
@@ -152,7 +153,12 @@ class HgFileView(QtGui.QFrame):
             self.displayFile(self._filename, rev)
         
     def displayFile(self, filename, rev=None):
-        self._filename = filename
+        self._realfilename = filename
+        if isbfile(filename):
+            self._filename = bfilepath(filename)
+        else:
+            self._filename = filename
+            
         if rev is not None:
             self._p_rev = rev
             self.emit(SIGNAL('revForDiffChanged'), rev)
@@ -162,7 +168,7 @@ class HgFileView(QtGui.QFrame):
         if filename is None:
             return
         try:
-            filectx = self._ctx.filectx(self._filename)
+            filectx = self._ctx.filectx(self._realfilename)
         except LookupError: # occur on deleted files
             return
         if self._mode == 'diff' and self._p_rev is not None:
@@ -194,12 +200,16 @@ class HgFileView(QtGui.QFrame):
         else:
             self.execflaglabel.hide()
 
-        labeltxt = "<b>%s</b>" % self._filename
+        labeltxt = ''
+        if isbfile(self._realfilename):
+            labeltxt += '[bfile tracked] '
+        labeltxt += "<b>%s</b>" % self._filename
+            
         if self._p_rev is not None:
             labeltxt += ' (diff from rev %s)' % self._p_rev
         renamed = filectx.renamed()
         if renamed:
-            labeltxt += ' <i>(renamed from %s)</i>' % renamed[0]
+            labeltxt += ' <i>(renamed from %s)</i>' % bfilepath(renamed[0])
         self.filenamelabel.setText(labeltxt)
 
         self.sci.setText(data)

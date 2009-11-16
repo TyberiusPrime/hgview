@@ -8,6 +8,7 @@
 """
 Several helper functions
 """
+import os
 
 def tounicode(string):
     """
@@ -52,3 +53,9 @@ def exec_flag_changed(filectx):
         else:
             return "unset"
     return ""
+
+def isbfile(filename):
+    return filename and filename.startswith('.hgbfiles' + os.sep)
+
+def bfilepath(filename):
+    return filename and filename.replace('.hgbfiles' + os.sep, '')

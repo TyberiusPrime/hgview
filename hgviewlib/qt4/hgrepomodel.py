@@ -19,16 +19,17 @@ Qt4 model for hg repo changelogs and filelogs
 import sys
 import mx.DateTime as dt
 import re
-import os.path as osp
+import os, os.path as osp
 
 from mercurial.node import nullrev
 from mercurial.node import hex, short as short_hex
 from mercurial.revlog import LookupError
+from mercurial import util
 
 from hgviewlib.hggraph import Graph, ismerge, diff as revdiff
 from hgviewlib.hggraph import revision_grapher, filelog_grapher
 from hgviewlib.config import HgConfig
-from hgviewlib.util import tounicode
+from hgviewlib.util import tounicode, isbfile
 from hgviewlib.qt4 import icon as geticon
 from hgviewlib.decorators import timeit
 
@@ -494,7 +495,7 @@ class HgFileListModel(QtCore.QAbstractTableModel):
         changes = self.repo.status(parent.node(), ctx.node())[:3]
         modified, added, removed = changes
         for f in [x for x in added if self._filterFile(x)]:
-            desc = {'path':f, 'flag': '+', 'desc':f,
+            desc = {'path': f, 'flag': '+', 'desc': f,
                     'parent': parent, 'fromside': fromside,
                     'infiles': f in ctxfiles}
             m = ctx.filectx(f).renamed()
@@ -519,6 +520,12 @@ class HgFileListModel(QtCore.QAbstractTableModel):
             _files.append({'path':f, 'flag': '-', 'desc':f,
                            'parent': parent, 'fromside': fromside,
                            'infiles': f in ctxfiles})
+        for fdesc in _files:
+            bfile = isbfile(fdesc['path'])
+            fdesc['bfile'] = bfile
+            if bfile:
+                fdesc['desc'] = fdesc['desc'].replace('.hgbfiles'+os.sep, '')
+
         return _files
 
     def loadFiles(self):

@@ -27,7 +27,7 @@ from mercurial.node import nullrev
 from mercurial import patch, util
 
 import hgviewlib # force apply monkeypatches
-from hgviewlib.util import tounicode
+from hgviewlib.util import tounicode, isbfile
 
 def diff(repo, ctx1, ctx2=None, files=None):
     """
@@ -365,9 +365,13 @@ class Graph(object):
         data = ""
         flag = self.fileflag(filename, rev)
         ctx = self.repo.changectx(rev)
+        fctx = ctx.filectx(filename)
 
+        if isbfile(filename):
+            data = fctx.data()
+            data = "[bfile]\nfootprint: %s\n" % data
+            return "+", data
         if flag not in ('-', '?'):
-            fctx = ctx.filectx(filename)
             if fctx.node() is None:
                 return '', None
             if fctx.size() > self.maxfilesize:
