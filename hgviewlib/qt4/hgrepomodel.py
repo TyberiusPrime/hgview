@@ -138,7 +138,9 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
         self._datacache = {}
         self.load_config()
 
-        self.wd_rev = self.repo.changectx(None).parents()[0].rev()
+        wdctx = self.repo.changectx(None).parents()[0]
+        self.wd_rev = wdctx.rev()
+        self.wd_status = self.repo.status(wdctx.node(), None)[:4]
         self._user_colors = {}
         self._branch_colors = {}
         grapher = revision_grapher(self.repo, branch=branch)
@@ -321,7 +323,11 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
                 pen.setWidth(penradius)
                 painter.setPen(pen)
                 if gnode.rev == self.wd_rev:
-                    painter.drawRect(dot_x, dot_y, radius, radius)
+                    if True in [bool(st) for st in self.wd_status]:
+                        icn = geticon('modified')
+                    else:
+                        icn = geticon('clean')
+                    icn.paint(painter, dot_x-5, dot_y-5, 15, 15)
                 else:
                     painter.drawEllipse(dot_x, dot_y, radius, radius)
                 painter.end()

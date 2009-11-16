@@ -11,5 +11,7 @@
     <file>icons/leftright.svg</file>
     <file>icons/close.png</file>
     <file>icons/help.svg</file>
+    <file>icons/modified.svg</file>
+    <file>icons/clean.svg</file>
   </qresource>
 </RCC>
