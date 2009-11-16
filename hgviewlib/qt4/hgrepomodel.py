@@ -156,14 +156,13 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
         if self._fill_iter is None:
             self.emit(SIGNAL('showMessage'), 'filling...')
             self._fill_iter = self.graph.fill(step=step)
-            self.emit(SIGNAL('layoutChanged()'))
-            QtGui.QApplication.processEvents()
         try:
             n = len(self.graph)
             nm = min(n+step, self.nmax)
             self.beginInsertRows(QtCore.QModelIndex(), n, nm)
             nfilled = self._fill_iter.next()
-            if n == 0:
+            self.endInsertRows()
+            if n == 0: # only send this the first time the graph is filled
                 self.emit(SIGNAL('filled'))
             if self._required and len(self.graph) > self._required:
                 self._required = None
@@ -171,22 +170,33 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
                 self.emit(SIGNAL('showMessage'), '')
         except StopIteration:
             self.gr_fill_timer.stop()
+            self.endInsertRows()
             self._fill_iter = None
             self.emit(SIGNAL('showMessage'), '')
-        finally:
-            self.endInsertRows()
-            self.emit(SIGNAL('layoutChanged()'))
 
-    def ensureBuilt(self, row=None, rev=None):
+    def ensureBuilt(self, row=None):
         if self._fill_iter is not None and not self.gr_fill_timer.isActive():
             if row is not None and (len(self.graph) - row) < self.fill_step:
                 self._required = len(self.graph) + self.fill_step
-            elif rev is not None and self.graph[-1].rev > rev:
-                self._required = len(self.graph) + self.fill_step + self.graph[-1].rev - rev
-            if self._required is not None:
                 self.gr_fill_timer.start()
                 self.emit(SIGNAL('showMessage'), 'filling...')
 
+    def ensureRevBuilt(self, rev=None):
+        if self.graph.isfilled():
+            return
+        
+        n = len(self.graph)
+        if rev is not None and self.graph[-1].rev > rev:
+            required = n + self.fill_step + self.graph[-1].rev - rev            
+            required = min(required, self.nmax)
+
+            self.emit(SIGNAL('showMessage'), 'filling...')
+            QtGui.QApplication.processEvents()
+            self.beginInsertRows(QtCore.QModelIndex(), n, required)
+            self.graph._build_nodes(required-n)
+            self.endInsertRows()
+            self.emit(SIGNAL('showMessage'), '')
+            
     def rowCount(self, parent=None):
         return len(self.graph)
 
@@ -347,7 +357,7 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
         return row
 
     def indexFromRev(self, rev):
-        self.ensureBuilt(rev=rev)
+        self.ensureRevBuilt(rev=rev)
         row = self.rowFromRev(rev)
         if row is not None:
             return self.index(row, 0)

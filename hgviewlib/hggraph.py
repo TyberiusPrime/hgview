@@ -294,6 +294,9 @@ class Graph(object):
         self.max_cols = max(mcol)
         return not stopped
 
+    def isfilled(self):
+        return self.grapher is None
+    
     def fill(self, step=100):
         """
         Return a generator that fills the graph by bursts of `step`
