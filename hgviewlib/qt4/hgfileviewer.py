@@ -102,6 +102,8 @@ class FileViewer(QtGui.QMainWindow, HgDialogMixin):
         self.connect(self.tableView_revisions,
                      SIGNAL('revisionSelected'),
                      self.revisionSelected)
+        self.connect(self.filerevmodel, QtCore.SIGNAL('filled'),
+                     self.modelFilled)
         self.textView.setMode('file')
         self.textView.setModel(self.filerevmodel)
         self.find_toolbar.setModel(self.filerevmodel)
@@ -287,7 +289,7 @@ class FileDiffViewer(QtGui.QMainWindow, HgDialogMixin):
         self.filedata = {'left': None, 'right': None}
         self._invbarchanged = False
         self.filerevmodel = FileRevModel(self.repo, self.filename)
-        self.connect(self.filerevmodel, QtCore.SIGNAL('fillingover()'),
+        self.connect(self.filerevmodel, QtCore.SIGNAL('filled'),
                      self.modelFilled)
         self.tableView_revisions_left.setModel(self.filerevmodel)
         self.tableView_revisions_right.setModel(self.filerevmodel)
