@@ -92,6 +92,15 @@ class HgRepoView(QtGui.QTableView):
         connect(self.horizontalHeader(),
                 SIGNAL('sectionResized(int, int, int)'),
                 self.disableAutoResize)
+
+    def mousePressEvent(self, event):
+        index = self.indexAt(event.pos())
+        if not index.isValid():
+            return
+        if event.button() == Qt.MidButton:
+            self.gotoAncestor(index)
+            return
+        QtGui.QTableView.mousePressEvent(self, event)
         
     def createToolbars(self):
         self.goto_toolbar = GotoQuickBar(self)
@@ -122,7 +131,7 @@ class HgRepoView(QtGui.QTableView):
 
     def showAtRev(self):
         self.emit(SIGNAL('revisionActivated'), self.current_rev)
-
+        
     def contextMenuEvent(self, event):
         menu = QtGui.QMenu(self)
         for act in ['manifest', None, 'back', 'forward']:
@@ -194,24 +203,27 @@ class HgRepoView(QtGui.QTableView):
                 w = model._stretchs[model._columns[c]] / tot_stretch
                 self.setColumnWidth(c, col1_width * w)
 
-    def revisionActivated(self, index):
+    def revFromindex(self, index):
         if not index.isValid():
             return
         model = self.model()
         if model and model.graph:
             row = index.row()
             gnode = model.graph[row]
+            return gnode.rev
+        
+    def revisionActivated(self, index):
+        rev = self.revFromindex(index)
+        if rev is not None:
             self.emit(SIGNAL('revisionActivated'), gnode.rev)
 
     def revisionSelected(self, index, index_from):
         """
         Callback called when a revision is selected in the revisions table
         """
-        model = self.model()
-        if model and model.graph:
-            row = index.row()
-            gnode = model.graph[row]
-            rev = gnode.rev
+        rev = self.revFromindex(index)
+        if rev is not None:
+            model = self.model()
             if self.current_rev is not None and self.current_rev == rev:
                 return
             if not self._in_history:
@@ -224,6 +236,17 @@ class HgRepoView(QtGui.QTableView):
 
             self.emit(SIGNAL('revisionSelected'), rev)
             self.set_navigation_button_state()
+
+    def gotoAncestor(self, index):
+        rev = self.revFromindex(index)
+        if rev is not None and self.current_rev is not None:
+            repo = self.model().repo
+            ctx = repo[self.current_rev]
+            ctx2 = repo[rev]
+            ancestor = ctx.ancestor(ctx2)
+            self.emit(SIGNAL('showMessage'),
+                      "Goto ancestor of %s and %s"%(ctx.rev(), ctx2.rev()), 2000)
+            self.goto(ancestor.rev())
 
     def set_navigation_button_state(self):
         if len(self._rev_history) > 0:
