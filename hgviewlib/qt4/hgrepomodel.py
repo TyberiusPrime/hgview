@@ -19,16 +19,17 @@ Qt4 model for hg repo changelogs and filelogs
 import sys
 import mx.DateTime as dt
 import re
-import os.path as osp
+import os, os.path as osp
 
 from mercurial.node import nullrev
 from mercurial.node import hex, short as short_hex
 from mercurial.revlog import LookupError
+from mercurial import util
 
 from hgviewlib.hggraph import Graph, ismerge, diff as revdiff
 from hgviewlib.hggraph import revision_grapher, filelog_grapher
 from hgviewlib.config import HgConfig
-from hgviewlib.util import tounicode
+from hgviewlib.util import tounicode, isbfile
 from hgviewlib.qt4 import icon as geticon
 from hgviewlib.decorators import timeit
 
@@ -137,7 +138,9 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
         self._datacache = {}
         self.load_config()
 
-        self.wd_rev = self.repo.changectx(None).parents()[0].rev()
+        wdctx = self.repo.changectx(None).parents()[0]
+        self.wd_rev = wdctx.rev()
+        self.wd_status = self.repo.status(wdctx.node(), None)[:4]
         self._user_colors = {}
         self._branch_colors = {}
         grapher = revision_grapher(self.repo, branch=branch)
@@ -151,7 +154,7 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
     def fillGraph(self):
         step = self.fill_step
         if self._fill_iter is None:
-            self.emit(SIGNAL('showMessage'), 'filling...')            
+            self.emit(SIGNAL('showMessage'), 'filling...')
             self._fill_iter = self.graph.fill(step=step)
             self.emit(SIGNAL('layoutChanged()'))
             QtGui.QApplication.processEvents()
@@ -161,15 +164,15 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
             self.beginInsertRows(QtCore.QModelIndex(), n, nm)
             nfilled = self._fill_iter.next()
             if n == 0:
-                self.emit(SIGNAL('filled'))                
+                self.emit(SIGNAL('filled'))
             if self._required and len(self.graph) > self._required:
-                self._requiredss = None
+                self._required = None
                 self.gr_fill_timer.stop()
-                self.emit(SIGNAL('showMessage'), '')            
+                self.emit(SIGNAL('showMessage'), '')
         except StopIteration:
             self.gr_fill_timer.stop()
             self._fill_iter = None
-            self.emit(SIGNAL('showMessage'), '')            
+            self.emit(SIGNAL('showMessage'), '')
         finally:
             self.endInsertRows()
             self.emit(SIGNAL('layoutChanged()'))
@@ -182,7 +185,7 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
                 self._required = len(self.graph) + self.fill_step + self.graph[-1].rev - rev
             if self._required is not None:
                 self.gr_fill_timer.start()
-                self.emit(SIGNAL('showMessage'), 'filling...')            
+                self.emit(SIGNAL('showMessage'), 'filling...')
 
     def rowCount(self, parent=None):
         return len(self.graph)
@@ -197,7 +200,7 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
         self.rowheight = cfg.getRowHeight()
         self.fill_step = cfg.getFillingStep()
         self.max_file_size = cfg.getMaxFileSize()
-        
+
         cols = getattr(cfg, self._getcolumns)()
         if cols is not None:
             validcols = [col for col in cols if col in self._allcolumns]
@@ -320,7 +323,11 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
                 pen.setWidth(penradius)
                 painter.setPen(pen)
                 if gnode.rev == self.wd_rev:
-                    painter.drawRect(dot_x, dot_y, radius, radius)
+                    if True in [bool(st) for st in self.wd_status]:
+                        icn = geticon('modified')
+                    else:
+                        icn = geticon('clean')
+                    icn.paint(painter, dot_x-5, dot_y-5, 15, 15)
                 else:
                     painter.drawEllipse(dot_x, dot_y, radius, radius)
                 painter.end()
@@ -473,9 +480,9 @@ class HgFileListModel(QtCore.QAbstractTableModel):
             if current_file_desc['fromside'] == 'right':
                 return self.current_ctx.parents()[1].rev()
             else:
-                return self.current_ctx.parents()[0].rev()                
+                return self.current_ctx.parents()[0].rev()
         return None
-    
+
     def indexFromFile(self, filename):
         if filename in self._filesdict:
             row = self._files.index(self._filesdict[filename])
@@ -494,7 +501,7 @@ class HgFileListModel(QtCore.QAbstractTableModel):
         changes = self.repo.status(parent.node(), ctx.node())[:3]
         modified, added, removed = changes
         for f in [x for x in added if self._filterFile(x)]:
-            desc = {'path':f, 'flag': '+', 'desc':f,
+            desc = {'path': f, 'flag': '+', 'desc': f,
                     'parent': parent, 'fromside': fromside,
                     'infiles': f in ctxfiles}
             m = ctx.filectx(f).renamed()
@@ -519,6 +526,12 @@ class HgFileListModel(QtCore.QAbstractTableModel):
             _files.append({'path':f, 'flag': '-', 'desc':f,
                            'parent': parent, 'fromside': fromside,
                            'infiles': f in ctxfiles})
+        for fdesc in _files:
+            bfile = isbfile(fdesc['path'])
+            fdesc['bfile'] = bfile
+            if bfile:
+                fdesc['desc'] = fdesc['desc'].replace('.hgbfiles'+os.sep, '')
+
         return _files
 
     def loadFiles(self):

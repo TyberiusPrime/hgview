@@ -5,6 +5,12 @@
 # This software may be used and distributed according to the terms
 # of the GNU General Public License, incorporated herein by reference.
 
+'''browse the repository in a(n other) graphical way
+
+The hgview extension allows browsing the history of a repository in a
+graphical way. It requires PyQt4 with QScintilla.
+'''
+
 import os
 from mercurial import hg, commands, dispatch
     
