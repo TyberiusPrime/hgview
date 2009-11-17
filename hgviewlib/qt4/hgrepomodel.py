@@ -130,7 +130,7 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
         QtCore.QAbstractTableModel.__init__(self, parent)
         self._datacache = {}
         self._required = None
-        self.wd_rev = None
+        self.wd_revs = []
         self.gr_fill_timer = QtCore.QTimer()
         connect(self.gr_fill_timer, SIGNAL('timeout()'),
                 self.fillGraph)
@@ -141,9 +141,9 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
         self._datacache = {}
         self.load_config()
 
-        wdctx = self.repo.changectx(None).parents()[0]
-        self.wd_rev = wdctx.rev()
-        self.wd_status = self.repo.status(wdctx.node(), None)[:4]
+        wdctxs = self.repo.changectx(None).parents()
+        self.wd_revs = [ctx.rev() for ctx in wdctxs]
+        self.wd_status = [self.repo.status(ctx.node(), None)[:4] for ctx in wdctxs]
         self._user_colors = {}
         self._branch_colors = {}
         grapher = revision_grapher(self.repo, branch=branch)
@@ -278,8 +278,14 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
             return QtCore.QVariant(_columnmap[column](ctx, gnode))
         elif role == QtCore.Qt.ToolTipRole:
             msg = "<b>Branch:</b> %s<br>\n" % ctx.branch()
-            if gnode.rev == self.wd_rev:
-                msg += " <i>Working Directory Position</i><br>\n"
+            if gnode.rev in self.wd_revs:
+                msg += " <i>Working Directory position"
+                states = 'modified added removed deleted'.split()
+                status = self.wd_status[self.wd_revs.index(gnode.rev)]
+                status = [state for st, state in zip(status, states) if st]
+                if status:
+                    msg += ' (%s)' % (', '.join(status))
+                msg += "</i><br>\n"
             msg += _tooltips.get(column, _columnmap[column])(ctx, gnode)
             return QtCore.QVariant(msg)
         elif role == QtCore.Qt.ForegroundRole:
@@ -335,8 +341,9 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
                 pen = QtGui.QPen(pencolor)
                 pen.setWidth(penradius)
                 painter.setPen(pen)
-                if gnode.rev == self.wd_rev:
-                    if True in [bool(st) for st in self.wd_status]:
+                if gnode.rev in self.wd_revs:
+                    status = self.wd_status[self.wd_revs.index(gnode.rev)]
+                    if [True for st in status if st]:
                         icn = geticon('modified')
                     else:
                         icn = geticon('clean')
