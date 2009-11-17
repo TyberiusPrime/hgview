@@ -30,12 +30,29 @@ and with the '-n' option, launch the filelog navigator for the file.
 
 With the '-r' option, launch the manifest viewer for the given revision.
 
+Revlog graph
+------------
+
+The main revision graph display the repository history as a graph,
+sorted by revision number.
+
+The color of the node of each revision depends on the named branch the
+revision belongs to.
+
+The color of the links (between nodes) is randomly chosen.
+
+The position of the working directory is marked on the graph using a
+small icon as node, depending on the status of the working
+directory. Note that if the working directoy is in merge state, there
+will be 2 revisions marked as modified in the graph.
+
 Keyboard shortcuts
 ------------------
 
 ::
 
   Up/Down     - go to next/previous revision
+  MidButton   - go to the ancestor of the current revision and the selected one
   Left/Right  - display previous/next files of the current changeset
   Ctrl+F or / - display the search 'quickbar'
   Ctrl+G      - display the goto 'quickbar'
