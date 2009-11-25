@@ -144,6 +144,7 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
         self.branch_label_action = self.toolBar_treefilters.addWidget(self.branch_label)
         self.branch_comboBox_action = self.toolBar_treefilters.addWidget(self.branch_comboBox)
         self.toolBar_diff.addAction(self.actionDiffMode)
+        self.toolBar_diff.addAction(self.actionAnnMode)        
         self.toolBar_diff.addAction(self.actionNextDiff)
         self.toolBar_diff.addAction(self.actionPrevDiff)
 
@@ -162,6 +163,11 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
         self.actionDiffMode.setCheckable(True)
         connect(self.actionDiffMode, SIGNAL('toggled(bool)'),
                 self.setMode)
+
+        self.actionAnnMode = QtGui.QAction('Annotate', self)
+        self.actionAnnMode.setCheckable(True)
+        connect(self.actionAnnMode, SIGNAL('toggled(bool)'),
+                self.textview_status.setAnnotate)
 
         self.actionHelp.setShortcut(Qt.Key_F1)
         self.actionHelp.setIcon(geticon('help'))        
@@ -255,6 +261,7 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
 
     def setMode(self, mode):
         self.textview_status.setMode(mode)
+        self.actionAnnMode.setEnabled(not mode)
         self.actionNextDiff.setEnabled(not mode)
         self.actionPrevDiff.setEnabled(not mode)
 

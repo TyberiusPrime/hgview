@@ -43,6 +43,54 @@ from hgviewlib.qt4.lexers import get_lexer
 from hgviewlib.qt4.blockmatcher import BlockList
 
 qsci = Qsci.QsciScintilla
+
+class Annotator(qsci):
+    # we use a QScintilla for the annotater cause it makes
+    # it much easier to keep the text area and the annotater sync
+    # (same font rendering etc). However, it have the drawback of making much
+    # more difficult to implement things like QTextBrowser.anchorClicked, which
+    # would have been nice to directly go to the annotated revision...
+    def __init__(self, textarea, parent=None):
+        qsci.__init__(self, parent)
+        
+        self.setFrameStyle(0)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.setReadOnly(True)
+        self.sizePolicy().setControlType(QtGui.QSizePolicy.Slider)
+        self.setMinimumWidth(20)
+        self.setMaximumWidth(40) # XXX TODO make this computed
+        self.setFont(textarea.font())
+        self.setMarginWidth(0, '')
+        self.setMarginWidth(1, '')
+        
+        self.SendScintilla(qsci.SCI_SETCURSOR, 2)
+        self.SendScintilla(qsci.SCI_SETCARETSTYLE, 0)
+        
+        # used to set a background color for every annotating rev
+        N = 32
+        self.markers = []
+        for i in range(N):
+            marker = self.markerDefine(qsci.Background)
+            color = 0x7FFF00 + (i-N/2)*256/N*256*256 - i*256/N*256 + i*256/N
+            self.SendScintilla(qsci.SCI_MARKERSETBACK, marker, color)
+            self.markers.append(marker)
+
+        connect(textarea.verticalScrollBar(),
+                SIGNAL('valueChanged(int)'),
+                self.verticalScrollBar().setValue)
+        
+    def setFilectx(self, fctx):
+        self.fctx = fctx
+        ann = [f.rev() for f, line in fctx.annotate(follow=True)]
+        self.setText('\n'.join(map(str, ann)))
+        allrevs = list(sorted(set(ann)))
+        for i, rev in enumerate(ann):
+            idx = allrevs.index(rev)
+            self.markerAdd(i, self.markers[idx % len(self.markers)])
+        
+        
+        
 class HgFileView(QtGui.QFrame):
     def __init__(self, parent=None):
         QtGui.QFrame.__init__(self, parent)
@@ -65,13 +113,17 @@ class HgFileView(QtGui.QFrame):
         framelayout.addLayout(self.topLayout)
         framelayout.addLayout(l, 1)
 
-        self.sci = Qsci.QsciScintilla(self)
-        l.addWidget(self.sci)
+        self.sci = qsci(self)
+        self.sci.setFrameStyle(0)
+        l.addWidget(self.sci, 1)
         self.sci.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
+        self.sci.setReadOnly(True)
 
+        self.sci.SendScintilla(qsci.SCI_SETCARETSTYLE, 0)
+
+        # margin 1 is used for line numbers
         self.sci.setMarginLineNumbers(1, True)
         self.sci.setMarginWidth(1, '000')
-        self.sci.setReadOnly(True)
 
         self.sci.SendScintilla(qsci.SCI_INDICSETSTYLE, 8, qsci.INDIC_ROUNDBOX)
         self.sci.SendScintilla(qsci.SCI_INDICSETUNDER, 8, True)
@@ -85,11 +137,11 @@ class HgFileView(QtGui.QFrame):
         self.sci.SendScintilla(qsci.SCI_SETMARGINWIDTHN, 0, 0)
 
         # define markers for colorize zones of diff
-        self.markerplus = self.sci.markerDefine(Qsci.QsciScintilla.Background)
+        self.markerplus = self.sci.markerDefine(qsci.Background)
         self.sci.SendScintilla(qsci.SCI_MARKERSETBACK, self.markerplus, 0xB0FFA0)
-        self.markerminus = self.sci.markerDefine(Qsci.QsciScintilla.Background)
+        self.markerminus = self.sci.markerDefine(qsci.Background)
         self.sci.SendScintilla(qsci.SCI_MARKERSETBACK, self.markerminus, 0xA0A0FF)
-        self.markertriangle = self.sci.markerDefine(Qsci.QsciScintilla.Background)
+        self.markertriangle = self.sci.markerDefine(qsci.Background)
         self.sci.SendScintilla(qsci.SCI_MARKERSETBACK, self.markertriangle, 0xFFA0A0)
 
         ll = QtGui.QVBoxLayout()
@@ -97,17 +149,29 @@ class HgFileView(QtGui.QFrame):
         ll.setSpacing(0)
         l.insertLayout(0, ll)
 
-        self.blk = BlockList(self)
-        self.blk.linkScrollBar(self.sci.verticalScrollBar())
-        ll.addWidget(self.blk)
-        self.blk.setVisible(False)
+        ll2 = QtGui.QHBoxLayout()
+        ll2.setContentsMargins(0, 0, 0, 0)
+        ll2.setSpacing(0)
+        ll.addLayout(ll2)
+
+        # used to fill height of the horizontal scroll bar
         w = QtGui.QWidget(self)
         ll.addWidget(w)
         self._spacer = w
 
+        self.blk = BlockList(self)
+        self.blk.linkScrollBar(self.sci.verticalScrollBar())
+        ll2.addWidget(self.blk)
+        self.blk.setVisible(False)
+
+        self.ann = Annotator(self.sci, self)
+        ll2.addWidget(self.ann)
+        self.ann.setVisible(False)
+
         self._model = None
         self._ctx = None
         self._filename = None
+        self._annotate = False
         self._find_text = None
         self._mode = "diff" # can be 'diff' or 'file'
         self.filedata = None
@@ -130,8 +194,16 @@ class HgFileView(QtGui.QFrame):
         if mode != self._mode:
             self._mode = mode
             self.blk.setVisible(self._mode == 'file')
-            self.displayFile(self._filename)
+            self.ann.setVisible(self._mode == 'file' and self._annotate)
+            
+            self.displayFile()
 
+    def setAnnotate(self, ann):
+        self._annotate = ann
+        self.ann.setVisible(ann)
+        if ann:
+            self.displayFile()
+        
     def setModel(self, model):
         # XXX we really need only the "Graph" instance
         self._model = model
@@ -150,9 +222,12 @@ class HgFileView(QtGui.QFrame):
 
     def displayDiff(self, rev):
         if rev != self._p_rev:
-            self.displayFile(self._filename, rev)
+            self.displayFile(rev=rev)
         
-    def displayFile(self, filename, rev=None):
+    def displayFile(self, filename=None, rev=None):
+        if filename is None:
+            filename = self._filename
+            
         self._realfilename = filename
         if isbfile(filename):
             self._filename = bfilepath(filename)
@@ -163,7 +238,8 @@ class HgFileView(QtGui.QFrame):
             self._p_rev = rev
             self.emit(SIGNAL('revForDiffChanged'), rev)
         self.sci.clear()
-        self.filenamelabel.clear()
+        self.ann.clear()
+        self.filenamelabel.setText(" ")
         self.execflaglabel.clear()
         if filename is None:
             return
@@ -217,6 +293,12 @@ class HgFileView(QtGui.QFrame):
             self.highlightSearchString(self._find_text)
         self.emit(SIGNAL('fileDisplayed'), self._filename)
         self.updateDiffDecorations()
+        if self._mode == 'file' and self._annotate:
+            if lexer is not None:
+                self.ann.setFont(lexer.font(-1))
+            else:
+                self.ann.setFont(self.sci.font())
+            self.ann.setFilectx(filectx)
         return True
 
     def updateDiffDecorations(self):
@@ -459,7 +541,8 @@ class HgFileListView(QtGui.QTableView):
         if filename is None:
             filename = self.currentFile()
         if filename is not None and len(self.model().repo.file(filename))>0:
-            dlg = FileDiffViewer(self.model().repo, filename)
+            dlg = FileDiffViewer(self.model().repo, filename,
+                                 repoviewer=self.window())
             dlg.setWindowTitle('Hg file log viewer')
             dlg.show()
             self._dlg = dlg # keep a reference on the dlg

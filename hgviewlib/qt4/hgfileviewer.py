@@ -90,11 +90,11 @@ class FileViewer(QtGui.QMainWindow, HgDialogMixin):
         self.toolBar_edit.addAction(self.tableView_revisions._actions['forward'])
         self.toolBar_edit.addSeparator()
         self.toolBar_edit.addAction(self.actionDiffMode)
+        self.toolBar_edit.addAction(self.actionAnnMode)
         self.toolBar_edit.addAction(self.actionNextDiff)
         self.toolBar_edit.addAction(self.actionPrevDiff)
 
         self.attachQuickBar(self.tableView_revisions.goto_toolbar)
-
 
     def setupModels(self):
         self.filerevmodel = FileRevModel(self.repo, self.filename)
@@ -123,6 +123,11 @@ class FileViewer(QtGui.QMainWindow, HgDialogMixin):
         connect(self.actionDiffMode, SIGNAL('toggled(bool)'),
                 self.setMode)
 
+        self.actionAnnMode = QtGui.QAction('Annotate', self)
+        self.actionAnnMode.setCheckable(True)
+        connect(self.actionAnnMode, SIGNAL('toggled(bool)'),
+                self.textView.setAnnotate)
+
         self.actionNextDiff = QtGui.QAction(geticon('down'), 'Next diff', self)
         self.actionNextDiff.setShortcut('Alt+Down')
         self.actionPrevDiff = QtGui.QAction(geticon('up'), 'Previous diff', self)
@@ -134,6 +139,7 @@ class FileViewer(QtGui.QMainWindow, HgDialogMixin):
 
     def setMode(self, mode):
         self.textView.setMode(mode)
+        self.actionAnnMode.setEnabled(not mode)
         self.actionNextDiff.setEnabled(not mode)
         self.actionPrevDiff.setEnabled(not mode)
 
