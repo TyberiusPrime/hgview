@@ -215,7 +215,7 @@ class HgRepoView(QtGui.QTableView):
     def revisionActivated(self, index):
         rev = self.revFromindex(index)
         if rev is not None:
-            self.emit(SIGNAL('revisionActivated'), gnode.rev)
+            self.emit(SIGNAL('revisionActivated'), rev)
 
     def revisionSelected(self, index, index_from):
         """
