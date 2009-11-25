@@ -368,14 +368,19 @@ class Graph(object):
         data = ""
         flag = self.fileflag(filename, rev)
         ctx = self.repo.changectx(rev)
-        fctx = ctx.filectx(filename)
-
+        try:
+            fctx = ctx.filectx(filename)
+        except LookupError:
+            fctx = None # may happen for renamed files?
+            
         if isbfile(filename):
-            data = fctx.data()
-            data = "[bfile]\nfootprint: %s\n" % data
+            data = "[bfile]\n"
+            if fctx:
+                data = fctx.data()
+                data += "footprint: %s\n" % data
             return "+", data
         if flag not in ('-', '?'):
-            if fctx.node() is None:
+            if fctx is None or fctx.node() is None:
                 return '', None
             if fctx.size() > self.maxfilesize:
                 data = "file too big"
