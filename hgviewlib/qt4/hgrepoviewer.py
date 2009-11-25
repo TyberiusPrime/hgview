@@ -370,6 +370,12 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
             if len(self.filelistmodel):
                 self.tableView_filelist.selectRow(0)
 
+    def goto(self, rev):
+        if len(self.tableView_revisions.model().graph):
+            self.tableView_revisions.goto(rev)
+        else:
+            self._reload_rev = rev
+            
     def _getrepomtime(self):
         """Return the last modification time for the repo"""
         watchedfiles = [(self.repo.root, ".hg", "store", "00changelog.i"),

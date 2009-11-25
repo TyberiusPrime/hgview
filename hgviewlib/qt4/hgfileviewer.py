@@ -68,14 +68,6 @@ class FileViewer(QtGui.QMainWindow, HgDialogMixin):
                 self.statusBar().showMessage)
         self.setupModels()
 
-        connect(self.filerevmodel, SIGNAL('filled(int)'),
-                self.filled)
-
-    def filled(self, nfilled):
-        self.tableView_revisions.setCurrentIndex(self.filerevmodel.index(0,0))
-        disconnect(self.filerevmodel, SIGNAL('filled(int)'),
-                   self.filled)
-
     def setupToolbars(self):
         self.find_toolbar = FindInGraphlogQuickBar(self)
         self.find_toolbar.attachFileView(self.textView)
@@ -166,6 +158,11 @@ class FileViewer(QtGui.QMainWindow, HgDialogMixin):
         self.actionPrevDiff.setEnabled(False)
         connect(self.textView, SIGNAL('filled'),
                 lambda self=self: self.actionNextDiff.setEnabled(self.textView.fileMode() and self.textView.nDiffs()))
+
+    def modelFilled(self):
+        self.tableView_revisions.setCurrentIndex(self.filerevmodel.index(0,0))
+        disconnect(self.filerevmodel, SIGNAL('filled'),
+                   self.modelFilled)
 
         
 class ManifestViewer(QtGui.QMainWindow, HgDialogMixin):
@@ -267,11 +264,12 @@ class FileDiffViewer(QtGui.QMainWindow, HgDialogMixin):
     Qt4 dialog to display diffs between different mercurial revisions of a file.
     """
     _uifile = 'filediffviewer.ui'
-    def __init__(self, repo, filename, noderev=None):
+    def __init__(self, repo, filename, repoviewer=None, noderev=None):
         self.repo = repo
         QtGui.QMainWindow.__init__(self)
         HgDialogMixin.__init__(self)
-
+        self.setRepoViewer(repoviewer)        
+        
         self.createActions()
         self.setupToolbars()
         # hg repo
@@ -287,6 +285,12 @@ class FileDiffViewer(QtGui.QMainWindow, HgDialogMixin):
                 self.idle_fill_files)
         self.setupModels()
 
+    def setRepoViewer(self, repoviewer=None):
+        self.repoviewer = repoviewer
+        if repoviewer:
+            connect(repoviewer, SIGNAL('destroyed(QObject*)'),
+                    lambda x: self.setRepoViewer())
+            
     def reload(self):
         self.repo = hg.repository(self.repo.ui, self.repo.root)
         self.setupModels()
@@ -499,10 +503,12 @@ class FileDiffViewer(QtGui.QMainWindow, HgDialogMixin):
         """
         Callback called when a revision is double-clicked in the revisions table
         """
-        dlg = ManifestViewer(self.repo, rev)
-        dlg.setCurrentFile(self.filename)
-        dlg.show()
-        self._manifestdlg = dlg
+        if self.repoviewer is None:
+            # prevent recursive import
+            from hgviewlib.qt4.hgrepoviewer import HgRepoViewer
+            self.repoviewer = HgRepoViewer(self.repo)
+            self.repoviewer.show()
+        self.repoviewer.goto(rev)
 
     def setupViews(self):
         # viewers are Scintilla editors
