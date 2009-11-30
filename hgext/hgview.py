@@ -62,10 +62,11 @@ start hgview log viewer
         from hgviewlib.qt4.hgrepoviewer import HgRepoViewer
         from hgviewlib.qt4.hgfileviewer import FileDiffViewer, FileViewer
         from hgviewlib.qt4.hgfileviewer import ManifestViewer
+        from hgviewlib.qt4 import setup_font_substitutions
     except ImportError, e:
         print e
-        # If we're unable to import Qt4 and qctlib, try to
-        # run the application directly
+        # If we're unable to import Qt4 or hgviewlib, try to
+        # run the application directly.
         # You can specificy it's location in ~/.hgrc via
         #   [hgview]
         #   path=
@@ -76,6 +77,7 @@ start hgview log viewer
         import signal
         signal.signal(signal.SIGINT, signal.SIG_DFL)        
         app = QtGui.QApplication(sys.argv)
+        setup_font_substitutions()
         if len(args) == 1:
             # should be a filename of a file managed in the repo
             if kwargs.get('navigate'):

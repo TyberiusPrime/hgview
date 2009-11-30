@@ -67,6 +67,7 @@ sys.modules['hgrepoview'] = hgrepoview
 sys.modules['hgfileview'] = hgfileview
 sys.modules['hgqv_rc'] = hgqv_rc
 
-# be sure monospace default font for diffs have a decent substitution
-# on MacOS
-QtGui.QFont.insertSubstitutions('monospace', ['monaco', 'courier new'])
+def setup_font_substitutions():
+    # be sure monospace default font for diffs have a decent substitution
+    # on MacOS
+    QtGui.QFont.insertSubstitutions('monospace', ['monaco', 'courier new'])

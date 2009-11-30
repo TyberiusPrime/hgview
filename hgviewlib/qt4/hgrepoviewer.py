@@ -490,7 +490,9 @@ def main():
     signal.signal(signal.SIGINT, signal.SIG_DFL)
 
     app = QtGui.QApplication(sys.argv)
-
+    from hgviewlib.qt4 import setup_font_substitutions
+    setup_font_substitutions()
+    
     if len(args) == 1:
         # should be a filename of a file managed in the repo
         if opt.navigate:
