@@ -323,6 +323,8 @@ class Graph(object):
         return len(self.nodes)
 
     def index(self, rev):
+        if len(self) == 0: # graph is empty, let's build some nodes
+            self._build_nodes(10)
         if rev < self.nodes[-1].rev:
             self._build_nodes(self.nodes[-1].rev - rev)
         if rev in self.nodesdict:

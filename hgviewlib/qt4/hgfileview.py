@@ -494,7 +494,9 @@ class HgFileListView(QtGui.QTableView):
         connect(self.horizontalHeader(),
                 SIGNAL('sectionResized(int, int, int)'),
                 self.sectionResized)
-
+        self._diff_dialogs = {}
+        self._nav_dialogs = {}
+        
     def setModel(self, model):
         QtGui.QTableView.setModel(self, model)
         connect(model, SIGNAL('layoutChanged()'),
@@ -529,23 +531,27 @@ class HgFileListView(QtGui.QTableView):
         self.model().toggleFullFileList()
 
     def navigate(self, filename=None):
-        if filename is None:
-            filename = self.currentFile()
-        if  len(self.model().repo.file(filename))>0:
-            dlg = FileViewer(self.model().repo, filename)
-            dlg.setWindowTitle('Hg file log viewer')
-            dlg.show()
-            self._dlg = dlg # keep a reference on the dlg
+        self._navigate(filename, FileViewer, self._nav_dialogs)
 
     def diffNavigate(self, filename=None):
+        self._navigate(filename, FileDiffViewer, self._diff_dialogs)
+
+    def _navigate(self, filename, dlgclass, dlgdict):
         if filename is None:
             filename = self.currentFile()
-        if filename is not None and len(self.model().repo.file(filename))>0:
-            dlg = FileDiffViewer(self.model().repo, filename,
-                                 repoviewer=self.window())
-            dlg.setWindowTitle('Hg file log viewer')
+        model = self.model()
+        if filename is not None and len(model.repo.file(filename))>0:
+            if filename not in dlgdict:
+                dlg = dlgclass(model.repo, filename,
+                               repoviewer=self.window())
+                dlgdict[filename] = dlg
+                
+                dlg.setWindowTitle('Hg file log viewer')
+            dlg = dlgdict[filename] 
+            dlg.goto(model.current_ctx.rev())
             dlg.show()
-            self._dlg = dlg # keep a reference on the dlg
+            dlg.raise_()
+            dlg.activateWindow()
 
     def _action_defs(self):
         a = [("navigate", self.tr("Navigate"), None ,

@@ -374,6 +374,8 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
         if len(self.tableView_revisions.model().graph):
             self.tableView_revisions.goto(rev)
         else:
+            # store rev to show once it's available (when graph
+            # filling is still running)
             self._reload_rev = rev
             
     def _getrepomtime(self):

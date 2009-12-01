@@ -50,14 +50,16 @@ otherside = {'left': 'right', 'right': 'left'}
 
 class FileViewer(QtGui.QMainWindow, HgDialogMixin):
     _uifile = 'fileviewer.ui'
-    def __init__(self, repo, filename):
+    def __init__(self, repo, filename, repoviewer=None):
         """
         A dialog showing a revision graph for a file.
         """
         self.repo = repo
         QtGui.QMainWindow.__init__(self)
         HgDialogMixin.__init__(self)
-
+        self.setRepoViewer(repoviewer)        
+        self._show_rev = None
+        
         # hg repo
         self.filename = filename
         self.createActions()
@@ -67,6 +69,12 @@ class FileViewer(QtGui.QMainWindow, HgDialogMixin):
         connect(self.textView, SIGNAL('showMessage'),
                 self.statusBar().showMessage)
         self.setupModels()
+
+    def setRepoViewer(self, repoviewer=None):
+        self.repoviewer = repoviewer
+        if repoviewer:
+            connect(repoviewer, SIGNAL('finished(int)'),
+                    lambda x: self.setRepoViewer())
 
     def setupToolbars(self):
         self.find_toolbar = FindInGraphlogQuickBar(self)
@@ -94,6 +102,9 @@ class FileViewer(QtGui.QMainWindow, HgDialogMixin):
         self.connect(self.tableView_revisions,
                      SIGNAL('revisionSelected'),
                      self.revisionSelected)
+        self.connect(self.tableView_revisions,
+                     SIGNAL('revisionActivated'),
+                     self.revisionActivated)
         self.connect(self.filerevmodel, QtCore.SIGNAL('filled'),
                      self.modelFilled)
         self.textView.setMode('file')
@@ -159,11 +170,35 @@ class FileViewer(QtGui.QMainWindow, HgDialogMixin):
         connect(self.textView, SIGNAL('filled'),
                 lambda self=self: self.actionNextDiff.setEnabled(self.textView.fileMode() and self.textView.nDiffs()))
 
+    def revisionActivated(self, rev):
+        """
+        Callback called when a revision is double-clicked in the revisions table
+        """
+        if self.repoviewer is None:
+            # prevent recursive import
+            from hgviewlib.qt4.hgrepoviewer import HgRepoViewer
+            self.repoviewer = HgRepoViewer(self.repo)
+        self.repoviewer.goto(rev)
+        self.repoviewer.show()
+        self.repoviewer.activateWindow()
+        self.repoviewer.raise_()
+        
     def modelFilled(self):
-        self.tableView_revisions.setCurrentIndex(self.filerevmodel.index(0,0))
         disconnect(self.filerevmodel, SIGNAL('filled'),
                    self.modelFilled)
+        if self._show_rev is not None:
+            index = self.filerevmodel.indexFromRev(self._show_rev)
+            self._show_rev = None
+        else:
+            index = self.filerevmodel.index(0,0)
+        self.tableView_revisions.setCurrentIndex(index)
 
+    def goto(self, rev):
+        index = self.filerevmodel.indexFromRev(rev)
+        if index is not None:
+            self.tableView_revisions.setCurrentIndex(index)
+        else:
+            self._show_rev = rev
         
 class ManifestViewer(QtGui.QMainWindow, HgDialogMixin):
     """
@@ -275,7 +310,8 @@ class FileDiffViewer(QtGui.QMainWindow, HgDialogMixin):
         # hg repo
         self.filename = filename
         self.findLexer()
-
+        self.tableView_revisions = {'left': self.tableView_revisions_left,
+                                    'right': self.tableView_revisions_right}
         self.setupViews()
 
         # timer used to fill viewers with diff block markers during GUI idle time
@@ -288,7 +324,7 @@ class FileDiffViewer(QtGui.QMainWindow, HgDialogMixin):
     def setRepoViewer(self, repoviewer=None):
         self.repoviewer = repoviewer
         if repoviewer:
-            connect(repoviewer, SIGNAL('destroyed(QObject*)'),
+            connect(repoviewer, SIGNAL('finished(int)'),
                     lambda x: self.setRepoViewer())
             
     def reload(self):
@@ -573,6 +609,13 @@ class FileDiffViewer(QtGui.QMainWindow, HgDialogMixin):
 
         self.setTabOrder(table, self.viewers['left'])
         self.setTabOrder(self.viewers['left'], self.viewers['right'])
+
+    def goto(self, rev, side='left'):
+        index = self.filerevmodel.indexFromRev(rev)
+        if index is not None:
+            self.tableView_revisions[side].setCurrentIndex(index)
+        else:
+            self._show_rev = rev
 
 if __name__ == '__main__':
     from mercurial import ui, hg

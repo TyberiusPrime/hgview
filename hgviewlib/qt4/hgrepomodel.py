@@ -189,7 +189,7 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
             return
         
         n = len(self.graph)
-        if rev is not None and self.graph[-1].rev > rev:
+        if rev is not None and len(self.graph) and self.graph[-1].rev > rev:
             required = n + self.fill_step + self.graph[-1].rev - rev            
             required = min(required, self.nmax)
 
