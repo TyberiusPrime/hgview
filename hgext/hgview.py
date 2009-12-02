@@ -60,8 +60,8 @@ start hgview log viewer
         from PyQt4 import QtGui
         import hgviewlib.qt4.hgqv_rc
         from hgviewlib.qt4.hgrepoviewer import HgRepoViewer
-        from hgviewlib.qt4.hgfileviewer import FileDiffViewer, FileViewer
-        from hgviewlib.qt4.hgfileviewer import ManifestViewer
+        from hgviewlib.qt4.hgfiledialog import FileDiffViewer, FileViewer
+        from hgviewlib.qt4.hgmanifestdialog import ManifestViewer
         from hgviewlib.qt4 import setup_font_substitutions
     except ImportError, e:
         print e

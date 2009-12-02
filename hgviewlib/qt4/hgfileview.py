@@ -37,7 +37,8 @@ from hgviewlib.util import exec_flag_changed, isbfile, bfilepath
 from hgviewlib.config import HgConfig
 
 from hgviewlib.qt4 import icon as geticon
-from hgviewlib.qt4.hgfileviewer import FileViewer, FileDiffViewer, ManifestViewer
+from hgviewlib.qt4.hgfiledialog import FileViewer, FileDiffViewer 
+from hgviewlib.qt4.hgmanifestdialog import ManifestViewer
 from hgviewlib.qt4.quickbar import QuickBar
 from hgviewlib.qt4.lexers import get_lexer
 from hgviewlib.qt4.blockmatcher import BlockList

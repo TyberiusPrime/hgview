@@ -32,7 +32,7 @@ nullvariant = QtCore.QVariant()
 
 from hgviewlib.decorators import timeit
 from hgviewlib.qt4 import icon as geticon
-from hgviewlib.qt4.hgfileviewer import ManifestViewer
+from hgviewlib.qt4.hgmanifestdialog import ManifestViewer
 from hgviewlib.qt4.quickbar import QuickBar
 
 class GotoQuickBar(QuickBar):

@@ -23,7 +23,8 @@ from hgviewlib.decorators import timeit
 
 from hgviewlib.qt4 import icon as geticon
 from hgviewlib.qt4.hgrepomodel import HgRepoListModel, HgFileListModel
-from hgviewlib.qt4.hgfileviewer import ManifestViewer, FileViewer, FileDiffViewer
+from hgviewlib.qt4.hgfiledialog import FileViewer, FileDiffViewer
+from hgviewlib.qt4.hgmanifestdialog import ManifestViewer
 from hgviewlib.qt4.hgdialogmixin import HgDialogMixin
 from hgviewlib.qt4.quickbar import FindInGraphlogQuickBar
 from hgviewlib.qt4.helpviewer import HelpViewer
