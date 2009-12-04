@@ -13,5 +13,6 @@
     <file>icons/help.svg</file>
     <file>icons/modified.svg</file>
     <file>icons/clean.svg</file>
+    <file>icons/mqdiff.svg</file>
   </qresource>
 </RCC>

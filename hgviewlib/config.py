@@ -226,6 +226,13 @@ class HgConfig(object):
         """
         return self.ui.config(self.section, 'diffsectioncolor', default)
 
+    @cached
+    def getMQFGColor(self, default='#ff8183'):
+        """
+        mqfgcolor: bg color to highlight mq patches
+        """
+        return self.ui.config(self.section, 'mqfgcolor', default)
+
 
 
 _HgConfig = HgConfig

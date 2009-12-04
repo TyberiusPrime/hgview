@@ -31,6 +31,7 @@ SIGNAL = QtCore.SIGNAL
 nullvariant = QtCore.QVariant()
 
 from hgviewlib.decorators import timeit
+from hgviewlib.config import HgConfig
 from hgviewlib.qt4 import icon as geticon
 from hgviewlib.qt4.hgmanifestdialog import ManifestViewer
 from hgviewlib.qt4.quickbar import QuickBar
@@ -81,7 +82,7 @@ class HgRepoView(QtGui.QTableView):
         self.setSelectionMode(QtGui.QAbstractItemView.SingleSelection)
         self.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
         self.setAlternatingRowColors(True)
-                
+
         self.createActions()
         self.createToolbars()
         connect(self,
@@ -101,7 +102,7 @@ class HgRepoView(QtGui.QTableView):
             self.gotoAncestor(index)
             return
         QtGui.QTableView.mousePressEvent(self, event)
-        
+
     def createToolbars(self):
         self.goto_toolbar = GotoQuickBar(self)
         connect(self.goto_toolbar, SIGNAL('goto'),
@@ -131,7 +132,7 @@ class HgRepoView(QtGui.QTableView):
 
     def showAtRev(self):
         self.emit(SIGNAL('revisionActivated'), self.current_rev)
-        
+
     def contextMenuEvent(self, event):
         menu = QtGui.QMenu(self)
         for act in ['manifest', None, 'back', 'forward']:
@@ -211,7 +212,7 @@ class HgRepoView(QtGui.QTableView):
             row = index.row()
             gnode = model.graph[row]
             return gnode.rev
-        
+
     def revisionActivated(self, index):
         rev = self.revFromindex(index)
         if rev is not None:
@@ -321,23 +322,47 @@ class RevDisplay(QtGui.QTextBrowser):
             self.refreshDisplay()
             # TODO: emit a signal to recompute the diff
             self.emit(SIGNAL('parentRevisionSelected'), self.diffrev)
-        else:            
+        else:
             self.emit(SIGNAL('revisionSelected'), int(rev))
 
     def setDiffRevision(self, rev):
         if rev != self.diffrev:
             self.diffrev = rev
             self.refreshDisplay()
-    
+
     def displayRevision(self, ctx):
         self.ctx = ctx
         self.diffrev = ctx.parents()[0].rev()
+        if hasattr(self.ctx._repo, "mq"):
+            self.mqseries = self.ctx._repo.mq.series[:]
+            self.mqunapplied = [x[1] for x in self.ctx._repo.mq.unapplied(self.ctx._repo)]
+            mqpatch = set(self.ctx.tags()).intersection(self.mqseries)            
+            if mqpatch:
+                self.mqpatch = mqpatch.pop()
+            else:
+                self.mqpatch = None
+        else:
+            self.mqseries = []
+            self.mqunapplied = []
+            self.mqpatch = None
+            
         self.refreshDisplay()
-        
+
     def refreshDisplay(self):
         ctx = self.ctx
         rev = ctx.rev()
         buf = "<table width=100%>\n"
+        if self.mqpatch:
+            buf += '<tr bgcolor=%s>' % HgConfig(ctx._repo.ui).getMQFGColor()
+            buf += '<td colspan=3 width=100%><b>Patch queue:</b>&nbsp;'
+            for p in self.mqseries:
+                if p in self.mqunapplied:
+                    p = "<i>%s</i>" % p
+                elif p == self.mqpatch:
+                    p = "<b>%s</b>" % p
+                buf += '&nbsp;%s&nbsp;' % (p)
+            buf += '</td></tr>\n'
+
         buf += '<tr>'
         buf += '<td><b>Revision:</b>&nbsp;'\
                '<span class="rev_number">%d</span>:'\
@@ -386,7 +411,7 @@ class RevDisplay(QtGui.QTextBrowser):
                    '<td colspan=5>%s&nbsp;'\
                    '<span class="short_desc"><i>%s</i></span></td></tr>'\
                    '\n' % (p_rev, desc)
-            
+
         for p in ctx.children():
             if p.rev() > -1:
                 short = short_hex(p.node())

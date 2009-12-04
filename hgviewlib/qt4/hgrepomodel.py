@@ -24,7 +24,7 @@ import os, os.path as osp
 from mercurial.node import nullrev
 from mercurial.node import hex, short as short_hex
 from mercurial.revlog import LookupError
-from mercurial import util
+from mercurial import util, error
 
 from hgviewlib.hggraph import Graph, ismerge, diff as revdiff
 from hgviewlib.hggraph import revision_grapher, filelog_grapher
@@ -130,6 +130,8 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
         QtCore.QAbstractTableModel.__init__(self, parent)
         self._datacache = {}
         self._required = None
+        self._hasmq = False
+        self.mqueues = [] 
         self.wd_revs = []
         self.gr_fill_timer = QtCore.QTimer()
         connect(self.gr_fill_timer, SIGNAL('timeout()'),
@@ -139,9 +141,16 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
     def setRepo(self, repo, branch=''):
         self.repo = repo
         self._datacache = {}
+        try:
+            wdctxs = self.repo.changectx(None).parents()
+        except error.Abort:
+            # might occur if reloading during a mq operation (or
+            # whatever operation playing with hg history)
+            return
         self.load_config()
-
-        wdctxs = self.repo.changectx(None).parents()
+        self._hasmq = hasattr(self.repo, "mq")
+        if self._hasmq:
+            self.mqueues = self.repo.mq.series[:]
         self.wd_revs = [ctx.rev() for ctx in wdctxs]
         self.wd_status = [self.repo.status(ctx.node(), None)[:4] for ctx in wdctxs]
         self._user_colors = {}
@@ -341,13 +350,29 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
                 pen = QtGui.QPen(pencolor)
                 pen.setWidth(penradius)
                 painter.setPen(pen)
+                tags = set(ctx.tags())
+                icn = None
+
+                modified = False
+                atwd = False
                 if gnode.rev in self.wd_revs:
+                    atwd = True
                     status = self.wd_status[self.wd_revs.index(gnode.rev)]
                     if [True for st in status if st]:
-                        icn = geticon('modified')
+                        modified = True
+                
+                if tags.intersection(self.mqueues):
+                    if not modified:
+                        icn = geticon('up')
                     else:
-                        icn = geticon('clean')
-                    icn.paint(painter, dot_x-5, dot_y-5, 15, 15)
+                        icn = geticon('mqdiff')                        
+                elif modified:
+                    icn = geticon('modified')
+                elif atwd:
+                    icn = geticon('clean')
+
+                if icn:
+                    icn.paint(painter, dot_x-4, dot_y-5, 15, 15)
                 else:
                     painter.drawEllipse(dot_x, dot_y, radius, radius)
                 painter.end()
@@ -439,6 +464,7 @@ class HgFileListModel(QtCore.QAbstractTableModel):
         self.load_config()
         self.current_ctx = None
         self._files = []
+        self._filesdict = {}
         self.diffwidth = 100
         self._fulllist = False
         self._fill_iter = None
