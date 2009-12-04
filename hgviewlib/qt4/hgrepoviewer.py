@@ -18,6 +18,7 @@ from mercurial import ui, hg
 from mercurial import util
 
 from hgviewlib.util import tounicode, has_closed_branch_support
+from hgviewlib.util import rootpath 
 from hgviewlib.hggraph import diff as revdiff
 from hgviewlib.decorators import timeit
 
@@ -467,17 +468,17 @@ def main():
                       action="store_true",
                       help='(with filename) start in navigation mode')
 
-    opt, args = parser.parse_args()
+    opts, args = parser.parse_args()
 
-    if opt.navigate and len(args) != 1:
+    if opts.navigate and len(args) != 1:
         parser.error("You must provide a filename to start in navigate mode")
 
     if len(args) > 1:
         parser.error("Provide at most one file name")
 
     dir_ = None
-    if opt.repo:
-        dir_ = opt.repo
+    if opts.repo:
+        dir_ = opts.repo
     else:
         dir_ = os.getcwd()
     dir_ = find_repository(dir_)
@@ -497,13 +498,17 @@ def main():
     setup_font_substitutions()
     
     if len(args) == 1:
+        filename = rootpath(repo, opts.rev, args[0])
+        if filename is None:
+            parser.error("%s is not a tracked file" % args[0])
+        
         # should be a filename of a file managed in the repo
-        if opt.navigate:
-            mainwindow = FileViewer(repo, args[0])
+        if opts.navigate:
+            mainwindow = FileViewer(repo, filename)
         else:
-            mainwindow = FileDiffViewer(repo, args[0])
+            mainwindow = FileDiffViewer(repo, filename)
     else:
-        rev = opt.rev
+        rev = opts.rev
         if rev is not None:
             try:
                 repo.changectx(rev)

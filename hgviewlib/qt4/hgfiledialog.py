@@ -28,7 +28,7 @@ from mercurial import ui, hg, util
 from PyQt4 import QtGui, QtCore, Qsci
 from PyQt4.QtCore import Qt
 
-from hgviewlib.util import tounicode
+from hgviewlib.util import tounicode, rootpath
 
 from hgviewlib.qt4 import icon as geticon
 from hgviewlib.qt4.hgdialogmixin import HgDialogMixin
@@ -175,7 +175,6 @@ class FileViewer(AbstractFileDialog):
 
         self.actionAnnMode = QtGui.QAction('Annotate', self)
         self.actionAnnMode.setCheckable(True)
-        print "testview=", self.textView
         connect(self.actionAnnMode, SIGNAL('toggled(bool)'),
                 self.textView.setAnnotate)
 
@@ -515,9 +514,11 @@ if __name__ == '__main__':
 
     options, args = opt.parse_args()
     if len(args)!=1:
-        filename = None
-    else:
-        filename = args[0]
+        opt.error('provide a filename please')
+        
+    filename = rootpath(repo, options.rev, args[0])
+    if filename is None:
+        parser.error("%s is not a tracked file" % args[0])
 
     u = ui.ui()
     repo = hg.repository(u, options.repo)

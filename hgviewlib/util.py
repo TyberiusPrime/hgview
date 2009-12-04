@@ -9,6 +9,7 @@
 Several helper functions
 """
 import os
+from mercurial import cmdutil
 
 def tounicode(string):
     """
@@ -59,3 +60,16 @@ def isbfile(filename):
 
 def bfilepath(filename):
     return filename and filename.replace('.hgbfiles' + os.sep, '')
+
+def rootpath(repo, rev, path):
+    """return the path name of 'path' relative to repo's root at
+    revision rev;
+    path is relative to cwd
+    """  
+    ctx = repo[rev]        
+    filenames = list(ctx.walk(cmdutil.match(repo, [path], {})))
+    if len(filenames) != 1 or filenames[0] not in ctx.manifest():
+        return None
+    else:
+        return filenames[0]
+    

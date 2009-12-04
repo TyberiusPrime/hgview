@@ -12,7 +12,7 @@ graphical way. It requires PyQt4 with QScintilla.
 '''
 
 import os
-from mercurial import hg, commands, dispatch
+from mercurial import hg, commands, dispatch, error
     
 # every command must take a ui and and repo as arguments.
 # opts is a dict where you can find other command line flags
@@ -23,7 +23,7 @@ from mercurial import hg, commands, dispatch
 
 
 
-def start_hgview(ui, repo, *args, **kwargs):
+def start_hgview(ui, repo, *pats, **opts):
     # WARNING, this docstring is superseeded programatically 
     """
 start hgview log viewer
@@ -59,10 +59,12 @@ start hgview log viewer
     try:
         from PyQt4 import QtGui
         import hgviewlib.qt4.hgqv_rc
+        from hgviewlib.util import rootpath
         from hgviewlib.qt4.hgrepoviewer import HgRepoViewer
         from hgviewlib.qt4.hgfiledialog import FileDiffViewer, FileViewer
         from hgviewlib.qt4.hgmanifestdialog import ManifestViewer
         from hgviewlib.qt4 import setup_font_substitutions
+
     except ImportError, e:
         print e
         # If we're unable to import Qt4 or hgviewlib, try to
@@ -71,21 +73,26 @@ start hgview log viewer
         #   [hgview]
         #   path=
         cmd = ui.config("hgview", "path", "hgview") 
-        os.system(cmd + " " + " ".join(args))
+        os.system(cmd + " " + " ".join(pats))
+
     else:
         # make Ctrl+C works
         import signal
         signal.signal(signal.SIGINT, signal.SIG_DFL)        
         app = QtGui.QApplication(sys.argv)
         setup_font_substitutions()
-        if len(args) == 1:
+        if len(pats) == 1:
+            filename = rootpath(repo, opts.get("rev"), pats[0])
+            if filename is None:
+                raise(error.Abort("%s is not a tracked file" % pats[0]))
+            
             # should be a filename of a file managed in the repo
-            if kwargs.get('navigate'):
-                mainwindow = FileViewer(repo, args[0])
+            if opts.get('navigate'):
+                mainwindow = FileViewer(repo, filename)
             else:
-                mainwindow = FileDiffViewer(repo, args[0])
+                mainwindow = FileDiffViewer(repo, filename)
         else:
-            rev = kwargs.get('rev')
+            rev = opts.get('rev')
             if rev:
                 rev = int(rev)
                 mainwindow = ManifestViewer(repo, rev)
