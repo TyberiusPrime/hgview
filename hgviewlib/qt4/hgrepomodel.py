@@ -133,6 +133,7 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
         self._hasmq = False
         self.mqueues = [] 
         self.wd_revs = []
+        self.graph = None
         self.gr_fill_timer = QtCore.QTimer()
         connect(self.gr_fill_timer, SIGNAL('timeout()'),
                 self.fillGraph)
@@ -210,7 +211,7 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
             self.emit(SIGNAL('showMessage'), '')
             
     def rowCount(self, parent=None):
-        return len(self.graph)
+        return self.graph and len(self.graph) or 0
 
     def columnCount(self, parent=None):
         return len(self._columns)
