@@ -97,7 +97,6 @@ class AbstractFileDialog(QtGui.QMainWindow, HgDialogMixin):
         else:
             index = self.filerevmodel.index(0,0)
         self.tableView_revisions.setCurrentIndex(index)
-        return index
 
     def revisionActivated(self, rev):
         """
@@ -334,12 +333,15 @@ class FileDiffViewer(AbstractFileDialog):
         self.toolBar_edit.addAction(self.actionPrevDiff)
 
     def modelFilled(self):
-        index = AbstractFileDialog.modelFilled(self)
-        self.tableView_revisions_right.setCurrentIndex(index)
-        index = self.filerevmodel.index(index.row()+1, index.column())
-        self.tableView_revisions_left.setCurrentIndex(index)
-        return index
-
+        disconnect(self.filerevmodel, SIGNAL('filled'),
+                   self.modelFilled)
+        if self._show_rev is not None:
+            rev = self._show_rev
+            self._show_rev = None
+        else:
+            rev = self.filerevmodel.graph[0].rev
+        self.goto(rev)
+        
     def revisionSelected(self, rev):
         if self.sender() is self.tableView_revisions_right:
             side = 'right'
@@ -350,10 +352,14 @@ class FileDiffViewer(AbstractFileDialog):
         self.filedata[side] = fc.data().splitlines()
         self.update_diff(keeppos=otherside[side])
 
-    def goto(self, rev, side='left'):
+    def goto(self, rev):
         index = self.filerevmodel.indexFromRev(rev)
         if index is not None:
-            self.tableViews[side].setCurrentIndex(index)
+            if index.row() == 0:
+                index = self.filerevmodel.index(1, 0)                
+            self.tableView_revisions_left.setCurrentIndex(index)
+            index = self.filerevmodel.index(0, 0)                
+            self.tableView_revisions_right.setCurrentIndex(index)            
         else:
             self._show_rev = rev
 
