@@ -162,6 +162,7 @@ def revision_grapher(repo, start_rev=None, stop_rev=0, branch=None):
         revs = next_revs
         curr_rev -= 1
 
+
 def filelog_grapher(repo, path):
     '''
     Graph the ancestry of a single file (log).  Deletions show
@@ -175,7 +176,7 @@ def filelog_grapher(repo, path):
     heads = [repo.filectx(path, fileid=flog.rev(x)).rev() for x in flog.heads()]
     assert rev in heads
     heads.remove(rev)
-    
+
     revs = []
     rev_color = {}
     nextcolor = 0
@@ -220,14 +221,14 @@ def filelog_grapher(repo, path):
         yield (fctx.rev(), index, curcolor, lines, pcrevs,
                _paths.get(fctx.rev(), path))
         revs = next_revs
-        
+
         if revs:
             rev = max(revs)
         else:
             rev = -1
         if heads and rev <= heads[-1]:
             rev = heads.pop()
-            
+
 class GraphNode(object):
     """
     Simple class to encapsulate e hg node in the revision graph. Does
@@ -262,47 +263,56 @@ class Graph(object):
         self.nodesdict = {}
         self.max_cols = 0
 
-    def _build_nodes(self, nnodes):
-        """Internal method.
-        Build `nnodes` more nodes in our graph.
+    def build_nodes(self, nnodes=None, rev=None):
+        """
+        Build up to `nnodes` more nodes in our graph, or build as many
+        nodes required to reach `rev`.
+
+        If both rev and nnodes are set, build as many nodes as
+        required to reach rev plus nnodes more.
         """
         if self.grapher is None:
             return False
-
         stopped = False
         mcol = [self.max_cols]
-        for _ in xrange(nnodes):
-            try:
-                vnext = self.grapher.next()
-                if vnext is None:
-                    continue
-                nrev, xpos, color, lines, parents = vnext[:5]
-                if nrev >= self.maxlog:
-                    continue
-                gnode = GraphNode(nrev, xpos, color, lines, parents,
-                                  extra=vnext[5:])
-                if self.nodes:
-                    gnode.toplines = self.nodes[-1].bottomlines
-                self.nodes.append(gnode)
-                self.nodesdict[nrev] = gnode
-                mcol.append(gnode.cols)
-            except StopIteration:
-                self.grapher = None
-                stopped = True
-                break
+        for vnext in self.grapher:
+            if vnext is None:
+                continue
+            nrev, xpos, color, lines, parents = vnext[:5]
+            if nrev >= self.maxlog:
+                continue
+            gnode = GraphNode(nrev, xpos, color, lines, parents,
+                              extra=vnext[5:])
+            if self.nodes:
+                gnode.toplines = self.nodes[-1].bottomlines
+            self.nodes.append(gnode)
+            self.nodesdict[nrev] = gnode
+            mcol.append(gnode.cols)
+            if rev is not None and nrev <= rev:
+                rev = None # we reached rev, switching to nnode counter
+            if rev is None:
+                if nnodes is not None:
+                    nnodes -= 1
+                    if not nnodes:
+                        break
+                else:
+                    break
+        else:
+            self.grapher = None
+            stopped = True
 
         self.max_cols = max(mcol)
         return not stopped
 
     def isfilled(self):
         return self.grapher is None
-    
+
     def fill(self, step=100):
         """
         Return a generator that fills the graph by bursts of `step`
         more nodes at each iteration.
         """
-        while self._build_nodes(step):
+        while self.build_nodes(step):
             yield len(self)
         yield len(self)
 
@@ -313,7 +323,7 @@ class Graph(object):
         if idx >= len(self.nodes):
             # build as many graph nodes as required to answer the
             # requested idx
-            self._build_nodes(idx)
+            self.build_nodes(idx)
         if idx > len(self):
             return self.nodes[-1]
         return self.nodes[idx]
@@ -324,17 +334,17 @@ class Graph(object):
 
     def index(self, rev):
         if len(self) == 0: # graph is empty, let's build some nodes
-            self._build_nodes(10)
+            self.build_nodes(10)
         if rev < self.nodes[-1].rev:
-            self._build_nodes(self.nodes[-1].rev - rev)
+            self.build_nodes(self.nodes[-1].rev - rev)
         if rev in self.nodesdict:
             return self.nodes.index(self.nodesdict[rev])
         return -1
-        
+
     def fileflags(self, filename, rev):
         """
         Return a couple of flags ('=', '+', '-' or '?') depending on the nature
-        of the diff for filename between rev and its parents.        
+        of the diff for filename between rev and its parents.
         """
         ctx = self.repo.changectx(rev)
         flags = []
@@ -359,10 +369,10 @@ class Graph(object):
         Return a flag (see fileflags) between rev and its forst parent
         """
         return self.fileflags(filename, rev)[0]
-    
+
     def filename(self, rev):
         return self.nodesdict[rev].extra[0]
-        
+
     def filedata(self, filename, rev, mode='diff'):
         """XXX written under dubious encoding assumptions
         """
@@ -374,7 +384,7 @@ class Graph(object):
             fctx = ctx.filectx(filename)
         except LookupError:
             fctx = None # may happen for renamed files?
-            
+
         if isbfile(filename):
             data = "[bfile]\n"
             if fctx:

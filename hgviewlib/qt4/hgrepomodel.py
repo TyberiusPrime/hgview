@@ -29,7 +29,7 @@ from mercurial import util, error
 from hgviewlib.hggraph import Graph, ismerge, diff as revdiff
 from hgviewlib.hggraph import revision_grapher, filelog_grapher
 from hgviewlib.config import HgConfig
-from hgviewlib.util import tounicode, isbfile
+from hgviewlib.util import tounicode, isbfile, Curry
 from hgviewlib.qt4 import icon as geticon
 from hgviewlib.decorators import timeit
 
@@ -129,14 +129,11 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
         """
         QtCore.QAbstractTableModel.__init__(self, parent)
         self._datacache = {}
-        self._required = None
         self._hasmq = False
-        self.mqueues = [] 
+        self.mqueues = []
         self.wd_revs = []
         self.graph = None
-        self.gr_fill_timer = QtCore.QTimer()
-        connect(self.gr_fill_timer, SIGNAL('timeout()'),
-                self.fillGraph)
+        self.rowcount = 0
         self.setRepo(repo, branch)
 
     def setRepo(self, repo, branch=''):
@@ -158,60 +155,37 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
         self._branch_colors = {}
         grapher = revision_grapher(self.repo, branch=branch)
         self.graph = Graph(self.repo, grapher, self.max_file_size)
-        self.nmax = len(self.repo.changelog)
+        self.rowcount = 0
         self.heads = [self.repo.changectx(x).rev() for x in self.repo.heads()]
         self._fill_iter = None
-        self._required = self.fill_step
-        self.gr_fill_timer.start()
+        self.ensureBuilt(row=self.fill_step)
+        QtCore.QTimer.singleShot(0, Curry(self.emit, SIGNAL('filled')))
 
-    def fillGraph(self):
-        step = self.fill_step
-        if self._fill_iter is None:
-            self.emit(SIGNAL('showMessage'), 'filling...')
-            self._fill_iter = self.graph.fill(step=step)
-        try:
-            n = len(self.graph)
-            nm = min(n+step, self.nmax)
-            self.beginInsertRows(QtCore.QModelIndex(), n, nm)
-            nfilled = self._fill_iter.next()
-            self.endInsertRows()
-            if n == 0: # only send this the first time the graph is filled
-                self.emit(SIGNAL('filled'))
-            if self._required and len(self.graph) > self._required:
-                self._required = None
-                self.gr_fill_timer.stop()
-                self.emit(SIGNAL('showMessage'), '')
-        except StopIteration:
-            self.gr_fill_timer.stop()
-            self.endInsertRows()
-            self._fill_iter = None
-            self.emit(SIGNAL('showMessage'), '')
+    def ensureBuilt(self, rev=None, row=None):
+        """
+        Make sure rev data is available (graph element created).
 
-    def ensureBuilt(self, row=None):
-        if self._fill_iter is not None and not self.gr_fill_timer.isActive():
-            if row is not None and (len(self.graph) - row) < self.fill_step:
-                self._required = len(self.graph) + self.fill_step
-                self.gr_fill_timer.start()
-                self.emit(SIGNAL('showMessage'), 'filling...')
-
-    def ensureRevBuilt(self, rev=None):
+        """
         if self.graph.isfilled():
             return
-        
+        required = 0
         n = len(self.graph)
-        if rev is not None and len(self.graph) and self.graph[-1].rev > rev:
-            required = n + self.fill_step + self.graph[-1].rev - rev            
-            required = min(required, self.nmax)
-
-            self.emit(SIGNAL('showMessage'), 'filling...')
-            QtGui.QApplication.processEvents()
-            self.beginInsertRows(QtCore.QModelIndex(), n, required)
-            self.graph._build_nodes(required-n)
+        if rev is not None:
+            if n and self.graph[-1].rev <= rev:
+                rev = None
+            else:
+                required = self.fill_step/2
+        elif row is not None and row > (n-self.fill_step/2):
+            required = row - n + self.fill_step
+        if required or rev:
+            self.graph.build_nodes(nnodes=required, rev=rev)
+            newlen = len(self.graph)
+            self.beginInsertRows(QtCore.QModelIndex(), n, newlen-1)
+            self.rowcount = newlen
             self.endInsertRows()
-            self.emit(SIGNAL('showMessage'), '')
-            
+
     def rowCount(self, parent=None):
-        return self.graph and len(self.graph) or 0
+        return self.rowcount
 
     def columnCount(self, parent=None):
         return len(self._columns)
@@ -234,7 +208,6 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
             elif 'Log' not in validcols or 'ID' not in validcols:
                 print "WARNING! 'Log' and 'ID' are mandatory. Check your configuration."
                 print "         reverting to default columns configuration"
-
             else:
                 self._columns = tuple(validcols)
 
@@ -361,12 +334,12 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
                     status = self.wd_status[self.wd_revs.index(gnode.rev)]
                     if [True for st in status if st]:
                         modified = True
-                
+
                 if tags.intersection(self.mqueues):
                     if not modified:
                         icn = geticon('up')
                     else:
-                        icn = geticon('mqdiff')                        
+                        icn = geticon('mqdiff')
                 elif modified:
                     icn = geticon('modified')
                 elif atwd:
@@ -393,7 +366,7 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
         return row
 
     def indexFromRev(self, rev):
-        self.ensureRevBuilt(rev=rev)
+        self.ensureBuilt(rev=rev)
         row = self.rowFromRev(rev)
         if row is not None:
             return self.index(row, 0)
@@ -432,7 +405,7 @@ class FileRevModel(HgRepoListModel):
 
     def setFilename(self, filename):
         self.filename = filename
-        self.nmax = len(self.repo.changelog)
+
         self._user_colors = {}
         self._branch_colors = {}
 
@@ -445,7 +418,6 @@ class FileRevModel(HgRepoListModel):
         self.heads = [fl.index[fl.rev(x)][4] for x in fl.heads()]
         self._datacache = {}
         self._fill_iter = None
-        self.gr_fill_timer.start()
 
 
 replus = re.compile(r'^[+][^+].*', re.M)
