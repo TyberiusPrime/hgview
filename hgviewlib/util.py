@@ -73,3 +73,16 @@ def rootpath(repo, rev, path):
     else:
         return filenames[0]
     
+class Curry(object):
+    """Curryfication de fonction (http://fr.wikipedia.org/wiki/Curryfication)"""
+    def __init__(self, function, *additional_args, **additional_kwargs):
+        self.func = function
+        self.additional_args = additional_args
+        self.additional_kwargs = additional_kwargs
+
+    def __call__(self, *args, **kwargs):
+        args += self.additional_args
+        kwarguments = self.additional_kwargs.copy()
+        kwarguments.update(kwargs)
+        return self.func(*args, **kwarguments)
+

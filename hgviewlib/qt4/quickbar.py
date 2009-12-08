@@ -21,6 +21,7 @@ from mercurial import util
 
 from PyQt4 import QtCore, QtGui
 
+from hgviewlib.util import Curry
 from hgviewlib.qt4 import icon as geticon
 
 Qt = QtCore.Qt
@@ -65,7 +66,7 @@ class QuickBar(QtGui.QToolBar):
         closeact = QtGui.QAction('Close', self)
         closeact.setIcon(geticon('close'))
         connect(closeact, SIGNAL('triggered()'),
-                lambda self=self: self.setVisible(False))
+                Curry(self.setVisible, False))
                 
         self._actions = {'open': openact,
                          'close': closeact,}
@@ -246,8 +247,8 @@ class FindInGraphlogQuickBar(FindQuickBar):
                 if (step % 20) == 0:
                     self.emit(SIGNAL("showMessage"), 'Searching'+'.'*(step/20))
                 step += 1
-                QtCore.QTimer.singleShot(0, lambda self=self, text=text, step=(step % 80): \
-                                         self.find_next(text, step))
+                QtCore.QTimer.singleShot(0, Curry(self.find_next, text=text,
+                                                  step=(step % 80)))
             else:
                 self.emit(SIGNAL("showMessage"), '')
                 self.setCancelEnabled(False)
