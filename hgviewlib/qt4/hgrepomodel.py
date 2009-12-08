@@ -133,6 +133,7 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
         self.mqueues = []
         self.wd_revs = []
         self.graph = None
+        self._fill_timer = None
         self.rowcount = 0
         self.setRepo(repo, branch)
 
@@ -157,9 +158,9 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
         self.graph = Graph(self.repo, grapher, self.max_file_size)
         self.rowcount = 0
         self.heads = [self.repo.changectx(x).rev() for x in self.repo.heads()]
-        self._fill_iter = None
         self.ensureBuilt(row=self.fill_step)
         QtCore.QTimer.singleShot(0, Curry(self.emit, SIGNAL('filled')))
+        self._fill_timer = self.startTimer(50)
 
     def ensureBuilt(self, rev=None, row=None):
         """
@@ -169,18 +170,46 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
         if self.graph.isfilled():
             return
         required = 0
+        buildrev = rev
         n = len(self.graph)
         if rev is not None:
             if n and self.graph[-1].rev <= rev:
-                rev = None
+                buildrev = None
             else:
                 required = self.fill_step/2
-        elif row is not None and row > (n-self.fill_step/2):
+        elif row is not None and row > (n - self.fill_step / 2):
             required = row - n + self.fill_step
-        if required or rev:
-            self.graph.build_nodes(nnodes=required, rev=rev)
-            newlen = len(self.graph)
-            self.beginInsertRows(QtCore.QModelIndex(), n, newlen-1)
+        if required or buildrev:
+            self.graph.build_nodes(nnodes=required, rev=buildrev)
+            self.updateRowCount()
+        elif row and row > self.rowcount:
+            # asked row was already built, but views where not aware of this
+            self.updateRowCount()
+        elif rev is not None and rev <= self.graph[self.rowcount].rev:
+            # asked rev was already built, but views where not aware of this
+            self.updateRowCount()
+
+    def timerEvent(self, event):
+        if event.timerId() == self._fill_timer:
+            self.emit(SIGNAL('showMessage'), 'filling (%s)'%(len(self.graph)))
+            if self.graph.isfilled():
+                self.killTimer(self._fill_timer)
+                self._fill_timer = None
+                self.emit(SIGNAL('showMessage'), '')
+            # we only fill the graph data strctures without telling
+            # views (until we atually did the full job), to keep
+            # maximal GUI reactivity
+            elif not self.graph.build_nodes(nnodes=self.fill_step):
+                self.killTimer(self._fill_timer)
+                self._fill_timer = None
+                self.updateRowCount()
+                self.emit(SIGNAL('showMessage'), '')
+
+    def updateRowCount(self):
+        currentlen = self.rowcount
+        newlen = len(self.graph)
+        if newlen > self.rowcount:
+            self.beginInsertRows(QtCore.QModelIndex(), currentlen, newlen-1)
             self.rowcount = newlen
             self.endInsertRows()
 
@@ -391,7 +420,7 @@ class FileRevModel(HgRepoListModel):
     _stretchs = {'Log': 1, }
     _getcolumns = "getFilelogColumns"
 
-    def __init__(self, repo, filename, parent=None):
+    def __init__(self, repo, filename=None, parent=None):
         """
         data is a HgHLRepo instance
         """
@@ -409,15 +438,23 @@ class FileRevModel(HgRepoListModel):
         self._user_colors = {}
         self._branch_colors = {}
 
-        grapher = filelog_grapher(self.repo, self.filename)
-        self.graph = Graph(self.repo, grapher, self.max_file_size)
-        fl = self.repo.file(self.filename)
-        # we use fl.index here (instead of linkrev) cause
-        # linkrev API changed between 1.0 and 1.?. So this
-        # works with both versions.
-        self.heads = [fl.index[fl.rev(x)][4] for x in fl.heads()]
+        self.rowcount = 0
         self._datacache = {}
-        self._fill_iter = None
+
+        if self.filename:
+            grapher = filelog_grapher(self.repo, self.filename)
+            self.graph = Graph(self.repo, grapher, self.max_file_size)
+            fl = self.repo.file(self.filename)
+            # we use fl.index here (instead of linkrev) cause
+            # linkrev API changed between 1.0 and 1.?. So this
+            # works with both versions.
+            self.heads = [fl.index[fl.rev(x)][4] for x in fl.heads()]
+            self.ensureBuilt(row=self.fill_step/2)
+            QtCore.QTimer.singleShot(0, Curry(self.emit, SIGNAL('filled')))
+            self._fill_timer = self.startTimer(500)
+        else:
+            self.graph = None
+            self.heads = []
 
 
 replus = re.compile(r'^[+][^+].*', re.M)
