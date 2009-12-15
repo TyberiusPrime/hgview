@@ -56,12 +56,8 @@ class QuickBar(QtGui.QToolBar):
         openact.setCheckable(True)        
         openact.setChecked(False)
         openact.setShortcut(QtGui.QKeySequence(openkey))
-        connect(openact, SIGNAL('toggled(bool)'),
-                self.setVisible)
-        self.open_shortcut = QtGui.QShortcut(parent)
-        self.open_shortcut.setKey(QtGui.QKeySequence(openkey))
-        connect(self.open_shortcut, SIGNAL('activated()'),
-                self.setVisible)
+        connect(openact, SIGNAL('triggered()'),
+                Curry(self.setVisible, True))
 
         closeact = QtGui.QAction('Close', self)
         closeact.setIcon(geticon('close'))
@@ -89,16 +85,23 @@ class QuickBar(QtGui.QToolBar):
             self._focusw = None
 
     def createContent(self):
-        self.addAction(self._actions['close'])
+        self.parent().addAction(self._actions['close'])
+        self.parent().addAction(self._actions['open'])
 
     def hide(self):
         self.setVisible(False)
 
+    def addShortcut(self, desc, key):
+        act = self._actions[desc]
+        shortcuts = list(act.shortcuts())
+        shortcuts.append(key)
+        act.setShortcuts(shortcuts)
 
 
 class FindQuickBar(QuickBar):
     def __init__(self, parent):
         QuickBar.__init__(self, "Find", "/", "Find", parent)
+        self.addShortcut('open', 'Ctrl+F')
         self.currenttext = ''
         
     def createActions(self, openkey, desc):
