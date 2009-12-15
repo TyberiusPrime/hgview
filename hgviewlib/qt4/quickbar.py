@@ -32,6 +32,7 @@ SIGNAL = QtCore.SIGNAL
 class QuickBar(QtGui.QToolBar):
     def __init__(self, name, key, desc=None, parent=None):
         self.original_parent = parent
+        # used to remember who had the focus before bar steel it
         self._focusw = None
         QtGui.QToolBar.__init__(self, name, parent)
         self.setIconSize(QtCore.QSize(16,16))
@@ -67,29 +68,25 @@ class QuickBar(QtGui.QToolBar):
         self._actions = {'open': openact,
                          'close': closeact,}
 
-        self.esc_shortcut = QtGui.QShortcut(self)
-        self.esc_shortcut.setKey(Qt.Key_Escape)
-        self.esc_shortcut.setEnabled(False)
-        connect(self.esc_shortcut, SIGNAL('activated()'),
-                self._actions['close'].trigger)
-
     def setVisible(self, visible=True):
         if visible and not self.isVisible():
             self.emit(SIGNAL('visible'))
             self._focusw = QtGui.QApplication.focusWidget()
         QtGui.QToolBar.setVisible(self, visible)
-        self.esc_shortcut.setEnabled(visible)
         self.emit(SIGNAL('escShortcutDisabled(bool)'), not visible)
         if not visible and self._focusw:
             self._focusw.setFocus()
             self._focusw = None
 
     def createContent(self):
-        self.parent().addAction(self._actions['close'])
+        self.addAction(self._actions['close'])
         self.parent().addAction(self._actions['open'])
 
     def hide(self):
         self.setVisible(False)
+
+    def cancel(self):
+        self.hide()
 
     def addShortcut(self, desc, key):
         act = self._actions[desc]
@@ -157,9 +154,11 @@ class FindQuickBar(QuickBar):
 class FindInGraphlogQuickBar(FindQuickBar):
     def __init__(self, parent):
         FindQuickBar.__init__(self, parent)
-        self._find_iter = None
+        self._findinfile_iter = None
+        self._findinlog_iter = None
+        self._findindesc_iter = None
         self._fileview = None
-        self._cur_pos = None
+        self._headerview = None
         self._filter_files = None
         self._mode = 'diff'
         connect(self, SIGNAL('find'),
@@ -181,18 +180,24 @@ class FindInGraphlogQuickBar(FindQuickBar):
         
     def attachFileView(self, fileview):
         self._fileview = fileview
+
+    def attachHeaderView(self, view):
+        self._headerview = view
         
-    def find_in_graphlog(self, text, fromrev, fromfile=None):
+    def find_in_graphlog(self, fromrev, fromfile=None):
         """
         Find text in the whole repo from rev 'fromrev', from file
         'fromfile' (if given) *excluded*
         """
+        text = unicode(self.entry.text())
         graph = self._model.graph
         idx = graph.index(fromrev)
         for node in graph[idx:]:
             rev = node.rev
             ctx = self._model.repo.changectx(rev)
-            pos = 0            
+            if text in ctx.description():
+                yield rev, None
+            pos = 0
             files = ctx.files()
             if self._filter_files:
                 files = [x for x in files if x in self._filter_files]
@@ -206,87 +211,105 @@ class FindInGraphlogQuickBar(FindQuickBar):
                     data = ctx.filectx(filename).data()
                     if util.binary(data):
                         data = "binary file"
-                if text in data:
+                if data and text in data:
                     yield rev, filename
                 else:
                     yield None
 
+    def cancel(self):
+        if self._actions['cancel'].isEnabled():
+            self.emit(SIGNAL('cancel'))
+        else:
+            self.hide()
+
     def on_cancelsearch(self, *args):
-        self._find_iter = None
+        self._findinlog_iter = None
         self.setCancelEnabled(False)
         self.emit(SIGNAL('showMessage'), 'Search cancelled!', 2000)
 
-    def on_findnext(self, text=None):
+    def on_findnext(self):
         """
         callback called by 'Find' quicktoolbar (on findnext signal)
         """
-        if self._find_iter is not None:
-            for pos in self._find_iter:
-                #self._cur_pos = pos[:2]
-                break
-            else:
-                self._find_iter = None            
-        if self._find_iter is None: # start searching in the graphlog
-            if self._fileview:
-                rev = self._fileview.rev()
-                filename = self._fileview.filename()
-            else: # XXX does not work
-                rev, filename = self._cur_pos
-            
-            self._find_iter = self.find_in_graphlog(text, rev, filename)
-            self.setCancelEnabled(True)
-            self.find_next(text)
+        if self._findindesc_iter is not None:
+            for pos in self._findindesc_iter:
+                # just highlight next found text in fileview
+                # (handled by _findinfile_iter)
+                return
+            # no more found text in currently displayed file
+            self._findindesc_iter = None
 
-    def find_next(self, text, step=0):
+        if self._findinfile_iter is not None:
+            for pos in self._findinfile_iter:
+                # just highlight next found text in descview
+                # (handled by _findindesc_iter)
+                return
+            # no more found text in currently displayed file
+            self._findinfile_iter = None
+                
+        if self._findinlog_iter is None:
+            # start searching in the graphlog from current position
+            rev = self._fileview.rev()
+            filename = self._fileview.filename()
+            self._findinlog_iter = self.find_in_graphlog(rev, filename)
+
+        self.setCancelEnabled(True)
+        self.find_next_in_log()
+        
+    def find_next_in_log(self, step=0):
         """
         to be called from 'on_find' callback (or recursively). Try to
-        find the next occurrence of 'text' (as a 'background'
+        find the next occurrence of searched text (as a 'background'
         process, so the GUI is not frozen, and as a cancellable task).
         """
-        if self._find_iter is None:
+        if self._findinlog_iter is None:
+            # when search has been cancelled
             return
-        for next_find in self._find_iter:
+        for next_find in self._findinlog_iter:
             if next_find is None: # not yet found, let's animate a bit the GUI
                 if (step % 20) == 0:
                     self.emit(SIGNAL("showMessage"), 'Searching'+'.'*(step/20))
                 step += 1
-                QtCore.QTimer.singleShot(0, Curry(self.find_next, text=text,
-                                                  step=(step % 80)))
+                QtCore.QTimer.singleShot(0, Curry(self.find_next_in_log, (step % 80)))
             else:
                 self.emit(SIGNAL("showMessage"), '')
                 self.setCancelEnabled(False)
                 
                 rev, filename = next_find
-                self._cur_pos = next_find
                 self.emit(SIGNAL('revisionSelected'), rev)
-                self.emit(SIGNAL('fileSelected'), filename)
-                if self._fileview:
-                    self._find_iter = self._fileview.searchString(text)
+                text = unicode(self.entry.text())
+                if filename is None and self._headerview:
+                    self._findindesc_iter = self._headerview.searchString(text)
                     self.on_findnext()
+                else:
+                    self.emit(SIGNAL('fileSelected'), filename)
+                    if self._fileview:
+                        self._findinfile_iter = self._fileview.searchString(text)
+                        self.on_findnext()
             return
         self.emit(SIGNAL('showMessage'), 'No more matches found in repository', 2000)
         self.setCancelEnabled(False)
-        self._find_iter = None
+        self._findinlog_iter = None
 
     def on_find_text_changed(self, newtext):
         """
         callback called by 'Find' quicktoolbar (on find signal)
         """
         newtext = unicode(newtext)
-        self._find_iter = None
+        self._findinlog_iter = None
+        self._findinfile_iter = None
+        if self._headerview:
+            self._findindesc_iter = self._headerview.searchString(newtext)
         if self._fileview:
-            self._find_iter = self._fileview.searchString(newtext)
-            for pos in self._find_iter:
-                self._cur_pos = pos[:2]
-                break
+            self._findinfile_iter = self._fileview.searchString(newtext)
+        if newtext.strip():
+            if self._findindesc_iter is None and self._findindesc_iter is None:
+                self.emit(SIGNAL('showMessage'),
+                          'Search string not found in current diff. '
+                          'Hit "Find next" button to start searching '
+                          'in the repository', 2000)
             else:
-                if newtext.strip():
-                    self._find_iter = None
-                    self.emit(SIGNAL('showMessage'),
-                              'Search string not found in current diff. '
-                              'Hit "Find next" button to start searching '
-                              'in the repository', 2000)
-        
+                self.on_findnext()
 
 if __name__ == "__main__":
     import sys

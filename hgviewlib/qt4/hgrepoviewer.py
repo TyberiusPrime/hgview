@@ -120,6 +120,7 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
     def createToolbars(self):
         self.find_toolbar = FindInGraphlogQuickBar(self)
         self.find_toolbar.attachFileView(self.textview_status)
+        self.find_toolbar.attachHeaderView(self.textview_header)
         connect(self.find_toolbar, SIGNAL('revisionSelected'),
                 self.tableView_revisions.goto)
         connect(self.find_toolbar, SIGNAL('fileSelected'),

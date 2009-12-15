@@ -64,7 +64,7 @@ class HgDialogMixin(object):
             self.__class__.__bases__ = self.__class__.__bases__ + (ui_class,)
         self.setupUi(self)
         self.load_ui()
-        self.disab_shortcuts = [self.esc_shortcut]
+        self.disab_shortcuts = []
         
     def load_ui(self):
         # we explicitely create a QShortcut so we can disable it
@@ -73,7 +73,7 @@ class HgDialogMixin(object):
         self.esc_shortcut = QtGui.QShortcut(self)
         self.esc_shortcut.setKey(Qt.Key_Escape)
         connect(self.esc_shortcut, SIGNAL('activated()'),
-                self.close)
+                self.maybeClose)
         self._quickbars = []
 
     def attachQuickBar(self, qbar):
@@ -94,6 +94,14 @@ class HgDialogMixin(object):
         for w in self._quickbars:
             if w is not tb:
                 w.hide()
+
+    def maybeClose(self):
+        for w in self._quickbars:
+            if w.isVisible():
+                w.cancel()
+                break
+        else:
+            self.close()
         
     def load_config(self):
         cfg = HgConfig(self.repo.ui)

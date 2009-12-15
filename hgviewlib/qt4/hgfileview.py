@@ -383,13 +383,15 @@ class HgFileView(QtGui.QFrame):
     def searchString(self, text):
         self._find_text = text
         self.clearHighlights()
-        if self._find_text:
-            for pos in self.highlightSearchString(self._find_text):
-                if not self._find_text: # XXX is this required to handle "cancellation"?
-                    break
-                self.highlightCurrentSearchString(pos, self._find_text)
-                yield self._ctx.rev(), self._filename, pos
-
+        findpos = self.highlightSearchString(self._find_text)
+        if findpos:
+            def finditer(self, findpos):
+                if self._find_text:
+                    for pos in findpos:
+                        self.highlightCurrentSearchString(pos, self._find_text)
+                        yield self._ctx.rev(), self._filename, pos
+            return finditer(self, findpos)
+    
     def clearHighlights(self):
         n = self.sci.length()
         self.sci.SendScintilla(qsci.SCI_SETINDICATORCURRENT, 8) # highlight

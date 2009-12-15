@@ -349,6 +349,33 @@ class RevDisplay(QtGui.QTextBrowser):
             
         self.refreshDisplay()
 
+    def selectNone(self):
+        cursor = self.textCursor()
+        cursor.clearSelection()
+        cursor.setPosition(0)
+        self.setTextCursor(cursor)
+        self.setExtraSelections([])
+        
+    def searchString(self, text):
+        self.selectNone()
+        if text in unicode(self.toPlainText()):
+            clist = []
+            while self.find(text):
+                eselect = self.ExtraSelection()
+                eselect.cursor = self.textCursor()
+                eselect.format.setBackground(QtGui.QColor('#ffffbb'))
+                clist.append(eselect)
+            self.selectNone()
+            self.setExtraSelections(clist)
+            def finditer(self, text):
+                if text:
+                    while True:
+                        if self.find(text):
+                            yield self.ctx.rev(), None                
+                        else:
+                            break
+            return finditer(self, text)
+        
     def refreshDisplay(self):
         ctx = self.ctx
         rev = ctx.rev()
