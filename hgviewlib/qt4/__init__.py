@@ -21,7 +21,7 @@
 import os
 import os.path as osp
 import sys
-
+import mx.DateTime as dt
 # automatically load resource module, creating it on the fly if
 # required
 curdir = osp.dirname(__file__)
@@ -45,11 +45,17 @@ import hgqv_rc
 
 _icons = {}
 def _load_icons():
+    t = dt.today()
+    x = t.month == 12 and t.day in (24,25)
     d = QtCore.QDir(':/icons')
     for icn in d.entryList():
         name, ext = osp.splitext(str(icn))
         if name not in _icons or ext == ".svg":
             _icons[name] = QtGui.QIcon(':/icons/%s' % icn)
+    if x:
+        for name in _icons:
+            if name.endswith('_x'):
+                _icons[name[:-2]] = _icons[name]
 
 def icon(name):
     """

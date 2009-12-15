@@ -14,5 +14,8 @@
     <file>icons/modified.svg</file>
     <file>icons/clean.svg</file>
     <file>icons/mqdiff.svg</file>
+    <file>icons/mqdiff_x.svg</file>
+    <file>icons/mqpatch.svg</file>
+    <file>icons/mqpatch_x.svg</file>
   </qresource>
 </RCC>

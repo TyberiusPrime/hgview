@@ -375,7 +375,7 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
 
                 if tags.intersection(self.mqueues):
                     if not modified:
-                        icn = geticon('up')
+                        icn = geticon('mqpatch')
                     else:
                         icn = geticon('mqdiff')
                 elif modified:
