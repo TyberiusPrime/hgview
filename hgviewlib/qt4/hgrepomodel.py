@@ -510,8 +510,8 @@ class HgFileListModel(QtCore.QAbstractTableModel):
             self.diffwidth = w
             self._datacache = {}
             self.emit(SIGNAL('dataChanged(const QModelIndex &, const QModelIndex & )'),
-                      self.index(2, 0),
-                      self.index(2, self.rowCount()))
+                      self.index(1, 0),
+                      self.index(1, self.rowCount()))
 
     def __len__(self):
         return len(self._files)
@@ -557,10 +557,10 @@ class HgFileListModel(QtCore.QAbstractTableModel):
             return self.index(row, 0)
         return QtCore.QModelIndex()
 
-    def _filterFile(self, filename):
+    def _filterFile(self, filename, ctxfiles):
         if self._fulllist:
             return True
-        return filename in self.current_ctx.files()
+        return filename in ctxfiles #self.current_ctx.files()
 
     def _buildDesc(self, parent, fromside):
         _files = []
@@ -568,32 +568,13 @@ class HgFileListModel(QtCore.QAbstractTableModel):
         ctxfiles = ctx.files()
         changes = self.repo.status(parent.node(), ctx.node())[:3]
         modified, added, removed = changes
-        for f in [x for x in added if self._filterFile(x)]:
-            desc = {'path': f, 'flag': '+', 'desc': f,
-                    'parent': parent, 'fromside': fromside,
-                    'infiles': f in ctxfiles}
-            m = ctx.filectx(f).renamed()
-            if m:
-                oldname, node = m
-                if oldname in removed:
-                    removed.remove(oldname)
-                    desc['renamedfrom'] = (oldname, node)
-                    desc['flag'] = '='
-                    desc['desc'] += '\n (was %s)' % oldname
-                else:
-                    desc['copiedfrom'] = (oldname, node)
-                    desc['flag'] = '='
-                    desc['desc'] += '\n (copy of %s)' % oldname
-
-            _files.append(desc)
-        for f in [x for x in modified if self._filterFile(x)]:
-            _files.append({'path':f, 'flag': '=', 'desc':f,
-                           'parent': parent, 'fromside': fromside,
-                           'infiles': f in ctxfiles})
-        for f in [x for x in removed if self._filterFile(x)]:
-            _files.append({'path':f, 'flag': '-', 'desc':f,
-                           'parent': parent, 'fromside': fromside,
-                           'infiles': f in ctxfiles})
+        for lst, flag in ((added, '+'), (modified, '='), (removed, '-')):
+            for f in [x for x in lst if self._filterFile(x, ctxfiles)]:
+                _files.append({'path': f, 'flag': flag, 'desc': f,
+                               'parent': parent, 'fromside': fromside,
+                               'infiles': f in ctxfiles})
+                # renamed/copied files are handled by background
+                # filling process since it can be a bit long
         for fdesc in _files:
             bfile = isbfile(fdesc['path'])
             fdesc['bfile'] = bfile
@@ -626,19 +607,20 @@ class HgFileListModel(QtCore.QAbstractTableModel):
         Method called to start the background process of computing
         file stats, which are to be displayed in the 'Stats' column
         """
-        if self._displaydiff:
-            self._fill_iter = self._fill()
-            self._fill_one_step()
+        self._fill_iter = self._fill()
+        self._fill_one_step()
 
     def _fill_one_step(self):
         if self._fill_iter is None:
             return
         try:
-            row = self._fill_iter.next()
-            idx = self.index(row, 2)
-            self.emit(SIGNAL('dataChanged(const QModelIndex&, const QModelIndex&)'),
-                      idx, idx)
-            QtCore.QTimer.singleShot(0, lambda self=self: self._fill_one_step())
+            nextfill = self._fill_iter.next()
+            if nextfill is not None:
+                row, col = nextfill
+                idx = self.index(row, col)
+                self.emit(SIGNAL('dataChanged(const QModelIndex &, const QModelIndex &)'),
+                          idx, idx)
+            QtCore.QTimer.singleShot(10, lambda self=self: self._fill_one_step())
 
         except StopIteration:
             self._fill_iter = None
@@ -647,7 +629,7 @@ class HgFileListModel(QtCore.QAbstractTableModel):
         # the generator used to fill file stats as a background process
         for row, desc in enumerate(self._files):
             filename = desc['path']
-            if desc['flag'] == '=':
+            if desc['flag'] == '=' and self._displaydiff:
                 diff = revdiff(self.repo, self.current_ctx, desc['parent'],
                                files=[filename])
                 try:
@@ -659,9 +641,26 @@ class HgFileListModel(QtCore.QAbstractTableModel):
                 if tot == 0:
                     tot = max(add + rem, 1)
                 desc['stats'] = (tot, add, rem)
-            yield row
+                yield row, 1
 
-    @datacached
+            if desc['flag'] == '+':
+                m = self.current_ctx.filectx(filename).renamed()
+                if m:
+                    removed = self.repo.status(desc['parent'].node(),
+                                               self.current_ctx.node())[2]
+                    oldname, node = m
+                    if oldname in removed:
+                        # removed.remove(oldname) XXX
+                        desc['renamedfrom'] = (oldname, node)
+                        desc['flag'] = '='
+                        desc['desc'] += '\n (was %s)' % oldname
+                    else:
+                        desc['copiedfrom'] = (oldname, node)
+                        desc['flag'] = '='
+                        desc['desc'] += '\n (copy of %s)' % oldname
+                    yield row, 0
+            yield None
+
     def data(self, index, role):
         if not index.isValid() or index.row()>len(self) or not self.current_ctx:
             return nullvariant
