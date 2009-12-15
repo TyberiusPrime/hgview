@@ -143,21 +143,25 @@ class FileViewer(AbstractFileDialog):
         self.attachQuickBar(self.tableView_revisions.goto_toolbar)
 
     def setupModels(self):
-        self.filerevmodel = FileRevModel(self.repo, self.filename)
+        self.filerevmodel = FileRevModel(self.repo)
         self.tableView_revisions.setModel(self.filerevmodel)
-        self.connect(self.tableView_revisions,
-                     SIGNAL('revisionSelected'),
-                     self.revisionSelected)
-        self.connect(self.tableView_revisions,
-                     SIGNAL('revisionActivated'),
-                     self.revisionActivated)
-        self.connect(self.filerevmodel, QtCore.SIGNAL('filled'),
-                     self.modelFilled)
+        connect(self.tableView_revisions,
+                SIGNAL('revisionSelected'),
+                self.revisionSelected)
+        connect(self.tableView_revisions,
+                SIGNAL('revisionActivated'),
+                self.revisionActivated)
+        connect(self.filerevmodel, SIGNAL('showMessage'),
+                self.statusBar().showMessage,
+                Qt.QueuedConnection)
+        connect(self.filerevmodel, QtCore.SIGNAL('filled'),
+                self.modelFilled)
         self.textView.setMode('file')
         self.textView.setModel(self.filerevmodel)
         self.find_toolbar.setModel(self.filerevmodel)
         self.find_toolbar.setFilterFiles([self.filename])
         self.find_toolbar.setMode('file')
+        self.filerevmodel.setFilename(self.filename)
 
     def createActions(self):
         connect(self.actionClose, SIGNAL('triggered()'),
@@ -285,9 +289,9 @@ class FileDiffViewer(AbstractFileDialog):
             connect(table, SIGNAL('revisionSelected'), self.revisionSelected)
             connect(table, SIGNAL('revisionActivated'), self.revisionActivated)
 
-            self.connect(self.viewers[side].verticalScrollBar(),
-                         QtCore.SIGNAL('valueChanged(int)'),
-                         lambda value, side=side: self.vbar_changed(value, side))
+            connect(self.viewers[side].verticalScrollBar(),
+                    QtCore.SIGNAL('valueChanged(int)'),
+                    lambda value, side=side: self.vbar_changed(value, side))
             self.attachQuickBar(table.goto_toolbar)
 
         self.setTabOrder(table, self.viewers['left'])
@@ -303,8 +307,8 @@ class FileDiffViewer(AbstractFileDialog):
         self.filedata = {'left': None, 'right': None}
         self._invbarchanged = False
         self.filerevmodel = FileRevModel(self.repo, self.filename)
-        self.connect(self.filerevmodel, QtCore.SIGNAL('filled'),
-                     self.modelFilled)
+        connect(self.filerevmodel, QtCore.SIGNAL('filled'),
+                self.modelFilled)
         self.tableView_revisions_left.setModel(self.filerevmodel)
         self.tableView_revisions_right.setModel(self.filerevmodel)
 
