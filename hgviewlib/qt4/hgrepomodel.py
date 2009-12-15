@@ -64,14 +64,22 @@ def cvrt_date(date):
     date, tzdelay = date
     return QtCore.QDateTime.fromTime_t(int(date)).toString(QtCore.Qt.LocaleDate)
 
+def gettags(model, ctx, gnode):
+    mqtags = ['qbase', 'qtip', 'qparent']
+    tags = ctx.tags()
+    if model.hide_mq_tags:
+        tags = [t for t in tags if t not in mqtags]
+    return ",".join(tags)
+
+# XXX maybe it's time to make these methods of the model...
 # in following lambdas, ctx is a hg changectx
-_columnmap = {'ID': lambda ctx, gnode: str(ctx.rev()),
-              'Log': lambda ctx, gnode: tounicode(ctx.description()),
-              'Author': lambda ctx, gnode: tounicode(ctx.user()),
-              'Date': lambda ctx, gnode: cvrt_date(ctx.date()),
-              'Tags': lambda ctx, gnode: ",".join(ctx.tags()),
-              'Branch': lambda ctx, gnode: ctx.branch(),
-              'Filename': lambda ctx, gnode: gnode.extra[0],
+_columnmap = {'ID': lambda model, ctx, gnode: str(ctx.rev()),
+              'Log': lambda model, ctx, gnode: tounicode(ctx.description()),
+              'Author': lambda model, ctx, gnode: tounicode(ctx.user()),
+              'Date': lambda model, ctx, gnode: cvrt_date(ctx.date()),
+              'Tags': gettags,
+              'Branch': lambda model, ctx, gnode: ctx.branch(),
+              'Filename': lambda model, ctx, gnode: gnode.extra[0],
               }
 
 _tooltips = {'ID': lambda ctx, gnode: ctx.hex(),
@@ -226,7 +234,8 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
         self.rowheight = cfg.getRowHeight()
         self.fill_step = cfg.getFillingStep()
         self.max_file_size = cfg.getMaxFileSize()
-
+        self.hide_mq_tags = cfg.getMQHideTags()
+        
         cols = getattr(cfg, self._getcolumns)()
         if cols is not None:
             validcols = [col for col in cols if col in self._allcolumns]
@@ -283,11 +292,11 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
         ctx = self.repo.changectx(gnode.rev)
         if role == QtCore.Qt.DisplayRole:
             if column == 'Author': #author
-                return QtCore.QVariant(self.user_name(_columnmap[column](ctx, gnode)))
+                return QtCore.QVariant(self.user_name(_columnmap[column](self, ctx, gnode)))
             elif column == 'Log':
-                msg = _columnmap[column](ctx, gnode)
+                msg = _columnmap[column](self, ctx, gnode)
                 return QtCore.QVariant(msg)
-            return QtCore.QVariant(_columnmap[column](ctx, gnode))
+            return QtCore.QVariant(_columnmap[column](self, ctx, gnode))
         elif role == QtCore.Qt.ToolTipRole:
             msg = "<b>Branch:</b> %s<br>\n" % ctx.branch()
             if gnode.rev in self.wd_revs:
@@ -298,7 +307,7 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
                 if status:
                     msg += ' (%s)' % (', '.join(status))
                 msg += "</i><br>\n"
-            msg += _tooltips.get(column, _columnmap[column])(ctx, gnode)
+            msg += _tooltips.get(column, _columnmap[column])(self, ctx, gnode)
             return QtCore.QVariant(msg)
         elif role == QtCore.Qt.ForegroundRole:
             if column == 'Author': #author

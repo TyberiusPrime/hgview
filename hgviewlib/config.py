@@ -233,6 +233,13 @@ class HgConfig(object):
         """
         return self.ui.config(self.section, 'mqfgcolor', default)
 
+    @cached
+    def getMQHideTags(self, default=False):
+        """
+        mqhidetags: hide mq tags
+        """
+        return self.ui.config(self.section, 'mqhidetags', default)
+
 
 
 _HgConfig = HgConfig
