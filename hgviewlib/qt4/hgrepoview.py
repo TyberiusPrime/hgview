@@ -32,6 +32,7 @@ nullvariant = QtCore.QVariant()
 
 from hgviewlib.decorators import timeit
 from hgviewlib.config import HgConfig
+from hgviewlib.util import format_desc, xml_escape
 from hgviewlib.qt4 import icon as geticon
 from hgviewlib.qt4.hgmanifestdialog import ManifestViewer
 from hgviewlib.qt4.quickbar import QuickBar
@@ -380,9 +381,7 @@ class RevDisplay(QtGui.QTextBrowser):
         for p in parents:
             if p.rev() > -1:
                 short = short_hex(p.node())
-                desc = unicode(p.description(), 'utf-8', 'replace')
-                if len(desc) > self.descwidth:
-                    desc = desc[:self.descwidth] + '...'
+                desc = format_desc(p.description(), self.descwidth)
                 p_rev = p.rev()
                 p_fmt = '<span class="rev_number">%s</span>:'\
                         '<a href="%s" class="rev_hash">%s</a>'
@@ -397,9 +396,7 @@ class RevDisplay(QtGui.QTextBrowser):
         if len(parents) == 2:
             p = parents[0].ancestor(parents[1])
             short = short_hex(p.node())
-            desc = unicode(p.description(), 'utf-8', 'replace')
-            if len(desc) > self.descwidth:
-                desc = desc[:self.descwidth] + '...'
+            desc = format_desc(p.description(), self.descwidth)
             p_rev = p.rev()
             p_fmt = '<span class="rev_number">%s</span>:'\
                     '<a href="%s" class="rev_hash">%s</a>'
@@ -415,9 +412,7 @@ class RevDisplay(QtGui.QTextBrowser):
         for p in ctx.children():
             if p.rev() > -1:
                 short = short_hex(p.node())
-                desc = unicode(p.description(), 'utf-8', 'replace')
-                if len(desc) > self.descwidth:
-                    desc = desc[:self.descwidth] + '...'
+                desc = format_desc(p.description(), self.descwidth)
                 buf += '<tr><td class="label"><b>Child:</b></td>'\
                        '<td colspan=5><span class="rev_number">%d</span>:'\
                        '<a href="%s" class="rev_hash">%s</a>&nbsp;'\
@@ -425,7 +420,8 @@ class RevDisplay(QtGui.QTextBrowser):
                        '\n' % (p.rev(), p.rev(), short, desc)
 
         buf += "</table>\n"
-        desc = unicode(ctx.description().replace('\n', '<br/>\n'), 'utf-8', 'replace')
+        desc = xml_escape(unicode(ctx.description(), 'utf-8', 'replace'))
+        desc = desc.replace('\n', '<br/>\n')
         buf += '<div class="diff_desc"><p>%s</p></div>\n' % desc
         self.setHtml(buf)
 
