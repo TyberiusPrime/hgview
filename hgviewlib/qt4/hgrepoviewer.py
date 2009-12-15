@@ -52,7 +52,6 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
         self._reload_rev = None
         self._reload_file = None
 
-
         QtGui.QMainWindow.__init__(self)
         HgDialogMixin.__init__(self)
 

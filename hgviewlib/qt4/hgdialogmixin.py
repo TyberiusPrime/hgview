@@ -29,6 +29,7 @@ SIGNAL = QtCore.SIGNAL
 Qt = QtCore.Qt
 
 from hgviewlib.config import HgConfig
+from hgviewlib.qt4 import should_rebuild
 
 class HgDialogMixin(object):
     """
@@ -44,9 +45,10 @@ class HgDialogMixin(object):
 
         _path = osp.dirname(__file__)
         uifile = osp.join(_path, self._uifile)
+        pyfile = uifile.replace(".ui", "_ui.py")
+        if should_rebuild(uifile, pyfile):
+            os.system('pyuic4 %s -o %s' % (uifile, pyfile))
         try:
-            ui_class, base_class = uic.loadUiType(uifile)
-        except IOError:
             modname = osp.splitext(osp.basename(uifile))[0] + "_ui"
             modname = "hgviewlib.qt4.%s" % modname
             mod = __import__(modname, fromlist=['*'])
@@ -56,7 +58,10 @@ class HgDialogMixin(object):
             elif 'Ui_MainWindow' in classnames:
                 ui_class = getattr(mod, 'Ui_MainWindow')
             else:
-                raise ValueError("Can't determine which main class to use in %s" % modname) 
+                raise ValueError("Can't determine which main class to use in %s" % modname)
+        except ImportError:
+            ui_class, base_class = uic.loadUiType(uifile)
+
         if ui_class not in self.__class__.__bases__:
             # hacking by adding the form class from ui file or pyuic4
             # generated module because we cannot use metaclass here,

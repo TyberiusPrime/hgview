@@ -91,7 +91,6 @@ def auth_width(model, repo):
         return None
     return sorted(auths, cmp=lambda x,y: cmp(len(x), len(y)))[-1]
 
-
 # in following lambdas, r is a hg repo
 _maxwidth = {'ID': lambda self, r: str(len(r.changelog)),
              'Date': lambda self, r: cvrt_date(r.changectx(0).date()),
@@ -143,10 +142,15 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
         self.graph = None
         self._fill_timer = None
         self.rowcount = 0
+        self.repo = repo
+        self.load_config()
         self.setRepo(repo, branch)
 
     def setRepo(self, repo, branch=''):
+        oldrepo = self.repo
         self.repo = repo
+        if oldrepo.root != repo.root:
+            self.load_config()
         self._datacache = {}
         try:
             wdctxs = self.repo.changectx(None).parents()
@@ -154,7 +158,6 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
             # might occur if reloading during a mq operation (or
             # whatever operation playing with hg history)
             return
-        self.load_config()
         self._hasmq = hasattr(self.repo, "mq")
         if self._hasmq:
             self.mqueues = self.repo.mq.series[:]

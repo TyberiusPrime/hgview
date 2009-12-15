@@ -22,12 +22,17 @@ import os
 import os.path as osp
 import sys
 import mx.DateTime as dt
+
+def should_rebuild(srcfile, pyfile):
+    return not osp.isfile(pyfile) or osp.isfile(srcfile) and \
+               osp.getmtime(pyfile) < osp.getmtime(srcfile)
+
 # automatically load resource module, creating it on the fly if
 # required
 curdir = osp.dirname(__file__)
 pyfile = osp.join(curdir, "hgqv_rc.py")
 rcfile = osp.join(curdir, "hgqv.qrc")
-if not osp.isfile(pyfile) or osp.isfile(rcfile) and osp.getmtime(pyfile) < osp.getmtime(rcfile):
+if should_rebuild(rcfile, pyfile):
     if os.system('pyrcc4 %s -o %s' % (rcfile, pyfile)):
         print "ERROR: Cannot convert the resource file '%s' into a python module."
         print "Please check the PyQt 'pyrcc4' tool is installed, or do it by hand running:"

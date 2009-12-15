@@ -119,7 +119,12 @@ class HgRepoView(QtGui.QTableView):
     def createActions(self):
         self._actions = {}
         for name, desc, icon, tip, key, cb in self._action_defs():
-            act = QtGui.QAction(desc, self)
+            self._actions[name] = QtGui.QAction(desc, self)
+        QtCore.QTimer.singleShot(0, self.configureActions)
+
+    def configureActions(self):
+        for name, desc, icon, tip, key, cb in self._action_defs():
+            act = self._actions[name]
             if icon:
                 act.setIcon(geticon(icon))
             if tip:
@@ -128,7 +133,6 @@ class HgRepoView(QtGui.QTableView):
                 act.setShortcut(key)
             if cb:
                 connect(act, SIGNAL('triggered()'), cb)
-            self._actions[name] = act
             self.addAction(act)
 
     def showAtRev(self):
