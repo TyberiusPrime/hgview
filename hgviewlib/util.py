@@ -62,6 +62,19 @@ def isbfile(filename):
 def bfilepath(filename):
     return filename and filename.replace('.hgbfiles' + os.sep, '')
 
+def find_repository(path):
+    """returns <path>'s mercurial repository
+
+    None if <path> is not under hg control
+    """
+    path = os.path.abspath(path)
+    while not os.path.isdir(os.path.join(path, ".hg")):
+        oldpath = path
+        path = os.path.dirname(path)
+        if path == oldpath:
+            return None
+    return path
+
 def rootpath(repo, rev, path):
     """return the path name of 'path' relative to repo's root at
     revision rev;

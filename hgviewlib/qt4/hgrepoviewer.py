@@ -18,7 +18,7 @@ from mercurial import ui, hg
 from mercurial import util
 
 from hgviewlib.util import tounicode, has_closed_branch_support
-from hgviewlib.util import rootpath 
+from hgviewlib.util import rootpath, find_repository
 from hgviewlib.hggraph import diff as revdiff
 from hgviewlib.decorators import timeit
 
@@ -431,18 +431,6 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
         w.raise_()
         w.activateWindow()
         
-def find_repository(path):
-    """returns <path>'s mercurial repository
-
-    None if <path> is not under hg control
-    """
-    path = os.path.abspath(path)
-    while not os.path.isdir(os.path.join(path, ".hg")):
-        oldpath = path
-        path = os.path.dirname(path)
-        if path == oldpath:
-            return None
-    return path
 
 def main():
     from optparse import OptionParser
