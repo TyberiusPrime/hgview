@@ -296,7 +296,7 @@ class HgFileView(QtGui.QFrame):
         self.updateDiffDecorations()
         if self._mode == 'file' and self._annotate:
             if lexer is not None:
-                self.ann.setFont(lexer.font(-1))
+                self.ann.setFont(lexer.font(0))
             else:
                 self.ann.setFont(self.sci.font())
             self.ann.setFilectx(filectx)
