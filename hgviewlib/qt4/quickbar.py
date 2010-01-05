@@ -150,6 +150,10 @@ class FindQuickBar(QuickBar):
         if self.isVisible() and self.currenttext.strip():
             return self.currenttext
         
+    def __del__(self):
+        # prevent a warning in the console:
+        # QObject::startTimer: QTimer can only be used with threads started with QThread
+        self.entry.setCompleter(None)
 
 class FindInGraphlogQuickBar(FindQuickBar):
     def __init__(self, parent):
