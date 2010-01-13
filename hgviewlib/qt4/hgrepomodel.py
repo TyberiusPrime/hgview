@@ -71,10 +71,19 @@ def gettags(model, ctx, gnode):
         tags = [t for t in tags if t not in mqtags]
     return ",".join(tags)
 
+def getlog(model, ctx, gnode):
+    if ctx.rev() is not None:
+        msg = tounicode(ctx.description())
+        if msg:
+            msg = msg.splitlines()[0]
+    else:
+        msg = "WORKING DIRECTORY (locally modified)"
+    return msg
+
 # XXX maybe it's time to make these methods of the model...
 # in following lambdas, ctx is a hg changectx
 _columnmap = {'ID': lambda model, ctx, gnode: str(ctx.rev()),
-              'Log': lambda model, ctx, gnode: tounicode(ctx.description()),
+              'Log': getlog,
               'Author': lambda model, ctx, gnode: tounicode(ctx.user()),
               'Date': lambda model, ctx, gnode: cvrt_date(ctx.date()),
               'Tags': gettags,
