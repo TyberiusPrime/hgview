@@ -22,8 +22,9 @@ hgview: a visual hg log viewer
 ==============================
 
 This command will launch the hgview log navigator, allowing to
-visually browse in the hg graph log, search in logs, and display
-diff between arbitrary revisions of a file.
+visually browse in the hg graph log, search in logs, and display diff
+between arbitrary revisions of a file, with simple support for mq and
+bigfile extensions.
 
 If a filename is given, launch the filelog diff viewer for this file, 
 and with the '-n' option, launch the filelog navigator for the file.
@@ -44,44 +45,41 @@ The color of the links (between nodes) is randomly chosen.
 The position of the working directory is marked on the graph using a
 small icon as node, depending on the status of the working
 directory. Note that if the working directoy is in merge state, there
-will be 2 revisions marked as modified in the graph.
+will be 2 revisions marked as modified in the graph (since the working
+directory is then a son of both the merged nodes).
 
-Keyboard shortcuts
-------------------
+mq support
+~~~~~~~~~~
 
-::
+There is a simple support for the mq extension. Applied patches are
+seen in the revlog graph with a special arrow icon. Unapplied patches
+are *not* in the revlog graph (since they are not mercurial
+changesets).
 
-  Up/Down     - go to next/previous revision
-  MidButton   - go to the ancestor of the current revision and the selected one
-  Left/Right  - display previous/next files of the current changeset
-  Ctrl+F or / - display the search 'quickbar'
-  Ctrl+G      - display the goto 'quickbar'
-  Esc         - exit or kill the visible 'quickbar' 
-  Enter       - run the diff viewer for the currently selected file
-                (display diff between revisions)
-  Alt+Enter   - run the filelog navigator
-  Shift+Enter - run the manifest viewer for the displayed revision
-  
-  Ctrl+R      - reread repo; note that by default, repo will be automatically
-                reloaded if it is modified (due to a commit, a pull, etc.)
-  
-  Alt+Up/Down    - display previous/next diff block
-  Alt+Left/Right - go to previous/next visited revision (in navigation history)
-  
+When the currently selected revision is an applied patch, the revision
+metadata display (see below) area point this by showing an additional
+line with coloured background listing all available patches (applied
+or not, so if you cannot see the content of an unapplied patch, you
+are aware there are unapplied patches, as long as there is at leat one
+applied patch). Current patch is displayed using bold font; unapplied
+patches are displayed in italic.
+
+
 Revision metadata display
 -------------------------
 
-The area where current revision's metadata are displayed
+The area where current revision's metadata is displayed
 (description, parents revisions, etc.) may contain two kinds of hyperlink:
 
-- when the hyperlink is the changeset ID, it allows you to
+- when the hyperlink is the **changeset ID**, it allows you to
   directly go to the given revision,
   
-- when the hyperlink is the revision number (on merge nodes only),
+- when the hyperlink is the **revision number** (on merge nodes only),
   it means that you can change the other revision used to comput
   the diff. This allows you to compare the merged node with each
   of its parents, or even with the common ancestor of these 2
   nodes.
+
 
 Revision's modified file list
 -----------------------------
@@ -94,6 +92,85 @@ On a merge node, by default, only files which are different from
 both its parents are listed here. However, you can display the
 list of all modified files by double-clickig the file list column
 header.
+
+
+Quickbars
+---------
+
+Quickbars are tollbar that appear when asked for by hitting it's
+keybord shortcut. Only one quickbar can be displayed at a time.
+
+When a quickbar is visible, hitting the Esc key make it disappear.
+
+The goto quickbar
+~~~~~~~~~~~~~~~~~
+
+This toolbar appears when hitting Ctrl+G. It allows you to jump to a
+given revision. The destination revision can be entered by:
+
+- it's revision number (negative values allowed, count from tip)  
+- it's changeset ID (short or long)
+- a tag name (with completion)
+- a branch name
+- an empty string; means "goto current working directory"
+
+The search quickbar
+~~~~~~~~~~~~~~~~~~~
+
+This toolbar appears when hitting Ctrl+F or / (if not in goto toolbar).
+
+It allows you to type a string to be searched for:
+
+- in the currently displayed revision commit message (with highlight-as-you-type)
+- in the currently displayed file or diff (with highlight-as-you-type)
+
+Hitting the "Search next" button starts a background task for searching among the whole
+revision log, starting from the current position (selected revision
+and file).
+
+
+Keyboard shortcuts
+------------------
+
+**Up/Down**
+  go to next/previous revision
+
+**MidButton**
+  go to the common ancestor of the clicked revision and the currently selected one
+
+
+**Left/Right**
+  display previous/next files of the current changeset
+  
+**Ctrl+F** or **/**
+  display the search 'quickbar'
+
+**Ctrl+G**
+  display the goto 'quickbar'
+
+**Esc**
+  exit or hide the visible 'quickbar' 
+
+**Enter**
+  run the diff viewer for the currently selected file (display diff
+  between revisions)
+
+**Alt+Enter**
+  run the filelog navigator
+
+**Shift+Enter**
+  run the manifest viewer for the displayed revision
+  
+**Ctrl+R**
+  reread repo; note that by default, repo will be automatically
+  reloaded if it is modified (due to a commit, a pull, etc.)
+  
+**Alt+Up/Down**
+  display previous/next diff block
+
+**Alt+Left/Right**
+  go to previous/next visited revision (in navigation history)
+  
 
     """
 
