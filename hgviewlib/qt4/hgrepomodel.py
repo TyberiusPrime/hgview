@@ -177,6 +177,7 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
         grapher = revision_grapher(self.repo, branch=branch)
         self.graph = Graph(self.repo, grapher, self.max_file_size)
         self.rowcount = 0
+        self.emit(SIGNAL('layoutChanged()'))
         self.heads = [self.repo.changectx(x).rev() for x in self.repo.heads()]
         self.ensureBuilt(row=self.fill_step)
         QtCore.QTimer.singleShot(0, Curry(self.emit, SIGNAL('filled')))
