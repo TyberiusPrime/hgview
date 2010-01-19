@@ -313,6 +313,8 @@ class HgFileView(QtGui.QFrame):
                 self.timer.stop()
 
             parent = self._model.graph.fileparent(self._filename, self._ctx.rev())
+            if parent is None:
+                return
             m = self._ctx.filectx(self._filename).renamed()
             if m:
                 pfilename, pnode = m
