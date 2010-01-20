@@ -149,7 +149,6 @@ class HgRepoView(QtGui.QTableView):
                 menu.addAction(self._actions[act])
             else:
                 menu.addSeparator()
-        menu.addAction(self.goto_toolbar._actions['open'])
         menu.exec_(event.globalPos())
 
     def init_variables(self):

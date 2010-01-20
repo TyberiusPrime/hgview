@@ -133,6 +133,10 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
         self.toolBar_edit.addAction(self.tableView_revisions._actions['back'])
         self.toolBar_edit.addAction(self.tableView_revisions._actions['forward'])
 
+        findaction = self.find_toolbar.toggleViewAction()
+        findaction.setIcon(geticon('find'))
+        self.toolBar_edit.addAction(findaction)
+
         # tree filters toolbar
         self.branch_label = QtGui.QToolButton()
         self.branch_label.setText("Branch")
@@ -377,7 +381,10 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
         connect(self.textview_header, SIGNAL('revisionSelected'), view.goto)
         connect(self.textview_header, SIGNAL('parentRevisionSelected'), self.textview_status.displayDiff)
         self.attachQuickBar(view.goto_toolbar)
-
+        gotoaction = view.goto_toolbar.toggleViewAction()
+        gotoaction.setIcon(geticon('goto'))
+        self.toolBar_edit.addAction(gotoaction)
+        
     def _setup_table(self, table):
         table.setTabKeyNavigation(False)
         table.verticalHeader().setDefaultSectionSize(self.rowheight)
