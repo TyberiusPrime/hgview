@@ -99,25 +99,22 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
                 openbr.extend(self.repo.branchheads(branch, closed=False))
             clbranches = [br for br, node in allbranches if node not in openbr]
             branches = [br for br, node in allbranches if node in openbr]
-            self.branch_checkBox_action.setVisible(len(clbranches)>0)
-            if self.branch_checkBox.isChecked():
+            if self.branch_checkBox_action.isChecked():
                 branches = branches + clbranches
         else:
-            self.branch_checkBox_action.setVisible(False)
             branches = [br for br, node in allbranches] # open branches
 
         if len(branches) == 1:
-            self.branch_label_action.setVisible(False)
-            self.branch_comboBox_action.setVisible(False)
+            self.branch_label_action.setEnabled(False)
+            self.branch_comboBox_action.setEnabled(False)
         else:
             self.branchesmodel = QtGui.QStringListModel([''] + branches)
             self.branch_comboBox.setModel(self.branchesmodel)
-            self.branch_label_action.setVisible(True)
             self.branch_label_action.setEnabled(True)
-            self.branch_comboBox_action.setVisible(True)
             self.branch_comboBox_action.setEnabled(True)
 
     def createToolbars(self):
+        # find quickbar
         self.find_toolbar = FindInGraphlogQuickBar(self)
         self.find_toolbar.attachFileView(self.textview_status)
         self.find_toolbar.attachHeaderView(self.textview_header)
@@ -131,28 +128,44 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
 
         self.attachQuickBar(self.find_toolbar)
 
+        # navigation toolbar
         self.toolBar_edit.addAction(self.tableView_revisions._actions['back'])
         self.toolBar_edit.addAction(self.tableView_revisions._actions['forward'])
 
-        self.branch_label = QtGui.QLabel("Branch")
+        # tree filters toolbar
+        self.branch_label = QtGui.QToolButton()
+        self.branch_label.setText("Branch")
+        self.branch_label.setStatusTip("Display graph the named branch only")
+        self.branch_label.setPopupMode(QtGui.QToolButton.InstantPopup)
+        self.branch_menu = QtGui.QMenu()
+        cbranch_action = self.branch_menu.addAction("Display closed branches")
+        cbranch_action.setCheckable(True)
+        self.branch_checkBox_action = cbranch_action
+        self.branch_label.setMenu(self.branch_menu)
         self.branch_comboBox = QtGui.QComboBox()
-        self.branch_checkBox = QtGui.QCheckBox("Display closed branches")
         connect(self.branch_comboBox, SIGNAL('activated(const QString &)'),
                 self.refreshRevisionTable)
-        connect(self.branch_checkBox, SIGNAL('toggled(bool)'),
+        connect(cbranch_action, SIGNAL('toggled(bool)'),
                 self.setupBranchCombo)
 
         self.toolBar_treefilters.layout().setSpacing(3)
-        self.branch_checkBox_action = self.toolBar_treefilters.addWidget(self.branch_checkBox)
-        self.toolBar_treefilters.addSeparator()
 
         self.branch_label_action = self.toolBar_treefilters.addWidget(self.branch_label)
         self.branch_comboBox_action = self.toolBar_treefilters.addWidget(self.branch_comboBox)
         self.toolBar_treefilters.addSeparator()
 
-        self.startrev_label = QtGui.QLabel("Start rev.")
+        self.startrev_label = QtGui.QToolButton()
+        self.startrev_label.setText("Start rev.")
+        self.startrev_label.setStatusTip("Display graph from this revision")
+        self.startrev_label.setPopupMode(QtGui.QToolButton.InstantPopup)
         self.startrev_entry = QtGui.QLineEdit()
-        self.startrev_follow = QtGui.QCheckBox("Follow")
+        self.startrev_entry.setStatusTip("Display graph from this revision")
+        self.startrev_menu = QtGui.QMenu()
+        follow_action = self.startrev_menu.addAction("Follow mode")
+        follow_action.setCheckable(True)
+        follow_action.setStatusTip("Follow changeset history from start revision")
+        self.startrev_follow_action = follow_action
+        self.startrev_label.setMenu(self.startrev_menu)
 
         self.revscompl_model = QtGui.QStringListModel(['tip'])
         self.revcompleter = QtGui.QCompleter(self.revscompl_model, self)
@@ -160,14 +173,12 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
 
         connect(self.startrev_entry, SIGNAL('editingFinished()'),
                 self.refreshRevisionTable)
-        connect(self.startrev_entry, SIGNAL('returnPressed()'),
-                self.refreshRevisionTable)
-        connect(self.startrev_follow, SIGNAL('stateChanged(int)'),
+        connect(self.startrev_follow_action, SIGNAL('toggled(bool)'),
                 self.refreshRevisionTable)
         self.startrev_label_action = self.toolBar_treefilters.addWidget(self.startrev_label)
         self.startrev_entry_action = self.toolBar_treefilters.addWidget(self.startrev_entry)
-        self.startrev_follow_action = self.toolBar_treefilters.addWidget(self.startrev_follow)
 
+        # diff mode toolbar
         self.toolBar_diff.addAction(self.actionDiffMode)
         self.toolBar_diff.addAction(self.actionAnnMode)
         self.toolBar_diff.addAction(self.actionNextDiff)
@@ -462,11 +473,11 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
         if not startrev:
             startrev = None
 
-        if self.sender() is self.startrev_follow and startrev is None:
+        if self.sender() is self.startrev_follow_action and startrev is None:
             return
             
         startrev = self.repo.changectx(startrev).rev()
-        follow = self.startrev_follow.checkState() == Qt.Checked
+        follow = self.startrev_follow_action.isChecked()
         self.revscompl_model.setStringList(self.repo.tags().keys())
 
         self.repomodel.setRepo(self.repo, branch=branch, fromhead=startrev,
