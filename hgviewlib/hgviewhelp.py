@@ -43,10 +43,14 @@ revision belongs to.
 The color of the links (between nodes) is randomly chosen.
 
 The position of the working directory is marked on the graph using a
-small icon as node, depending on the status of the working
-directory. Note that if the working directoy is in merge state, there
-will be 2 revisions marked as modified in the graph (since the working
-directory is then a son of both the merged nodes).
+small sunny icon as node marker. If the working directory has local
+modifications, a *virtual* is added in the graph with a special sign
+icon (with no revision number). Modified, added and removed files are
+listed and browsable as a normal changeset node.
+
+Note that if the working directoy is in merge state, there will be 2
+revisions marked as modified in the graph (since the working directory
+is then a son of both the merged nodes).
 
 mq support
 ~~~~~~~~~~

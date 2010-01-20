@@ -24,7 +24,7 @@ from cStringIO import StringIO
 import difflib
 
 from mercurial.node import nullrev
-from mercurial import patch, util
+from mercurial import patch, util, match
 
 import hgviewlib # force apply monkeypatches
 from hgviewlib.util import tounicode, isbfile
@@ -36,19 +36,18 @@ def diff(repo, ctx1, ctx2=None, files=None):
     if ctx2 is None:
         ctx2 = ctx1.parents()[0]
     if files is None:
-        match = util.always
+        m = match.always(repo.root, repo.getcwd())
     else:
-        def match(fname):
-            return fname in files
+        m = match.exact(repo.root, repo.getcwd(), files)
     # try/except for the sake of hg compatibility (API changes between
     # 1.0 and 1.1)
     try:
         out = StringIO()
-        patch.diff(repo, ctx2.node(), ctx1.node(), match=match, fp=out)
+        patch.diff(repo, ctx2.node(), ctx1.node(), match=m, fp=out)
         diffdata = out.getvalue()
     except:
         diffdata = '\n'.join(patch.diff(repo, ctx2.node(), ctx1.node(),
-                                        match=match))
+                                        match=m))
     # XXX how to deal diff encodings?
     try:
         diffdata = unicode(diffdata, "utf-8")
@@ -65,7 +64,12 @@ def __get_parents(repo, rev, branch=None):
     much slower).
     """
     if not branch:
+        if rev is None:
+            return [x.rev() for x in repo.changectx(None).parents() if x]
         return [x for x in repo.changelog.parentrevs(rev) if x != nullrev]
+    if rev is None:
+        return [x.rev() for x in repo.changectx(None).parents() \
+                if x and repo.changectx(rev).branch() == branch]
     return [x for x in repo.changelog.parentrevs(rev) \
             if (x != nullrev and repo.changectx(rev).branch() == branch)]
 
@@ -98,22 +102,26 @@ def revision_grapher(repo, start_rev=None, stop_rev=0, branch=None, follow=False
 
     If branch is set, only generated the subtree for the given named branch. 
     """
-    if start_rev is None:
+    if start_rev is None and repo.status() == ([],)*7:
         start_rev = len(repo.changelog)
-    assert start_rev >= stop_rev
+    assert start_rev is None or start_rev >= stop_rev
     curr_rev = start_rev
     revs = []
     rev_color = {}
     nextcolor = 0
-    while curr_rev >= stop_rev:
+    while curr_rev is None or curr_rev >= stop_rev:
         # Compute revs and next_revs.
         if curr_rev not in revs:
             if branch:
                 ctx = repo.changectx(curr_rev)
                 if ctx.branch() != branch:
-                    curr_rev -= 1
+                    if curr_rev is None:
+                        curr_rev = len(repo.changelog)
+                    else:
+                        curr_rev -= 1
                     yield None
                     continue
+                    
             # New head.
             if start_rev and follow and curr_rev != start_rev:
                 curr_rev -= 1
@@ -166,7 +174,10 @@ def revision_grapher(repo, start_rev=None, stop_rev=0, branch=None, follow=False
 
         yield (curr_rev, rev_index, curcolor, lines, parents)
         revs = next_revs
-        curr_rev -= 1
+        if curr_rev is None:
+            curr_rev = len(repo.changelog)
+        else:
+            curr_rev -= 1
 
 
 def filelog_grapher(repo, path):
@@ -341,7 +352,7 @@ class Graph(object):
     def index(self, rev):
         if len(self) == 0: # graph is empty, let's build some nodes
             self.build_nodes(10)
-        if rev < self.nodes[-1].rev:
+        if rev is not None and rev < self.nodes[-1].rev:
             self.build_nodes(self.nodes[-1].rev - rev)
         if rev in self.nodesdict:
             return self.nodes.index(self.nodesdict[rev])
@@ -372,7 +383,7 @@ class Graph(object):
 
     def fileflag(self, filename, rev):
         """
-        Return a flag (see fileflags) between rev and its forst parent
+        Return a flag (see fileflags) between rev and its first parent
         """
         return self.fileflags(filename, rev)[0]
 
@@ -398,7 +409,7 @@ class Graph(object):
                 data += "footprint: %s\n" % data
             return "+", data
         if flag not in ('-', '?'):
-            if fctx is None or fctx.node() is None:
+            if fctx is None:# or fctx.node() is None:
                 return '', None
             if fctx.size() > self.maxfilesize:
                 data = "file too big"
@@ -439,7 +450,10 @@ class Graph(object):
         return flag, data
 
     def fileparent(self, filename, rev):
-        node = self.repo.changelog.node(rev)
+        if rev is not None:
+            node = self.repo.changelog.node(rev)            
+        else:
+            node = self.repo.changectx(rev).node()
         for parent in self.nodesdict[rev].parents:
             pnode = self.repo.changelog.node(parent)
             changes = self.repo.status(pnode, node)[:5]

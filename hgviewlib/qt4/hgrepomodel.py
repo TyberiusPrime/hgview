@@ -65,6 +65,8 @@ def cvrt_date(date):
     return QtCore.QDateTime.fromTime_t(int(date)).toString(QtCore.Qt.LocaleDate)
 
 def gettags(model, ctx, gnode):
+    if ctx.rev() is None:
+        return ""
     mqtags = ['qbase', 'qtip', 'qparent']
     tags = ctx.tags()
     if model.hide_mq_tags:
@@ -82,7 +84,7 @@ def getlog(model, ctx, gnode):
 
 # XXX maybe it's time to make these methods of the model...
 # in following lambdas, ctx is a hg changectx
-_columnmap = {'ID': lambda model, ctx, gnode: str(ctx.rev()),
+_columnmap = {'ID': lambda model, ctx, gnode: ctx.rev() is not None and str(ctx.rev()) or "",
               'Log': getlog,
               'Author': lambda model, ctx, gnode: tounicode(ctx.user()),
               'Date': lambda model, ctx, gnode: cvrt_date(ctx.date()),
@@ -91,7 +93,7 @@ _columnmap = {'ID': lambda model, ctx, gnode: str(ctx.rev()),
               'Filename': lambda model, ctx, gnode: gnode.extra[0],
               }
 
-_tooltips = {'ID': lambda ctx, gnode: ctx.hex(),
+_tooltips = {'ID': lambda model, ctx, gnode: ctx.rev() is not None and ctx.hex() or "Working Directory",
              }
 
 def auth_width(model, repo):
@@ -387,18 +389,19 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
                     if [True for st in status if st]:
                         modified = True
 
-                if tags.intersection(self.mqueues):
-                    if not modified:
-                        icn = geticon('mqpatch')
-                    else:
-                        icn = geticon('mqdiff')
-                elif modified:
+                if gnode.rev is None:
+                    # WD is displayed only if there are local
+                    # modifications, so let's use the modified icon
                     icn = geticon('modified')
+                elif tags.intersection(self.mqueues):
+                    icn = geticon('mqpatch')
+                #elif modified:
+                #    icn = geticon('modified')
                 elif atwd:
                     icn = geticon('clean')
 
                 if icn:
-                    icn.paint(painter, dot_x-4, dot_y-5, 15, 15)
+                    icn.paint(painter, dot_x-5, dot_y-5, 17, 17)
                 else:
                     painter.drawEllipse(dot_x, dot_y, radius, radius)
                 painter.end()

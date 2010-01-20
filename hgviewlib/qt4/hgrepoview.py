@@ -232,7 +232,7 @@ class HgRepoView(QtGui.QTableView):
         Callback called when a revision is selected in the revisions table
         """
         rev = self.revFromindex(index)
-        if rev is not None:
+        if True:#rev is not None:
             model = self.model()
             if self.current_rev is not None and self.current_rev == rev:
                 return
@@ -400,10 +400,13 @@ class RevDisplay(QtGui.QTextBrowser):
             buf += '</td></tr>\n'
 
         buf += '<tr>'
-        buf += '<td><b>Revision:</b>&nbsp;'\
-               '<span class="rev_number">%d</span>:'\
-               '<span class="rev_hash">%s</span></td>'\
-               '\n' % (ctx.rev(), short_hex(ctx.node()))
+        if rev is None:
+            buf += "<td><b>Working Directory</b></td>\n"
+        else:
+            buf += '<td><b>Revision:</b>&nbsp;'\
+                   '<span class="rev_number">%d</span>:'\
+                   '<span class="rev_hash">%s</span></td>'\
+                   '\n' % (ctx.rev(), short_hex(ctx.node()))
 
         buf += '<td><b>Author:</b>&nbsp;'\
                '%s</td>'\

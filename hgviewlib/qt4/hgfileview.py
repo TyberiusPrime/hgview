@@ -201,7 +201,6 @@ class HgFileView(QtGui.QFrame):
 
     def setAnnotate(self, ann):
         self._annotate = ann
-        self.ann.setVisible(ann)
         if ann:
             self.displayFile()
         
@@ -246,6 +245,7 @@ class HgFileView(QtGui.QFrame):
             return
         try:
             filectx = self._ctx.filectx(self._realfilename)
+            
         except LookupError: # occur on deleted files
             return
         if self._mode == 'diff' and self._p_rev is not None:
@@ -295,11 +295,15 @@ class HgFileView(QtGui.QFrame):
         self.emit(SIGNAL('fileDisplayed'), self._filename)
         self.updateDiffDecorations()
         if self._mode == 'file' and self._annotate:
-            if lexer is not None:
-                self.ann.setFont(lexer.font(0))
-            else:
-                self.ann.setFont(self.sci.font())
-            self.ann.setFilectx(filectx)
+            if filectx.rev() is None: # XXX hide also for binary files
+                self.ann.setVisible(False)
+            else:                
+                self.ann.setVisible(self._annotate)
+                if lexer is not None:
+                    self.ann.setFont(lexer.font(0))
+                else:
+                    self.ann.setFont(self.sci.font())
+                self.ann.setFilectx(filectx)
         return True
 
     def updateDiffDecorations(self):
