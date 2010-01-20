@@ -97,20 +97,24 @@ start hgview log viewer
                 rev = int(rev)
                 mainwindow = ManifestViewer(repo, rev)
             else:
-                mainwindow = HgRepoViewer(repo)
+                head = None
+                if opts.get('start'):
+                    head = int(opts.get('start'))
+                mainwindow = HgRepoViewer(repo, head)
         mainwindow.show()
         return app.exec_()
 
 import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 import hgviewlib.hgviewhelp as hghelp
-    
+
 start_hgview.__doc__ = hghelp.long_help_msg
     
 cmdtable = {
     "^hgview|hgv|qv": (start_hgview,
                        [('n', 'navigate', False, '(with filename) start in navigation mode'),
                         ('r', 'rev', '', 'start in manifest navigation mode at rev R'),
+                        ('s', 'start', '', 'show only graph from rev S'),
                         ],
             "hg hgview [options] [filename]"),
 }

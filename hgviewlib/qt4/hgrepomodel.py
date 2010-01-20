@@ -139,7 +139,7 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
     _stretchs = {'Log': 1, }
     _getcolumns = "getChangelogColumns"
 
-    def __init__(self, repo, branch='', parent=None):
+    def __init__(self, repo, branch='', fromhead=None, follow=False, parent=None):
         """
         repo is a hg repo instance
         """
@@ -153,9 +153,9 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
         self.rowcount = 0
         self.repo = repo
         self.load_config()
-        self.setRepo(repo, branch)
+        self.setRepo(repo, branch=branch, fromhead=fromhead, follow=follow)
 
-    def setRepo(self, repo, branch=''):
+    def setRepo(self, repo, branch='', fromhead=None, follow=False):
         oldrepo = self.repo
         self.repo = repo
         if oldrepo.root != repo.root:
@@ -174,7 +174,8 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
         self.wd_status = [self.repo.status(ctx.node(), None)[:4] for ctx in wdctxs]
         self._user_colors = {}
         self._branch_colors = {}
-        grapher = revision_grapher(self.repo, branch=branch)
+        grapher = revision_grapher(self.repo, start_rev=fromhead,
+                                   follow=follow, branch=branch)
         self.graph = Graph(self.repo, grapher, self.max_file_size)
         self.rowcount = 0
         self.emit(SIGNAL('layoutChanged()'))
@@ -449,7 +450,7 @@ class FileRevModel(HgRepoListModel):
         HgRepoListModel.__init__(self, repo, parent=parent)
         self.setFilename(filename)
 
-    def setRepo(self, repo, branch=''):
+    def setRepo(self, repo, branch='', fromhead=None, follow=False):
         self.repo = repo
         self._datacache = {}
         self.load_config()

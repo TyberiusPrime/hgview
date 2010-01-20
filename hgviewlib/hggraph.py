@@ -79,7 +79,7 @@ def ismerge(ctx):
         return len(ctx.parents()) == 2 and ctx.parents()[1]
     return False
 
-def revision_grapher(repo, start_rev=None, stop_rev=0, branch=None):
+def revision_grapher(repo, start_rev=None, stop_rev=0, branch=None, follow=False):
     """incremental revision grapher
 
     This generator function walks through the revision history from
@@ -87,13 +87,16 @@ def revision_grapher(repo, start_rev=None, stop_rev=0, branch=None):
     or equal to start_rev) and for each revision emits tuples with the
     following elements:
 
-      - Current revision.
-      - Column of the current node in the set of ongoing edges.
+      - current revision
+      - column of the current node in the set of ongoing edges
       - color of the node (?)
       - lines; a list of (col, next_col, color) indicating the edges between
         the current row and the next row
       - parent revisions of current revision
 
+    If follow is True, only generated the subtree from the start_rev head.
+
+    If branch is set, only generated the subtree for the given named branch. 
     """
     if start_rev is None:
         start_rev = len(repo.changelog)
@@ -112,6 +115,9 @@ def revision_grapher(repo, start_rev=None, stop_rev=0, branch=None):
                     yield None
                     continue
             # New head.
+            if start_rev and follow and curr_rev != start_rev:
+                curr_rev -= 1
+                continue
             revs.append(curr_rev)
             rev_color[curr_rev] = curcolor = nextcolor
             nextcolor += 1
@@ -375,7 +381,7 @@ class Graph(object):
 
     def filedata(self, filename, rev, mode='diff'):
         """XXX written under dubious encoding assumptions
-        """
+        """        
         # XXX This really begins to be a dirty mess...
         data = ""
         flag = self.fileflag(filename, rev)

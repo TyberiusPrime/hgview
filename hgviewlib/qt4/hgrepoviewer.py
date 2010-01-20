@@ -44,7 +44,7 @@ SIGNAL = QtCore.SIGNAL
 class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
     """hg repository viewer/browser application"""
     _uifile = 'hgqv.ui'
-    def __init__(self, repo):
+    def __init__(self, repo, fromhead=None):
         self.repo = repo
         self._closed_branch_supp = has_closed_branch_support(self.repo)
 
@@ -75,8 +75,9 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
         connect(self.textview_status, SIGNAL('fileDisplayed'),
                 self.file_displayed)
         self.setupBranchCombo()
-        self.setupModels()
-
+        self.setupModels(fromhead)
+        if fromhead:
+            self.startrev_entry.setText(str(fromhead))
         self.setupRevisionTable()
 
         self._repodate = self._getrepomtime()
@@ -141,12 +142,34 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
         connect(self.branch_checkBox, SIGNAL('toggled(bool)'),
                 self.setupBranchCombo)
 
+        self.toolBar_treefilters.layout().setSpacing(3)
         self.branch_checkBox_action = self.toolBar_treefilters.addWidget(self.branch_checkBox)
         self.toolBar_treefilters.addSeparator()
+
         self.branch_label_action = self.toolBar_treefilters.addWidget(self.branch_label)
         self.branch_comboBox_action = self.toolBar_treefilters.addWidget(self.branch_comboBox)
+        self.toolBar_treefilters.addSeparator()
+
+        self.startrev_label = QtGui.QLabel("Start rev.")
+        self.startrev_entry = QtGui.QLineEdit()
+        self.startrev_follow = QtGui.QCheckBox("Follow")
+
+        self.revscompl_model = QtGui.QStringListModel(['tip'])
+        self.revcompleter = QtGui.QCompleter(self.revscompl_model, self)
+        self.startrev_entry.setCompleter(self.revcompleter)
+
+        connect(self.startrev_entry, SIGNAL('editingFinished()'),
+                self.refreshRevisionTable)
+        connect(self.startrev_entry, SIGNAL('returnPressed()'),
+                self.refreshRevisionTable)
+        connect(self.startrev_follow, SIGNAL('stateChanged(int)'),
+                self.refreshRevisionTable)
+        self.startrev_label_action = self.toolBar_treefilters.addWidget(self.startrev_label)
+        self.startrev_entry_action = self.toolBar_treefilters.addWidget(self.startrev_entry)
+        self.startrev_follow_action = self.toolBar_treefilters.addWidget(self.startrev_follow)
+
         self.toolBar_diff.addAction(self.actionDiffMode)
-        self.toolBar_diff.addAction(self.actionAnnMode)        
+        self.toolBar_diff.addAction(self.actionAnnMode)
         self.toolBar_diff.addAction(self.actionNextDiff)
         self.toolBar_diff.addAction(self.actionPrevDiff)
 
@@ -172,7 +195,7 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
                 self.textview_status.setAnnotate)
 
         self.actionHelp.setShortcut(Qt.Key_F1)
-        self.actionHelp.setIcon(geticon('help'))        
+        self.actionHelp.setIcon(geticon('help'))
         connect(self.actionHelp, SIGNAL('triggered()'),
                 self.on_help)
         
@@ -215,7 +238,6 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
         self.disab_shortcuts.append(self.actionNextRev)
         self.disab_shortcuts.append(self.actionPrevRev)
 
-
         # navigate in file viewer
         self.actionNextLine = QtGui.QAction('Next line', self)
         self.actionNextLine.setShortcut(Qt.SHIFT + Qt.Key_Down)
@@ -241,9 +263,15 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
         # Activate file (file diff navigator)
         self.actionActivateFile = QtGui.QAction('Activate file', self)
         self.actionActivateFile.setShortcuts([Qt.Key_Return, Qt.Key_Enter])
+        def enterkeypressed():
+            w = QtGui.QApplication.focusWidget()
+            if not isinstance(w, QtGui.QLineEdit):
+                self.tableView_filelist.fileActivated(self.tableView_filelist.currentIndex(),)
+            else:
+                w.emit(SIGNAL('editingFinished()'))
         connect(self.actionActivateFile, SIGNAL('triggered()'),
-                lambda self=self:
-                self.tableView_filelist.fileActivated(self.tableView_filelist.currentIndex(),))
+                enterkeypressed)
+
         self.actionActivateFileAlt = QtGui.QAction('Activate alt. file', self)
         self.actionActivateFileAlt.setShortcuts([Qt.ALT+Qt.Key_Return, Qt.ALT+Qt.Key_Enter])
         connect(self.actionActivateFileAlt, SIGNAL('triggered()'),
@@ -260,6 +288,29 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
         self.disab_shortcuts.append(self.actionActivateFile)
         self.disab_shortcuts.append(self.actionActivateRev)
 
+        self.actionStartAtRev = QtGui.QAction('Start at rev.', self)
+        self.actionStartAtRev.setShortcuts([Qt.Key_Backspace,])
+        connect(self.actionStartAtRev, SIGNAL('triggered()'),
+                self.startAtCurrentRev)
+        self.addAction(self.actionStartAtRev)
+
+        self.actionClearStartAtRev = QtGui.QAction('Clear start at rev.', self)
+        self.actionClearStartAtRev.setShortcuts([Qt.SHIFT + Qt.Key_Backspace,])
+        connect(self.actionClearStartAtRev, SIGNAL('triggered()'),
+                self.clearStartAtRev)
+        self.addAction(self.actionClearStartAtRev)
+
+    def startAtCurrentRev(self):
+        crev = self.tableView_revisions.current_rev
+        if crev:
+            self.startrev_entry.setText(str(crev))
+            self.refreshRevisionTable()
+
+    def clearStartAtRev(self):
+        self.startrev_entry.setText("")
+        self._reload_rev = self.tableView_revisions.current_rev
+        self._reload_file = self.tableView_filelist.currentFile()
+        self.refreshRevisionTable()
 
     def setMode(self, mode):
         self.textview_status.setMode(mode)
@@ -281,8 +332,8 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
         cfg = HgDialogMixin.load_config(self)
         self.hidefinddelay = cfg.getHideFindDelay()
 
-    def create_models(self):
-        self.repomodel = HgRepoListModel(self.repo)
+    def create_models(self, fromhead=None):
+        self.repomodel = HgRepoListModel(self.repo, fromhead=fromhead)
         connect(self.repomodel, SIGNAL('filled'),
                 self.on_filled)
         connect(self.repomodel, SIGNAL('showMessage'),
@@ -291,8 +342,8 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
 
         self.filelistmodel = HgFileListModel(self.repo)
 
-    def setupModels(self):
-        self.create_models()
+    def setupModels(self, fromhead=None):
+        self.create_models(fromhead)
         self.tableView_revisions.setModel(self.repomodel)
         self.tableView_filelist.setModel(self.filelistmodel)
         self.textview_status.setModel(self.repomodel)
@@ -403,12 +454,23 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
         self.refreshRevisionTable()
 
     #@timeit
-    def refreshRevisionTable(self, branch=None):
+    def refreshRevisionTable(self, *args):
         """Starts the process of filling the HgModel"""
-        if branch is None:
-            branch = self.branch_comboBox.currentText()
+        branch = self.branch_comboBox.currentText()
         branch = str(branch)
-        self.repomodel.setRepo(self.repo, branch=branch)
+        startrev = str(self.startrev_entry.text()).strip()
+        if not startrev:
+            startrev = None
+
+        if self.sender() is self.startrev_follow and startrev is None:
+            return
+            
+        startrev = self.repo.changectx(startrev).rev()
+        follow = self.startrev_follow.checkState() == Qt.Checked
+        self.revscompl_model.setStringList(self.repo.tags().keys())
+
+        self.repomodel.setRepo(self.repo, branch=branch, fromhead=startrev,
+                               follow=follow)
 
     def on_about(self, *args):
         """ Display about dialog """
