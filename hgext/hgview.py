@@ -1,6 +1,6 @@
 # hgview: visual mercurial graphlog browser in PyQt4
 #
-# Copyright 2008-2009 Logilab
+# Copyright 2008-2010 Logilab
 #
 # This software may be used and distributed according to the terms
 # of the GNU General Public License, incorporated herein by reference.

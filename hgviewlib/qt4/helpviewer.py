@@ -2,12 +2,12 @@
 #!/usr/bin/env python
 # main.py - qt4-based hg rev log browser
 #
-# Copyright (C) 2007-2009 Logilab. All rights reserved.
+# Copyright (C) 2007-2010 Logilab. All rights reserved.
 #
 # This software may be used and distributed according to the terms
 # of the GNU General Public License, incorporated herein by reference.
 """
-Main Qt4 application for hgview
+Help window for hgview
 """
 import sys, os
 import re
