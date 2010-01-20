@@ -89,6 +89,7 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
             if mtime > self._repodate:
                 self.statusBar().showMessage("Repository has been modified, "
                                              "reloading...", 2000)
+
                 self.reload()
 
     def setupBranchCombo(self, *args):
@@ -315,13 +316,15 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
         crev = self.tableView_revisions.current_rev
         if crev:
             self.startrev_entry.setText(str(crev))
-            self.refreshRevisionTable()
+            # XXX workaround: see refreshRevisionTable method 
+            self.refreshRevisionTable(sender=self)
 
     def clearStartAtRev(self):
         self.startrev_entry.setText("")
         self._reload_rev = self.tableView_revisions.current_rev
         self._reload_file = self.tableView_filelist.currentFile()
-        self.refreshRevisionTable()
+        # XXX workaround: see refreshRevisionTable method 
+        self.refreshRevisionTable(sender=self)
 
     def setMode(self, mode):
         self.textview_status.setMode(mode)
@@ -462,20 +465,24 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
         self._repodate = self._getrepomtime()
         self.setupBranchCombo()
         self.setupModels()
-        self.refreshRevisionTable()
+        # XXX workaround: see refreshRevisionTable method 
+        self.refreshRevisionTable(sender=self)
 
     #@timeit
-    def refreshRevisionTable(self, *args):
+    def refreshRevisionTable(self, *args, **kw):
         """Starts the process of filling the HgModel"""
         branch = self.branch_comboBox.currentText()
         branch = str(branch)
         startrev = str(self.startrev_entry.text()).strip()
         if not startrev:
             startrev = None
-
-        if self.sender() is self.startrev_follow_action and startrev is None:
+        # XXX workaround: self.sender() may provoque a core dump if
+        # this method is called directly (not via a connected signal);
+        # the 'sender' keyword is a way to discrimimne that the method
+        # has been called directly (thus caller MUST set this kw arg)
+        sender = kw.get('sender') or self.sender()
+        if sender is self.startrev_follow_action and startrev is None:
             return
-            
         startrev = self.repo.changectx(startrev).rev()
         follow = self.startrev_follow_action.isChecked()
         self.revscompl_model.setStringList(self.repo.tags().keys())
