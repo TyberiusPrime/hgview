@@ -3,7 +3,7 @@ Section: vcs
 Priority: optional
 Maintainer: David Douard <david.douard@logilab.fr>
 Uploaders: Alexandre Fayolle <afayolle@debian.org>
-Build-Depends: debhelper (>= 5.0.38), pyqt4-dev-tools, python (>=2.5), xmlto, asciidoc, mercurial  (>= 0.9.3)
+Build-Depends: debhelper (>= 5.0.38), pyqt4-dev-tools, python (>=2.5), xmlto, asciidoc, mercurial
 Build-Depends-Indep: python-support
 XS-Python-Version: >= 2.5
 Standards-Version: 3.8.3
@@ -13,7 +13,7 @@ Homepage: http://www.logilab.org/project/hgview
 
 Package: hgview
 Architecture: all
-Depends: ${python:Depends}, ${misc:Depends}, python-qt4, python-qscintilla2, python-egenix-mxdatetime, mercurial (>= 0.9.3), python-docutils
+Depends: ${python:Depends}, ${misc:Depends}, python-qt4, python-qscintilla2, python-egenix-mxdatetime, mercurial (>= 1.1.0), python-docutils
 Enhances: mercurial
 XB-Python-Version: ${python:Versions}
 Description: mercurial interactive history viewer

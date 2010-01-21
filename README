@@ -1,5 +1,5 @@
 hgview intallation notes
-=========================
+========================
 
 hgview can be used either as a hg extension, or as a standalone
 application.
@@ -27,11 +27,12 @@ On the other hand, installing ``hgview`` is simply done using usual
 Last, you can add the following to your main .hgrc file::
 
   [extensions]
-  view=path/to/hqgv/hgext/hgview.py
+  hgext.hgview=path/to/hqgv/hgext/hgview.py
 
   [hgview]
   # your hgview configs statements like: 
   dotradius=6
   # type hg qv-config to list available options
 
-
+See `hg help hgview` for more informations on available configuration
+options.

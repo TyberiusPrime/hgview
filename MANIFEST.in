@@ -15,6 +15,5 @@ include hgviewlib/qt4/hgqv.qrc
 include doc/hgview.1.txt
 include doc/Makefile
 include hgext/hgview.py
-include hgext/hgview.rc
 
 recursive-include etc *

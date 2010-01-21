@@ -175,6 +175,12 @@ Keyboard shortcuts
 **Alt+Left/Right**
   go to previous/next visited revision (in navigation history)
   
+**Backspace**
+  set current revision the current start revision (hide any revision above it)
+ 
+**Shit+Backspace**
+  clear the start revision value
+ 
 
     """
 
