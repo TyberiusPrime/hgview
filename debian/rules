@@ -24,7 +24,7 @@ clean:
 	rm -f build-stamp configure-stamp
 	rm -rf build
 	python setup.py clean
-	rm -f hgviewlib/qt4/*_ui.py
+	rm -f hgviewlib/qt4/*_ui.py hgviewlib/qt4/hgqv_rc.py
 	make -C doc clean
 	find . -name "*.pyc" | xargs rm -f
 	rm -f changelog.gz
