@@ -6,7 +6,7 @@ Uploaders: Alexandre Fayolle <afayolle@debian.org>
 Build-Depends: debhelper (>= 5.0.38), pyqt4-dev-tools, python (>=2.5), xmlto, asciidoc, mercurial
 Build-Depends-Indep: python-support
 XS-Python-Version: >= 2.5
-Standards-Version: 3.8.3
+Standards-Version: 3.9.1
 Vcs-Hg: http://www.logilab.org/cgi-bin/hgwebdir.cgi/hgview
 Vcs-Browser: http://www.logilab.org/cgi-bin/hgwebdir.cgi/hgview
 Homepage: http://www.logilab.org/project/hgview

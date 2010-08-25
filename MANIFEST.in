@@ -11,6 +11,7 @@ include bin/hgview.bat
 
 include hgviewlib/qt4/*.ui
 include hgviewlib/qt4/hgqv.qrc
+include hgviewlib/qt4/icons/*.svg
 
 include doc/hgview.1.txt
 include doc/Makefile

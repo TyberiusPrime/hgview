@@ -1,3 +1,10 @@
+hgview (1.2.1-1) unstable; urgency=low
+
+  * New upstream release (closes: #580997, #558767, #580921)
+  * Updated standards to 3.9.1 (no changes required)
+
+ -- Alexandre Fayolle <afayolle@debian.org>  Wed, 25 Aug 2010 16:07:52 +0200
+
 hgview (1.2.0-1) unstable; urgency=low
 
   * New upstream release
