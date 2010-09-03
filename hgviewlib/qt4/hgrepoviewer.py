@@ -189,6 +189,10 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
         self.toolBar_diff.addAction(self.actionNextDiff)
         self.toolBar_diff.addAction(self.actionPrevDiff)
 
+        # rev mod toolbar
+        if self.textview_header.rst_action is not None:
+            self.toolBar_rev.addAction(self.textview_header.rst_action)
+
     def createActions(self):
         # main window actions (from .ui file)
         connect(self.actionRefresh, SIGNAL('triggered()'),

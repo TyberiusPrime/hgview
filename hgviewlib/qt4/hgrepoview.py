@@ -37,6 +37,24 @@ from hgviewlib.qt4 import icon as geticon
 from hgviewlib.qt4.hgmanifestdialog import ManifestViewer
 from hgviewlib.qt4.quickbar import QuickBar
 
+# Re-Structured Text support
+raw2html = lambda x: "<pre>%s</pre>" % xml_escape(x)
+try:
+    from docutils.core import publish_string
+    import docutils.utils
+    def  rst2html (text):
+        try:
+            # halt_level allows the parser to raise errors
+            # report_level cleans the standard output
+            out = publish_string(text, writer_name='html', settings_overrides={
+                'halt_level':docutils.utils.Reporter.WARNING_LEVEL,
+                'report_level':docutils.utils.Reporter.SEVERE_LEVEL + 1})
+        except:
+            out = raw2html(text)
+        return out
+except ImportError:
+    rst2html = None
+
 class GotoQuickBar(QuickBar):
     def __init__(self, parent):
         QuickBar.__init__(self, "Goto", "Ctrl+G", "Goto", parent)
@@ -316,6 +334,20 @@ class RevDisplay(QtGui.QTextBrowser):
     def __init__(self, parent=None):
         QtGui.QTextBrowser.__init__(self, parent)
         self.descwidth = 60 # number of chars displayed for parent/child descriptions
+
+        self._context_menu = self.createStandardContextMenu()
+        if rst2html:
+            self.rst_action = QtGui.QAction(self.tr('Fancy Display'), self)
+            self.rst_action.setCheckable(True)
+            self.rst_action.setChecked(True)
+            self.rst_action.setToolTip(self.tr('Interpret ReST comments'))
+            self.rst_action.setStatusTip(self.tr('Interpret ReST comments'))
+            self._context_menu.addAction(self.rst_action)
+
+            connect(self.rst_action, SIGNAL('triggered()'),
+                    self.refreshDisplay)
+        else:
+            self.rst_action = None
         connect(self,
                 SIGNAL('anchorClicked(const QUrl &)'),
                 self.anchorClicked)
@@ -457,11 +489,16 @@ class RevDisplay(QtGui.QTextBrowser):
                        '\n' % (p.rev(), p.rev(), short, desc)
 
         buf += "</table>\n"
-        desc = xml_escape(unicode(ctx.description(), 'utf-8', 'replace'))
-        desc = desc.replace('\n', '<br/>\n')
-        buf += '<div class="diff_desc"><p>%s</p></div>\n' % desc
+        desc = unicode(ctx.description(), 'utf-8', 'replace')
+        if self.rst_action is not None  and self.rst_action.isChecked():
+            desc = rst2html(desc)
+        else:
+            desc = raw2html(desc)
+        buf += '<div class="diff_desc">%s</div>\n' % desc
         self.setHtml(buf)
 
+    def contextMenuEvent(self, event):
+        self._context_menu.exec_(event.globalPos())
 
 if __name__ == "__main__":
     from mercurial import ui, hg
