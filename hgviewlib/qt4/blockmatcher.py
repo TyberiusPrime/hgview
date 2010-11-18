@@ -16,7 +16,7 @@
 # 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
-Qt4 widgets to display diffs as blocks 
+Qt4 widgets to display diffs as blocks
 """
 import sys, os
 
@@ -51,7 +51,7 @@ class BlockList(QtGui.QWidget):
 
     def clear(self):
         self._blocks = set()
-        
+
     def addBlock(self, typ, alo, ahi):
         self._blocks.add((typ, alo, ahi))
 
@@ -73,7 +73,7 @@ class BlockList(QtGui.QWidget):
         self.update()
         self.emit(SIGNAL('rangeChanged(int, int)'),
                   self._minimum, self._maximum)
-        
+
     def setValue(self, val):
         if val != self._value:
             self._value = val
@@ -95,7 +95,7 @@ class BlockList(QtGui.QWidget):
         self.setMaximum(sbar.maximum())
         self.setMinimum(sbar.minimum())
         self.setPageStep(sbar.pageStep())
-        self.setValue(sbar.value())        
+        self.setValue(sbar.value())
         self.setUpdatesEnabled(True)
         self.connect(sbar, SIGNAL('valueChanged(int)'), self.setValue)
         self.connect(sbar, SIGNAL('rangeChanged(int, int)'), self.setRange)
@@ -105,7 +105,7 @@ class BlockList(QtGui.QWidget):
 
     def syncPageStep(self):
         self.setPageStep(self._sbar.pageStep())
-        
+
     def paintEvent(self, event):
         w = self.width() - 1
         h = self.height()
@@ -123,7 +123,7 @@ class BlockList(QtGui.QWidget):
         p.setBrush(self._vrectcolor)
         p.drawRect(0, self._value, w, self._pagestep)
         p.restore()
-        
+
 class BlockMatch(BlockList):
     """
     A simpe widget to be linked to 2 file views (text areas),
@@ -182,26 +182,26 @@ class BlockMatch(BlockList):
         if i == len(blocks)-1:
             return 1
         return 0
-            
+
     def nextDiff(self):
         return self.showDiff(+1)
-        
+
     def prevDiff(self):
-        return self.showDiff(-1)            
-            
+        return self.showDiff(-1)
+
     def addBlock(self, typ, alo, ahi, blo=None, bhi=None):
         if bhi is None:
             bhi = ahi
         if blo is None:
             blo = alo
         self._blocks.add((typ, alo, ahi, blo, bhi))
-        
+
     def paintEvent(self, event):
         w = self.width()
         h = self.height()
         p = QtGui.QPainter(self)
         p.setRenderHint(p.Antialiasing)
-        
+
         ps_l = float(self._pagestep['left'])
         ps_r = float(self._pagestep['right'])
         v_l = self._value['left']
@@ -211,12 +211,12 @@ class BlockMatch(BlockList):
         # integer number of fully displayed text lines
         scalel = self._sbar['left'].height()//ps_l
         scaler = self._sbar['right'].height()//ps_r
-        
+
         ml = v_l
         Ml = v_l + ps_l
         mr = v_r
         Mr = v_r + ps_r
-        
+
         p.setPen(Qt.NoPen)
         for typ, alo, ahi, blo, bhi in self._blocks:
             if not (ml<=alo<=Ml or ml<=ahi<=Ml or mr<=blo<=Mr or mr<=bhi<=Mr):
@@ -261,7 +261,7 @@ class BlockMatch(BlockList):
         self.update()
         self.emit(SIGNAL('rangeChanged(int, int, const QString &)'),
                   self._minimum[side], self._maximum[side], side)
-        
+
     def setValue(self, val, side=None):
         if side is None:
             if self.sender() == self._sbar['left']:
@@ -286,7 +286,7 @@ class BlockMatch(BlockList):
 
     def resizeEvent(self, event):
         self.syncPageStep()
-        
+
     def linkScrollBar(self, sb, side):
         """
         Make the block list displayer be linked to the scrollbar
@@ -309,7 +309,7 @@ class BlockMatch(BlockList):
                      lambda v1, v2, s: side==s and sb.setRange(v1, v2))
         self.connect(self, SIGNAL('pageStepChanged(int, const QString )'),
                      lambda v, s: side==s and sb.setPageStep(v))
-    
+
 if __name__ == '__main__':
     a = QtGui.QApplication([])
     f = QtGui.QFrame()
@@ -317,7 +317,7 @@ if __name__ == '__main__':
 
     sb1 = QtGui.QScrollBar()
     sb2 = QtGui.QScrollBar()
-    
+
     w0 = BlockList()
     w0.addBlock('-', 200, 300)
     w0.addBlock('-', 450, 460)
@@ -356,7 +356,7 @@ if __name__ == '__main__':
 
     print "sb1=", sb1.minimum(), sb1.maximum(), sb1.pageStep()
     print "sb2=", sb2.minimum(), sb2.maximum(), sb2.pageStep()
-    
+
     f.show()
     a.exec_()
-    
+

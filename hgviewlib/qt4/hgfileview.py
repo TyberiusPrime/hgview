@@ -25,7 +25,7 @@ try:
     from mercurial.error import LookupError
 except ImportError:
     from mercurial.revlog import LookupError
-    
+
 from PyQt4 import QtCore, QtGui, Qsci
 Qt = QtCore.Qt
 connect = QtCore.QObject.connect
@@ -37,7 +37,7 @@ from hgviewlib.util import exec_flag_changed, isbfile, bfilepath
 from hgviewlib.config import HgConfig
 
 from hgviewlib.qt4 import icon as geticon
-from hgviewlib.qt4.hgfiledialog import FileViewer, FileDiffViewer 
+from hgviewlib.qt4.hgfiledialog import FileViewer, FileDiffViewer
 from hgviewlib.qt4.hgmanifestdialog import ManifestViewer
 from hgviewlib.qt4.quickbar import QuickBar
 from hgviewlib.qt4.lexers import get_lexer
@@ -53,7 +53,7 @@ class Annotator(qsci):
     # would have been nice to directly go to the annotated revision...
     def __init__(self, textarea, parent=None):
         qsci.__init__(self, parent)
-        
+
         self.setFrameStyle(0)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
@@ -64,10 +64,10 @@ class Annotator(qsci):
         self.setFont(textarea.font())
         self.setMarginWidth(0, '')
         self.setMarginWidth(1, '')
-        
+
         self.SendScintilla(qsci.SCI_SETCURSOR, 2)
         self.SendScintilla(qsci.SCI_SETCARETSTYLE, 0)
-        
+
         # used to set a background color for every annotating rev
         N = 32
         self.markers = []
@@ -80,7 +80,7 @@ class Annotator(qsci):
         connect(textarea.verticalScrollBar(),
                 SIGNAL('valueChanged(int)'),
                 self.verticalScrollBar().setValue)
-        
+
     def setFilectx(self, fctx):
         self.fctx = fctx
         ann = [f.rev() for f, line in fctx.annotate(follow=True)]
@@ -89,9 +89,9 @@ class Annotator(qsci):
         for i, rev in enumerate(ann):
             idx = allrevs.index(rev)
             self.markerAdd(i, self.markers[idx % len(self.markers)])
-        
-        
-        
+
+
+
 class HgFileView(QtGui.QFrame):
     def __init__(self, parent=None):
         QtGui.QFrame.__init__(self, parent)
@@ -102,7 +102,7 @@ class HgFileView(QtGui.QFrame):
         l = QtGui.QHBoxLayout()
         l.setContentsMargins(0,0,0,0)
         l.setSpacing(0)
-        
+
         self.topLayout = QtGui.QVBoxLayout()
         self.filenamelabel = QtGui.QLabel()
         self.filenamelabel.setWordWrap(True)
@@ -196,14 +196,14 @@ class HgFileView(QtGui.QFrame):
             self._mode = mode
             self.blk.setVisible(self._mode == 'file')
             self.ann.setVisible(self._mode == 'file' and self._annotate)
-            
+
             self.displayFile()
 
     def setAnnotate(self, ann):
         self._annotate = ann
         if ann:
             self.displayFile()
-        
+
     def setModel(self, model):
         # XXX we really need only the "Graph" instance
         self._model = model
@@ -223,17 +223,17 @@ class HgFileView(QtGui.QFrame):
     def displayDiff(self, rev):
         if rev != self._p_rev:
             self.displayFile(rev=rev)
-        
+
     def displayFile(self, filename=None, rev=None):
         if filename is None:
             filename = self._filename
-            
+
         self._realfilename = filename
         if isbfile(filename):
             self._filename = bfilepath(filename)
         else:
             self._filename = filename
-            
+
         if rev is not None:
             self._p_rev = rev
             self.emit(SIGNAL('revForDiffChanged'), rev)
@@ -245,7 +245,7 @@ class HgFileView(QtGui.QFrame):
             return
         try:
             filectx = self._ctx.filectx(self._realfilename)
-            
+
         except LookupError: # occur on deleted files
             return
         if self._mode == 'diff' and self._p_rev is not None:
@@ -257,7 +257,7 @@ class HgFileView(QtGui.QFrame):
             return
         if flag == '':
             return
-        
+
         cfg = HgConfig(self._model.repo.ui)
         lexer = get_lexer(filename, data, flag, cfg)
         if flag == "+":
@@ -281,7 +281,7 @@ class HgFileView(QtGui.QFrame):
         if isbfile(self._realfilename):
             labeltxt += '[bfile tracked] '
         labeltxt += "<b>%s</b>" % self._filename
-            
+
         if self._p_rev is not None:
             labeltxt += ' (diff from rev %s)' % self._p_rev
         renamed = filectx.renamed()
@@ -297,7 +297,7 @@ class HgFileView(QtGui.QFrame):
         if self._mode == 'file' and self._annotate:
             if filectx.rev() is None: # XXX hide also for binary files
                 self.ann.setVisible(False)
-            else:                
+            else:
                 self.ann.setVisible(self._annotate)
                 if lexer is not None:
                     self.ann.setFont(lexer.font(0))
@@ -377,7 +377,7 @@ class HgFileView(QtGui.QFrame):
     def prevCol(self):
         x, y = self.sci.getCursorPosition()
         self.sci.setCursorPosition(x, y-1)
-        
+
     def nDiffs(self):
         return len(self._diffs)
 
@@ -397,7 +397,7 @@ class HgFileView(QtGui.QFrame):
                         self.highlightCurrentSearchString(pos, self._find_text)
                         yield self._ctx.rev(), self._filename, pos
             return finditer(self, findpos)
-    
+
     def clearHighlights(self):
         n = self.sci.length()
         self.sci.SendScintilla(qsci.SCI_SETINDICATORCURRENT, 8) # highlight
@@ -505,7 +505,7 @@ class HgFileListView(QtGui.QTableView):
                 self.sectionResized)
         self._diff_dialogs = {}
         self._nav_dialogs = {}
-        
+
     def setModel(self, model):
         QtGui.QTableView.setModel(self, model)
         connect(model, SIGNAL('layoutChanged()'),
@@ -554,9 +554,9 @@ class HgFileListView(QtGui.QTableView):
                 dlg = dlgclass(model.repo, filename,
                                repoviewer=self.window())
                 dlgdict[filename] = dlg
-                
+
                 dlg.setWindowTitle('Hg file log viewer')
-            dlg = dlgdict[filename] 
+            dlg = dlgdict[filename]
             dlg.goto(model.current_ctx.rev())
             dlg.show()
             dlg.raise_()

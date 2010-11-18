@@ -214,7 +214,7 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
         self.actionHelp.setIcon(geticon('help'))
         connect(self.actionHelp, SIGNAL('triggered()'),
                 self.on_help)
-        
+
         # Next/Prev diff (in full file mode)
         self.actionNextDiff = QtGui.QAction(geticon('down'), 'Next diff', self)
         self.actionNextDiff.setShortcut('Alt+Down')
@@ -320,14 +320,14 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
         crev = self.tableView_revisions.current_rev
         if crev:
             self.startrev_entry.setText(str(crev))
-            # XXX workaround: see refreshRevisionTable method 
+            # XXX workaround: see refreshRevisionTable method
             self.refreshRevisionTable(sender=self)
 
     def clearStartAtRev(self):
         self.startrev_entry.setText("")
         self._reload_rev = self.tableView_revisions.current_rev
         self._reload_file = self.tableView_filelist.currentFile()
-        # XXX workaround: see refreshRevisionTable method 
+        # XXX workaround: see refreshRevisionTable method
         self.refreshRevisionTable(sender=self)
 
     def setMode(self, mode):
@@ -384,7 +384,7 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
         gotoaction = view.goto_toolbar.toggleViewAction()
         gotoaction.setIcon(geticon('goto'))
         self.toolBar_edit.addAction(gotoaction)
-        
+
     def _setup_table(self, table):
         table.setTabKeyNavigation(False)
         table.verticalHeader().setDefaultSectionSize(self.rowheight)
@@ -451,7 +451,7 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
             # store rev to show once it's available (when graph
             # filling is still running)
             self._reload_rev = rev
-            
+
     def _getrepomtime(self):
         """Return the last modification time for the repo"""
         watchedfiles = [(self.repo.root, ".hg", "store", "00changelog.i"),
@@ -472,7 +472,7 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
         self._repodate = self._getrepomtime()
         self.setupBranchCombo()
         self.setupModels()
-        # XXX workaround: see refreshRevisionTable method 
+        # XXX workaround: see refreshRevisionTable method
         self.refreshRevisionTable(sender=self)
 
     #@timeit
@@ -517,7 +517,7 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
         w.show()
         w.raise_()
         w.activateWindow()
-        
+
 
 def main():
     from optparse import OptionParser
@@ -533,7 +533,7 @@ def main():
     - With -r option, starts in manifest viewer mode for given
       revision.
     '''
-    
+
     parser = OptionParser(usage)
     parser.add_option('-R', '--repository', dest='repo',
                       help='location of the repository to explore')
@@ -571,12 +571,12 @@ def main():
     app = QtGui.QApplication(sys.argv)
     from hgviewlib.qt4 import setup_font_substitutions
     setup_font_substitutions()
-    
+
     if len(args) == 1:
         filename = rootpath(repo, opts.rev, args[0])
         if filename is None:
             parser.error("%s is not a tracked file" % args[0])
-        
+
         # should be a filename of a file managed in the repo
         if opts.navigate:
             mainwindow = FileViewer(repo, filename)
@@ -590,11 +590,11 @@ def main():
             except RepoError, e:
                 parser.error("Cannot find revision %s" % rev)
             else:
-                mainwindow = ManifestViewer(repo, rev)                
+                mainwindow = ManifestViewer(repo, rev)
         else:
             mainwindow = HgRepoViewer(repo)
 
-    mainwindow.show()    
+    mainwindow.show()
     sys.exit(app.exec_())
 
 

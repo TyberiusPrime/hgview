@@ -13,7 +13,7 @@
 # this program; if not, write to the Free Software Foundation, Inc.,
 # 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 """Copyright (c) 2000-2010 LOGILAB S.A. (Paris, FRANCE).
-http://www.logilab.fr/ -- mailto:contact@logilab.fr  
+http://www.logilab.fr/ -- mailto:contact@logilab.fr
 """
 
 import glob
@@ -60,12 +60,12 @@ mailinglist = "mailto://python-projects@lists.logilab.org"
 
 scripts = ['bin/hgview']
 debian_name = 'hgview'
-debian_maintainer = 'Alexandre Fayolle' 
+debian_maintainer = 'Alexandre Fayolle'
 debian_maintainer_email = 'afayolle@debian.org'
 pyversions = ["2.5"]
 
 debian_handler = 'python-dep-standalone'
- 
+
 from os.path import join
 include_dirs = [] #join('tests', 'data'), join('tests', 'packages')]
 data_files = [ #('share/hgview', ['hgviewlib/qt4/hgqv.ui',

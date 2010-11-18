@@ -344,7 +344,7 @@ class RevDisplay(QtGui.QTextBrowser):
         if hasattr(self.ctx._repo, "mq"):
             self.mqseries = self.ctx._repo.mq.series[:]
             self.mqunapplied = [x[1] for x in self.ctx._repo.mq.unapplied(self.ctx._repo)]
-            mqpatch = set(self.ctx.tags()).intersection(self.mqseries)            
+            mqpatch = set(self.ctx.tags()).intersection(self.mqseries)
             if mqpatch:
                 self.mqpatch = mqpatch.pop()
             else:
@@ -353,7 +353,7 @@ class RevDisplay(QtGui.QTextBrowser):
             self.mqseries = []
             self.mqunapplied = []
             self.mqpatch = None
-            
+
         self.refreshDisplay()
 
     def selectNone(self):
@@ -362,7 +362,7 @@ class RevDisplay(QtGui.QTextBrowser):
         cursor.setPosition(0)
         self.setTextCursor(cursor)
         self.setExtraSelections([])
-        
+
     def searchString(self, text):
         self.selectNone()
         if text in unicode(self.toPlainText()):
@@ -378,11 +378,11 @@ class RevDisplay(QtGui.QTextBrowser):
                 if text:
                     while True:
                         if self.find(text):
-                            yield self.ctx.rev(), None                
+                            yield self.ctx.rev(), None
                         else:
                             break
             return finditer(self, text)
-        
+
     def refreshDisplay(self):
         ctx = self.ctx
         rev = ctx.rev()

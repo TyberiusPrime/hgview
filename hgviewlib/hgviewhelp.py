@@ -26,7 +26,7 @@ visually browse in the hg graph log, search in logs, and display diff
 between arbitrary revisions of a file, with simple support for mq and
 bigfile extensions.
 
-If a filename is given, launch the filelog diff viewer for this file, 
+If a filename is given, launch the filelog diff viewer for this file,
 and with the '-n' option, launch the filelog navigator for the file.
 
 With the '-r' option, launch the manifest viewer for the given revision.
@@ -77,7 +77,7 @@ The area where current revision's metadata is displayed
 
 - when the hyperlink is the **changeset ID**, it allows you to
   directly go to the given revision,
-  
+
 - when the hyperlink is the **revision number** (on merge nodes only),
   it means that you can change the other revision used to comput
   the diff. This allows you to compare the merged node with each
@@ -112,7 +112,7 @@ The goto quickbar
 This toolbar appears when hitting Ctrl+G. It allows you to jump to a
 given revision. The destination revision can be entered by:
 
-- it's revision number (negative values allowed, count from tip)  
+- it's revision number (negative values allowed, count from tip)
 - it's changeset ID (short or long)
 - a tag name (with completion)
 - a branch name
@@ -145,7 +145,7 @@ Keyboard shortcuts
 
 **Left/Right**
   display previous/next files of the current changeset
-  
+
 **Ctrl+F** or **/**
   display the search 'quickbar'
 
@@ -153,7 +153,7 @@ Keyboard shortcuts
   display the goto 'quickbar'
 
 **Esc**
-  exit or hide the visible 'quickbar' 
+  exit or hide the visible 'quickbar'
 
 **Enter**
   run the diff viewer for the currently selected file (display diff
@@ -164,23 +164,23 @@ Keyboard shortcuts
 
 **Shift+Enter**
   run the manifest viewer for the displayed revision
-  
+
 **Ctrl+R**
   reread repo; note that by default, repo will be automatically
   reloaded if it is modified (due to a commit, a pull, etc.)
-  
+
 **Alt+Up/Down**
   display previous/next diff block
 
 **Alt+Left/Right**
   go to previous/next visited revision (in navigation history)
-  
+
 **Backspace**
   set current revision the current start revision (hide any revision above it)
- 
+
 **Shit+Backspace**
   clear the start revision value
- 
+
 
     """
 
@@ -214,7 +214,7 @@ describing users, like::
     alias=Ludovic Aubry <ludovic.aubry@logilab.fr>
     color=#00FF00
     --8<-------------------------------------------
-    
+
 This allow to make several 'authors' under the same name, with the
 same color, in the graphlog browser.
     """

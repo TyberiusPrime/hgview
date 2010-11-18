@@ -17,7 +17,7 @@ class _LexerSelector(object):
         if cfg:
             font = QtGui.QFont()
             fontstr = cfg.getFont()
-            font.fromString(fontstr)            
+            font.fromString(fontstr)
             size = cfg.getFontSize()
         else:
             font = QtGui.QFont('Monospace')
@@ -53,9 +53,9 @@ class _ScriptLexerSelector(_FilenameLexerSelector):
                 if len(line)<1000 and self.regex.match(line):
                     return True
         return False
-        
+
 class PythonLexerSelector(_ScriptLexerSelector):
-    extensions = ('.py', '.pyw')    
+    extensions = ('.py', '.pyw')
     _lexer = Qsci.QsciLexerPython
     regex = re.compile(r'^#[!].*python')
 
@@ -127,7 +127,7 @@ class DiffLexerSelector(_ScriptLexerSelector):
             lexer.setColor(QtGui.QColor(cfg.getDiffSectionColor()), 4)
             font = QtGui.QFont()
             fontstr = cfg.getFont()
-            font.fromString(fontstr)            
+            font.fromString(fontstr)
             size = cfg.getFontSize()
         else:
             font = QtGui.QFont('Monospace')
@@ -143,7 +143,7 @@ class DiffLexerSelector(_ScriptLexerSelector):
 
         return lexer
 
-    
+
 lexers = [cls() for clsname, cls in globals().items() if not clsname.startswith('_') and isinstance(cls, type) and \
           issubclass(cls, (_LexerSelector, _FilenameLexerSelector, _ScriptLexerSelector))]
 
@@ -155,4 +155,4 @@ def get_lexer(filename, filedata, fileflag=None, cfg=None):
             return lselector.lexer(cfg)
     return None
 
-        
+

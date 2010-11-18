@@ -70,7 +70,7 @@ class HgDialogMixin(object):
         self.setupUi(self)
         self.load_ui()
         self.disab_shortcuts = []
-        
+
     def load_ui(self):
         # we explicitely create a QShortcut so we can disable it
         # when a "helper context toolbar" is activated (which can be
@@ -93,7 +93,7 @@ class HgDialogMixin(object):
     def setShortcutsEnabled(self, enabled=True):
         for sh in self.disab_shortcuts:
             sh.setEnabled(enabled)
-        
+
     def ensureOneQuickBar(self):
         tb = self.sender()
         for w in self._quickbars:
@@ -107,7 +107,7 @@ class HgDialogMixin(object):
                 break
         else:
             self.close()
-        
+
     def load_config(self):
         cfg = HgConfig(self.repo.ui)
         fontstr = cfg.getFont()
@@ -131,4 +131,4 @@ class HgDialogMixin(object):
     def reject(self):
         self.close()
 
-        
+

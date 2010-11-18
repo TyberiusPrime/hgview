@@ -22,22 +22,22 @@ def tounicode(string):
         except UnicodeDecodeError:
             pass
     return unicode(string, 'utf-8', 'replace')
-        
+
 def has_closed_branch_support(repo):
     """
     Return True is repository have support for closed branches
     """
-    # what a hack... 
+    # what a hack...
     return "closed" in repo.heads.im_func.func_code.co_varnames
 
 def isexec(filectx):
     """
     Return True is the file at filectx revision is executable
     """
-    if hasattr(filectx, "isexec"):        
+    if hasattr(filectx, "isexec"):
         return filectx.isexec()
     return "x" in filectx.flags()
-    
+
 def exec_flag_changed(filectx):
     """
     Return True if the file referenced by filectx has changed its exec
@@ -47,7 +47,7 @@ def exec_flag_changed(filectx):
     parents = filectx.parents()
     if not parents:
         return ""
-    
+
     pflag = isexec(parents[0])
     if flag != pflag:
         if flag:
@@ -79,14 +79,14 @@ def rootpath(repo, rev, path):
     """return the path name of 'path' relative to repo's root at
     revision rev;
     path is relative to cwd
-    """  
-    ctx = repo[rev]        
+    """
+    ctx = repo[rev]
     filenames = list(ctx.walk(cmdutil.match(repo, [path], {})))
     if len(filenames) != 1 or filenames[0] not in ctx.manifest():
         return None
     else:
         return filenames[0]
-    
+
 class Curry(object):
     """Curryfication de fonction (http://fr.wikipedia.org/wiki/Curryfication)"""
     def __init__(self, function, *additional_args, **additional_kwargs):

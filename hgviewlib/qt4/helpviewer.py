@@ -33,15 +33,15 @@ class HelpViewer(QtGui.QDialog, HgDialogMixin):
         QtGui.QDialog.__init__(self, parent)
         HgDialogMixin.__init__(self)
         data = help_msg + get_options_helpmsg(rest=True)
-        
+
         html = publish_string(data, writer_name='html')
         self.textBrowser.setText(html)
 
     # must be redefined cause it's a QDialog
     def accept(self):
         QtGui.QDialog.accept(self)
-        
+
     def reject(self):
         QtGui.QDialog.reject(self)
 
-        
+

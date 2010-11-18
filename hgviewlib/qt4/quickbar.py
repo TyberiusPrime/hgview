@@ -42,11 +42,11 @@ class QuickBar(QtGui.QToolBar):
         self.createActions(key, desc)
         self.createContent()
         if parent:
-            parent = parent.window()            
+            parent = parent.window()
         if isinstance(parent, QtGui.QMainWindow):
             parent.addToolBar(Qt.BottomToolBarArea, self)
         self.setVisible(False)
-        
+
     def createActions(self, openkey, desc):
         parent = self.parentWidget()
         self._actions = {}
@@ -54,7 +54,7 @@ class QuickBar(QtGui.QToolBar):
         if not desc:
             desc = "Open"
         openact = QtGui.QAction(desc, parent)
-        openact.setCheckable(True)        
+        openact.setCheckable(True)
         openact.setChecked(False)
         openact.setShortcut(QtGui.QKeySequence(openkey))
         connect(openact, SIGNAL('triggered()'),
@@ -64,7 +64,7 @@ class QuickBar(QtGui.QToolBar):
         closeact.setIcon(geticon('close'))
         connect(closeact, SIGNAL('triggered()'),
                 Curry(self.setVisible, False))
-                
+
         self._actions = {'open': openact,
                          'close': closeact,}
 
@@ -100,7 +100,7 @@ class FindQuickBar(QuickBar):
         QuickBar.__init__(self, "Find", "/", "Find", parent)
         self.addShortcut('open', 'Ctrl+F')
         self.currenttext = ''
-        
+
     def createActions(self, openkey, desc):
         QuickBar.createActions(self, openkey, desc)
         self._actions['findnext'] = QtGui.QAction("Find next", self)
@@ -115,7 +115,7 @@ class FindQuickBar(QuickBar):
             self.emit(SIGNAL('findnext'), text)
         else:
             self.currenttext = text
-            self.emit(SIGNAL('find'), text)            
+            self.emit(SIGNAL('find'), text)
 
     def cancel(self):
         self.emit(SIGNAL('cancel'))
@@ -123,7 +123,7 @@ class FindQuickBar(QuickBar):
     def setCancelEnabled(self, enabled=True):
         self._actions['cancel'].setEnabled(enabled)
         self._actions['findnext'].setEnabled(not enabled)
-        
+
     def createContent(self):
         QuickBar.createContent(self)
         self.compl_model = QtGui.QStringListModel()
@@ -134,12 +134,12 @@ class FindQuickBar(QuickBar):
         self.addAction(self._actions['findnext'])
         self.addAction(self._actions['cancel'])
         self.setCancelEnabled(False)
-        
+
         connect(self.entry, SIGNAL('returnPressed()'),
                 self.find)
         connect(self.entry, SIGNAL('textEdited(const QString &)'),
                 self.find)
-        
+
     def setVisible(self, visible=True):
         QuickBar.setVisible(self, visible)
         if visible:
@@ -149,7 +149,7 @@ class FindQuickBar(QuickBar):
     def text(self):
         if self.isVisible() and self.currenttext.strip():
             return self.currenttext
-        
+
     def __del__(self):
         # prevent a warning in the console:
         # QObject::startTimer: QTimer can only be used with threads started with QThread
@@ -174,20 +174,20 @@ class FindInGraphlogQuickBar(FindQuickBar):
 
     def setFilterFiles(self, files):
         self._filter_files = files
-        
+
     def setModel(self, model):
         self._model = model
 
     def setMode(self, mode):
         assert mode in ('diff', 'file')
         self._mode = mode
-        
+
     def attachFileView(self, fileview):
         self._fileview = fileview
 
     def attachHeaderView(self, view):
         self._headerview = view
-        
+
     def find_in_graphlog(self, fromrev, fromfile=None):
         """
         Find text in the whole repo from rev 'fromrev', from file
@@ -250,7 +250,7 @@ class FindInGraphlogQuickBar(FindQuickBar):
                 return
             # no more found text in currently displayed file
             self._findinfile_iter = None
-                
+
         if self._findinlog_iter is None:
             # start searching in the graphlog from current position
             rev = self._fileview.rev()
@@ -259,7 +259,7 @@ class FindInGraphlogQuickBar(FindQuickBar):
 
         self.setCancelEnabled(True)
         self.find_next_in_log()
-        
+
     def find_next_in_log(self, step=0):
         """
         to be called from 'on_find' callback (or recursively). Try to
@@ -278,7 +278,7 @@ class FindInGraphlogQuickBar(FindQuickBar):
             else:
                 self.emit(SIGNAL("showMessage"), '')
                 self.setCancelEnabled(False)
-                
+
                 rev, filename = next_find
                 self.emit(SIGNAL('revisionSelected'), rev)
                 text = unicode(self.entry.text())
@@ -322,8 +322,8 @@ if __name__ == "__main__":
     root = QtGui.QMainWindow()
     w = QtGui.QFrame()
     root.setCentralWidget(w)
-    
+
     qbar = QuickBar("test", "Ctrl+G", "toto", w)
     root.show()
     app.exec_()
-    
+

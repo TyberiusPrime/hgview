@@ -100,7 +100,7 @@ def revision_grapher(repo, start_rev=None, stop_rev=0, branch=None, follow=False
 
     If follow is True, only generated the subtree from the start_rev head.
 
-    If branch is set, only generated the subtree for the given named branch. 
+    If branch is set, only generated the subtree for the given named branch.
     """
     if start_rev is None and repo.status() == ([],)*7:
         start_rev = len(repo.changelog)
@@ -121,7 +121,7 @@ def revision_grapher(repo, start_rev=None, stop_rev=0, branch=None, follow=False
                         curr_rev -= 1
                     yield None
                     continue
-                    
+
             # New head.
             if start_rev and follow and curr_rev != start_rev:
                 curr_rev -= 1
@@ -392,7 +392,7 @@ class Graph(object):
 
     def filedata(self, filename, rev, mode='diff'):
         """XXX written under dubious encoding assumptions
-        """        
+        """
         # XXX This really begins to be a dirty mess...
         data = ""
         flag = self.fileflag(filename, rev)
@@ -451,7 +451,7 @@ class Graph(object):
 
     def fileparent(self, filename, rev):
         if rev is not None:
-            node = self.repo.changelog.node(rev)            
+            node = self.repo.changelog.node(rev)
         else:
             node = self.repo.changectx(rev).node()
         for parent in self.nodesdict[rev].parents:

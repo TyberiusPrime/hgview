@@ -345,7 +345,7 @@ class FileDiffViewer(AbstractFileDialog):
         else:
             rev = self.filerevmodel.graph[0].rev
         self.goto(rev)
-        
+
     def revisionSelected(self, rev):
         if self.sender() is self.tableView_revisions_right:
             side = 'right'
@@ -360,10 +360,10 @@ class FileDiffViewer(AbstractFileDialog):
         index = self.filerevmodel.indexFromRev(rev)
         if index is not None:
             if index.row() == 0:
-                index = self.filerevmodel.index(1, 0)                
+                index = self.filerevmodel.index(1, 0)
             self.tableView_revisions_left.setCurrentIndex(index)
-            index = self.filerevmodel.index(0, 0)                
-            self.tableView_revisions_right.setCurrentIndex(index)            
+            index = self.filerevmodel.index(0, 0)
+            self.tableView_revisions_right.setCurrentIndex(index)
         else:
             self._show_rev = rev
 
@@ -525,7 +525,7 @@ if __name__ == '__main__':
     options, args = opt.parse_args()
     if len(args)!=1:
         opt.error('provide a filename please')
-        
+
     filename = rootpath(repo, options.rev, args[0])
     if filename is None:
         parser.error("%s is not a tracked file" % args[0])

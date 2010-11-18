@@ -251,7 +251,7 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
         self.fill_step = cfg.getFillingStep()
         self.max_file_size = cfg.getMaxFileSize()
         self.hide_mq_tags = cfg.getMQHideTags()
-        
+
         cols = getattr(cfg, self._getcolumns)()
         if cols is not None:
             validcols = [col for col in cols if col in self._allcolumns]

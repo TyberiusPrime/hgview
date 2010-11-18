@@ -39,7 +39,7 @@ disconnect = QtCore.QObject.disconnect
 SIGNAL = QtCore.SIGNAL
 nullvariant = QtCore.QVariant()
 
-        
+
 class ManifestViewer(QtGui.QMainWindow, HgDialogMixin):
     """
     Qt4 dialog to display all files of a repo at a given revision
