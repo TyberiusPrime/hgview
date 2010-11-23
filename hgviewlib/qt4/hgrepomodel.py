@@ -20,6 +20,7 @@ import sys
 import mx.DateTime as dt
 import re
 import os, os.path as osp
+from itertools import chain
 
 from mercurial.node import nullrev
 from mercurial.node import hex, short as short_hex
@@ -176,6 +177,9 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
         self.wd_status = [self.repo.status(ctx.node(), None)[:4] for ctx in wdctxs]
         self._user_colors = {}
         self._branch_colors = {}
+        # precompute named branch color for stable value.
+        for branch_name in chain(['default', 'stable'], sorted(repo.branchtags().keys())):
+            self.namedbranch_color(branch_name)
         grapher = revision_grapher(self.repo, start_rev=fromhead,
                                    follow=follow, branch=branch)
         self.graph = Graph(self.repo, grapher, self.max_file_size)
