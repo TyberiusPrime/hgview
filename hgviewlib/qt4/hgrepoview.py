@@ -491,7 +491,7 @@ class RevDisplay(QtGui.QTextBrowser):
         buf += "</table>\n"
         desc = unicode(ctx.description(), 'utf-8', 'replace')
         if self.rst_action is not None  and self.rst_action.isChecked():
-            desc = rst2html(desc)
+            desc = rst2html(desc).decode('utf-8')
         else:
             desc = raw2html(desc)
         buf += '<div class="diff_desc">%s</div>\n' % desc

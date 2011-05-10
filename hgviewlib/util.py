@@ -87,6 +87,7 @@ def rootpath(repo, rev, path):
     else:
         return filenames[0]
 
+# XXX what about functools.partial ?
 class Curry(object):
     """Curryfication de fonction (http://fr.wikipedia.org/wiki/Curryfication)"""
     def __init__(self, function, *additional_args, **additional_kwargs):
@@ -100,6 +101,7 @@ class Curry(object):
         kwarguments.update(kwargs)
         return self.func(*args, **kwarguments)
 
+# XXX duplicates logilab.mtconverter.__init__ code
 CONTROL_CHARS = [chr(ci) for ci in range(32)]
 TR_CONTROL_CHARS = [' '] * len(CONTROL_CHARS)
 for c in ('\n', '\r', '\t'):
