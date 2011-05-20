@@ -199,7 +199,7 @@ class FindInGraphlogQuickBar(FindQuickBar):
         for node in graph[idx:]:
             rev = node.rev
             ctx = self._model.repo.changectx(rev)
-            if text in ctx.description():
+            if text in unicode(ctx.description(), 'utf-8', 'replace'):
                 yield rev, None
             pos = 0
             files = ctx.files()
