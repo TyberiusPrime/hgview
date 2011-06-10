@@ -1,6 +1,9 @@
 exclude .hgignore
 recursive-exclude debian *
+recursive-exclude test *
 recursive-exclude debian.hardy *
+recursive-exclude debian.lenny *
+recursive-exclude debian.intrepid *
 
 include ChangeLog
 include COPYING
@@ -16,5 +19,13 @@ include hgviewlib/qt4/icons/*
 include doc/hgview.1.txt
 include doc/Makefile
 include hgext/hgview.py
+
+include hgext/hgview.rc
+include doc/hgqv.1
+include setup.py
+include __pkginfo__.py
+include test/data/hgviewrc
+include test/data/.hgviewrc
+
 
 recursive-include etc *

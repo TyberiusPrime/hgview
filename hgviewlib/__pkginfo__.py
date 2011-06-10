@@ -12,18 +12,18 @@
 # You should have received a copy of the GNU General Public License along with
 # this program; if not, write to the Free Software Foundation, Inc.,
 # 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
-"""Copyright (c) 2000-2010 LOGILAB S.A. (Paris, FRANCE).
+"""Copyright (c) 2000-2011 LOGILAB S.A. (Paris, FRANCE).
 http://www.logilab.fr/ -- mailto:contact@logilab.fr
 """
 
 import glob
-modname = 'hgview'
-numversion = (1, 2, 1)
+distname = modname = 'hgview'
+numversion = (1, 3, 0)
 version = '.'.join([str(num) for num in numversion])
 
 
 license = 'GPL'
-copyright = '''Copyright © 2007-2010 LOGILAB S.A. (Paris, FRANCE).
+copyright = '''Copyright © 2007-2010 LOGILAB S.A. (Paris, FRANCE), all rights reserved.
 http://www.logilab.fr/ -- mailto:contact@logilab.fr'''
 
 
@@ -39,15 +39,8 @@ classifiers =  ['Development Status :: 4 - Beta',
                 ]
 
 
-short_desc = "Mercurial interactive history viewer"
+description = "a Mercurial interactive history viewer"
 
-long_desc = """
- Its purpose is to easily navigate in a Mercurial repository
- history. It has been written with efficiency in mind, both in terms
- of computational efficiency and user experience efficiency.
-
- It is written in Python, using PyQt4 and QScintilla.
-"""
 
 author = "Logilab"
 author_email = 'python-projects@lists.logilab.org'

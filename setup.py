@@ -31,7 +31,7 @@ from os.path import isdir, exists, join, walk, splitext
 
 
 # import required features
-from hgviewlib.__pkginfo__ import modname, version, license, short_desc, long_desc, \
+from hgviewlib.__pkginfo__ import modname, version, license, description, \
      web, author, author_email
 # import optional features
 try:
@@ -58,6 +58,8 @@ try:
     from hgviewlib.__pkginfo__ import ext_modules
 except ImportError:
     ext_modules = None
+
+long_description = file('README').read()
 
 BASE_BLACKLIST = ('CVS', 'debian', 'dist', 'build', '__buildlog', '.svn', '.hg')
 IGNORED_EXTENSIONS = ('.pyc', '.pyo', '.elc')
@@ -212,8 +214,8 @@ def install():
     return setup(name=distname,
                  version=version,
                  license=license,
-                 description=short_desc,
-                 long_description=long_desc,
+                 description=description,
+                 long_description=long_description,
                  author=author,
                  author_email=author_email,
                  url=web,

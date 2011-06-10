@@ -1,3 +1,12 @@
+Description
+===========
+
+Its purpose is to easily navigate in a Mercurial repository
+history. It has been written with efficiency in mind, both in terms
+of computational efficiency and user experience efficiency.
+
+It is written in Python, using PyQt4 and QScintilla.
+
 hgview intallation notes
 ========================
 
