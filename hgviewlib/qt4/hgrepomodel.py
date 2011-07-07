@@ -19,15 +19,14 @@ Qt4 model for hg repo changelogs and filelogs
 import sys
 import re
 import os, os.path as osp
-from itertools import chain
 
 from mercurial.node import nullrev
 from mercurial.node import hex, short as short_hex
 from mercurial.revlog import LookupError
 from mercurial import util, error
 
-from hgviewlib.hggraph import Graph, ismerge, diff as revdiff
-from hgviewlib.hggraph import revision_grapher, filelog_grapher
+from hgviewlib.hggraph import Graph, ismerge, diff as revdiff, HgRepoListWalker
+from hgviewlib.hggraph import revision_grapher, filelog_grapher, getlog, gettags
 from hgviewlib.config import HgConfig
 from hgviewlib.util import tounicode, isbfile, Curry
 from hgviewlib.qt4 import icon as geticon
@@ -45,16 +44,6 @@ COLORS = [ "blue", "darkgreen", "red", "green", "darkblue", "purple",
 COLORS = [str(QtGui.QColor(x).name()) for x in COLORS]
 #COLORS = [str(color) for color in QtGui.QColor.colorNames()]
 
-def get_color(n, ignore=()):
-    """
-    Return a color at index 'n' rotating in the available
-    colors. 'ignore' is a list of colors not to be chosen.
-    """
-    ignore = [str(QtGui.QColor(x).name()) for x in ignore]
-    colors = [x for x in COLORS if x not in ignore]
-    if not colors: # ghh, no more available colors...
-        colors = COLORS
-    return colors[n % len(colors)]
 
 def cvrt_date(date):
     """
@@ -64,23 +53,6 @@ def cvrt_date(date):
     date, tzdelay = date
     return QtCore.QDateTime.fromTime_t(int(date)).toString(QtCore.Qt.LocaleDate)
 
-def gettags(model, ctx, gnode):
-    if ctx.rev() is None:
-        return ""
-    mqtags = ['qbase', 'qtip', 'qparent']
-    tags = ctx.tags()
-    if model.hide_mq_tags:
-        tags = [t for t in tags if t not in mqtags]
-    return ",".join(tags)
-
-def getlog(model, ctx, gnode):
-    if ctx.rev() is not None:
-        msg = tounicode(ctx.description())
-        if msg:
-            msg = msg.splitlines()[0]
-    else:
-        msg = "WORKING DIRECTORY (locally modified)"
-    return msg
 
 # XXX maybe it's time to make these methods of the model...
 # in following lambdas, ctx is a hg changectx
@@ -133,7 +105,7 @@ def datacached(meth):
         return result
     return data
 
-class HgRepoListModel(QtCore.QAbstractTableModel):
+class HgRepoListModel(QtCore.QAbstractTableModel, HgRepoListWalker):
     """
     Model used for displaying the revisions of a Hg *local* repository
     """
@@ -146,76 +118,15 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
         """
         repo is a hg repo instance
         """
-        QtCore.QAbstractTableModel.__init__(self, parent)
-        self._datacache = {}
-        self._hasmq = False
-        self.mqueues = []
-        self.wd_revs = []
-        self.graph = None
         self._fill_timer = None
-        self.rowcount = 0
-        self.repo = repo
-        self.load_config()
-        self.setRepo(repo, branch=branch, fromhead=fromhead, follow=follow)
+        QtCore.QAbstractTableModel.__init__(self, parent)
+        HgRepoListWalker.__init__(self, repo, branch, fromhead, follow)
 
     def setRepo(self, repo, branch='', fromhead=None, follow=False):
-        oldrepo = self.repo
-        self.repo = repo
-        if oldrepo.root != repo.root:
-            self.load_config()
-        self._datacache = {}
-        try:
-            wdctxs = self.repo.changectx(None).parents()
-        except error.Abort:
-            # might occur if reloading during a mq operation (or
-            # whatever operation playing with hg history)
-            return
-        self._hasmq = hasattr(self.repo, "mq")
-        if self._hasmq:
-            self.mqueues = self.repo.mq.series[:]
-        self.wd_revs = [ctx.rev() for ctx in wdctxs]
-        self.wd_status = [self.repo.status(ctx.node(), None)[:4] for ctx in wdctxs]
-        self._user_colors = {}
-        self._branch_colors = {}
-        # precompute named branch color for stable value.
-        for branch_name in chain(['default', 'stable'], sorted(repo.branchtags().keys())):
-            self.namedbranch_color(branch_name)
-        grapher = revision_grapher(self.repo, start_rev=fromhead,
-                                   follow=follow, branch=branch)
-        self.graph = Graph(self.repo, grapher, self.max_file_size)
-        self.rowcount = 0
+        HgRepoListWalker.setRepo(self, repo, branch, fromhead, follow)
         self.emit(SIGNAL('layoutChanged()'))
-        self.heads = [self.repo.changectx(x).rev() for x in self.repo.heads()]
-        self.ensureBuilt(row=self.fill_step)
         QtCore.QTimer.singleShot(0, Curry(self.emit, SIGNAL('filled')))
         self._fill_timer = self.startTimer(50)
-
-    def ensureBuilt(self, rev=None, row=None):
-        """
-        Make sure rev data is available (graph element created).
-
-        """
-        if self.graph.isfilled():
-            return
-        required = 0
-        buildrev = rev
-        n = len(self.graph)
-        if rev is not None:
-            if n and self.graph[-1].rev <= rev:
-                buildrev = None
-            else:
-                required = self.fill_step/2
-        elif row is not None and row > (n - self.fill_step / 2):
-            required = row - n + self.fill_step
-        if required or buildrev:
-            self.graph.build_nodes(nnodes=required, rev=buildrev)
-            self.updateRowCount()
-        elif row and row > self.rowcount:
-            # asked row was already built, but views where not aware of this
-            self.updateRowCount()
-        elif rev is not None and rev <= self.graph[self.rowcount].rev:
-            # asked rev was already built, but views where not aware of this
-            self.updateRowCount()
 
     def timerEvent(self, event):
         if event.timerId() == self._fill_timer:
@@ -241,39 +152,17 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
             self.rowcount = newlen
             self.endInsertRows()
 
-    def rowCount(self, parent=None):
-        return self.rowcount
-
-    def columnCount(self, parent=None):
-        return len(self._columns)
-
-    def load_config(self):
-        cfg = HgConfig(self.repo.ui)
-        self._users, self._aliases = cfg.getUsers()
-        self.dot_radius = cfg.getDotRadius(default=8)
-        self.rowheight = cfg.getRowHeight()
-        self.fill_step = cfg.getFillingStep()
-        self.max_file_size = cfg.getMaxFileSize()
-        self.hide_mq_tags = cfg.getMQHideTags()
-
-        cols = getattr(cfg, self._getcolumns)()
-        if cols is not None:
-            validcols = [col for col in cols if col in self._allcolumns]
-            if len(validcols) != len(cols):
-                wrongcols = [col for col in cols if col not in self._allcolumns]
-                print "WARNING! %s are not valid column names. Check your configuration." % ','.join(wrongcols)
-                print "         reverting to default columns configuration"
-            elif 'Log' not in validcols or 'ID' not in validcols:
-                print "WARNING! 'Log' and 'ID' are mandatory. Check your configuration."
-                print "         reverting to default columns configuration"
-            else:
-                self._columns = tuple(validcols)
-
-    def maxWidthValueForColumn(self, column):
-        column = self._columns[column]
-        if column in _maxwidth:
-            return _maxwidth[column](self, self.repo)
-        return None
+    @staticmethod
+    def get_color(n, ignore=()):
+        """
+        Return a color at index 'n' rotating in the available
+        colors. 'ignore' is a list of colors not to be chosen.
+        """
+        ignore = [str(QtGui.QColor(x).name()) for x in ignore]
+        colors = [x for x in COLORS if x not in ignore]
+        if not colors: # ghh, no more available colors...
+            colors = COLORS
+        return colors[n % len(colors)]
 
     def user_color(self, user):
         if user in self._aliases:
@@ -285,18 +174,7 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
                 self._user_colors[user] = color
             except:
                 pass
-        if user not in self._user_colors:
-            self._user_colors[user] = get_color(len(self._user_colors),
-                                                self._user_colors.values())
-        return self._user_colors[user]
-
-    def user_name(self, user):
-        return self._aliases.get(user, user)
-
-    def namedbranch_color(self, branch):
-        if branch not in self._branch_colors:
-            self._branch_colors[branch] = get_color(len(self._branch_colors))
-        return self._branch_colors[branch]
+        return HgRepoListWalker.user_color(self, user)
 
     def col2x(self, col):
         return (1.2*self.dot_radius + 0) * col + self.dot_radius/2 + 3
@@ -360,7 +238,7 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
                                       (-h, 0, gnode.toplines)):
                     for start, end, color in lines:
                         lpen = QtGui.QPen(pen)
-                        lpen.setColor(QtGui.QColor(get_color(color)))
+                        lpen.setColor(QtGui.QColor(self.get_color(color)))
                         lpen.setWidth(2)
                         painter.setPen(lpen)
                         x1 = self.col2x(start)
@@ -418,17 +296,10 @@ class HgRepoListModel(QtCore.QAbstractTableModel):
             return QtCore.QVariant(self._columns[section])
         return nullvariant
 
-    def rowFromRev(self, rev):
-        row = self.graph.index(rev)
-        if row == -1:
-            row = None
-        return row
-
-    def indexFromRev(self, rev):
-        self.ensureBuilt(rev=rev)
-        row = self.rowFromRev(rev)
-        if row is not None:
-            return self.index(row, 0)
+    def maxWidthValueForColumn(self, column):
+        column = self._columns[column]
+        if column in _maxwidth:
+            return _maxwidth[column](self, self.repo)
         return None
 
     def clear(self):

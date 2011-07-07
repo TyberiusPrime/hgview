@@ -22,12 +22,14 @@ revision grapher.
 
 from cStringIO import StringIO
 import difflib
+from itertools import chain
 
 from mercurial.node import nullrev
 from mercurial import patch, util, match
 
 import hgviewlib # force apply monkeypatches
 from hgviewlib.util import tounicode, isbfile
+from hgviewlib.config import HgConfig
 
 def diff(repo, ctx1, ctx2=None, files=None):
     """
@@ -73,6 +75,23 @@ def __get_parents(repo, rev, branch=None):
     return [x for x in repo.changelog.parentrevs(rev) \
             if (x != nullrev and repo.changectx(rev).branch() == branch)]
 
+def getlog(model, ctx, gnode):
+    if ctx.rev() is not None:
+        msg = tounicode(ctx.description())
+        if msg:
+            msg = msg.splitlines()[0]
+    else:
+        msg = "WORKING DIRECTORY (locally modified)"
+    return msg
+
+def gettags(model, ctx, gnode):
+    if ctx.rev() is None:
+        return ""
+    mqtags = ['qbase', 'qtip', 'qparent']
+    tags = ctx.tags()
+    if model.hide_mq_tags:
+        tags = [t for t in tags if t not in mqtags]
+    return ",".join(tags)
 
 def ismerge(ctx):
     """
@@ -462,6 +481,168 @@ class Graph(object):
             if filename in allchanges:
                 return parent
         return None
+
+class HgRepoListWalker(object):
+    """
+    Graph object to ease hg repo revision tree drawing depending on user's
+    configurations.
+    """
+    _allcolumns = ('ID', 'Branch', 'Log', 'Author', 'Date', 'Tags',)
+    _columns = ('ID', 'Branch', 'Log', 'Author', 'Date', 'Tags',)
+    _stretchs = {'Log': 1, }
+    _getcolumns = "getChangelogColumns"
+
+    def __init__(self, repo, branch='', fromhead=None, follow=False,
+                 parent=None):
+        """
+        repo is a hg repo instance
+        """
+        #XXX col radius
+        self._datacache = {}
+        self._hasmq = False
+        self.mqueues = []
+        self.wd_revs = []
+        self.graph = None
+        self.rowcount = 0
+        self.repo = repo
+        self.load_config()
+        self.setRepo(repo, branch=branch, fromhead=fromhead, follow=follow)
+
+    def setRepo(self, repo, branch='', fromhead=None, follow=False):
+        oldrepo = self.repo
+        self.repo = repo
+        if oldrepo.root != repo.root:
+            self.load_config()
+        self._datacache = {}
+        try:
+            wdctxs = self.repo.changectx(None).parents()
+        except error.Abort:
+            # might occur if reloading during a mq operation (or
+            # whatever operation playing with hg history)
+            return
+        self._hasmq = hasattr(self.repo, "mq")
+        if self._hasmq:
+            self.mqueues = self.repo.mq.series[:]
+        self.wd_revs = [ctx.rev() for ctx in wdctxs]
+        self.wd_status = [self.repo.status(ctx.node(), None)[:4] for ctx in wdctxs]
+        self._user_colors = {}
+        self._branch_colors = {}
+        # precompute named branch color for stable value.
+        for branch_name in chain(['default', 'stable'], sorted(repo.branchtags().keys())):
+            self.namedbranch_color(branch_name)
+        grapher = revision_grapher(self.repo, start_rev=fromhead,
+                                   follow=follow, branch=branch)
+        self.graph = Graph(self.repo, grapher, self.max_file_size)
+        self.rowcount = 0
+        self.heads = [self.repo.changectx(x).rev() for x in self.repo.heads()]
+        self.ensureBuilt(row=self.fill_step)
+
+    def ensureBuilt(self, rev=None, row=None):
+        """
+        Make sure rev data is available (graph element created).
+
+        """
+        if self.graph.isfilled():
+            return
+        required = 0
+        buildrev = rev
+        n = len(self.graph)
+        if rev is not None:
+            if n and self.graph[-1].rev <= rev:
+                buildrev = None
+            else:
+                required = self.fill_step / 2
+        elif row is not None and row > (n - self.fill_step / 2):
+            required = row - n + self.fill_step
+        if required or buildrev:
+            self.graph.build_nodes(nnodes=required, rev=buildrev)
+            self.updateRowCount()
+        elif row and row > self.rowcount:
+            # asked row was already built, but views where not aware of this
+            self.updateRowCount()
+        elif rev is not None and rev <= self.graph[self.rowcount].rev:
+            # asked rev was already built, but views where not aware of this
+            self.updateRowCount()
+
+    def updateRowCount(self):
+        self.rowcount = None
+        #raise NotImplementedError
+
+    def rowCount(self, parent=None):
+        return self.rowcount
+
+    def columnCount(self, parent=None):
+        return len(self._columns)
+
+    def load_config(self):
+        cfg = HgConfig(self.repo.ui)
+        self._users, self._aliases = cfg.getUsers()
+        self.dot_radius = cfg.getDotRadius(default=8)
+        self.rowheight = cfg.getRowHeight()
+        self.fill_step = cfg.getFillingStep()
+        self.max_file_size = cfg.getMaxFileSize()
+        self.hide_mq_tags = cfg.getMQHideTags()
+
+        cols = getattr(cfg, self._getcolumns)()
+        if cols is not None:
+            validcols = [col for col in cols if col in self._allcolumns]
+            if len(validcols) != len(cols):
+                wrongcols = [col for col in cols if col not in self._allcolumns]
+                #XXX
+                #print "WARNING! %s are not valid column names. Check your configuration." % ','.join(wrongcols)
+                #print "         reverting to default columns configuration"
+            elif 'Log' not in validcols or 'ID' not in validcols:
+                pass
+                #print "WARNING! 'Log' and 'ID' are mandatory. Check your configuration."
+                #print "         reverting to default columns configuration"
+            else:
+                self._columns = tuple(validcols)
+
+    def maxWidthValueForColumn(self, column):
+        raise NotImplementedError
+
+    @staticmethod
+    def get_color(n, ignore=()):
+        raise NotImplementedError
+
+    def user_color(self, user):
+        if user not in self._user_colors:
+            self._user_colors[user] = self.get_color(len(self._user_colors),
+                                                self._user_colors.values())
+        return self._user_colors[user]
+
+    def user_name(self, user):
+        return self._aliases.get(user, user)
+
+    def namedbranch_color(self, branch):
+        if branch not in self._branch_colors:
+            self._branch_colors[branch] = self.get_color(len(self._branch_colors))
+        return self._branch_colors[branch]
+
+    def col2x(self, col):
+        return (1.2*self.dot_radius + 0) * col + self.dot_radius/2 + 3
+
+    def rowFromRev(self, rev):
+        row = self.graph.index(rev)
+        if row == -1:
+            row = None
+        return row
+
+    def indexFromRev(self, rev):
+        self.ensureBuilt(rev=rev)
+        row = self.rowFromRev(rev)
+        if row is not None:
+            return self.index(row, 0)
+        return None
+
+    def clear(self):
+        """empty the list"""
+        self.graph = None
+        self._datacache = {}
+        self.notify_data_changed()
+
+    def notify_data_changed(self):
+        raise NotImplementedError
 
 if __name__ == "__main__":
     # pylint: disable-msg=C0103
