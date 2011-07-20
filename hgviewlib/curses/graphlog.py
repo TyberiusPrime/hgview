@@ -22,7 +22,7 @@ Contains a listbox definition that walk the repo log and display an ascii graph
 from itertools import izip
 from time import strftime, localtime
 
-from urwid import AttrMap, Text, ListWalker, Columns, ListBox
+from urwid import AttrMap, Text, ListWalker, Columns, ListBox, WidgetWrap
 
 from hgext.graphlog import (fix_long_right_edges, get_nodeline_edges_tail,
                             draw_edges, get_padding_line)
@@ -47,6 +47,7 @@ _COLUMNMAP = {
     'Branch': lambda m, c, g: c.branch() != 'default' and c.branch(),
     'Filename': lambda m, c, g: g.extra[0],
     }
+GRAPH_MIN_WIDTH = 6
 
 # ____________________________________________________________________ classes
 
@@ -55,20 +56,37 @@ class RevisionItem(Text):
     selectable = lambda self: True
     keypress = lambda self, size, key: key
 
+class AppliedItem(WidgetWrap):
+    def __init__(self, w, gnode, ctx, *args, **kwargs):
+        self.gnode = gnode
+        self.ctx = ctx
+        self.__super.__init__(w, *args, **kwargs)
+
+class UnappliedItem(WidgetWrap):
+    def __init__(self, w, idx, name, *args, **kwargs):
+        self.idx = idx
+        self.name = name
+        self.__super.__init__(w, *args, **kwargs)
+
 class RevisionsWalker(ListWalker, HgRepoListWalker):
     """ListWalker-compatible class for browsing log changeset.
     """
 
-    _allfields = (('Branch', 'Tags', 'Log', 'Author'), ())
-    _allcolumns = (('Date', 16), ('ID', 6),)
+    _allfields = (('Branch', 'Tags', 'Log'), ())
+    _allcolumns = (('Date', 16), ('Author', 20), ('ID', 6),)
 
     def __init__(self, repo, branch='', fromhead=None, follow=False,
                  *args, **kwargs):
         super(RevisionsWalker, self).__init__(repo, branch, fromhead, follow,
                                               *args, **kwargs)
         self.focus = 0L
+        if self._hasmq:
+            self.focus = -len(self._get_unapplied())
         self.asciistate = [0, 0]#graphlog.asciistate()
         self._data_cache = {}
+
+    def _get_unapplied(self):
+        return self.repo.mq.unapplied(self.repo)
 
     @staticmethod
     def get_color(idx, ignore=()):
@@ -85,21 +103,56 @@ class RevisionsWalker(ListWalker, HgRepoListWalker):
         """Return a widget and the position passed."""
         if pos in self._data_cache: # speed up rendering
             return self._data_cache[pos], pos
+        #import pdb;pdb.set_trace()
+        if pos < 0:
+            widget = self.get_unapplied_widget(pos)
+        else:
+            widget = self.get_applied_widget(pos)
+        self._data_cache[pos] = widget
+        return widget, pos
+
+    def get_unapplied_widget(self, pos):
+        """return a widget for unapplied patch"""
+        # blank columns
+        idx, name = self._get_unapplied()[-pos - 1]
+        info = {'Branch':'[Unapplied patches]', 'ID':str(idx),'Log':name}
+        # prepare the last columns content
+        txts = ['.' + ' ' * GRAPH_MIN_WIDTH] # mock graph log
+        for fields in self._allfields:
+            if not fields:
+                continue
+            for field in fields:
+                if field not in info:
+                    continue
+                txts.append(('Unapplied', info.get(field)))
+                txts.append(('default', ' '))
+            txts.append('\n')
+        txt = RevisionItem(txts[:-1])
+        # prepare other columns
+        columns = [('fixed', sz, Text(('Unapplied', info.get(col, '')),
+                                      align='right'))
+                   for col, sz in self._allcolumns if col in self._columns]
+        txt = Columns(columns + [txt], 1)
+        txt = AttrMap(txt, {}, {'Unapplied':'focus'})
+        txt = UnappliedItem(txt, idx, name)
+        return txt
+
+    def get_applied_widget(self, pos):
+        """Return a widget for changeset, applied patches and working
+        directory state"""
+        if pos in self._data_cache: # speed up rendering
+            return self._data_cache[pos], pos
 
         try:
             self.ensureBuilt(row=pos)
         except ValueError:
-            return None, None
+            return None
         gnode = self.graph[pos]
         ctx = self.repo.changectx(gnode.rev)
-        txt = lambda col, sz: Text(
-                 (col, _COLUMNMAP[col](self, ctx, gnode)[:sz]), align='right')
-        columns = [('fixed', sz, txt(col, sz))
-                   for col, sz in self._allcolumns
-                   if col in self._columns]
+        # prepare the last columns content
         txts = []
         for graph, fields in izip(self.graphlog(gnode, ctx), self._allfields):
-            txts.append(('GraphLog', graph.rstrip())) # only one space leading
+            txts.append(('GraphLog', graph.ljust(GRAPH_MIN_WIDTH)))
             txts.append(' ')
             for field in fields:
                 if field not in self._columns:
@@ -109,13 +162,30 @@ class RevisionsWalker(ListWalker, HgRepoListWalker):
                     continue
                 txts.append((field, txt))
                 txts.append(('default', ' '))
+            txts.pop() # remove pendding space
             txts.append('\n')
-
-        txt = RevisionItem(txts[:-1]) # :-1 to remove the last \n
-        txt = Columns(columns + [txt], 1)
-        txt = AttrMap(txt, {}, dict((col, 'focus') for col in self._columns))
-        self._data_cache[pos] = txt
-        return txt, pos
+        txts.pop() # remove pendding newline
+        txt = RevisionItem(txts)
+        # prepare other columns
+        txter = lambda col, sz: Text(
+                 (col, _COLUMNMAP[col](self, ctx, gnode)[:sz]), align='right')
+        columns = [('fixed', sz, txter(col, sz))
+                   for col, sz in self._allcolumns
+                   if col in self._columns] + [txt]
+        # highlight some revs
+        style = None
+        if gnode.rev is None:
+            style = 'Modified' # pending changes
+        elif gnode.rev in self.wd_revs:
+            style = 'Current'
+        spec_style = style and dict.fromkeys(['GraphLog'], style) or {}
+        # highlight focused
+        style = style or 'focus'
+        foc_style = dict.fromkeys(self._columns + ('GraphLog', None), style)
+        # build widget with style modifier
+        widget = AttrMap(Columns(columns, 1), spec_style, foc_style)
+        widget = AppliedItem(widget, gnode, ctx)
+        return widget
 
     def graphlog(self, gnode, ctx):
         """Return a generator that get lines of graph log for the node
@@ -145,7 +215,17 @@ class RevisionsWalker(ListWalker, HgRepoListWalker):
 
     def get_focus(self):
         """Get focused widget"""
-        return self.data(self.focus)
+        try:
+            return self.data(self.focus)
+        except IndexError:
+            if self.focus > 0:
+                self.focus = 0
+            else:
+                self.focus = -len(self._get_unapplied())
+        try:
+            return self.data(self.focus)
+        except:
+            return None, None
 
     def set_focus(self, focus):
         """change focused widget"""
@@ -162,10 +242,11 @@ class RevisionsWalker(ListWalker, HgRepoListWalker):
 
     def get_prev(self, start_from):
         """get the previous widget to display"""
-        if start_from <= 0:
-            return None, None
         focus = start_from - 1
-        return self.data(focus)
+        try:
+            return self.data(focus)
+        except IndexError:
+            return None, None
 
 class RevisionsList(ListBox):
     """ListBox that display the graph log of the repo"""
