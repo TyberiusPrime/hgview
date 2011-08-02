@@ -19,10 +19,11 @@
 Contains a listbox definition that walk the repo log and display an ascii graph
 '''
 
-from itertools import izip
+from itertools import izip_longest as zzip
 from time import strftime, localtime
 
-from urwid import AttrMap, Text, ListWalker, Columns, ListBox, WidgetWrap
+from urwid import (AttrMap, Text, ListWalker, Columns, ListBox, WidgetWrap,
+                   TextLayout)
 
 from hgext.graphlog import (fix_long_right_edges, get_nodeline_edges_tail,
                             draw_edges, get_padding_line)
@@ -50,10 +51,9 @@ _COLUMNMAP = {
 GRAPH_MIN_WIDTH = 6
 
 # ____________________________________________________________________ classes
-
 class RevisionItem(Text):
     """A custom widget to display a revision entry"""
-    selectable = lambda self: True
+    _selectable = True
     keypress = lambda self, size, key: key
 
 class AppliedItem(WidgetWrap):
@@ -72,7 +72,7 @@ class RevisionsWalker(ListWalker, HgRepoListWalker):
     """ListWalker-compatible class for browsing log changeset.
     """
 
-    _allfields = (('Branch', 'Tags', 'Log'), ())
+    _allfields = (('Branch', 'Tags', 'Log'),)
     _allcolumns = (('Date', 16), ('Author', 20), ('ID', 6),)
 
     def __init__(self, repo, branch='', fromhead=None, follow=False,
@@ -145,10 +145,10 @@ class RevisionsWalker(ListWalker, HgRepoListWalker):
                 txts.append(('Unapplied', info.get(field)))
                 txts.append(('default', ' '))
             txts.append('\n')
-        txt = RevisionItem(txts[:-1])
+        txt = RevisionItem(txts[:-1], wrap='clip')
         # prepare other columns
         columns = [('fixed', sz, Text(('Unapplied', info.get(col, '')),
-                                      align='right'))
+                                      align='right', wrap='clip'))
                    for col, sz in self._allcolumns if col in self._columns]
         txt = Columns(columns + [txt], 1)
         txt = AttrMap(txt, {}, {'Unapplied':'focus'})
@@ -169,7 +169,9 @@ class RevisionsWalker(ListWalker, HgRepoListWalker):
         ctx = self.repo.changectx(gnode.rev)
         # prepare the last columns content
         txts = []
-        for graph, fields in izip(self.graphlog(gnode, ctx), self._allfields):
+        for graph, fields in zzip(self.graphlog(gnode, ctx), self._allfields):
+            graph = graph or ''
+            fields = fields or ()
             txts.append(('GraphLog', graph.ljust(GRAPH_MIN_WIDTH)))
             txts.append(' ')
             for field in fields:
@@ -183,10 +185,11 @@ class RevisionsWalker(ListWalker, HgRepoListWalker):
             txts.pop() # remove pendding space
             txts.append('\n')
         txts.pop() # remove pendding newline
-        txt = RevisionItem(txts)
+        txt = RevisionItem(txts, wrap='clip')
         # prepare other columns
         txter = lambda col, sz: Text(
-                 (col, _COLUMNMAP[col](self, ctx, gnode)[:sz]), align='right')
+                 (col, _COLUMNMAP[col](self, ctx, gnode)[:sz]),
+                                       align='right', wrap='clip')
         columns = [('fixed', sz, txter(col, sz))
                    for col, sz in self._allcolumns
                    if col in self._columns] + [txt]
@@ -229,7 +232,8 @@ class RevisionsWalker(ListWalker, HgRepoListWalker):
             prv, nxt = 1, 0
         coldata = (curcol, curedges, prv, nxt - prv)
         self.asciistate = self.asciistate or [0, 0]
-        return hgview_ascii(self.asciistate, char, 1, coldata)
+        return hgview_ascii(self.asciistate, char, len(self._allfields),
+                            coldata)
 
     def get_focus(self):
         """Get focused widget"""
