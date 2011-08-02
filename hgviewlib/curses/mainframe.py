@@ -158,7 +158,7 @@ class MainFrame(urwid.Frame):
         '''
         cmd = self.footer.get_edit_text().strip()
         if not cmd:
-            self.set('default', '', '')
+            self.footer.set('default', '', '')
             return
         try:
             cmds = cmd.split()

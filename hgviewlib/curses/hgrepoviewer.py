@@ -34,6 +34,13 @@ from hgviewlib.curses.mainframe import (MainFrame, BodyMixin,
 
 class CommandsList(_CommandsList):
     """List of available commands for this body"""
+
+    def __getattr__(self, name):
+        """shortcut for goto given the rev number directly"""
+        if name.isdigit():
+            return lambda mainframe: self.goto(mainframe, name)
+        raise AttributeError()
+
     @staticmethod
     def refresh(mainframe):
         """
@@ -69,6 +76,26 @@ class CommandsList(_CommandsList):
         body = HgRepoViewer(repo)
         mainframe.append_body(body)
     e = edit
+
+    @staticmethod
+    def goto(mainframe, rev=None):
+        """
+        usage: goto [revision]
+        alias: g
+
+        Focus on the chageset with the given revision.
+        Note that the revision can be given without any command name.
+
+        :param revision: the revision number. Focus on the last changeset if
+                         omitted.
+        """
+        walker =  mainframe.get_body().body
+        if rev is not None:
+            index = walker.graph.index(int(rev))
+        else:
+            index = 0
+        walker.set_focus(index)
+    g = goto
 
     @staticmethod
     def qremove(mainframe, *names):
@@ -210,7 +237,7 @@ class CommandsList(_CommandsList):
 
 class HgRepoViewer(RevisionsList, BodyMixin):
     """Main body for this view"""
-    commands = CommandsList
+    commands = CommandsList()
     name = 'hgrepoview'
 
     def __init__(self, repo, *args, **kwargs):

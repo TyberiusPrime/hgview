@@ -89,8 +89,6 @@ class RevisionsWalker(ListWalker, HgRepoListWalker):
         return self.repo.mq.unapplied(self.repo)
 
     def _modified(self):
-        if self.focus >= len(self._data_cache):
-            self.focus = max(0, len(self._data_cache)-1)
         super(RevisionsWalker, self)._modified()
 
     notify_data_changed = _modified
