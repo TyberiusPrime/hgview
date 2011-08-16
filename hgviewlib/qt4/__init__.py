@@ -21,7 +21,7 @@
 import os
 import os.path as osp
 import sys
-import mx.DateTime as dt
+import datetime as dt
 
 def should_rebuild(srcfile, pyfile):
     return not osp.isfile(pyfile) or osp.isfile(srcfile) and \
@@ -50,7 +50,7 @@ import hgqv_rc
 
 _icons = {}
 def _load_icons():
-    t = dt.today()
+    t = dt.date.today()
     x = t.month == 12 and t.day in (24,25)
     d = QtCore.QDir(':/icons')
     for icn in d.entryList():

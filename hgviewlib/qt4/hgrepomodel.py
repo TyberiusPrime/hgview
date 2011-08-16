@@ -17,7 +17,6 @@
 Qt4 model for hg repo changelogs and filelogs
 """
 import sys
-import mx.DateTime as dt
 import re
 import os, os.path as osp
 from itertools import chain
