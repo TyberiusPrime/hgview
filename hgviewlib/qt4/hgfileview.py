@@ -106,6 +106,9 @@ class HgFileView(QtGui.QFrame):
         self.topLayout = QtGui.QVBoxLayout()
         self.filenamelabel = QtGui.QLabel()
         self.filenamelabel.setWordWrap(True)
+        self.filenamelabel.setTextInteractionFlags(
+            QtCore.Qt.TextSelectableByKeyboard|
+            QtCore.Qt.TextSelectableByMouse)
         self.execflaglabel = QtGui.QLabel()
         self.execflaglabel.setWordWrap(True)
         self.topLayout.addWidget(self.filenamelabel)
