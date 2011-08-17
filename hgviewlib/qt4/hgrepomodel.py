@@ -108,7 +108,8 @@ _maxwidth = {'ID': lambda self, r: str(len(r.changelog)),
              'Tags': lambda self, r: sorted(r.tags().keys(),
                                             key=lambda x: len(x))[-1][:10],
              'Branch': lambda self, r: sorted(r.branchtags().keys(),
-                                              key=lambda x: len(x))[-1],
+                                              key=lambda x: len(x))[-1]
+                                              if r.branchtags().keys() else None,
              'Author': lambda self, r: 'author name',
              'Filename': lambda self, r: self.filename,
              }
