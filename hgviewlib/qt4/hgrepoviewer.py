@@ -566,6 +566,8 @@ def main():
     try:
         u = ui.ui()
         repo = hg.repository(u, dir_)
+    except RepoError, e:
+        parser.error(e)
     except:
         parser.error("You are not in a repo, are you?")
 
