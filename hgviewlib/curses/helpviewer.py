@@ -21,26 +21,30 @@ Module that contains the help body.
 """
 
 import urwid
+import logging
 from textwrap import wrap
 
 from hgviewlib.hgviewhelp import long_help_msg
 
-from hgviewlib.curses.mainframe import BodyMixin
+from hgviewlib.curses.utils import help_command, emit_command, _commands
+from hgviewlib.curses.widgets import Body
 
-class HelpViewer(urwid.AttrWrap, BodyMixin):
+class HelpViewer(Body):
     """A body to display a help message (or the global program help)"""
-
-    title = 'help'
 
     def __init__(self, messages=None, *args, **kwargs):
         # cut line ?
         if messages is None:
-            messages = long_help_msg
-        if isinstance(messages, str):
-            messages = (messages,)
-        pads = [build_pad_text(msg) for msg in messages]
-        listbox = urwid.ListBox(urwid.SimpleListWalker(pads))
-        self.__super.__init__(listbox, 'body', *args, **kwargs)
+            messages = []
+            for name in _commands._helps.keys():
+                messages.append(('focus', '\ncommand: "%s"\n'%name))
+                messages.extend(help_command(name))
+        divider = urwid.AttrWrap(urwid.Padding(urwid.Text('List of commands'),
+                                               'center'),
+                                 'banner')
+        text = urwid.Text(messages)
+        listbox = urwid.ListBox(urwid.SimpleListWalker([divider, text]))
+        self.__super.__init__(body=listbox, *args, **kwargs)
 
     def keypress(self, size, key):
         "allow subclasses to intercept keystrokes"
@@ -53,8 +57,9 @@ class HelpViewer(urwid.AttrWrap, BodyMixin):
         """Overwrite this method to intercept keystrokes in subclasses.
         Default behavior: run command from ':xxx'
         """
-        if key in (':', 'esc'):
-            self.mainframe.remove_body(self)
+        if key in (':', 'esc', 'q'):
+            emit_command('quit')
+            logging.info('')
 
 def build_pad_text(message):
     """return a pad with a text that contains a message.

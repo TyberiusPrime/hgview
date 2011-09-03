@@ -1,3 +1,4 @@
+
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
 # Copyright (c) 2003-2011 LOGILAB S.A. (Paris, FRANCE).
@@ -15,19 +16,31 @@
 # You should have received a copy of the GNU General Public License along with
 # this program; if not, write to the Free Software Foundation, Inc.,
 # 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
-# -*- coding: iso-8859-1 -*-
+
 """
-Exceptions classes used by hgview curses
 """
+from urwid import Frame, Text, AttrWrap
 
-class HgviewCursesException(Exception):
-    """Base class for all hgview curses exception """
+__all__ = ['Body']
 
-class CommandError(ValueError, HgviewCursesException):
-    """Error that occures while calling a command"""
+class Body(Frame):
+    def __init__(self, body):
+        footer = AttrWrap(Text(''), 'banner')
+        super(Body, self).__init__(body=body, footer=footer, header=None,
+                                   focus_part='body')
 
-class UnknownCommand(StopIteration, HgviewCursesException):
-    """Error that occures when not callback found"""
+    def _get_title(self):
+        return self._footer.text
+    def _set_title(self, title):
+        self._footer.set_text(title)
+    def _clear_title(self):
+        self._footer.set_title('')
+    title = property(_get_title, _set_title, _clear_title, 'Body title')
 
-class RegisterCommandError(KeyError, HgviewCursesException):
-    """Error that occures when a conflict occures while registering a comand"""
+    def register_commands(self):
+        """register commands"""
+        pass
+
+    def unregister_commands(self):
+        """unregister commands"""
+        pass

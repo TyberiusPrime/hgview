@@ -21,230 +21,38 @@ Main curses application for hgview
 
 import os
 import threading
+import logging
 
 import urwid
 from urwid import AttrWrap, signals
 from mercurial import ui, hg, cmdutil
 
 from hgviewlib.util import choose_viewer, find_repository
-from hgviewlib.curses.exceptions import CommandError
 from hgviewlib.curses.graphlog import RevisionsList, AppliedItem, UnappliedItem
-from hgviewlib.curses.mainframe import (MainFrame, BodyMixin,
-                                        CommandsList as _CommandsList)
+from hgviewlib.curses import (connect_logging, Body, MainFrame,
+                              register_command, unregister_command,
+                              emit_command, CommandArg as CA)
 
-class CommandsList(_CommandsList):
-    """List of available commands for this body"""
-
-    def __getattr__(self, name):
-        """shortcut for goto given the rev number directly"""
-        if name.isdigit():
-            return lambda mainframe: self.goto(mainframe, name)
-        raise AttributeError()
-
-    @staticmethod
-    def refresh(mainframe):
-        """
-        usage: refresh
-        alias: r
-
-        Refresh the repository content
-        """
-        walker = mainframe.get_body().body
-        walker._invalidate()
-        walker.setRepo()
-        signals.emit_signal(walker, 'modified')
-    r = refresh
-
-    @staticmethod
-    def edit(mainframe, reporoot=None):
-        """
-        usage: edit [reporoot]
-        alias: e
-
-        Change repository root directory
-
-        :param reporoot: the new repository root directory
-        """
-        if reporoot is None:
-            reporoot = mainframe.get_body().body.repo.root
-        if not os.path.exists(reporoot):
-            raise CommandError('Repository not found: %s' % reporoot)
-        _reporoot = find_repository(reporoot)
-        if _reporoot is None:
-            raise CommandError('Folder not under hg control: %s' % reporoot)
-        repo = hg.repository(ui.ui(), _reporoot)
-        body = HgRepoViewer(repo)
-        mainframe.append_body(body)
-    e = edit
-
-    @staticmethod
-    def goto(mainframe, rev=None):
-        """
-        usage: goto [revision]
-        alias: g
-
-        Focus on the chageset with the given revision.
-        Note that the revision can be given without any command name.
-
-        :param revision: the revision number. Focus on the last changeset if
-                         omitted.
-        """
-        walker =  mainframe.get_body().body
-        if rev is not None:
-            index = walker.graph.index(int(rev))
-        else:
-            index = 0
-        walker.set_focus(index)
-    g = goto
-
-    @staticmethod
-    def qremove(mainframe, *names):
-        """
-        usage: qremove names
-        alias: qdel, qdelete, qrm
-
-        Remove mq patches.
-
-        :param names: a list of mq patches to remove
-        """
-        from hgext import mq
-        args = list(args)
-        body = mainframe.get_body().body
-        repo = body.repo
-        if not names:
-            item = body.get_focus()[0]
-            if not isinstance(item, UnappliedItem):
-                raise CommandError(
-         'You shall focus on an unapplied mq patch or provide mq patch names')
-            names = [item.name]
-        mq.delete(repo.ui, repo, *names)
-        CommandsList.refresh(mainframe)
-    qdelete = qdel = qrm = qremove
-
-    @staticmethod
-    def qpop(mainframe, *args):
-        """
-        usage: qpop [options] [id|name]
-
-        Pops off patches until the focused, patch is at the top of the  stack.
-
-        :param id|name]: select a diffrent patch than the focusd one.
-
-        :param opsions: any of:
-
-            * all: pop all patches
-            * force  forget any local changes to patched files
-        """
-        from hgext import mq
-        body = mainframe.get_body().body
-        repo = body.repo
-        keys = ('force', 'all', 'name')
-        options = dict.fromkeys(keys, False)
-        options.update((arg, True) for arg in args if arg in keys)
-        idname = None
-        if not options['all']:
-            idname = (args or None) and args[-1]
-            if (idname is None) or (idname in keys):
-                item = body.get_focus()[0]
-                if not isinstance(item, AppliedItem):
-                    raise CommandError(('You shall focus on an applied mq'
-                                        ' patch or provide mq patch name|id'))
-                ctx = repo.changectx(item.gnode.rev)
-                for patch in repo.mq.applied:
-                    if patch.node == ctx.node():
-                        break
-                else:
-                    raise CommandError(('You shall focus on an applied mq'
-                                        ' patch or provide mq patch name|id'))
-                idname = patch.name
-        mq.pop(repo.ui, repo, idname, **options)
-        CommandsList.refresh(mainframe)
-
-    @staticmethod
-    def qpush(mainframe, *args):
-        """
-        usage: qpop [options] [id|name]
-
-        Push on patches until the focused patch is at the top of the stack.
-
-        :param id|name: select a diffrent patch than the focusd one by its
-                        name or id.
-
-        :param options: any of:
-
-            * force: apply on top of local changes
-            * exact: apply the target patch to its recorded parent
-            * list: list patch name in commit text
-            * all: apply all patches
-            * move: reorder patch series and apply only the patch
-        """
-        from hgext import mq
-        args = list(args)
-        body = mainframe.get_body().body
-        repo = body.repo
-        if 'move' in args or 'exact' in args:
-            args.insert(0, 'move')  # hg 1.6
-            args.insert(0, 'exact') # hg 1.8
-        keys = ('force', 'exact', 'list', 'all', 'move', 'merge', 'name')
-        options = dict.fromkeys(keys, False)
-        options.update((arg, True) for arg in args if arg in keys)
-
-        idname = None
-        if not options['all']:
-            idname = (args or None) and args[-1]
-            if (idname is None) or (idname in keys):
-                item = body.get_focus()[0]
-                if not isinstance(item, UnappliedItem):
-                    raise CommandError(
-          'You shall focus on an applied mq patch or provide mq patch name|id')
-                idname = item.name
-        mq.push(repo.ui, repo, idname, **options)
-        CommandsList.refresh(mainframe)
-
-    @staticmethod
-    def qfinish(mainframe, arg=None):
-        """
-        usage: qfinish [applied] [id|name]
-
-        Finishes the revisions (corresponding to applied patches) moving thom
-        out of the mq control until the focused patch is at the top of the
-        regular repository history.
-
-        :param id|name: select a diffrent patch than the focusd one by its
-                        name or id.
-        :param applied: finish all patches
-        """
-        from hgext import mq
-        body = mainframe.get_body().body
-        repo = body.repo
-        applied = False
-        end = None
-        revs = []
-        if arg == 'applied':
-            applied = True
-        elif arg:
-            end = int(arg)
-        if (end is None) and (not applied):
-            item = body.get_focus()[0]
-            if not isinstance(item, AppliedItem):
-                raise CommandError(
-         'You shall focus on an applied mq patch or provide mq patch name|id')
-            end = item.gnode.rev
-            start = repo.changectx(repo.mq.applied[0].node).rev()
-            revrange = '%i%s%i' % (start, cmdutil.revrangesep,end)
-        mq.finish(repo.ui, repo, revrange, applied=applied)
-        CommandsList.refresh(mainframe)
-
-class HgRepoViewer(RevisionsList, BodyMixin):
+class HgRepoViewer(Body):
     """Main body for this view"""
-    commands = CommandsList()
-    name = 'hgrepoview'
 
     def __init__(self, repo, *args, **kwargs):
+        body = RevisionsList(repo=repo)
         self.repo = repo
         self.size = 0
+        self.__super.__init__(body=body, *args, **kwargs)
         self.title = repo.root
-        self.__super.__init__(repo, *args, **kwargs)
+
+    def register_commands(self):
+        register_command(
+                ('goto', 'g'), 'Set focus on a particular revision',
+                CA('revision', int,
+                'The revision number to focus on (default to last)'))
+        self.body.connect_commands()
+
+    def unregister_commands(self):
+        unregister_command('goto')
+        unregister_command('g')
 
 # __________________________________________________________________ functions
 
@@ -275,8 +83,8 @@ def inotify(mainloop):
                         0.2, lambda *args: self.process_finally())
             self.read_events()
     try:
-        inot = UrwidInotify(mainloop.widget.get_body().repo,
-                            mainloop.widget.refresh)
+        refresh = lambda: emit_command('refresh')
+        inot = UrwidInotify(mainloop.widget.get_body().repo, refresh)
     except:
         return
     mainloop.event_loop.watch_file(inot.get_fd(), inot.process_on_any_event)
@@ -293,11 +101,18 @@ def main():
 
     palette = [
         ('default','white','default'),
-        ('warn','white','dark red', 'bold'),
         ('body','default','default', 'standout'),
         ('banner','black','light gray', 'bold'),
         ('focus','black','dark cyan', 'bold'),
 
+        # logging
+        ('DEBUG', 'yellow', 'default'),
+        ('INFO', 'dark gray', 'default'),
+        ('WARNING', 'brown', 'default'),
+        ('ERROR', 'dark red', 'default'),
+        ('CRITICAL', 'light red', 'default'),
+
+        # graphlog
         ('ID', 'brown', 'default', 'standout'),
         ('Log', 'default', 'default'),
         ('GraphLog', 'white', 'default', 'bold'),
@@ -306,7 +121,6 @@ def main():
         ('Tags', 'yellow', 'dark red', 'bold'),
         ('Branch', 'yellow', 'default', 'bold'),
         ('Filename', 'white', 'default', 'bold'),
-
         ('Unapplied', 'light cyan', 'black'),
         ('Current', 'black', 'dark green'),
         ('Modified', 'black', 'dark red'),
@@ -316,9 +130,9 @@ def main():
     body = choose_viewer(MissingViewer, MissingViewer, MissingViewer, 
                          HgRepoViewer)
     body = AttrWrap(body, 'body')
-    frame = MainFrame(body)
+    mainframe = MainFrame('repoviewer', body)
     screen = urwid.raw_display.Screen()
-    mainloop = urwid.MainLoop(frame, palette, screen)
+    mainloop = urwid.MainLoop(mainframe, palette, screen)
 
     enable_inotify = True # XXX config
     optimize_inotify = True # XXX config
@@ -331,7 +145,10 @@ def main():
         if optimize_inotify:
             ctypes.util.find_library = orig
 
+    connect_logging(mainloop, level=logging.DEBUG)
+    mainframe.register_commands()
     mainloop.run()
+    mainframe.unregister_commands()
 
 if __name__ == '__main__':
     main()

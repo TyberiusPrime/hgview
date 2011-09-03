@@ -30,6 +30,7 @@ from hgext.graphlog import (fix_long_right_edges, get_nodeline_edges_tail,
 
 from hgviewlib.util import tounicode
 from hgviewlib.hggraph import (HgRepoListWalker, getlog, gettags)
+from hgviewlib.curses import connect_command
 
 # __________________________________________________________________ constants
 
@@ -78,12 +79,16 @@ class RevisionsWalker(ListWalker, HgRepoListWalker):
     def __init__(self, repo, branch='', fromhead=None, follow=False,
                  *args, **kwargs):
         self._data_cache = {}
-        self.focus = 0L
+        self._focus = 0L
         super(RevisionsWalker, self).__init__(repo, branch, fromhead, follow,
                                               *args, **kwargs)
         if self._hasmq:
-            self.focus = -len(self._get_unapplied())
+            self._focus = -len(self._get_unapplied())
         self.asciistate = [0, 0]#graphlog.asciistate()
+
+    def connect_commands(self):
+        connect_command('goto', self.set_rev)
+        connect_command('refresh', self.refresh)
 
     def _get_unapplied(self):
         return self.repo.mq.unapplied(self.repo)
@@ -93,6 +98,11 @@ class RevisionsWalker(ListWalker, HgRepoListWalker):
 
     notify_data_changed = _modified
 
+    def refresh(self):
+        self._invalidate()
+        self.setRepo()
+        self._modified()
+
     def setRepo(self, *args, **kwargs):
         super(RevisionsWalker, self).setRepo(*args, **kwargs)
         self._modified()
@@ -100,6 +110,7 @@ class RevisionsWalker(ListWalker, HgRepoListWalker):
     def _invalidate(self):
         self.clear()
         self._data_cache.clear()
+        super(RevisionsWalker, self)._modified()
 
     @staticmethod
     def get_color(idx, ignore=()):
@@ -236,21 +247,36 @@ class RevisionsWalker(ListWalker, HgRepoListWalker):
     def get_focus(self):
         """Get focused widget"""
         try:
-            return self.data(self.focus)
+            return self.data(self._focus)
         except IndexError:
-            if self.focus > 0:
-                self.focus = 0
+            if self._focus > 0:
+                self._focus = 0
             else:
-                self.focus = -len(self._get_unapplied())
+                self._focus = -len(self._get_unapplied())
         try:
-            return self.data(self.focus)
+            return self.data(self._focus)
         except:
             return None, None
 
-    def set_focus(self, focus):
+    def set_focus(self, focus=None):
         """change focused widget"""
-        self.focus = focus
+        self._focus = focus or 0
         self._modified()
+
+    focus = property(get_focus, set_focus, None, 'focused widget index')
+
+    def get_rev(self):
+        if self._focus > 0:
+            return self.graph[pos].rev
+
+    def set_rev(self, rev=None):
+        """change focused widget to the given revision ``rev``."""
+        if rev is None:
+            self.set_focus(0)
+        else:
+            self.set_focus(self.graph.index(rev or 0))
+
+    rev = property(get_rev, set_rev, None, 'current revision')
 
     def get_next(self, start_from):
         """get the next widget to display"""
@@ -273,6 +299,9 @@ class RevisionsList(ListBox):
     def __init__(self, repo, *args, **kwargs):
         self.size = 0
         self.__super.__init__(RevisionsWalker(repo), *args, **kwargs)
+
+    def connect_commands(self):
+        self.body.connect_commands()
 
 # __________________________________________________________________ functions
 

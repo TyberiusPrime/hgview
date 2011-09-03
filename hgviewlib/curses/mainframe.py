@@ -39,99 +39,99 @@ vim/emacs interface.
 """
 
 import urwid
+import logging
 import urwid.raw_display
 from urwid import AttrWrap as W
 from urwid.decoration import Filler, CanvasCombine
 
-from hgviewlib.curses.exceptions import CommandError
+from hgviewlib.curses import helpviewer
+from hgviewlib.curses import (CommandError, CommandArg as CA,
+                              register_command, unregister_command,
+                              emit_command, connect_command,
+                              help_command)
 
-class CommandsList(object):
-    "basic commands list"
-    @staticmethod
-    def qall(mf):
-        """
-        usage: quall
-        alias: qa
+def quitall():
+    """
+    usage: quall
 
-        Quit the program
-        """
-        raise urwid.ExitMainLoop()
-    qa = qall
+    Quit the program
+    """
+    raise urwid.ExitMainLoop()
 
-    @staticmethod
-    def quit(mf):
-        """
-        usage: quit
-        alias: q
+def quit(mainframe):
+    """
+    usage: quit
 
-        Close the current buffer
-        """
-        try:
-            mf.remove_body()
-        except StopIteration: # last body => quit program
-            CommandsList.qall(mf)
-    q = quit
-
-    @staticmethod
-    def help(mf, command=None):
-        """
-        usage: edit [command]
-        alias: h
-
-        Show the help massage of the ``command``
-
-        :param command: a command name for which to display the help.
-                        If omited, the overall program help is displayed.
-        """
-        # XXX
-        from hgviewlib.curses import helpviewer
-        from textwrap import dedent
-        doc = None
-        if command:
-            try:
-                doc = dedent(getattr(mf.get_body().commands, command).func_doc)
-                mf.set_focus('footer')
-                mf.footer.set('default', '', doc)
-            except AttributeError:
-                raise CommandError('Could not find help for "%s"' % command)
-        else:
-            helpbody = helpviewer.HelpViewer(doc)
-            helpbody.title = 'main help'
-            mf.append_body(helpbody)
-    h = help
-
-class BodyMixin(object):
-    commands = CommandsList
-    title = ''
-    name = None
-    def __init__(self):
-        self.mainframe = None
-    def __eq__(self, body):
-        return self.name == body.name
+    Close the current buffer
+    """
+    try:
+        mainframe.pop()
+    except StopIteration: # last body => quit program
+        quitall()
 
 class MainFrame(urwid.Frame):
     """Main console frame that mimic the vim interface.
+
+    You shall *register_commands* at startup then *unregister_commands* at end.
+
     """
-    def __init__(self, body, *args, **kwargs):
-        header = W(urwid.Text(body.title), 'banner')
-        footer = Footer(self)
-        self.bodies = {body.name:body}
-        self.__super.__init__(body=body, header=header, footer=footer,
+    def __init__(self, name, body, *args, **kwargs):
+        footer = Footer()
+        self._bodies = {name:body}
+        self._visible = name
+        self.__super.__init__(body=body, header=None, footer=footer,
                               *args, **kwargs)
 
-    def append_body(self, body):
-        """ add a body buffer to the mainframe and focus on it"""
-        self.set_body(body)
-        self.banner.set_text(body.title)
-        self.bodies[body.name] = body
-        body.mainframe = self
+    def register_commands(self):
+        register_command(('quit','q'), 'Close the current pane.')
+        register_command(('quitall', 'qa'), 'Quit the program.')
+        register_command(('refresh', 'r'), 'Refresh the display')
+        register_command(('help', 'h'), 'Show the help massage.',
+                         CA('command', str,
+                            ('command name for which to display the help. '
+                             'Display the global help if omitted.')))
 
-    def remove_body(self, body=None):
-        """Remove the body buffer (default to current) and focus on the last"""
-        if body is None:
-            body = self.body
-        del self.bodies[body.name]
-        self.append_body(self.bodies.iteritems().next()[1])
+        connect_command('quit', quit, args=(self,))
+        connect_command('quitall', quitall)
+        connect_command('help', self.show_command_help)
+        self.body.register_commands()
+
+
+    def unregister_commands(self):
+        unregister_command('quit')
+        unregister_command('q')
+        unregister_command('quitall')
+        unregister_command('qa')
+        unregister_command('help')
+        unregister_command('h')
+        self.body.unregister_commands()
+
+    def __del__(self):
+        self.unregister_command()
+
+    def _get_visible(self):
+        return self._visible
+    def _set_visible(self, name):
+        self._visible = name
+        self.body = self._bodies[self._visible]
+    visible = property(_get_visible, _set_visible, None,
+                       'name of the visible body')
+
+    def add(self, name, body):
+        """Add a body to the mainframe and focus on it"""
+        self._bodies[name] = body
+        self.visible = name
+
+    def pop(self, name=None):
+        """Remove and return a body (default to current). Then focus on the 
+        last available or raise StopIteration."""
+        if name is None:
+            name = self.visible
+        ret = self._bodies.pop(name)
+        self.visible = self._bodies.__iter__().next()
+
+    def __contain__(self, name):
+        return name in self._bodies
 
     def keypress(self, size, key):
         "allow subclasses to intercept keystrokes"
@@ -153,81 +153,33 @@ class MainFrame(urwid.Frame):
             self.footer.set('default', '', '')
             self.set_focus('body')
 
-    def call_command(self):
-        '''Call the command that corresponds to the string given in the edit area
-        '''
-        cmd = self.footer.get_edit_text().strip()
-        if not cmd:
-            self.footer.set('default', '', '')
-            return
-        try:
-            cmds = cmd.split()
-            name = cmds[0]
-            args = cmds[1:]
-            getattr(self.body.commands, name)(self, *args)
-        except urwid.ExitMainLoop: # exit, so do not catch this
-            raise
-        except AttributeError:
-            self.footer.set('warn', 'unknown command: ', name)
-        except Exception, err:
-            self.footer.set('warn', err.__class__.__name__ +': ', str(err))
+    def show_command_help(self, command=None):
+        """
+        usage: edit [command]
+
+        Show the help massage of the ``command``.
+
+        :command: a command name for which to display the help.
+                  If omited, the overall program help is displayed.
+        """
+        doc = None
+        if command:
+            logging.info(help_command(command))
+        else:
+            helpbody = helpviewer.HelpViewer(doc)
+            helpbody.title = 'main help'
+            self.add('help', helpbody)
+            logging.info('Up/Down to scroll. Escape to quit')
+
 
     # better name for header as we use it as banner
     banner = property(urwid.Frame.get_header, urwid.Frame.set_header, None,
                       'banner widget')
 
-    def render(self, size, focus=False):
-        """Render frame and return it."""
-        # Copy the original method code to put the header at bottom :?
-        # (vim-like banner)
-        self.size = size
-        maxcol, maxrow = size
-        (htrim, ftrim),(hrows, frows) = self.frame_top_bottom(
-                                                        (maxcol, maxrow), focus)
-
-        combinelist = []
-
-        if ftrim+htrim < maxrow:
-            body = self.body.render((maxcol, maxrow-ftrim-htrim),
-                                    focus and self.focus_part == 'body')
-            combinelist.append((body, 'body', self.focus_part == 'body'))
-
-        bann = None
-        if htrim and htrim < hrows:
-            bann = Filler(self.banner, 'bottom').render(
-                    (maxcol, htrim), focus and self.focus_part == 'banner')
-        elif htrim:
-            bann = self.banner.render(
-                    (maxcol,), focus and self.focus_part == 'banner')
-            assert bann.rows() == hrows, "rows, render mismatch"
-        if bann:
-            combinelist.append((bann, 'banner', self.focus_part == 'banner'))
-
-        foot = None
-        if ftrim and ftrim < frows:
-            foot = Filler(self.footer, 'bottom').render((maxcol, ftrim),
-                focus and self.focus_part == 'footer')
-        elif ftrim:
-            foot = self.footer.render(
-                    (maxcol,), focus and self.focus_part == 'footer')
-            assert foot.rows() == frows, "rows, render mismatch"
-        if foot:
-            combinelist.append((foot, 'footer', self.focus_part == 'footer'))
-
-        return CanvasCombine(combinelist)
-
-    def refresh(self):
-        for _, body in self.bodies.iteritems():
-            try:
-                body.commands.refresh(self)
-            except AttributeError: # body don't have refresh
-                pass
-
 class Footer(urwid.AttrWrap):
     """Footer widget used to display message and for inputs.
     """
-    def __init__(self, mainframe, *args, **kwargs):
-        self.mainframe = mainframe
+    def __init__(self, *args, **kwargs):
         self.__super.__init__(
             urwid.Edit('type ":help<Enter>" for information'),
             'footer_style', *args, **kwargs)
@@ -261,7 +213,23 @@ class Footer(urwid.AttrWrap):
             self.set('default', ':', '')
         if key == 'enter':
             self.set('default')
-            self.mainframe.call_command()
+            self.call_command()
         elif key == 'esc':
             self.set('default', '', '')
 
+    def call_command(self):
+        '''Call the command that corresponds to the string given in the edit area
+        '''
+        cmd = self.get_edit_text().strip()
+        if not cmd:
+            self.footer.set('default', '', '')
+            return
+        try:
+            name, args = (cmd.split(None, 1) + [''])[:2]
+            emit_command(name, args)
+            self.set('info')
+        except urwid.ExitMainLoop: # exit, so do not catch this
+            raise
+        except Exception, err:
+            logging.warn(err.__class__.__name__ + ': %s', str(err))
+            logging.debug('Exception on: "%s"', name, exc_info=True)
