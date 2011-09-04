@@ -22,3 +22,4 @@ from hgviewlib.curses.utils import *
 from hgviewlib.curses.exceptions import *
 from hgviewlib.curses.widgets import *
 from hgviewlib.curses.mainframe import MainFrame
+

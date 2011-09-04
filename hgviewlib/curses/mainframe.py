@@ -42,13 +42,13 @@ import urwid
 import logging
 import urwid.raw_display
 from urwid import AttrWrap as W
-from urwid.decoration import Filler, CanvasCombine
 
 from hgviewlib.curses import helpviewer
 from hgviewlib.curses import (CommandError, CommandArg as CA,
                               register_command, unregister_command,
                               emit_command, connect_command,
-                              help_command)
+                              help_command,
+                              hg_command_map)
 
 def quitall():
     """
@@ -144,14 +144,20 @@ class MainFrame(urwid.Frame):
         """Override this method to intercept keystrokes in subclasses.
         Default behavior: run command from ':xxx'
         """
-        if key == ':':
+        if hg_command_map[key] == 'command key':
             self.set_focus('footer')
-            self.footer.unhandled_key(size, ':')
+            self.footer.unhandled_key(size, key)
         elif key == 'enter':
             self.set_focus('body')
-        elif key == 'esc':
+        elif hg_command_map[key] == 'escape':
             self.footer.set('default', '', '')
             self.set_focus('body')
+        elif hg_command_map[key] == 'refresh':
+            emit_command('refresh')
+        elif hg_command_map[key] == 'close pane':
+            emit_command('quit')
+        elif hg_command_map[key] == 'help':
+            self.show_command_help()
 
     def show_command_help(self, command=None):
         """
@@ -167,9 +173,9 @@ class MainFrame(urwid.Frame):
             logging.info(help_command(command))
         else:
             helpbody = helpviewer.HelpViewer(doc)
-            helpbody.title = 'main help'
+            helpbody.title = 'Main help'
             self.add('help', helpbody)
-            logging.info('Up/Down to scroll. Escape to quit')
+            logging.info('":q<CR>" to quit.')
 
 
     # better name for header as we use it as banner
@@ -209,12 +215,14 @@ class Footer(urwid.AttrWrap):
         """Overwrite this method to intercept keystrokes in subclasses.
         Default behavior: run command from ':xxx'
         """
-        if key == ':':
-            self.set('default', ':', '')
+        if hg_command_map[key] == 'command key':
+            # just for fun
+            label = {'f5':'command: ', ':':':', 'meta x':'M-x '}[key]
+            self.set('default', label, '')
         if key == 'enter':
             self.set('default')
             self.call_command()
-        elif key == 'esc':
+        elif hg_command_map[key] == 'escape':
             self.set('default', '', '')
 
     def call_command(self):

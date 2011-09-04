@@ -21,9 +21,33 @@
 """
 from urwid import Frame, Text, AttrWrap
 
-__all__ = ['Body']
+# XXX
+from pygments import lex, lexers
+from pygments.util import ClassNotFound
+
+__all__ = ['Body', 'SelectableText', 'SourceText']
+
+
+class SelectableText(Text):
+    """A seletable Text widget"""
+    _selectable = True
+    def keypress(self, size, key):
+        return key
 
 class Body(Frame):
+    """A suitable widget that shall be used as a body for the mainframe.
+
+    +------------------+
+    |                  |
+    |       Body       |
+    |                  |
+    +------------------+
+    |  Text with title |
+    +------------------+
+
+    Use the ``title`` property to chage the footer text.
+
+    """
     def __init__(self, body):
         footer = AttrWrap(Text(''), 'banner')
         super(Body, self).__init__(body=body, footer=footer, header=None,
@@ -44,3 +68,40 @@ class Body(Frame):
     def unregister_commands(self):
         """unregister commands"""
         pass
+
+class SourceText(SelectableText):
+    def __init__(self, text, filename=None, lexer=None, *args, **kwargs):
+        self._lexer = lexer
+        self.filename = filename
+        self.__super.__init__(text, *args, **kwargs)
+
+    def get_lexer(self):
+        """Return the current lexer"""
+        return self._lexer
+    def update_lexer(self, lexer=None):
+        """
+        Update highlighting using the given lexer or by inspecting filename
+        or text content if lexer is None.
+        """
+        if not self.text:
+            return
+        text = self.text
+        if lexer is None and self.filename: # try to get lexer from filename
+            try:
+                lexer = lexers.get_lexer_for_filename(self.filename, text)
+            except ClassNotFound:
+                pass
+        if lexer is None and text: # try to get lexer from text
+            try:
+               lexer = lexers.guess_lexer(text)
+            except ClassNotFound:
+                pass
+        self._lexer = lexer
+        if lexer == None: # No lexer found => finish
+            return
+        self.set_text(list(lex(text, self._lexer)))
+    def clear_lexer(self):
+        """Remove highlighting"""
+        self.set_text(self.text)
+    lexer = property(get_lexer, update_lexer, clear_lexer, 'hihglight lexer')
+

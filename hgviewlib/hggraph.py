@@ -601,12 +601,9 @@ class HgRepoListWalker(object):
             else:
                 self._columns = tuple(validcols)
 
-    def maxWidthValueForColumn(self, column):
-        raise NotImplementedError
-
     @staticmethod
     def get_color(n, ignore=()):
-        raise NotImplementedError
+        return []
 
     def user_color(self, user):
         if user not in self._user_colors:
@@ -645,7 +642,7 @@ class HgRepoListWalker(object):
         self.notify_data_changed()
 
     def notify_data_changed(self):
-        raise NotImplementedError
+        pass
 
 if __name__ == "__main__":
     # pylint: disable-msg=C0103

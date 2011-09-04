@@ -25,11 +25,20 @@ from inspect import getdoc
 import shlex
 from itertools import izip_longest
 from collections import namedtuple
+try:
+    from collections import OrderedDict as container # better for help
+except ImportError:
+    container = dict
+
+import urwid
+from urwid.command_map import CommandMap
 from hgviewlib.curses.exceptions import UnknownCommand, RegisterCommandError
 
 __all__ = ['connect_logging',
            'register_command', 'unregister_command', 'connect_command',
            'disconnect_command', 'emit_command', 'help_command', 'CommandArg',
+           'hg_command_map',
+           'PALETTE', 'Screen',
           ]
 
 # _____________________________________________________________________ logging
@@ -94,7 +103,7 @@ CommandArg = namedtuple('CommandArg', ('name', 'parser', 'help'))
 class Commands(object):
     def __init__(self):
         self._args = {}
-        self._helps = {}
+        self._helps = container()
         self._calls = {}
 
     def register(self, names, help, *args):
@@ -257,4 +266,165 @@ connect_command = _commands.connect
 disconnect_command = _commands.disconnect
 emit_command = _commands.emit
 help_command = _commands.help
+
+# _________________________________________________________________ command map
+
+
+class HgCommandMap(CommandMap):
+    _command_defaults = container((
+
+        ('f1', 'help'),
+        ('enter', 'validate'),
+        ('m', 'maximize pane'),
+
+        # Qt interface
+        ('f5', 'command key'),
+        ('esc', 'escape'),
+        ('ctrl l', 'refresh'),
+        ('ctrl w', 'close pane'),
+
+        ('up', 'graphlog up'),
+        ('down', 'graphlog down'),
+        ('left', 'manifest up'),
+        ('right', 'manifest down'),
+        ('meta up', 'source up'),
+        ('meta down', 'source down'),
+
+        ('page up', 'graphlog page up'),
+        ('page down', 'graphlog page down'),
+        ('home', 'manifest page up'),
+        ('end', 'manifest page down'),
+        ('insert', 'source page up'),
+        ('delete', 'source page down'),
+
+        # vim interface
+        (':', 'command key'),
+        #'esc','escape', already set in Qt interface
+        ('r', 'refresh'),
+        ('q', 'close pane'),
+
+        ('k', 'graphlog up'),
+        ('j', 'graphlog down'),
+        ('h', 'manifest up'),
+        ('l', 'manifest down'),
+        ('p', 'source up'),
+        ('n', 'source down'),
+
+        ('K', 'graphlog page up'),
+        ('J', 'graphlog page down'),
+        ('H', 'manifest page up'),
+        ('L', 'manifest page down'),
+        ('P', 'source page up'),
+        ('N', 'source page down'),
+
+        # emacs interface
+        ('meta x', 'command key'),
+        ('ctrl g', 'escape'),
+        ('ctrl v', 'refresh'),
+        ('ctrl k', 'close pane'),
+
+        ('ctrl p', 'graphlog up'),
+        ('ctrl n', 'graphlog down'),
+        ('ctrl b', 'manifest up'),
+        ('ctrl f', 'manifest down'),
+        ('ctrl a', 'source up'),
+        ('ctrl e', 'source down'),
+
+        ('meta p', 'graphlog page up'),
+        ('meta n', 'graphlog page down'),
+        ('meta b', 'manifest page up'),
+        ('meta f', 'manifest page down'),
+        ('meta a', 'source page up'),
+        ('meta e', 'source page down'),
+    ))
+
+hg_command_map = HgCommandMap()
+
+# _____________________________________________________________________ Screen
+
+PALETTE = [
+    ('default','default','default'),
+    ('body','default','default', 'standout'),
+    ('banner','black','light gray', 'bold'),
+    ('focus','black','dark cyan', 'bold'),
+
+    # logging
+    ('DEBUG', 'dark magenta', 'default'),
+    ('INFO', 'dark gray', 'default'),
+    ('WARNING', 'brown', 'default'),
+    ('ERROR', 'dark red', 'default'),
+    ('CRITICAL', 'light red', 'default'),
+
+    # graphlog
+    ('ID', 'brown', 'default', 'standout'),
+    ('Log', 'default', 'default'),
+    ('GraphLog', 'default', 'default', 'bold'),
+    ('Author', 'dark blue', 'default', 'bold'),
+    ('Date', 'dark green', 'default', 'bold'),
+    ('Tags', 'yellow', 'dark red', 'bold'),
+    ('Branch', 'yellow', 'default', 'bold'),
+    ('Filename', 'white', 'default', 'bold'),
+    ('Unapplied', 'light cyan', 'black'),
+    ('Current', 'black', 'dark green'),
+    ('Modified', 'black', 'dark red'),
+
+    # filelist
+    ('+', 'dark green', 'default'),
+    ('-', 'dark red', 'default'),
+    ('=', 'default', 'default'),
+    ('?', 'brown', 'default'),
+]
+
+try:
+    from pygments.token import Token, _TokenType
+
+    PALETTE += [
+        (Token.Text, 'default', 'default'),
+        (Token.Comment, 'dark gray', 'default'),
+        (Token.Punctuation, 'white', 'default', 'bold'),
+        (Token.Operator, 'light blue', 'default'),
+        (Token.Literal, 'dark magenta', 'default'),
+        (Token.Name, 'default', 'default'),
+        (Token.Name.Builtin, 'dark blue', 'default'),
+        (Token.Name.Namespace, 'dark blue', 'default'),
+        (Token.Name.Builtin.Pseudo, 'dark blue', 'default'),
+        (Token.Name.Exception, 'dark blue', 'default'),
+        (Token.Name.Decorator, 'dark blue', 'default'),
+        (Token.Name.Class, 'dark blue', 'default'),
+        (Token.Name.Function, 'dark blue', 'default'),
+        (Token.Keyword, 'light green', 'default'),
+        (Token.Generic.Deleted, 'dark red', 'default'),
+        (Token.Generic.Inserted, 'dark green', 'default'),
+        (Token.Generic.Subheading, 'dark magenta', 'default', 'bold'),
+        (Token.Generic.Heading, 'black', 'dark magenta'),
+    ]
+
+    class Palette(dict):
+        """Special dictionary that take into account parent token inheritence.
+        """
+        def __contains__(self, key):
+            if super(Palette, self).__contains__(key):
+                return True
+            if not isinstance(key, _TokenType) or not key.parent:
+                return False
+            if key.parent in self: # fonction is now recursive
+                self[key] = self[key.parent] # cache + __getitem__ ok
+                return True
+            return False
+
+    class Screen(urwid.raw_display.Screen):
+        """hack Screen to allow parent token inheritence in the palette"""
+        def __init__(self, *args):
+            self.__pal_escape = None
+            super(Screen, self).__init__()
+        def get_pal_escape(self):
+            return self.__pal_escape
+        def set_pal_escape(self, value):
+            self.__pal_escape = Palette()
+            if value:
+                self.__pal_escape.update(value)
+        _pal_escape = property(get_pal_escape, set_pal_escape)
+
+except ImportError:
+    Screen = urwid.raw_display.Screen
 
