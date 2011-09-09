@@ -31,7 +31,9 @@ try:
     import pygments
     from pygments.token import Token, _TokenType
 except ImportError:
+    # pylint: disable-msg=C0103
     pygments = None
+    # pylint: enable-msg=C0103
 
 # _________________________________________________________________ Applicaiton
 
@@ -51,6 +53,8 @@ class HgViewUrwidApplication(HgViewApplication):
         mainframe.register_commands()
         self.enable_inotify()
         self.mainframe = mainframe
+
+#        register_command('alarm', 'process callback in a given seconds',
 
     def get_screen(self):
         """return the screen instance to use"""
@@ -91,6 +95,7 @@ def inotify(mainloop):
         return
 
     class UrwidInotify(Inotify):
+        """Inotify handler that can be connected to as urwid mainloop."""
         def __init__(self, *args, **kwargs):
             super(UrwidInotify, self).__init__(*args, **kwargs)
             self._input_timeout = None
@@ -138,7 +143,7 @@ def patch_screen(screen_cls):
             return False
         has_key = __contains__
 
-    class PatchedScreen(screen_cls):
+    class PatchedScreen(screen_cls, object):
         """hack Screen to allow parent token inheritence in the palette"""
         # Use a special container for storing style definition. This container
         # take into accoutn parent token inheritence
@@ -154,20 +159,26 @@ def patch_screen(screen_cls):
 
 
         def _hgview_get_palette(self):
+            """Return the palette"""
             return self._hgview_palette
         def _hgview_set_palette(self, value):
+            """Set the palette"""
             self._hgview_palette = Palette()
             if value:
                 self._hgview_palette.update(value)
+        # pylint: disable-msg=E0602
         _pal_escape = property(_hgview_get_palette, _hgview_set_palette)
         palette = _pal_escape
 
         def _hgview_get_attrconv(self):
+            """Return the palette"""
             return self._hgview_attrconv
         def _hgview_set_attrconv(self, value):
+            """Set the palette"""
             self._hgview_attrconv = Palette()
             if value:
                 self._hgview_attrconv.update(value)
+        # pylint: disable-msg=E0602
         attrconv = property(_hgview_get_attrconv, _hgview_set_attrconv)
     return PatchedScreen
 

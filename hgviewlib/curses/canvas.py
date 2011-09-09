@@ -15,11 +15,14 @@
 # You should have received a copy of the GNU General Public License along with
 # this program; if not, write to the Free Software Foundation, Inc.,
 # 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+
 """
 Module that contains special canva features.
 """
+# pylint: disable=W,C,I,R
 
-from urwid.canvas import *
+from urwid.canvas import (trim_line, rle_append_modify, apply_target_encoding,
+                          rle_len, LayoutSegment, TextCanvas, rle_join_modify)
 
 __all__ = ['apply_text_layout']
 

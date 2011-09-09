@@ -20,13 +20,10 @@
 Module that contains the help body.
 """
 
-from urwid import (Text, AttrWrap, SimpleListWalker, ListBox, ListWalker,
-                   Columns)
-from urwid.signals import connect_signal, emit_signal, disconnect_signal
-from textwrap import wrap
+from urwid import AttrWrap, ListWalker
+from urwid.signals import emit_signal
 
-from hgviewlib.util import isbfile, bfilepath
-from hgviewlib.curses import Body, SelectableText
+from hgviewlib.curses import SelectableText
 
 DIFF = 'diff'
 FILE = 'file'
@@ -56,21 +53,25 @@ class ManifestWalker(ListWalker):
             self._files = tuple(self._ctx.files())
         else:
             self._files = ()
-        super(ManifestWalker, self).__init__()
+        super(ManifestWalker, self).__init__(*args, **kwargs)
 
     def get_filename(self):
+        """Return focused file name"""
         if self._focus < 0:
             return
         return self._files[self._focus]
-    def set_filename(self, file):
-        focus = self._files.index(file)
+    def set_filename(self, filename):
+        """change focus element by giving the corresponding file name"""
+        focus = self._files.index(filename)
         self.set_focus(focus)
     filename = property(get_filename, set_filename, None,
                         'File name under focus.')
 
     def get_ctx(self):
+        """Return the current context"""
         return self._ctx
     def set_ctx(self, ctx):
+        """set the curreont context (obsolete the content)"""
         self._cached_flags.clear()
         self._ctx = ctx
         self._files = tuple(self._ctx.files())
@@ -79,11 +80,13 @@ class ManifestWalker(ListWalker):
     ctx = property(get_ctx, set_ctx, None, 'Current changeset context')
 
     def get_focus(self):
+        """return (focused widget, position)"""
         try:
             return self.data(self._focus), self._focus
         except IndexError:
             return None, None
     def set_focus(self, focus):
+        """set the focused widget giving the position."""
         self._focus = focus
         emit_signal(self, 'focus changed', self.filename)
     def reset_focus(self):
@@ -96,21 +99,24 @@ class ManifestWalker(ListWalker):
     focus = property(lambda self: self._focus, set_focus, reset_focus, 
                      'focus index')
 
-    def get_prev(self, prev):
-        focus = prev - 1
+    def get_prev(self, pos):
+        """return (widget, position) before position `pos` or (None, None)"""
+        focus = pos - 1
         try:
             return self.data(focus), focus
         except IndexError:
             return None, None
 
-    def get_next(self, next):
-        focus = next + 1
+    def get_next(self, pos):
+        """return (widget, position) after position `pos` or (None, None)"""
+        focus = pos + 1
         try:
             return self.data(focus), focus
         except IndexError:
             return None, None
 
     def data(self, focus):
+        """return widget a position `focus`"""
         if self._ctx is None:
             raise IndexError('context is None')
         if (focus < -1) or ((not self.manage_description) and (focus < 0)):

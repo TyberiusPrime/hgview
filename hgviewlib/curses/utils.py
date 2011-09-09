@@ -20,17 +20,13 @@
 A Module that contains usefull utilities.
 """
 
-import logging
-from inspect import getdoc
 import shlex
-from itertools import izip_longest
 from collections import namedtuple
 try:
-    from collections import OrderedDict as container # better for help
+    from collections import OrderedDict as Container # better for help
 except ImportError:
-    container = dict
+    Container = dict
 
-import urwid
 from urwid.command_map import CommandMap
 from hgviewlib.curses.exceptions import UnknownCommand, RegisterCommandError
 
@@ -44,15 +40,31 @@ __all__ = ['register_command', 'unregister_command', 'connect_command',
 CommandEntry = namedtuple('CommandEntry', ('func', 'args', 'kwargs'))
 CommandArg = namedtuple('CommandArg', ('name', 'parser', 'help'))
 class Commands(object):
+    """A class that handle commands using a signal-like system.
+
+    * You shall *register* a command before using it.
+    * Then you may want to *connect* callbacks to commands and call.
+    * They will be processed while *emitting* the cammands.
+    * Note that you can pick up *help* about commands.
+
+    You can fix callback arguments when connecting and/or emmitting a command.
+
+    Emit method accept a command line string. This command line can only be a
+    command namei if all arguments for all callbacks have been fixed (or if they
+    are optionals). Otherwise the command options can be automaticly parsed
+    by giving `CommandArg`s to register.
+
+    """
     def __init__(self):
         self._args = {}
-        self._helps = container()
+        self._helps = Container()
         self._calls = {}
 
     def register(self, names, help, *args):
         """Register a command to make it available for connecting/emitting.
 
-        ``names`` is the command name or a list of aliases.
+        :names: the command name or a list of aliases.
+        :args: `CommandArg` instances.
 
         >>> from hgviewlib.curses import utils
         >>> import urwid
@@ -210,6 +222,8 @@ class Commands(object):
         for name in self._helps:
             yield name, self.help(name)
 
+# Instanciate a Commands object to handle command from a global scope.
+#pylint: disable-msg=C0103
 _commands = Commands()
 register_command = _commands.register
 unregister_command = _commands.unregister
@@ -218,12 +232,14 @@ disconnect_command = _commands.disconnect
 emit_command = _commands.emit
 help_command = _commands.help
 help_commands = _commands.helps
+#pylint: enable-msg=C0103
 
 # _________________________________________________________________ command map
 
 
 class HgCommandMap(CommandMap):
-    _command_defaults = container((
+    """Map keys to more expliite action names."""
+    _command_defaults = Container((
 
         ('f1', '@help'),
         ('enter', 'validate'),
@@ -289,6 +305,9 @@ class HgCommandMap(CommandMap):
         ('meta a', 'source page up'),
         ('meta e', 'source page down'),
     ))
+    keys = _command_defaults.keys
+    iteritems = _command_defaults.iteritems
+
 
 hg_command_map = HgCommandMap()
 

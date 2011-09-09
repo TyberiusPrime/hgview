@@ -22,14 +22,13 @@ Contains a listbox definition that walk the repo log and display an ascii graph
 from itertools import izip_longest as zzip
 from time import strftime, localtime
 
-from urwid import (AttrMap, Text, ListWalker, Columns, ListBox, WidgetWrap,
-                   TextLayout, emit_signal)
+from urwid import AttrMap, Text, ListWalker, Columns, WidgetWrap, emit_signal
 
 from hgext.graphlog import (fix_long_right_edges, get_nodeline_edges_tail,
                             draw_edges, get_padding_line)
 
 from hgviewlib.util import tounicode
-from hgviewlib.hggraph import getlog, gettags
+from hgviewlib.hggraph import getlog, gettags, HgRepoListWalker
 from hgviewlib.curses import connect_command, SelectableText
 
 # __________________________________________________________________ constants
@@ -54,22 +53,25 @@ GRAPH_MIN_WIDTH = 6
 # ____________________________________________________________________ classes
 
 class AppliedItem(WidgetWrap):
-    def __init__(self, w, gnode, ctx, *args, **kwargs):
+    """Wrap widget that displays basic changeset"""
+    def __init__(self, widget, gnode, ctx, *args, **kwargs):
         self.gnode = gnode
         self.ctx = ctx
-        self.__super.__init__(w, *args, **kwargs)
+        super(AppliedItem, self).__init__(widget, *args, **kwargs)
 
 class UnappliedItem(WidgetWrap):
-    def __init__(self, w, idx, name, *args, **kwargs):
+    """Wrap widget that diplays unapplied mq patch"""
+    def __init__(self, widget, idx, name, *args, **kwargs):
         self.idx = idx
         self.name = name
-        self.__super.__init__(w, *args, **kwargs)
+        super(UnappliedItem, self).__init__(widget, *args, **kwargs)
 
 class RevisionsWalker(ListWalker):
     """ListWalker-compatible class for browsing log changeset.
     """
 
     signals = ['focus changed']
+    _columns = HgRepoListWalker._columns
 
     _allfields = (('Branch', 'Tags', 'Log'),)
     _allcolumns = (('Date', 16), ('Author', 20), ('ID', 6),)
@@ -80,27 +82,32 @@ class RevisionsWalker(ListWalker):
         self._focus = 0L
         self.walker = walker
         super(RevisionsWalker, self).__init__(*args, **kwargs)
-        if self.walker._hasmq:
+        if hasattr(self.walker.repo, "mq"): # focus on first mq patch if any
             self._focus = -len(self._get_unapplied())
         self.asciistate = [0, 0] # graphlog.asciistate()
 
     def connect_commands(self):
+        """Connect usefull commands to callbacks"""
         connect_command('goto', self.set_rev)
         connect_command('refresh', self.refresh)
 
     def _get_unapplied(self):
+        """return unapplied mq patches"""
         return self.walker.repo.mq.unapplied(self.walker.repo)
 
     def _modified(self):
+        """obsolete widget content"""
         super(RevisionsWalker, self)._modified()
 
     def refresh(self):
+        """refresh widget content"""
         self._invalidate()
         self.walker.setRepo()
         emit_signal(self, 'focus changed', self.get_ctx())
         self._modified()
 
     def _invalidate(self):
+        """obsolete rendering cache"""
         self._data_cache.clear()
         super(RevisionsWalker, self)._modified()
 
@@ -134,7 +141,7 @@ class RevisionsWalker(ListWalker):
         """return a widget for unapplied patch"""
         # blank columns
         idx, name = self._get_unapplied()[-pos - 1]
-        info = {'Branch':'[Unapplied patches]', 'ID':str(idx),'Log':name}
+        info = {'Branch':'[Unapplied patches]', 'ID':str(idx), 'Log':name}
         # prepare the last columns content
         txts = ['.' + ' ' * GRAPH_MIN_WIDTH] # mock graph log
         for fields in self._allfields:
@@ -150,7 +157,8 @@ class RevisionsWalker(ListWalker):
         # prepare other columns
         columns = [('fixed', sz, Text(('Unapplied', info.get(col, '')),
                                       align='right', wrap='clip'))
-                   for col, sz in self._allcolumns if col in self.walker._columns]
+                   for col, sz in self._allcolumns
+                   if col in self._columns]
         txt = Columns(columns + [txt], 1)
         txt = AttrMap(txt, {}, {'Unapplied':'focus'})
         txt = UnappliedItem(txt, idx, name)
@@ -176,7 +184,7 @@ class RevisionsWalker(ListWalker):
             txts.append(('GraphLog', graph.ljust(GRAPH_MIN_WIDTH)))
             txts.append(' ')
             for field in fields:
-                if field not in self.walker._columns:
+                if field not in self._columns:
                     continue
                 txt = _COLUMNMAP[field](self.walker, ctx, gnode)
                 if not txt:
@@ -186,25 +194,26 @@ class RevisionsWalker(ListWalker):
             txts.pop() # remove pendding space
             txts.append('\n')
         txts.pop() # remove pendding newline
-        txt = SelectableText(txts, wrap='clip')
         # prepare other columns
         txter = lambda col, sz: Text(
                  (col, _COLUMNMAP[col](self.walker, ctx, gnode)[:sz]),
                                        align='right', wrap='clip')
         columns = [('fixed', sz, txter(col, sz))
                    for col, sz in self._allcolumns
-                   if col in self.walker._columns] + [txt]
-        # highlight some revs
+                   if col in self._columns]
+        columns.append(SelectableText(txts, wrap='clip'))
+        # normal style: use special styles for woking directory and tip
         style = None
         if gnode.rev is None:
             style = 'Modified' # pending changes
         elif gnode.rev in self.walker.wd_revs:
             style = 'Current'
         spec_style = style and dict.fromkeys(['GraphLog'], style) or {}
-        # highlight focused
+        # focused style: use special stles for working directory and tip
         style = style or 'focus'
-        foc_style = dict.fromkeys(self.walker._columns + ('GraphLog', None), style)
-        # build widget with style modifier
+        foc_style = dict.fromkeys(self._columns + ('GraphLog', None),
+                                  style)
+        # wrap widget with style modified
         widget = AttrMap(Columns(columns, 1), spec_style, foc_style)
         widget = AppliedItem(widget, gnode, ctx)
         return widget
@@ -259,6 +268,7 @@ class RevisionsWalker(ListWalker):
                      'focused widget index')
 
     def get_rev(self):
+        """Return revision of the focused changeset"""
         if self._focus >= 0:
             return self.walker.graph[self._focus].rev
 
@@ -272,6 +282,7 @@ class RevisionsWalker(ListWalker):
     rev = property(get_rev, set_rev, None, 'current revision')
 
     def get_ctx(self):
+        """return context of the focused changeset"""
         if self.focus >= 0:
             return self.walker.repo.changectx(self.rev)
 

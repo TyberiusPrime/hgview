@@ -22,12 +22,8 @@ Module that contains the help body.
 
 import urwid
 from urwid import AttrWrap, Text, Padding, ListBox, SimpleListWalker, Divider
-import logging
-from textwrap import wrap
 
-from hgviewlib.hgviewhelp import long_help_msg
-
-from hgviewlib.curses import Body, emit_command, utils, hg_command_map
+from hgviewlib.curses import Body, utils, hg_command_map
 
 class HelpViewer(Body):
     """A body to display a help message (or the global program help)"""
@@ -39,18 +35,18 @@ class HelpViewer(Body):
         else:
             contents = []
             #keybindings
-            contents.extend(title('Keybindings'))
+            contents.extend(section('Keybindings'))
             messages = []
-            keys = hg_command_map._command_defaults.keys()
+            keys = hg_command_map.keys()
             longest = max(len(key) for key in keys)
-            for name, cmd in hg_command_map._command_defaults.iteritems():
+            for name, cmd in hg_command_map.iteritems():
                 messages.append(('ERROR', name.rjust(longest)))
                 messages.append(('WARNING', ' | '))
                 messages.append(cmd)
                 messages.append('\n')
             contents.append(Text(messages))
             # mouse
-            contents.extend(title('Mouse'))
+            contents.extend(section('Mouse'))
             messages = [('ERROR', 'button 1'), ('WARNING', ' | '),
                          'Show context\n',
                          ('ERROR', 'button 3'), ('WARNING', ' | '),
@@ -62,35 +58,18 @@ class HelpViewer(Body):
             ]
             contents.append(Text(messages))
             # commands
-            contents.extend(title('Commands List'))
+            contents.extend(section('Commands List'))
             messages = []
-            for name, help in utils.help_commands():
+            for name, helpmsg in utils.help_commands():
                 messages.append(('ERROR', '\ncommand: "%s"\n'%name))
-                messages.extend(help)
+                messages.extend(helpmsg)
             contents.append(Text(messages))
 
 
         listbox = ListBox(SimpleListWalker(contents))
-        self.__super.__init__(body=listbox, *args, **kwargs)
+        super(HelpViewer, self).__init__(body=listbox, *args, **kwargs)
 
-    def _keypress(self, size, key):
-        "allow subclasses to intercept keystrokes"
-        key = self.__super.keypress(size, key)
-        if key:
-            self.unhandled_key(size, key)
-        return key
-
-    def unhandled_key(self, size, key):
-        """Overwrite this method to intercept keystrokes in subclasses.
-        Default behavior: run command from ':xxx'
-        """
-        if key in (':', 'esc', 'q'):
-            emit_command('quit')
-            logging.info('')
-        else:
-            return key
-
-    def mouse_event(self, size, event, button, col, row, focus):
+    def mouse_event(self, size, event, button, *args, **kwargs):
         """Scroll content"""
         if urwid.util.is_mouse_press(event):
             if button == 4:
@@ -99,9 +78,11 @@ class HelpViewer(Body):
             elif button == 5:
                 self.keypress(size, 'page down')
                 return
-        self.__super.mouse_event(size, event, button, col, row, focus)
+        return super(HelpViewer, self).mouse_event(size, event, button,
+                                                   *args, **kwargs)
 
-def title(title):
+def section(title):
+    """Return a list of widgets that may used as separators"""
     contents = []
     contents.append(Divider('-'))
     contents.append(AttrWrap(Padding(Text(title), 'center'), 'CRITICAL'))

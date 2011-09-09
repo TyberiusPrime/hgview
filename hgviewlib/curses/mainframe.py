@@ -41,14 +41,12 @@ vim/emacs interface.
 import urwid
 import logging
 import urwid.raw_display
-from urwid import AttrWrap as W
 from urwid.signals import connect_signal, emit_signal
 
 from hgviewlib.curses import helpviewer
-from hgviewlib.curses import (CommandError, CommandArg as CA,
+from hgviewlib.curses import (CommandArg as CA, help_command,
                               register_command, unregister_command,
                               emit_command, connect_command,
-                              help_command,
                               hg_command_map)
 
 def quitall():
@@ -59,10 +57,8 @@ def quitall():
     """
     raise urwid.ExitMainLoop()
 
-def quit(mainframe):
+def close(mainframe):
     """
-    usage: quit
-
     Close the current buffer
     """
     try:
@@ -80,12 +76,13 @@ class MainFrame(urwid.Frame):
         footer = Footer()
         self._bodies = {name:body}
         self._visible = name
-        self.__super.__init__(body=body, header=None, footer=footer,
-                              *args, **kwargs)
+        super(MainFrame, self).__init__(body=body, header=None, footer=footer,
+                                        *args, **kwargs)
         connect_signal(footer, 'end command', 
                        lambda status: self.set_focus('body'))
 
     def register_commands(self):
+        """Register specific command"""
         register_command(('quit','q'), 'Close the current pane.')
         register_command(('quitall', 'qa'), 'Quit the program.')
         register_command(('refresh', 'r'), 'Refresh the display')
@@ -94,13 +91,14 @@ class MainFrame(urwid.Frame):
                             ('command name for which to display the help. '
                              'Display the global help if omitted.')))
 
-        connect_command('quit', quit, args=(self,))
+        connect_command('quit', close, args=(self,))
         connect_command('quitall', quitall)
         connect_command('help', self.show_command_help)
         self.body.register_commands()
 
 
     def unregister_commands(self):
+        """unregister specific commands"""
         unregister_command('quit')
         unregister_command('q')
         unregister_command('quitall')
@@ -110,8 +108,10 @@ class MainFrame(urwid.Frame):
         self.body.unregister_commands()
 
     def _get_visible(self):
+        """return the name of the current visible body"""
         return self._visible
     def _set_visible(self, name):
+        """modify the visible body giving its name"""
         self._visible = name
         self.body = self._bodies[self._visible]
     visible = property(_get_visible, _set_visible, None,
@@ -129,13 +129,18 @@ class MainFrame(urwid.Frame):
             name = self.visible
         ret = self._bodies.pop(name)
         self.visible = self._bodies.__iter__().next()
+        return ret
 
-    def __contain__(self, name):
+    def __contains__(self, name):
+        """a.__contains__(b) <=> b in a
+
+        Return True if `name` corresponds to a managed body
+        """
         return name in self._bodies
 
     def keypress(self, size, key):
-        "allow subclasses to intercept keystrokes"
-        key = self.__super.keypress(size, key)
+        """allow subclasses to intercept keystrokes"""
+        key = super(MainFrame, self).keypress(size, key)
         if key is None:
             return
         if hg_command_map[key] == 'command key':
@@ -180,7 +185,7 @@ class Footer(urwid.AttrWrap):
     signals = ['start command', 'end command']
 
     def __init__(self, *args, **kwargs):
-        self.__super.__init__(
+        super(Footer, self).__init__(
             urwid.Edit('type ":help<Enter>" for information'),
             'INFO', *args, **kwargs)
         connect_signal(self, 'start command', self.start_command)
@@ -202,7 +207,7 @@ class Footer(urwid.AttrWrap):
             self.set('default', '', '')
             emit_signal(self, 'end command', False)
         else:
-            return self.__super.keypress(size, key)
+            return super(Footer, self).keypress(size, key)
 
     def set(self, style=None, caption=None, edit=None):
         '''Set the footer content.
@@ -219,7 +224,8 @@ class Footer(urwid.AttrWrap):
             self.set_edit_text(edit)
 
     def call_command(self):
-        '''Call the command that corresponds to the string given in the edit area
+        '''
+        Call the command that corresponds to the string given in the edit area
         '''
         cmdline = self.get_edit_text()
         if not cmdline:

@@ -19,8 +19,6 @@
 Main curses application for hgview
 """
 
-import os
-
 from pygments import lexers
 
 import urwid
@@ -42,19 +40,19 @@ class GraphlogViewer(Body):
         self.walker = walker
         self.graphlog_walker = RevisionsWalker(walker=walker)
         body = ScrollableListBox(self.graphlog_walker)
-        self.__super.__init__(body=body, *args, **kwargs)
+        super(GraphlogViewer, self).__init__(body=body, *args, **kwargs)
         self.title = walker.repo.root
         connect_signal(self.graphlog_walker, 'focus changed', self.update_title)
 
     def update_title(self, ctx):
         """update title depending on the given context ``ctx``."""
         if ctx is None:
-            hex = 'UNAPPLIED MQ PATCH'
+            hex_ = 'UNAPPLIED MQ PATCH'
         elif ctx.node() is None:
-            hex = 'WORKING DIRECTORY'
+            hex_ = 'WORKING DIRECTORY'
         else:
-            hex = ctx.hex()
-        self.title = '%s [%s]' % (self.walker.repo.root, hex)
+            hex_ = ctx.hex()
+        self.title = '%s [%s]' % (self.walker.repo.root, hex_)
 
     def register_commands(self):
         '''Register commands and connect commands for bodies'''
@@ -71,14 +69,15 @@ class GraphlogViewer(Body):
 
     def render(self, size, focus=True):
         '''Render the widget. Always use the focus style.'''
-        return self.__super.render(size, True)
+        return super(GraphlogViewer, self).render(size, True)
 
     def mouse_event(self, size, event, button, col, row, focus):
         """Scroll content and show context"""
         if urwid.util.is_mouse_press(event):
             if button == 1:
                 emit_command('show-context')
-        return self.__super.mouse_event(size, event, button, col, row, True)
+        return super(GraphlogViewer, self).mouse_event(size, event, button,
+                                                       col, row, True)
 
 class ManifestViewer(Body):
     """Manifest viewer"""
@@ -88,59 +87,64 @@ class ManifestViewer(Body):
                                               manage_description=True,
                                               *args, **kwargs)
         body = ScrollableListBox(self.manifest_walker)
-        self.__super.__init__(body=body, *args, **kwargs)
+        super(ManifestViewer, self).__init__(body=body, *args, **kwargs)
         self.title = 'Manifest'
 
     def render(self, size, focus=True):
         '''Render the manifest viewer. Always use the focus style.'''
-        return self.__super.render(size, True)
+        return super(ManifestViewer, self).render(size, True)
 
 class SourceViewer(Body):
     """Source Viewer"""
     def __init__(self, text, *args, **kwargs):
-        self._source = SourceText(text, wrap='clip')
-        body = ScrollableListBox([self._source])
-        self.__super.__init__(body=body)
+        self.text = SourceText(text, wrap='clip')
+        body = ScrollableListBox([self.text])
+        super(SourceViewer, self).__init__(body=body, *args, **kwargs)
 
 class ContextViewer(Columns):
     """Context viewer (manifest and source)"""
     MANIFEST_SIZE = 0.3
     def __init__(self, walker, *args, **kwargs):
-        self._manifest = ManifestViewer(walker=walker, ctx=None)
-        self._source = SourceViewer('')
-        widget_list = [('weight', 1 - self.MANIFEST_SIZE, self._source),
+        self.manifest = ManifestViewer(walker=walker, ctx=None)
+        self.manifest_walker = self.manifest.manifest_walker
+        self.source = SourceViewer('')
+        self.source_text = self.source.text
+
+        widget_list = [('weight', 1 - self.MANIFEST_SIZE, self.source),
                        ('fixed', 1, AttrWrap(SolidFill(' '), 'banner')),
-                       ('weight', self.MANIFEST_SIZE, self._manifest),
+                       ('weight', self.MANIFEST_SIZE, self.manifest),
                        ]
-        self.__super.__init__(widget_list=widget_list, *args, **kwargs)
-        connect_signal(self._manifest.body.body, 'focus changed', self.update_source)
+        super(ContextViewer, self).__init__(widget_list=widget_list,
+                                            *args, **kwargs)
+
+        connect_signal(self.manifest_walker, 'focus changed',
+                       self.update_source)
 
     def update_source(self, filename):
         """Update the source content."""
-        ctx = self._manifest.body.body.ctx
+        ctx = self.manifest_walker.ctx
         numbering = False
-        if filename is None:
+        if filename is None: # source content is the changeset description
             wrap = 'space' # Do not cut description and wrap content
             data = ctx.description()
             lexer = lexers.RstLexer()
-        else:
+        else: # source content is a file
             wrap = 'clip' # truncate lines
-            rev = ctx.rev()
-            flag, data = self._manifest.manifest_walker.filedata(filename)
-            lexer = None
-            if flag == '=':
+            flag, data = self.manifest_walker.filedata(filename)
+            lexer = None # default to inspect filename and/or content
+            if flag == '=': # modified => display diff
                 lexer = lexers.DiffLexer() if flag == '=' else None
-            elif flag == '-' or flag == '':
+            elif flag == '-' or flag == '': # removed => just say it
                 lexer = lexers.DiffLexer()
                 data = '- Removed file'
-            elif flag == '+':
+            elif flag == '+': # Added => display content
                 numbering = True
                 lexer = None
-        self._source._source.set_wrap_mode(wrap)
-        self._source._source.set_text(data or '')
-        self._source._source.lexer = lexer
-        self._source._source.numbering = numbering
-        self._source.body.set_focus_valign('top')
+        self.source_text.set_wrap_mode(wrap)
+        self.source_text.set_text(data or '')
+        self.source_text.lexer = lexer
+        self.source_text.numbering = numbering
+        self.source.body.set_focus_valign('top') # reset offset
 
     def keypress(self, size, key):
         "allow subclasses to intercept keystrokes"
@@ -148,37 +152,37 @@ class ContextViewer(Columns):
         maxrow = size[1]
         if hg_command_map[key]  == 'manifest up':
             _size = widths[2], maxrow
-            self._manifest.keypress(_size, 'up')
+            self.manifest.keypress(_size, 'up')
         elif hg_command_map[key] == 'manifest down':
             _size = widths[2], maxrow
-            self._manifest.keypress(_size, 'down')
+            self.manifest.keypress(_size, 'down')
         if hg_command_map[key]  == 'source up':
             _size = widths[0], maxrow
-            self._source.keypress(_size, 'up')
+            self.source.keypress(_size, 'up')
         elif hg_command_map[key] == 'source down':
             _size = widths[0], maxrow
-            self._source.keypress(_size, 'down')
+            self.source.keypress(_size, 'down')
 
         elif hg_command_map[key]  == 'manifest page up':
             _size = widths[2], maxrow
-            self._manifest.keypress(_size, 'page up')
+            self.manifest.keypress(_size, 'page up')
         elif hg_command_map[key] == 'manifest page down':
             _size = widths[2], maxrow
-            self._manifest.keypress(_size, 'page down')
+            self.manifest.keypress(_size, 'page down')
         if hg_command_map[key]  == 'source page up':
             _size = widths[0], maxrow
-            self._source.keypress(_size, 'page up')
+            self.source.keypress(_size, 'page up')
         elif hg_command_map[key] == 'source page down':
             _size = widths[0], maxrow
-            self._source.keypress(_size, 'page down')
+            self.source.keypress(_size, 'page down')
 
         else:
             return key
 
     def clear(self):
-        self._manifest.manifest_walker.clear()
-        self._source._source.set_text('')
-
+        """Clear content"""
+        self.manifest_walker.clear()
+        self.source_text.set_text('')
 
 class RepoViewer(Pile):
     """Repository viewer (graphlog and context)"""
@@ -188,22 +192,26 @@ class RepoViewer(Pile):
     def __init__(self, repo, *args, **kwargs):
         self.repo = repo
         self._show_context = 0 # O:hide, 1:half, 2:maximized
+
         walker = HgRepoListWalker(repo)
-        self._graphlog = GraphlogViewer(walker=walker)
-        self._context = ContextViewer(walker=walker)
-        widget_list = [('weight', 1 - self.CONTEXT_SIZE, self._graphlog),
-                       #('weight', self.CONTEXT_SIZE, self._context),
-                       ]
-        self.__super.__init__(widget_list=widget_list, focus_item=0)
-        connect_signal(self._graphlog.body.body, 'focus changed',
+        self.graphlog = GraphlogViewer(walker=walker)
+        self.context = ContextViewer(walker=walker)
+
+        widget_list = [('weight', 1 - self.CONTEXT_SIZE, self.graphlog),]
+
+        super(RepoViewer, self).__init__(widget_list=widget_list, focus_item=0,
+                                         *args, **kwargs)
+
+        connect_signal(self.graphlog.graphlog_walker, 'focus changed',
                        self.update_context)
-        self._graphlog.body.body.set_focus(0) # ensure first focus signal
+        self.graphlog.graphlog_walker.set_focus(0) # ensure first focus signal
 
     def update_context(self, ctx):
+        """Change the current displayed context"""
         if ctx is None: # unapplied patch
-            self._context.clear()
+            self.context.clear()
             return
-        self._context._manifest.body.body.ctx = ctx
+        self.context.manifest_walker.ctx = ctx
 
     def register_commands(self):
         """Register commands and commands of bodies"""
@@ -212,21 +220,21 @@ class RepoViewer(Pile):
                          CA('height', float,
                          'Relative height [0-1] of the context pane.'))
         register_command('maximize-context', 'Maximize context pane.')
-        self._graphlog.register_commands()
+        self.graphlog.register_commands()
         connect_command('hide-context', self.hide_context)
         connect_command('show-context', self.show_context)
         connect_command('maximize-context', self.maximize_context)
 
     def unregister_commands(self):
         """Unregister commands and commands of bodies"""
-        self._graphlog.unregister_commands()
+        self.graphlog.unregister_commands()
 
     def hide_context(self):
         ''' hide the context widget'''
         if self._show_context == 0: # already hidden
             return
         self.item_types[:] = [('weight', 1)]
-        self.widget_list[:] = [self._graphlog]
+        self.widget_list[:] = [self.graphlog]
         self._show_context = 0
 
     def maximize_context(self):
@@ -234,7 +242,7 @@ class RepoViewer(Pile):
         if self._show_context == 2: # already maximized
             return
         self.item_types[:] = [('weight', 1)]
-        self.widget_list[:] = [self._context]
+        self.widget_list[:] = [self.context]
         self._show_context = 2
 
     def show_context(self, height=None):
@@ -245,7 +253,7 @@ class RepoViewer(Pile):
             height = self.CONTEXT_SIZE
         self.item_types[:] = [('weight', 1 - height),
                               ('weight', height),]
-        self.widget_list[:] = [self._graphlog, self._context]
+        self.widget_list[:] = [self.graphlog, self.context]
         self._show_context = 1
 
     def keypress(self, size, key):
@@ -260,24 +268,24 @@ class RepoViewer(Pile):
         if  self._show_context < 2:
             if hg_command_map[key]  == 'graphlog up':
                 _size = self.get_item_size(size, 0, True)
-                self._graphlog.keypress(_size, 'up')
+                self.graphlog.keypress(_size, 'up')
                 return
             if hg_command_map[key]  == 'graphlog down':
                 _size = self.get_item_size(size, 0, True)
-                self._graphlog.keypress(_size, 'down')
+                self.graphlog.keypress(_size, 'down')
                 return
             if hg_command_map[key]  == 'graphlog page up':
                 _size = self.get_item_size(size, 0, True)
-                self._graphlog.keypress(_size, 'page up')
+                self.graphlog.keypress(_size, 'page up')
                 return
             if hg_command_map[key]  == 'graphlog page down':
                 _size = self.get_item_size(size, 0, True)
-                self._graphlog.keypress(_size, 'page down')
+                self.graphlog.keypress(_size, 'page down')
                 return
         if self._show_context > 0:
             idx = 1 if self._show_context == 1 else 0
             _size = self.get_item_size(size, idx, True)
-            return self._context.keypress(_size, key)
+            return self.context.keypress(_size, key)
         return key
 
     def mouse_event(self, size, event, button, col, row, focus):
@@ -286,5 +294,6 @@ class RepoViewer(Pile):
             if button == 3:
                 emit_command('hide-context')
                 return
-        return self.__super.mouse_event(size, event, button, col, row, focus)
+        return super(RepoViewer, self).mouse_event(size, event, button, col,
+                                                   row, focus)
 

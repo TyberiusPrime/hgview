@@ -17,11 +17,11 @@
 # 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
+A module that contains usefull widgets.
 """
 from urwid import Frame, Text, AttrWrap, ListBox
 from urwid.util import is_mouse_press
 
-# XXX
 from pygments import lex, lexers
 from pygments.util import ClassNotFound
 
@@ -33,8 +33,7 @@ __all__ = ['Body', 'ScrollableListBox', 'SelectableText', 'SourceText']
 class SelectableText(Text):
     """A seletable Text widget"""
     _selectable = True
-    def keypress(self, size, key):
-        return key
+    keypress = lambda self, size, key: key
 
 class Body(Frame):
     """A suitable widget that shall be used as a body for the mainframe.
@@ -56,12 +55,16 @@ class Body(Frame):
                                    focus_part='body')
 
     def _get_title(self):
-        return self._footer.text
+        """return the title"""
+        return self._footer.get_text()
     def _set_title(self, title):
+        """set the title text"""
         self._footer.set_text(title)
     def _clear_title(self):
+        """clear the title text"""
         self._footer.set_title('')
-    title = property(_get_title, _set_title, _clear_title, 'Body title')
+    title = property(lambda self: self.footer.text, _set_title, _clear_title, 
+                     'Body title')
 
     def register_commands(self):
         """register commands"""
@@ -74,6 +77,7 @@ class Body(Frame):
 class ScrollableListBox(ListBox):
     """Scrollable Content ListBox using mouse buttons 4/5"""
 
+    # pylint: disable-msg=R0913
     def mouse_event(self, size, event, button, col, row, focus):
         """Scroll content"""
         if is_mouse_press(event):
@@ -83,15 +87,21 @@ class ScrollableListBox(ListBox):
             elif button == 5:
                 self.keypress(size, 'page down')
                 return
-        return self.__super.mouse_event(size, event, button, col, row, focus)
+        return super(ScrollableListBox, self).mouse_event(size, event, button,
+                                                          col, row, focus)
+    # pylint: enable-msg=R0913
 
 class SourceText(SelectableText):
+    """A widget that display source code content.
+
+    It cans number lines and highlight content using pygments
+    """
     def __init__(self, text, filename=None, lexer=None, numbering=False,
                  *args, **kwargs):
         self._lexer = lexer
         self.filename = filename
-        self.numbering = False
-        self.__super.__init__(text, *args, **kwargs)
+        self.numbering = numbering
+        super(SourceText, self).__init__(text, *args, **kwargs)
 
     def get_lexer(self):
         """Return the current lexer"""
@@ -111,7 +121,7 @@ class SourceText(SelectableText):
                 pass
         if lexer is None and text: # try to get lexer from text
             try:
-               lexer = lexers.guess_lexer(text)
+                lexer = lexers.guess_lexer(text)
             except (ClassNotFound, TypeError): #TypeError: pygments is confused
                 pass
         self._lexer = lexer
@@ -129,7 +139,7 @@ class SourceText(SelectableText):
         """
         (maxcol,) = size
         text, attr = self.get_text()
-        trans = self.get_line_translation( maxcol, (text,attr) )
+        trans = self.get_line_translation(maxcol, (text, attr))
         return apply_text_layout(text, attr, trans, maxcol,
                                  numbering=self.numbering)
 

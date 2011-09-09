@@ -18,8 +18,11 @@
 """
 console interface for hgview.
 """
+# use __all__ in the corresponding modules
+# pylint: disable-msg=W0401
 from hgviewlib.curses.utils import *
 from hgviewlib.curses.exceptions import *
 from hgviewlib.curses.widgets import *
 from hgviewlib.curses.mainframe import MainFrame
+# pylint: enable-msg=W0401
 
