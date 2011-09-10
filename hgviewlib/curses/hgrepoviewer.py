@@ -22,7 +22,8 @@ Main curses application for hgview
 from pygments import lexers
 
 import urwid
-from urwid import AttrWrap, Pile, Columns, SolidFill, connect_signal
+from urwid import (AttrWrap, Pile, Columns, SolidFill, connect_signal,
+                   disconnect_signal)
 
 from hgviewlib.hggraph import HgRepoListWalker
 
@@ -123,6 +124,8 @@ class ContextViewer(Columns):
     def update_source(self, filename):
         """Update the source content."""
         ctx = self.manifest_walker.ctx
+        if ctx is None:
+            return
         numbering = False
         if filename is None: # source content is the changeset description
             wrap = 'space' # Do not cut description and wrap content
@@ -202,10 +205,6 @@ class RepoViewer(Pile):
         super(RepoViewer, self).__init__(widget_list=widget_list, focus_item=0,
                                          *args, **kwargs)
 
-        connect_signal(self.graphlog.graphlog_walker, 'focus changed',
-                       self.update_context)
-        self.graphlog.graphlog_walker.set_focus(0) # ensure first focus signal
-
     def update_context(self, ctx):
         """Change the current displayed context"""
         if ctx is None: # unapplied patch
@@ -233,6 +232,7 @@ class RepoViewer(Pile):
         ''' hide the context widget'''
         if self._show_context == 0: # already hidden
             return
+        self._deactivate_context()
         self.item_types[:] = [('weight', 1)]
         self.widget_list[:] = [self.graphlog]
         self._show_context = 0
@@ -241,6 +241,7 @@ class RepoViewer(Pile):
         '''hide the graphlog widget'''
         if self._show_context == 2: # already maximized
             return
+        self._activate_context()
         self.item_types[:] = [('weight', 1)]
         self.widget_list[:] = [self.context]
         self._show_context = 2
@@ -249,12 +250,25 @@ class RepoViewer(Pile):
         '''show context and graphlog widgets'''
         if self._show_context == 1: # already half
             return
+        self._activate_context()
         if height is None:
             height = self.CONTEXT_SIZE
         self.item_types[:] = [('weight', 1 - height),
                               ('weight', height),]
         self.widget_list[:] = [self.graphlog, self.context]
         self._show_context = 1
+
+    def _activate_context(self):
+        context_walker = self.context.manifest_walker
+        graphlog_ctx = self.graphlog.graphlog_walker.get_ctx()
+        if context_walker.ctx != graphlog_ctx:
+            self.update_context(graphlog_ctx)
+        connect_signal(self.graphlog.graphlog_walker, 'focus changed',
+                       self.update_context)
+
+    def _deactivate_context(self):
+        disconnect_signal(self.graphlog.graphlog_walker, 'focus changed',
+                          self.update_context)
 
     def keypress(self, size, key):
         "allow subclasses to intercept keystrokes"
