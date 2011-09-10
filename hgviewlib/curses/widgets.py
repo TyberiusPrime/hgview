@@ -22,8 +22,13 @@ A module that contains usefull widgets.
 from urwid import Frame, Text, AttrWrap, ListBox
 from urwid.util import is_mouse_press
 
-from pygments import lex, lexers
-from pygments.util import ClassNotFound
+try:
+    import pygments
+    from pygments import lex, lexers
+    from pygments.util import ClassNotFound
+except ImportError:
+    # pylint: disable-msg=C0103
+    pygments = None
 
 from hgviewlib.curses.canvas import apply_text_layout
 
@@ -94,7 +99,7 @@ class ScrollableListBox(ListBox):
 class SourceText(SelectableText):
     """A widget that display source code content.
 
-    It cans number lines and highlight content using pygments
+    It cans number lines and highlight content using pygments.
     """
     def __init__(self, text, filename=None, lexer=None, numbering=False,
                  *args, **kwargs):
@@ -104,13 +109,17 @@ class SourceText(SelectableText):
         super(SourceText, self).__init__(text, *args, **kwargs)
 
     def get_lexer(self):
-        """Return the current lexer"""
+        """Return the current source highlighting lexer"""
         return self._lexer
     def update_lexer(self, lexer=None):
         """
-        Update highlighting using the given lexer or by inspecting filename
-        or text content if lexer is None.
+        Update source highlighting lexer using the given one or by inspecting
+        filename or text content if ``lexer`` is None.
+
+        :note: Require pygments, else do nothing.
         """
+        if not pygments:
+            return
         if not self.text:
             return
         text = self.text
@@ -129,9 +138,10 @@ class SourceText(SelectableText):
             return
         self.set_text(list(lex(text, self._lexer)))
     def clear_lexer(self):
-        """Remove highlighting"""
+        """Disable source highlighting"""
         self.set_text(self.text)
-    lexer = property(get_lexer, update_lexer, clear_lexer, 'hihglight lexer')
+    lexer = property(get_lexer, update_lexer, clear_lexer, 
+                     'source highlighting lexer (require pygments)')
 
     def render(self, size, focus=False):
         """

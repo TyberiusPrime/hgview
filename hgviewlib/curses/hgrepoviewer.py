@@ -19,7 +19,12 @@
 Main curses application for hgview
 """
 
-from pygments import lexers
+try:
+    import pygments
+    from pygments import lexers
+except ImportError:
+    # pylint: enable-msg=C0103
+    pygments = None
 
 import urwid
 from urwid import (AttrWrap, Pile, Columns, SolidFill, connect_signal,
@@ -130,22 +135,25 @@ class ContextViewer(Columns):
         if filename is None: # source content is the changeset description
             wrap = 'space' # Do not cut description and wrap content
             data = ctx.description()
-            lexer = lexers.RstLexer()
+            if pygments:
+                lexer = lexers.RstLexer()
         else: # source content is a file
             wrap = 'clip' # truncate lines
             flag, data = self.manifest_walker.filedata(filename)
             lexer = None # default to inspect filename and/or content
-            if flag == '=': # modified => display diff
+            if flag == '=' and pygments: # modified => display diff
                 lexer = lexers.DiffLexer() if flag == '=' else None
             elif flag == '-' or flag == '': # removed => just say it
-                lexer = lexers.DiffLexer()
+                if pygments:
+                    lexer = lexers.DiffLexer()
                 data = '- Removed file'
             elif flag == '+': # Added => display content
                 numbering = True
                 lexer = None
         self.source_text.set_wrap_mode(wrap)
         self.source_text.set_text(data or '')
-        self.source_text.lexer = lexer
+        if pygments:
+            self.source_text.lexer = lexer
         self.source_text.numbering = numbering
         self.source.body.set_focus_valign('top') # reset offset
 
