@@ -278,6 +278,7 @@ class RevisionsWalker(ListWalker):
             self.set_focus(0)
         else:
             self.set_focus(self.walker.graph.index(rev or 0))
+        self._invalidate()
 
     rev = property(get_rev, set_rev, None, 'current revision')
 
