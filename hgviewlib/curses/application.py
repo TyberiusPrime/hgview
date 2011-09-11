@@ -52,6 +52,7 @@ class HgViewUrwidApplication(HgViewApplication):
         connect_logging(self.mainloop, level=logging.DEBUG)
         mainframe.register_commands()
         self.enable_inotify()
+        patch_signals(self.mainloop)
         self.mainframe = mainframe
 
 #        register_command('alarm', 'process callback in a given seconds',
@@ -123,6 +124,28 @@ def inotify(mainloop):
     # add watchers thought a thread to reduce start duration with a big repo
     threading.Thread(target=inot.update).start()
 
+# _______________________________________________________________ patch signals
+def patch_signals(mainloop):
+    """
+    patch urwid signalq system in order to allow delayed signals
+    """
+    import urwid.signals
+    memorizer = {}
+    def delay_emit_signal(obj, name, delay, *args):
+        """
+        Same as emit_signal but really process the signal in `delay` seconds
+        """
+        emit = urwid.signals.emit_signal
+        if not delay:
+            return emit(obj, name, *args)
+        emit_hash = (id(obj), name)
+        # remove previous alarm even if already processed
+        if emit_hash in memorizer:
+            mainloop.remove_alarm(memorizer[emit_hash])
+        delayed_emit = lambda *ignored: emit(obj, name, *args)
+        handle = mainloop.set_alarm_in(delay, delayed_emit)
+        memorizer[(id(obj), name)] = handle
+    urwid.signals.delay_emit_signal = delay_emit_signal
 # ________________________________________________________________ patch screen
 def patch_screen(screen_cls):
     """
