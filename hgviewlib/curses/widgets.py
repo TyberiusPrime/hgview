@@ -19,7 +19,7 @@
 """
 A module that contains usefull widgets.
 """
-from urwid import Frame, Text, AttrWrap, ListBox
+from urwid import Frame, Text, AttrWrap, ListBox, signals
 from urwid.util import is_mouse_press
 
 try:
@@ -101,12 +101,16 @@ class SourceText(SelectableText):
 
     It cans number lines and highlight content using pygments.
     """
+
+    signals = ['highlight']
+
     def __init__(self, text, filename=None, lexer=None, numbering=False,
                  *args, **kwargs):
         self._lexer = lexer
         self.filename = filename
         self.numbering = numbering
         super(SourceText, self).__init__(text, *args, **kwargs)
+        signals.connect_signal(self, 'highlight', self._highlight)
 
     def get_lexer(self):
         """Return the current source highlighting lexer"""
@@ -136,11 +140,15 @@ class SourceText(SelectableText):
         self._lexer = lexer
         if lexer == None: # No lexer found => finish
             return
-        self.set_text(list(lex(text, self._lexer)))
+        signals.delay_emit_signal(self, 'highlight', 0.05)
+
+    def _highlight(self):
+        self.set_text(list(lex(self.text, self._lexer)))
+
     def clear_lexer(self):
         """Disable source highlighting"""
         self.set_text(self.text)
-    lexer = property(get_lexer, update_lexer, clear_lexer, 
+    lexer = property(get_lexer, update_lexer, clear_lexer,
                      'source highlighting lexer (require pygments)')
 
     def render(self, size, focus=False):
