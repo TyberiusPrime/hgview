@@ -377,15 +377,20 @@ class Graph(object):
             return self.nodes.index(self.nodesdict[rev])
         return -1
 
-    def fileflags(self, filename, rev):
+    def fileflags(self, filename, rev, _cache={}):
         """
         Return a couple of flags ('=', '+', '-' or '?') depending on the nature
         of the diff for filename between rev and its parents.
         """
-        ctx = self.repo.changectx(rev)
+        if rev not in _cache:
+            ctx = self.repo.changectx(rev)
+            _cache.clear()
+            _cache[rev] = (ctx,
+                           [self.repo.status(p.node(), ctx.node())[:5]
+                           for p in ctx.parents()])
+        ctx, allchanges = _cache[rev]
         flags = []
-        for p in ctx.parents():
-            changes = self.repo.status(p.node(), ctx.node())[:5]
+        for changes in allchanges:
             # changes = modified, added, removed, deleted, unknown
             for flag, lst in zip(["=", "+", "-", "-", "?"], changes):
                 if filename in lst:
