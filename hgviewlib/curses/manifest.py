@@ -23,6 +23,7 @@ Module that contains the help body.
 from urwid import AttrWrap, ListWalker
 from urwid.signals import emit_signal
 
+from hgviewlib.util import isbfile, bfilepath, exec_flag_changed
 from hgviewlib.curses import SelectableText
 
 DIFF = 'diff'
@@ -66,6 +67,9 @@ class ManifestWalker(ListWalker):
         self.set_focus(focus)
     filename = property(get_filename, set_filename, None,
                         'File name under focus.')
+
+    def __len__(self):
+        return len(self._files)
 
     def get_ctx(self):
         """Return the current context"""
@@ -140,6 +144,8 @@ class ManifestWalker(ListWalker):
 
     def filedata(self, filename):
         '''return (modification flag, file content)'''
+        if isbfile(filename):
+            filename = bfilepath(filename)
         graph = self._walker.graph
         return graph.filedata(filename, self._ctx.rev(), 'diff',
                               flag=self._cached_flags.get(filename))

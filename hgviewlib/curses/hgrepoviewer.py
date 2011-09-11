@@ -27,10 +27,10 @@ except ImportError:
     pygments = None
 
 import urwid
-from urwid import (AttrWrap, Pile, Columns, SolidFill, connect_signal,
-                   disconnect_signal)
+from urwid import AttrWrap, Pile, Columns, SolidFill, signals
 
 from hgviewlib.hggraph import HgRepoListWalker
+from hgviewlib.util import exec_flag_changed, isbfile
 
 from hgviewlib.curses.graphlog import RevisionsWalker
 from hgviewlib.curses.manifest import ManifestWalker
@@ -48,7 +48,8 @@ class GraphlogViewer(Body):
         body = ScrollableListBox(self.graphlog_walker)
         super(GraphlogViewer, self).__init__(body=body, *args, **kwargs)
         self.title = walker.repo.root
-        connect_signal(self.graphlog_walker, 'focus changed', self.update_title)
+        signals.connect_signal(self.graphlog_walker, 'focus changed',
+                               self.update_title)
 
     def update_title(self, ctx):
         """update title depending on the given context ``ctx``."""
@@ -94,7 +95,18 @@ class ManifestViewer(Body):
                                               *args, **kwargs)
         body = ScrollableListBox(self.manifest_walker)
         super(ManifestViewer, self).__init__(body=body, *args, **kwargs)
+        signals.connect_signal(self.manifest_walker, 'focus changed',
+                               self.update_title)
         self.title = 'Manifest'
+
+    def update_title(self, filename):
+        '''update the body title.'''
+        tot = len(self.manifest_walker)
+        if self.manifest_walker.focus < 0:
+            self.title = '%i file%s' % (tot, 's' * (tot > 1))
+            return
+        cur = self.manifest_walker.focus + 1
+        self.title = '%i/%i [%i%%]' % (cur, tot, cur*100/tot)
 
     def render(self, size, focus=True):
         '''Render the manifest viewer. Always use the focus style.'''
@@ -109,6 +121,7 @@ class SourceViewer(Body):
 
 class ContextViewer(Columns):
     """Context viewer (manifest and source)"""
+    signals = ['update source title']
     MANIFEST_SIZE = 0.3
     def __init__(self, walker, *args, **kwargs):
         self.manifest = ManifestViewer(walker=walker, ctx=None)
@@ -123,8 +136,33 @@ class ContextViewer(Columns):
         super(ContextViewer, self).__init__(widget_list=widget_list,
                                             *args, **kwargs)
 
-        connect_signal(self.manifest_walker, 'focus changed',
-                       self.update_source)
+        signals.connect_signal(self.manifest_walker, 'focus changed',
+                               self.update_source)
+        signals.connect_signal(self, 'update source title',
+                               self.update_source_title)
+
+    def update_source_title(self, filename, flag):
+        """
+        Display information about the file in the title of the source body.
+        """
+        ctx = self.manifest_walker.ctx
+        title = []
+        if filename is None:
+            title.append(' Description')
+        elif flag == '' or flag == '-':
+            title += [' Removed file: ', ('focus', filename)]
+        else:
+            filectx = ctx.filectx(filename)
+            flag = exec_flag_changed(filectx)
+            if flag:
+                title += [' Exec mode: ', ('focus', flag)]
+            if isbfile(filename):
+                title.append('bfile tracked')
+            renamed = filectx.renamed()
+            if renamed:
+                title += [' Renamed from: ', ('focus', renamed[0])]
+            title += [' File name: ', ('focus', filename)]
+        self.source.title = title
 
     def update_source(self, filename):
         """Update the source content."""
@@ -132,6 +170,7 @@ class ContextViewer(Columns):
         if ctx is None:
             return
         numbering = False
+        flag = ''
         if filename is None: # source content is the changeset description
             wrap = 'space' # Do not cut description and wrap content
             data = ctx.description()
@@ -150,6 +189,8 @@ class ContextViewer(Columns):
             elif flag == '+': # Added => display content
                 numbering = True
                 lexer = None
+        signals.delay_emit_signal(self, 'update source title', 0.05,
+                                  filename, flag)
         self.source_text.set_wrap_mode(wrap)
         self.source_text.set_text(data or '')
         if pygments:
@@ -271,12 +312,12 @@ class RepoViewer(Pile):
         graphlog_ctx = self.graphlog.graphlog_walker.get_ctx()
         if context_walker.ctx != graphlog_ctx:
             self.update_context(graphlog_ctx)
-        connect_signal(self.graphlog.graphlog_walker, 'focus changed',
-                       self.update_context)
+        signals.connect_signal(self.graphlog.graphlog_walker, 'focus changed',
+                               self.update_context)
 
     def _deactivate_context(self):
-        disconnect_signal(self.graphlog.graphlog_walker, 'focus changed',
-                          self.update_context)
+        signals.disconnect_signal(self.graphlog.graphlog_walker,
+                                  'focus changed', self.update_context)
 
     def keypress(self, size, key):
         "allow subclasses to intercept keystrokes"
