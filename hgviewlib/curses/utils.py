@@ -20,14 +20,16 @@ A Module that contains usefull utilities.
 """
 
 import shlex
+import fnmatch
 from collections import namedtuple
 
 from urwid.command_map import CommandMap
 from hgviewlib.curses.exceptions import UnknownCommand, RegisterCommandError
 
 __all__ = ['register_command', 'unregister_command', 'connect_command',
-           'disconnect_command', 'emit_command', 'help_command', 'CommandArg',
-           'hg_command_map',
+           'disconnect_command', 'emit_command', 'help_command',
+           'complete_command', 'CommandArg',  'hg_command_map',
+           'History',
           ]
 
 
@@ -221,6 +223,20 @@ class Commands(object):
         for name in sorted(self._helps.keys()):
             yield name, self.help(name)
 
+    def complete(self, line):
+        """
+        Return  command name candidates that complete ``line``.
+        It uses fnmatch to match candidates, so ``line`` may contains
+        wildcards.
+        """
+        if not line:
+            return self._helps.keys()
+        line = tuple(line.split(None, 1))
+        out = line
+        if len(line) == 1:
+            cmd = line[0] + '*'
+            return tuple(sorted(fnmatch.filter(self._args, cmd)))
+
 # Instanciate a Commands object to handle command from a global scope.
 #pylint: disable-msg=C0103
 _commands = Commands()
@@ -231,7 +247,42 @@ disconnect_command = _commands.disconnect
 emit_command = _commands.emit
 help_command = _commands.help
 help_commands = _commands.helps
+complete_command = _commands.complete
 #pylint: enable-msg=C0103
+
+class History(list):
+    def __init__(self, list=None, current=None):
+        super(History, self).__init__(list or ())
+        self.insert(0, current)
+        self.position = 0
+
+    def get(self, position, default=None):
+        """
+        Return the history entry at `position` or `default` if not found.
+        """
+        try:
+            return self[position]
+        except IndexError:
+            return default
+
+    def get_next(self, default=None):
+        """Return the next entry of the history"""
+        self.position += 1
+        self.position %= len(self)
+        return self.get(self.position, default)
+
+    def get_prev(self, default=None):
+        """Return the previous entry of the history"""
+        self.position -= 1
+        self.position %= len(self)
+        return self.get(self.position, default)
+
+    def reset_position(self):
+        """reset the position of the history pointer"""
+        self.position = 0
+
+    def set_current(self, current):
+        self[0] = current
 
 # _________________________________________________________________ command map
 

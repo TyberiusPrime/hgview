@@ -45,8 +45,8 @@ from urwid.signals import connect_signal, emit_signal
 from hgviewlib.curses import helpviewer
 from hgviewlib.curses import (CommandArg as CA, help_command,
                               register_command, unregister_command,
-                              emit_command, connect_command,
-                              hg_command_map)
+                              emit_command, connect_command, complete_command,
+                              hg_command_map, History)
 
 def quitall():
     """
@@ -77,7 +77,7 @@ class MainFrame(urwid.Frame):
         self._visible = name
         super(MainFrame, self).__init__(body=body, header=None, footer=footer,
                                         *args, **kwargs)
-        connect_signal(footer, 'end command', 
+        connect_signal(footer, 'end command',
                        lambda status: self.set_focus('body'))
 
     def register_commands(self):
@@ -188,6 +188,9 @@ class Footer(urwid.AttrWrap):
             urwid.Edit('type ":help<Enter>" for information'),
             'INFO', *args, **kwargs)
         connect_signal(self, 'start command', self.start_command)
+        self.previous_keypress = None
+        self._history = History()
+        self._complete = History()
 
     def start_command(self, key):
         """start looking for user's command"""
@@ -195,18 +198,54 @@ class Footer(urwid.AttrWrap):
         label = {'f5':'command: ', ':':':', 'meta x':'M-x '}[key]
         self.set('default', label, '')
 
-
     def keypress(self, size, key):
         "allow subclasses to intercept keystrokes"
         if hg_command_map[key] == 'validate':
             self.set('default')
-            status = self.call_command()
-            emit_signal(self, 'end command', not status)
+            cmdline = self.call_command()
+            self._history.append(cmdline)
+            emit_signal(self, 'end command', bool(cmdline))
         elif hg_command_map[key] == 'escape':
             self.set('default', '', '')
             emit_signal(self, 'end command', False)
+        elif key == 'tab': # hard coded :/
+            self.complete()
+        elif key == 'up' or key == 'ctrl p': # hard coded :/
+            self.history(False)
+        elif key == 'down' or key == 'ctrl n': # hard coded :/
+            self.history(True)
         else:
+            self.previous_keypress = key
             return super(Footer, self).keypress(size, key)
+        self.previous_keypress = key
+
+    def complete(self):
+        """
+        Lookup for text in the edit area (until the cursor) and complete with
+        available command names (one per call). Calling mutiple times
+        consequently will loop over all candidates.
+        """
+        if self.previous_keypress != 'tab': # hard coded :/
+            line = self.get_edit_text()[:self.edit_pos]
+            self._complete[:] = History(complete_command(line), line)
+            self._complete.reset_position()
+        if self.complete:
+            self.set_edit_text(self._complete.get_next())
+            if len(self._complete) == 1:
+                self.set_edit_pos(len(self.edit_text))
+
+    def history(self, next=True):
+        """
+        Remind the commands history to the edit area. Calling mutiple times
+        consequently will loop over all history entries.
+
+        """
+        # key are hard coded :/
+        if self.previous_keypress not in ('up', 'down', 'ctrl p', 'ctrl n'):
+            self._history[0] = self.get_edit_text()
+            self._history.reset_position()
+        text = self._history.get_next() if next else self._history.get_prev()
+        self.set_edit_text(text)
 
     def set(self, style=None, caption=None, edit=None):
         '''Set the footer content.
@@ -230,6 +269,11 @@ class Footer(urwid.AttrWrap):
         if not cmdline:
             self.footer.set('default', '', '')
             return
+        cmdline = cmdline.strip()
+        if cmdline.endswith('?'):
+            cmdline = 'help %s' % cmdline[:-1].split(None, 1)[0]
+        elif cmdline.startswith('?'):
+            cmdline = 'help %s' % cmdline[1:].split(None, 1)[0]
         try:
             emit_command(cmdline)
             self.set('INFO')
@@ -238,4 +282,6 @@ class Footer(urwid.AttrWrap):
         except Exception, err:
             logging.warn(err.__class__.__name__ + ': %s', str(err))
             logging.debug('Exception on: "%s"', cmdline, exc_info=True)
+        else:
+            return cmdline
 
