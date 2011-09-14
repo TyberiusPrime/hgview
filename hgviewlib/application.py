@@ -106,9 +106,11 @@ class HgViewApplication(object):
     def exec_(self):
         raise NotImplementedError()
 
-def main():
+def main(console=False):
     """
     Main application acces point.
+
+    * console==True => console mode
     """
 
     usage = '''%prog [options] [filename]
@@ -151,7 +153,10 @@ def main():
         parser.error("You are not in a repo, are you?")
 
 
-    from hgviewlib.qt4.application import HgViewQtApplication as Application
+    if console:
+        from hgviewlib.curses.application import HgViewUrwidApplication as Application
+    else:
+        from hgviewlib.qt4.application import HgViewQtApplication as Application
     try:
         app = Application(repo, opts, args)
     except ApplicationError, err:

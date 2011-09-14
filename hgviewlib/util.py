@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # util functions
 #
-# Copyright (C) 2009-2010 Logilab. All rights reserved.
+# Copyright (C) 2009-2011 Logilab. All rights reserved.
 #
 # This software may be used and distributed according to the terms
 # of the GNU General Public License, incorporated herein by reference.
@@ -131,88 +131,4 @@ def format_desc(desc, width):
     if len(desc) > width:
         desc = desc[:width] + '...'
     return desc
-
-def choose_viewer(FileViewer, FileDiffViewer, ManifestViewer, 
-            HgRepoViewer):
-    """Parse the command line to chosse one of the classes passed as argument
-    and return an instance of the right class.
-
-    Classes will be instanciated as following::
-
-        FileViewer(repo, filename)
-        FileDiffViewer(repo, filename)
-        ManifestViewer(repo, rev)
-        HgRepoViewer(repo)
-
-    """
-    from optparse import OptionParser
-    usage = '''%prog [options] [filename]
-
-    Starts a visual hg repository navigator.
-
-    - With no options, starts the main repository navigator.
-
-    - If a filename is given, starts in filelog diff mode (or in
-      filelog navigation mode if -n option is set).
-
-    - With -r option, starts in manifest viewer mode for given
-      revision.
-    '''
-
-    parser = OptionParser(usage)
-    parser.add_option('-R', '--repository', dest='repo',
-                      help='location of the repository to explore')
-    parser.add_option('-r', '--rev', dest='rev', default=None,
-                      help='start in manifest navigation mode at rev R')
-    parser.add_option('-n', '--navigate', dest='navigate', default=False,
-                      action="store_true",
-                      help='(with filename) start in navigation mode')
-
-    opts, args = parser.parse_args()
-
-    if opts.navigate and len(args) != 1:
-        parser.error("You must provide a filename to start in navigate mode")
-
-    if len(args) > 1:
-        parser.error("Provide at most one file name")
-
-    dir_ = None
-    if opts.repo:
-        dir_ = opts.repo
-    else:
-        dir_ = os.getcwd()
-    dir_ = find_repository(dir_)
-
-    try:
-        u = ui.ui()
-        repo = hg.repository(u, dir_)
-    except RepoError, e:
-        parser.error(e)
-    except:
-        parser.error("You are not in a repo, are you?")
-
-
-    if len(args) == 1:
-        filename = rootpath(repo, opts.rev, args[0])
-        if filename is None:
-            parser.error("%s is not a tracked file" % args[0])
-
-        # should be a filename of a file managed in the repo
-        if opts.navigate:
-            mainwindow = FileViewer(repo, filename)
-        else:
-            mainwindow = FileDiffViewer(repo, filename)
-    else:
-        rev = opts.rev
-        if rev is not None:
-            try:
-                repo.changectx(rev)
-            except RepoError, e:
-                parser.error("Cannot find revision %s" % rev)
-            else:
-                mainwindow = ManifestViewer(repo, rev)
-        else:
-            mainwindow = HgRepoViewer(repo)
-
-    return mainwindow
 

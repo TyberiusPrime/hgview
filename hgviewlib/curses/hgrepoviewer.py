@@ -20,28 +20,20 @@ Main curses application for hgview
 """
 
 import os
-import threading
-import logging
 
 from pygments import lexers
 
 import urwid
-from urwid import (AttrWrap, Pile, Columns, ListBox, SolidFill, Filler,
-                   connect_signal, emit_signal)
-from mercurial import ui, hg, cmdutil
+from urwid import AttrWrap, Pile, Columns, SolidFill, connect_signal
 
 from hgviewlib.hggraph import HgRepoListWalker
 
-from hgviewlib.util import choose_viewer, find_repository
-from hgviewlib.curses.graphlog import RevisionsWalker, AppliedItem, UnappliedItem
+from hgviewlib.curses.graphlog import RevisionsWalker
 from hgviewlib.curses.manifest import ManifestWalker
-from hgviewlib.curses import (connect_logging, Body, MainFrame, 
-                              ScrollableListBox,
+from hgviewlib.curses import (Body, SourceText, ScrollableListBox,
                               register_command, unregister_command,
                               connect_command, emit_command, CommandArg as CA,
-                              hg_command_map,
-                              PALETTE, Screen,
-                              SourceText)
+                              hg_command_map)
 
 class GraphlogViewer(Body):
     """Graphlog body"""
@@ -296,73 +288,3 @@ class RepoViewer(Pile):
                 return
         return self.__super.mouse_event(size, event, button, col, row, focus)
 
-# __________________________________________________________________ functions
-
-def inotify(mainloop):
-    """add inotify watcher to the mainloop"""
-    try:
-        from hgviewlib.inotify import Inotify as Inotify
-    except ImportError:
-        return
-
-    class UrwidInotify(Inotify):
-        def __init__(self, *args, **kwargs):
-            super(UrwidInotify, self).__init__(*args, **kwargs)
-            self._input_timeout = None
-
-        def process_finally(self):
-            """Really process the inotify event"""
-            self._input_timeout = None
-            super(UrwidInotify, self).process()
-
-        def process_on_any_event(self):
-            """Process all inotify events and prevent over-processing"""
-            # use the urwid mainloop to schedule the screen refreshing in 0.2s
-            # and ignore events received during this time.
-            # It prevents over-refreshing (See ../inotify.py comments).
-            if self._input_timeout is None:
-                self._input_timeout = mainloop.set_alarm_in(
-                        0.2, lambda *args: self.process_finally())
-            self.read_events()
-    try:
-        refresh = lambda: emit_command('refresh')
-        inot = UrwidInotify(mainloop.widget.get_body().repo, refresh)
-    except:
-        return
-    mainloop.event_loop.watch_file(inot.get_fd(), inot.process_on_any_event)
-    # add watchers thought a thread to reduce start duration with a big repo
-    threading.Thread(target=inot.update).start()
-
-def main():
-    '''main entry point'''
-
-    class MissingViewer:
-        def __init__(self, *args, **kwargs):
-            raise NotImplementedError(
-            'This feature has not yet been implemented. Comming soon ...')
-
-    body = choose_viewer(MissingViewer, MissingViewer, MissingViewer, 
-                         RepoViewer)
-    body = AttrWrap(body, 'body')
-    mainframe = MainFrame('repoviewer', body)
-    screen = Screen()
-    mainloop = urwid.MainLoop(mainframe, PALETTE, screen)
-
-    enable_inotify = True # XXX config
-    optimize_inotify = True # XXX config
-    if enable_inotify:
-        if optimize_inotify:
-            import ctypes.util
-            orig = ctypes.util.find_library
-            ctypes.util.find_library = lambda lib: None # durty optim
-        inotify(mainloop)
-        if optimize_inotify:
-            ctypes.util.find_library = orig
-
-    connect_logging(mainloop, level=logging.DEBUG)
-    mainframe.register_commands()
-    mainloop.run()
-    mainframe.unregister_commands()
-
-if __name__ == '__main__':
-    main()
