@@ -175,6 +175,7 @@ class ContextViewer(Columns):
         self._source._source.set_text(data or '')
         self._source._source.lexer = lexer
         self._source._source.numbering = numbering
+        self._source.body.set_focus_valign('top')
 
     def keypress(self, size, key):
         "allow subclasses to intercept keystrokes"
