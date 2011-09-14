@@ -27,8 +27,7 @@ from textwrap import wrap
 
 from hgviewlib.hgviewhelp import long_help_msg
 
-from hgviewlib.curses import (Body, help_command, emit_command, utils,
-                              hg_command_map)
+from hgviewlib.curses import Body, emit_command, utils, hg_command_map
 
 class HelpViewer(Body):
     """A body to display a help message (or the global program help)"""
@@ -65,9 +64,9 @@ class HelpViewer(Body):
             # commands
             contents.extend(title('Commands List'))
             messages = []
-            for name in _commands._helps.keys():
+            for name, help in utils.help_commands():
                 messages.append(('ERROR', '\ncommand: "%s"\n'%name))
-                messages.extend(help_command(name))
+                messages.extend(help)
             contents.append(Text(messages))
 
 

@@ -192,8 +192,7 @@ class Commands(object):
         """
         if name not in self._helps:
             raise RegisterCommandError(
-            'You must register the command "%s" before connecting a callback.'
-            % name)
+                    'Unknown command "%s"' % name)
         help = self._helps[name]
         args = self._args[name]
         message = [('default', 'usage: '), ('WARNING', name)] \
@@ -206,6 +205,11 @@ class Commands(object):
             message.append(arg.help + '\n')
         return message
 
+    def helps(self):
+        """Return a generator that gives (name, help) for each command"""
+        for name in self._helps:
+            yield name, self.help(name)
+
 _commands = Commands()
 register_command = _commands.register
 unregister_command = _commands.unregister
@@ -213,6 +217,7 @@ connect_command = _commands.connect
 disconnect_command = _commands.disconnect
 emit_command = _commands.emit
 help_command = _commands.help
+help_commands = _commands.helps
 
 # _________________________________________________________________ command map
 
