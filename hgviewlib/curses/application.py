@@ -25,8 +25,15 @@ from urwid import AttrWrap, MainLoop
 
 from hgviewlib.application import HgViewApplication
 from hgviewlib.curses.hgrepoviewer import RepoViewer
-from hgviewlib.curses import (MainFrame, Screen, PALETTE, connect_logging,
-                              emit_command)
+from hgviewlib.curses import MainFrame, emit_command
+
+try:
+    import pygments
+    from pygments.token import Token, _TokenType
+except ImportError:
+    pygments = None
+
+# _________________________________________________________________ Applicaiton
 
 class HgViewUrwidApplication(HgViewApplication):
     """
@@ -38,12 +45,19 @@ class HgViewUrwidApplication(HgViewApplication):
         super(HgViewUrwidApplication, self).__init__(*args, **kwargs)
         self.viewer = AttrWrap(self.viewer, 'body')
         mainframe = MainFrame('repoviewer', self.viewer)
-        screen = Screen()
+        screen = self.get_screen()
         self.mainloop = MainLoop(mainframe, PALETTE, screen)
         connect_logging(self.mainloop, level=logging.DEBUG)
         mainframe.register_commands()
         self.enable_inotify()
         self.mainframe = mainframe
+
+    def get_screen(self):
+        """return the screen instance to use"""
+        from urwid.raw_display import Screen
+        if pygments:
+            return patch_screen(Screen)()
+        return Screen()
 
     def enable_inotify(self):
         """enable inotify watching"""
@@ -64,6 +78,7 @@ class HgViewUrwidApplication(HgViewApplication):
         self.mainframe.unregister_commands()
         return out
 
+# _____________________________________________________________________ inotify
 def inotify(mainloop):
     """add inotify watcher to the mainloop"""
     try:
@@ -99,3 +114,168 @@ def inotify(mainloop):
     # add watchers thought a thread to reduce start duration with a big repo
     threading.Thread(target=inot.update).start()
 
+# ________________________________________________________________ patch screen
+def patch_screen(screen_cls):
+    """
+    Return a patched screen class that allows parent token inheritence in
+    the palette
+    """
+    class Palette(dict):
+        """Special dictionary that take into account parent token inheritence.
+        """
+        def __contains__(self, key):
+            if super(Palette, self).__contains__(key):
+                return True
+            if (not isinstance(key, _TokenType)) or (key.parent is None):
+                return False
+            if key.parent in self: # fonction is now recursive
+                self[key] = self[key.parent] # cache + __getitem__ ok
+                return True
+            return False
+        has_key = __contains__
+
+    class PatchedScreen(screen_cls):
+        """hack Screen to allow parent token inheritence in the palette"""
+        # Use a special container for storing style definition. This container
+        # take into accoutn parent token inheritence
+        # raw_display.Screen store the palette definition in the container
+        # ``_pal_escape``, web_display and curses display in ``palette`` and
+        # ``attrconv``
+
+        def __init__(self, *args):
+            self._hgview_palette = None
+            self._hgview_attrconv = None
+            # mro problem with web_display, so do not use super
+            screen_cls.__init__(self)
+
+
+        def _hgview_get_palette(self):
+            return self._hgview_palette
+        def _hgview_set_palette(self, value):
+            self._hgview_palette = Palette()
+            if value:
+                self._hgview_palette.update(value)
+        _pal_escape = property(_hgview_get_palette, _hgview_set_palette)
+        palette = _pal_escape
+
+        def _hgview_get_attrconv(self):
+            return self._hgview_attrconv
+        def _hgview_set_attrconv(self, value):
+            self._hgview_attrconv = Palette()
+            if value:
+                self._hgview_attrconv.update(value)
+        attrconv = property(_hgview_get_attrconv, _hgview_set_attrconv)
+    return PatchedScreen
+
+# _____________________________________________________________________ logging
+def connect_logging(mainloop, level=logging.INFO):
+    '''Connect logging to the hgview console application.
+    (The widget of the mainloop must be a ``MainFrame`` instance)
+
+    You may add 'DEBUG', 'WARNING', 'ERROR' and 'CRITICAL' styles in the
+    palette.
+    '''
+    class ConsoleHandler(logging.Handler):
+        '''Handler for logging to the footer of a ``MainFrame`` instance.
+
+        You shall prefer to link logging and you application by using the
+        ``connect_logging(...)`` function.
+        '''
+        def __init__(self, callback, redraw, redraw_levelno=logging.CRITICAL):
+            """
+            :param callback: A funtion called to display a message as
+                ``callback(style, levelname, message)`` where:
+
+                * ``levelname`` is the name of the message level
+                * ``message`` is the message to display
+
+                Mostly, it is the ``set`` method of a ``Footer`` instance.
+
+            :param redraw: a function that performe the screen redrawing
+
+            """
+            self.callback = callback
+            self.redraw = redraw
+            self.redraw_levelno = redraw_levelno
+            logging.Handler.__init__(self)
+
+        def emit(self, record):
+            """emit a record"""
+            if isinstance(record.msg, list): # urwid style
+                name = 'default'
+                msg = record.msg
+            else:
+                name = record.levelname
+                msg = self.format(record)
+            self.callback(name, msg)
+            if record.levelno >= self.redraw_levelno:
+                self.flush()
+
+        def flush(self):
+            try:
+                self.redraw()
+            except AssertionError:
+                pass
+
+    logger = logging.getLogger()
+    logger.setLevel(level)
+    display = lambda style, msg: mainloop.widget.footer.set(style, msg, '')
+    handler = ConsoleHandler(display, mainloop.draw_screen)
+    logger.addHandler(handler)
+
+# ________________________________________________________________ patch screen
+PALETTE = [
+    ('default','default','default'),
+    ('body','default','default', 'standout'),
+    ('banner','black','light gray', 'bold'),
+    ('focus','black','dark cyan', 'bold'),
+
+    # logging
+    ('DEBUG', 'dark magenta', 'default'),
+    ('INFO', 'dark gray', 'default'),
+    ('WARNING', 'brown', 'default'),
+    ('ERROR', 'dark red', 'default'),
+    ('CRITICAL', 'light red', 'default'),
+
+    # graphlog
+    ('ID', 'brown', 'default', 'standout'),
+    ('Log', 'default', 'default'),
+    ('GraphLog', 'default', 'default', 'bold'),
+    ('Author', 'dark blue', 'default', 'bold'),
+    ('Date', 'dark green', 'default', 'bold'),
+    ('Tags', 'yellow', 'dark red', 'bold'),
+    ('Branch', 'yellow', 'default', 'bold'),
+    ('Filename', 'white', 'default', 'bold'),
+    ('Unapplied', 'light cyan', 'black'),
+    ('Current', 'black', 'dark green'),
+    ('Modified', 'black', 'dark red'),
+
+    # filelist
+    ('+', 'dark green', 'default'),
+    ('-', 'dark red', 'default'),
+    ('=', 'default', 'default'),
+    ('?', 'brown', 'default'),
+]
+
+if pygments:
+    PALETTE += [
+        (Token, 'default', 'default'),
+        (Token.Text, 'default', 'default'),
+        (Token.Comment, 'dark gray', 'default'),
+        (Token.Punctuation, 'white', 'default', 'bold'),
+        (Token.Operator, 'light blue', 'default'),
+        (Token.Literal, 'dark magenta', 'default'),
+        (Token.Name, 'default', 'default'),
+        (Token.Name.Builtin, 'dark blue', 'default'),
+        (Token.Name.Namespace, 'dark blue', 'default'),
+        (Token.Name.Builtin.Pseudo, 'dark blue', 'default'),
+        (Token.Name.Exception, 'dark blue', 'default'),
+        (Token.Name.Decorator, 'dark blue', 'default'),
+        (Token.Name.Class, 'dark blue', 'default'),
+        (Token.Name.Function, 'dark blue', 'default'),
+        (Token.Keyword, 'light green', 'default'),
+        (Token.Generic.Deleted, 'dark red', 'default'),
+        (Token.Generic.Inserted, 'dark green', 'default'),
+        (Token.Generic.Subheading, 'dark magenta', 'default', 'bold'),
+        (Token.Generic.Heading, 'black', 'dark magenta'),
+    ]
