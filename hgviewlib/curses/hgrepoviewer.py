@@ -152,6 +152,7 @@ class ContextViewer(Columns):
     def update_source(self, filename):
         """Update the source content."""
         ctx = self._manifest.body.body.ctx
+        numbering = False
         if filename is None:
             data = ctx.description()
             lexer = lexers.RstLexer()
@@ -166,9 +167,11 @@ class ContextViewer(Columns):
                 lexer = lexers.DiffLexer()
                 data = '- Removed file'
             elif flag == '+':
+                numbering = True
                 lexer = None
         self._source._source.set_text(data or '')
         self._source._source.lexer = lexer
+        self._source._source.numbering = numbering
 
     def keypress(self, size, key):
         "allow subclasses to intercept keystrokes"

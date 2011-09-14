@@ -1,4 +1,3 @@
-
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
 # Copyright (c) 2003-2011 LOGILAB S.A. (Paris, FRANCE).
@@ -24,6 +23,8 @@ from urwid import Frame, Text, AttrWrap
 # XXX
 from pygments import lex, lexers
 from pygments.util import ClassNotFound
+
+from hgviewlib.curses.canvas import apply_text_layout
 
 __all__ = ['Body', 'SelectableText', 'SourceText']
 
@@ -70,9 +71,11 @@ class Body(Frame):
         pass
 
 class SourceText(SelectableText):
-    def __init__(self, text, filename=None, lexer=None, *args, **kwargs):
+    def __init__(self, text, filename=None, lexer=None, numbering=False,
+                 *args, **kwargs):
         self._lexer = lexer
         self.filename = filename
+        self.numbering = False
         self.__super.__init__(text, *args, **kwargs)
 
     def get_lexer(self):
@@ -104,4 +107,14 @@ class SourceText(SelectableText):
         """Remove highlighting"""
         self.set_text(self.text)
     lexer = property(get_lexer, update_lexer, clear_lexer, 'hihglight lexer')
+
+    def render(self, size, focus=False):
+        """
+        Render contents with wrapping, alignment and line numbers.
+        """
+        (maxcol,) = size
+        text, attr = self.get_text()
+        trans = self.get_line_translation( maxcol, (text,attr) )
+        return apply_text_layout(text, attr, trans, maxcol,
+                                 numbering=self.numbering)
 
