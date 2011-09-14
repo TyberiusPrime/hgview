@@ -42,6 +42,7 @@ import urwid
 import logging
 import urwid.raw_display
 from urwid import AttrWrap as W
+from urwid.signals import connect_signal, emit_signal
 
 from hgviewlib.curses import helpviewer
 from hgviewlib.curses import (CommandError, CommandArg as CA,
@@ -81,6 +82,8 @@ class MainFrame(urwid.Frame):
         self._visible = name
         self.__super.__init__(body=body, header=None, footer=footer,
                               *args, **kwargs)
+        connect_signal(footer, 'end command', 
+                       lambda status: self.set_focus('body'))
 
     def register_commands(self):
         register_command(('quit','q'), 'Close the current pane.')
@@ -133,28 +136,19 @@ class MainFrame(urwid.Frame):
     def keypress(self, size, key):
         "allow subclasses to intercept keystrokes"
         key = self.__super.keypress(size, key)
-        if key:
-            self.unhandled_key(size, key)
-        return key
-
-    def unhandled_key(self, size, key):
-        """Override this method to intercept keystrokes in subclasses.
-        Default behavior: run command from ':xxx'
-        """
+        if key is None:
+            return
         if hg_command_map[key] == 'command key':
+            emit_signal(self.footer, 'start command', key)
             self.set_focus('footer')
-            self.footer.unhandled_key(size, key)
-        elif key == 'enter':
-            self.set_focus('body')
-        elif hg_command_map[key] == 'escape':
-            self.footer.set('default', '', '')
-            self.set_focus('body')
         elif hg_command_map[key] == 'close pane':
             emit_command('quit')
         else:
             cmd = hg_command_map[key]
             if cmd and cmd[0] == '@':
                 emit_command(hg_command_map[key][1:])
+            else:
+                return key
 
     def show_command_help(self, command=None):
         """
@@ -182,17 +176,33 @@ class MainFrame(urwid.Frame):
 class Footer(urwid.AttrWrap):
     """Footer widget used to display message and for inputs.
     """
+
+    signals = ['start command', 'end command']
+
     def __init__(self, *args, **kwargs):
         self.__super.__init__(
             urwid.Edit('type ":help<Enter>" for information'),
             'INFO', *args, **kwargs)
+        connect_signal(self, 'start command', self.start_command)
+
+    def start_command(self, key):
+        """start looking for user's command"""
+        # just for fun
+        label = {'f5':'command: ', ':':':', 'meta x':'M-x '}[key]
+        self.set('default', label, '')
+
 
     def keypress(self, size, key):
         "allow subclasses to intercept keystrokes"
-        key = self.__super.keypress(size, key)
-        if key:
-            self.unhandled_key(size, key)
-        return key
+        if hg_command_map[key] == 'validate':
+            self.set('default')
+            status = self.call_command()
+            emit_signal(self, 'end command', not status)
+        elif hg_command_map[key] == 'escape':
+            self.set('default', '', '')
+            emit_signal(self, 'end command', False)
+        else:
+            return self.__super.keypress(size, key)
 
     def set(self, style=None, caption=None, edit=None):
         '''Set the footer content.
@@ -207,20 +217,6 @@ class Footer(urwid.AttrWrap):
             self.set_caption(caption)
         if edit is not None:
             self.set_edit_text(edit)
-
-    def unhandled_key(self, size, key):
-        """Overwrite this method to intercept keystrokes in subclasses.
-        Default behavior: run command from ':xxx'
-        """
-        if hg_command_map[key] == 'command key':
-            # just for fun
-            label = {'f5':'command: ', ':':':', 'meta x':'M-x '}[key]
-            self.set('default', label, '')
-        if key == 'enter':
-            self.set('default')
-            self.call_command()
-        elif hg_command_map[key] == 'escape':
-            self.set('default', '', '')
 
     def call_command(self):
         '''Call the command that corresponds to the string given in the edit area
