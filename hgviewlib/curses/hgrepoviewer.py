@@ -35,7 +35,8 @@ from hgviewlib.hggraph import HgRepoListWalker
 from hgviewlib.util import choose_viewer, find_repository
 from hgviewlib.curses.graphlog import RevisionsWalker, AppliedItem, UnappliedItem
 from hgviewlib.curses.manifest import ManifestWalker
-from hgviewlib.curses import (connect_logging, Body, MainFrame,
+from hgviewlib.curses import (connect_logging, Body, MainFrame, 
+                              ScrollableListBox,
                               register_command, unregister_command,
                               connect_command, emit_command, CommandArg as CA,
                               hg_command_map,
@@ -48,7 +49,7 @@ class GraphlogViewer(Body):
     def __init__(self, walker, *args, **kwargs):
         self.walker = walker
         self.graphlog_walker = RevisionsWalker(walker=walker)
-        body = ListBox(self.graphlog_walker)
+        body = ScrollableListBox(self.graphlog_walker)
         self.__super.__init__(body=body, *args, **kwargs)
         self.title = walker.repo.root
         connect_signal(self.graphlog_walker, 'focus changed', self.update_title)
@@ -83,13 +84,7 @@ class GraphlogViewer(Body):
         if urwid.util.is_mouse_press(event):
             if button == 1:
                 emit_command('show-context')
-            elif button == 4:
-                self.keypress(size, 'page up')
-                return
-            elif button == 5:
-                self.keypress(size, 'page down')
-                return
-        self.__super.mouse_event(size, event, button, col, row, focus)
+        return self.__super.mouse_event(size, event, button, col, row, True)
 
 class ManifestViewer(Body):
     """Manifest viewer"""
@@ -98,7 +93,7 @@ class ManifestViewer(Body):
         self.manifest_walker = ManifestWalker(walker=walker, ctx=ctx,
                                               manage_description=True,
                                               *args, **kwargs)
-        body = ListBox(self.manifest_walker)
+        body = ScrollableListBox(self.manifest_walker)
         self.__super.__init__(body=body, *args, **kwargs)
         self.title = 'Manifest'
 
@@ -106,34 +101,12 @@ class ManifestViewer(Body):
         '''Render the manifest viewer. Always use the focus style.'''
         return self.__super.render(size, True)
 
-    def mouse_event(self, size, event, button, col, row, focus):
-        """Scroll content"""
-        if urwid.util.is_mouse_press(event):
-            if button == 4:
-                self.keypress(size, 'page up')
-                return
-            elif button == 5:
-                self.keypress(size, 'page down')
-                return
-        self.__super.mouse_event(size, event, button, col, row, focus)
-
 class SourceViewer(Body):
     """Source Viewer"""
     def __init__(self, text, *args, **kwargs):
         self._source = SourceText(text, wrap='clip')
-        body = ListBox([self._source])
+        body = ScrollableListBox([self._source])
         self.__super.__init__(body=body)
-
-    def mouse_event(self, size, event, button, col, row, focus):
-        """Scroll content"""
-        if urwid.util.is_mouse_press(event):
-            if button == 4:
-                self.keypress(size, 'page up')
-                return
-            elif button == 5:
-                self.keypress(size, 'page down')
-                return
-        self.__super.mouse_event(size, event, button, col, row, focus)
 
 class ContextViewer(Columns):
     """Context viewer (manifest and source)"""
@@ -308,7 +281,7 @@ class RepoViewer(Pile):
             if button == 3:
                 emit_command('hide-context')
                 return
-        self.__super.mouse_event(size, event, button, col, row, focus)
+        return self.__super.mouse_event(size, event, button, col, row, focus)
 
 # __________________________________________________________________ functions
 

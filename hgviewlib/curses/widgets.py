@@ -18,7 +18,8 @@
 
 """
 """
-from urwid import Frame, Text, AttrWrap
+from urwid import Frame, Text, AttrWrap, ListBox
+from urwid.util import is_mouse_press
 
 # XXX
 from pygments import lex, lexers
@@ -26,7 +27,7 @@ from pygments.util import ClassNotFound
 
 from hgviewlib.curses.canvas import apply_text_layout
 
-__all__ = ['Body', 'SelectableText', 'SourceText']
+__all__ = ['Body', 'ScrollableListBox', 'SelectableText', 'SourceText']
 
 
 class SelectableText(Text):
@@ -69,6 +70,20 @@ class Body(Frame):
     def unregister_commands(self):
         """unregister commands"""
         pass
+
+class ScrollableListBox(ListBox):
+    """Scrollable Content ListBox using mouse buttons 4/5"""
+
+    def mouse_event(self, size, event, button, col, row, focus):
+        """Scroll content"""
+        if is_mouse_press(event):
+            if button == 4:
+                self.keypress(size, 'page up')
+                return
+            elif button == 5:
+                self.keypress(size, 'page down')
+                return
+        return self.__super.mouse_event(size, event, button, col, row, focus)
 
 class SourceText(SelectableText):
     def __init__(self, text, filename=None, lexer=None, numbering=False,
