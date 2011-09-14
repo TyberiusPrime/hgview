@@ -139,7 +139,6 @@ class ContextViewer(Columns):
     """Context viewer (manifest and source)"""
     MANIFEST_SIZE = 0.3
     def __init__(self, walker, *args, **kwargs):
-        self.walker = walker
         self._manifest = ManifestViewer(walker=walker, ctx=None)
         self._source = SourceViewer('')
         widget_list = [('weight', 1 - self.MANIFEST_SIZE, self._source),
@@ -159,9 +158,8 @@ class ContextViewer(Columns):
             lexer = lexers.RstLexer()
         else:
             wrap = 'clip' # truncate lines
-            graph = self.walker.graph
             rev = ctx.rev()
-            flag, data = graph.filedata(filename, rev, 'diff')
+            flag, data = self._manifest.manifest_walker.filedata(filename)
             lexer = None
             if flag == '=':
                 lexer = lexers.DiffLexer() if flag == '=' else None

@@ -44,6 +44,7 @@ class ManifestWalker(ListWalker):
         :ctx: mercurial context instance
         :description: display context description as a file if True
         """
+        self._cached_flags = {}
         self._walker = walker
         self._ctx = ctx
         self.manage_description = manage_description
@@ -70,6 +71,7 @@ class ManifestWalker(ListWalker):
     def get_ctx(self):
         return self._ctx
     def set_ctx(self, ctx):
+        self._cached_flags.clear()
         self._ctx = ctx
         self._files = tuple(self._ctx.files())
         del self.focus
@@ -119,9 +121,20 @@ class ManifestWalker(ListWalker):
                                            align='right', wrap='clip'),
                             'DEBUG', 'focus')
         filename = self._files[focus]
-        flag = self._walker.graph.fileflag(filename, self._ctx.rev())
+
+        # Computing the modification flag may take a long time, so cache it.
+        flag = self._cached_flags.get(filename)
+        if flag is None:
+            flag = self._cached_flags.setdefault(filename,
+                    self._walker.graph.fileflag(filename, self._ctx.rev()))
         if not isinstance(flag, str): # I don't know why it could occures :P
             flag = '?'
         return  AttrWrap(SelectableText(filename, align='right', wrap='clip'),
                          flag, 'focus')
+
+    def filedata(self, filename):
+        '''return (modification flag, file content)'''
+        graph = self._walker.graph
+        return graph.filedata(filename, self._ctx.rev(), 'diff',
+                              flag=self._cached_flags.get(filename))
 

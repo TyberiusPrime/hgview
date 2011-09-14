@@ -402,19 +402,23 @@ class Graph(object):
 
     def fileflag(self, filename, rev):
         """
-        Return a flag (see fileflags) between rev and its first parent
+        Return a flag (see fileflags) between rev and its first parent (may be
+        long)
         """
         return self.fileflags(filename, rev)[0]
 
     def filename(self, rev):
         return self.nodesdict[rev].extra[0]
 
-    def filedata(self, filename, rev, mode='diff'):
+    def filedata(self, filename, rev, mode='diff', flag=None):
         """XXX written under dubious encoding assumptions
+
+        The modification flag is computed using *fileflag* if ``flag`` is None.
         """
         # XXX This really begins to be a dirty mess...
         data = ""
-        flag = self.fileflag(filename, rev)
+        if flag is None:
+            flag = self.fileflag(filename, rev)
         ctx = self.repo.changectx(rev)
         try:
             fctx = ctx.filectx(filename)
