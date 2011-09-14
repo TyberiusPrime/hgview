@@ -90,6 +90,8 @@ class BodyMixin(object):
     commands = CommandsList
     title = ''
     name = None
+    def __init__(self):
+        self.mainframe = None
     def __eq__(self, body):
         return self.name == body.name
 
@@ -108,6 +110,7 @@ class MainFrame(urwid.Frame):
         self.set_body(body)
         self.banner.set_text(body.title)
         self.bodies[body.name] = body
+        body.mainframe = self
 
     def remove_body(self, body=None):
         """Remove the body buffer (default to current) and focus on the last"""
@@ -133,6 +136,7 @@ class MainFrame(urwid.Frame):
         elif key == 'enter':
             self.set_focus('body')
         elif key == 'esc':
+            self.footer.set('default', '', '')
             self.set_focus('body')
 
     def call_command(self):
@@ -238,38 +242,4 @@ class Footer(urwid.AttrWrap):
             self.mainframe.call_command()
         elif key == 'esc':
             self.set('default', '', '')
-
-if __name__ == '__main__':
-
-    from urwid import AttrWrap, Padding, Text, SimpleListWalker, ListBox
-    from hgviewlib.util import find_repository
-    from mercurial import hg, ui
-    PALETTE = [
-        ('default','default','default', 'bold'),
-        ('warn','white','dark red', 'bold'),
-        ('body','white','black', 'standout'),
-        ('banner','black','light gray', 'bold'),
-        ('focus','black','dark green', 'bold'),
-        ('entry', 'dark blue', 'default', 'bold')
-        ]
-
-    class MainWidget(AttrWrap, BodyMixin):
-        commands = CommandsList
-        name = 'example'
-        title = 'Type ":q<enter>" to quit'
-        def __init__(self, *args, **kwargs):
-            # XXX: just for trying, shall be removed
-            repo = hg.repository(ui.ui(), find_repository('.'))
-            def description(rev):
-                desc = repo.changectx(rev).description().splitlines()[0]
-                return '%i> %s' % (rev, desc)
-            lines = [AttrWrap(Padding(Text(('entry', description(rev))),
-                                      ('fixed left', 2), ('fixed right', 2),20),
-                              'default','focus')
-                      for rev in repo.changelog]
-            self.__super.__init__(ListBox(SimpleListWalker(lines)), 'body',
-                                  *args, **kwargs)
-    frame = MainFrame(MainWidget())
-    screen = urwid.raw_display.Screen()
-    urwid.MainLoop(frame, PALETTE, screen).run()
 

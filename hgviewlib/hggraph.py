@@ -493,7 +493,7 @@ class HgRepoListWalker(object):
     _getcolumns = "getChangelogColumns"
 
     def __init__(self, repo, branch='', fromhead=None, follow=False,
-                 parent=None):
+                 parent=None, *args, **kwargs):
         """
         repo is a hg repo instance
         """
