@@ -42,7 +42,7 @@ class ManifestWalker(ListWalker):
     def __init__(self, walker, ctx, manage_description=False, *args, **kwargs):
         """
         :ctx: mercurial context instance
-        :description: display context description as a file if True
+        :manage_description: display context description as a file if True
         """
         self._cached_flags = {}
         self._walker = walker
@@ -137,4 +137,11 @@ class ManifestWalker(ListWalker):
         graph = self._walker.graph
         return graph.filedata(filename, self._ctx.rev(), 'diff',
                               flag=self._cached_flags.get(filename))
+
+    def clear(self):
+        """clear content"""
+        self._cached_flags.clear()
+        self._files = ()
+        del self.focus
+        self._modified()
 

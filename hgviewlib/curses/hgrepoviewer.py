@@ -56,10 +56,12 @@ class GraphlogViewer(Body):
 
     def update_title(self, ctx):
         """update title depending on the given context ``ctx``."""
-        try:
-            hex = ctx.hex()
-        except TypeError:
+        if ctx is None:
+            hex = 'UNAPPLIED MQ PATCH'
+        elif ctx.node() is None:
             hex = 'WORKING DIRECTORY'
+        else:
+            hex = ctx.hex()
         self.title = '%s [%s]' % (self.walker.repo.root, hex)
 
     def register_commands(self):
@@ -181,6 +183,11 @@ class ContextViewer(Columns):
         else:
             return key
 
+    def clear(self):
+        self._manifest.manifest_walker.clear()
+        self._source._source.set_text('')
+
+
 class RepoViewer(Pile):
     """Repository viewer (graphlog and context)"""
 
@@ -197,8 +204,14 @@ class RepoViewer(Pile):
                        ]
         self.__super.__init__(widget_list=widget_list, focus_item=0)
         connect_signal(self._graphlog.body.body, 'focus changed',
-                       self._context._manifest.body.body.set_ctx)
+                       self.update_context)
         self._graphlog.body.body.set_focus(0) # ensure first focus signal
+
+    def update_context(self, ctx):
+        if ctx is None: # unapplied patch
+            self._context.clear()
+            return
+        self._context._manifest.body.body.ctx = ctx
 
     def register_commands(self):
         """Register commands and commands of bodies"""
