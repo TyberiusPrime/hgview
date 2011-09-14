@@ -77,16 +77,31 @@ class RevisionsWalker(ListWalker, HgRepoListWalker):
 
     def __init__(self, repo, branch='', fromhead=None, follow=False,
                  *args, **kwargs):
+        self._data_cache = {}
+        self.focus = 0L
         super(RevisionsWalker, self).__init__(repo, branch, fromhead, follow,
                                               *args, **kwargs)
-        self.focus = 0L
         if self._hasmq:
             self.focus = -len(self._get_unapplied())
         self.asciistate = [0, 0]#graphlog.asciistate()
-        self._data_cache = {}
 
     def _get_unapplied(self):
         return self.repo.mq.unapplied(self.repo)
+
+    def _modified(self):
+        if self.focus >= len(self._data_cache):
+            self.focus = max(0, len(self._data_cache)-1)
+        super(RevisionsWalker, self)._modified()
+
+    notify_data_changed = _modified
+
+    def setRepo(self, *args, **kwargs):
+        super(RevisionsWalker, self).setRepo(*args, **kwargs)
+        self._modified()
+
+    def _invalidate(self):
+        self.clear()
+        self._data_cache.clear()
 
     @staticmethod
     def get_color(idx, ignore=()):
@@ -101,13 +116,16 @@ class RevisionsWalker(ListWalker, HgRepoListWalker):
 
     def data(self, pos):
         """Return a widget and the position passed."""
+        # cache may be very hudge on very big repo
+        # (cpython for instance: >1.5GB)
         if pos in self._data_cache: # speed up rendering
             return self._data_cache[pos], pos
-        #import pdb;pdb.set_trace()
         if pos < 0:
             widget = self.get_unapplied_widget(pos)
         else:
             widget = self.get_applied_widget(pos)
+        if widget is None:
+            return None, None
         self._data_cache[pos] = widget
         return widget, pos
 
@@ -253,11 +271,6 @@ class RevisionsList(ListBox):
     def __init__(self, repo, *args, **kwargs):
         self.size = 0
         self.__super.__init__(RevisionsWalker(repo), *args, **kwargs)
-
-    def render(self, size, focus):
-        """Render the widget."""
-        self.size = size
-        return self.__super.render(size, focus)
 
 # __________________________________________________________________ functions
 

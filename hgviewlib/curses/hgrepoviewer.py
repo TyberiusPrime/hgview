@@ -20,9 +20,10 @@ Main curses application for hgview
 """
 
 import os
+import threading
 
 import urwid
-from urwid import AttrWrap
+from urwid import AttrWrap, signals
 from mercurial import ui, hg, cmdutil
 
 from hgviewlib.util import choose_viewer, find_repository
@@ -41,14 +42,10 @@ class CommandsList(_CommandsList):
 
         Refresh the repository content
         """
-        lstbx = mainframe.get_body()
-        walker = lstbx.body
-        repo = lstbx.body.repo
-        walker.repo = hg.repository(repo.ui, repo.root)
-        walker._data_cache = {}
-        walker.setRepo(walker.repo)
-        urwid.canvas.CanvasCache.invalidate(lstbx)
-        lstbx.render(lstbx.size, True)
+        walker = mainframe.get_body().body
+        walker._invalidate()
+        walker.setRepo()
+        signals.emit_signal(walker, 'modified')
     r = refresh
 
     @staticmethod
@@ -217,12 +214,47 @@ class HgRepoViewer(RevisionsList, BodyMixin):
     name = 'hgrepoview'
 
     def __init__(self, repo, *args, **kwargs):
+        self.repo = repo
         self.size = 0
         self.title = repo.root
         self.__super.__init__(repo, *args, **kwargs)
 
 # __________________________________________________________________ functions
 
+def inotify(mainloop):
+    """add inotify watcher to the mainloop"""
+    try:
+        from hgviewlib.inotify import Inotify as Inotify
+    except ImportError:
+        return
+
+    class UrwidInotify(Inotify):
+        def __init__(self, *args, **kwargs):
+            super(UrwidInotify, self).__init__(*args, **kwargs)
+            self._input_timeout = None
+
+        def process_finally(self):
+            """Really process the inotify event"""
+            self._input_timeout = None
+            super(UrwidInotify, self).process()
+
+        def process_on_any_event(self):
+            """Process all inotify events and prevent over-processing"""
+            # use the urwid mainloop to schedule the screen refreshing in 0.2s
+            # and ignore events received during this time.
+            # It prevents over-refreshing (See ../inotify.py comments).
+            if self._input_timeout is None:
+                self._input_timeout = mainloop.set_alarm_in(
+                        0.2, lambda *args: self.process_finally())
+            self.read_events()
+    try:
+        inot = UrwidInotify(mainloop.widget.get_body().repo,
+                            mainloop.widget.refresh)
+    except:
+        return
+    mainloop.event_loop.watch_file(inot.get_fd(), inot.process_on_any_event)
+    # add watchers thought a thread to reduce start duration with a big repo
+    threading.Thread(target=inot.update).start()
 
 def main():
     '''main entry point'''
@@ -259,7 +291,13 @@ def main():
     body = AttrWrap(body, 'body')
     frame = MainFrame(body)
     screen = urwid.raw_display.Screen()
-    urwid.MainLoop(frame, palette, screen).run()
+    mainloop = urwid.MainLoop(frame, palette, screen)
+
+    enable_inotify = True # XXX config
+    if enable_inotify:
+        inotify(mainloop)
+
+    mainloop.run()
 
 if __name__ == '__main__':
     main()

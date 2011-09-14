@@ -180,6 +180,7 @@ class MainFrame(urwid.Frame):
         """Render frame and return it."""
         # Copy the original method code to put the header at bottom :?
         # (vim-like banner)
+        self.size = size
         maxcol, maxrow = size
         (htrim, ftrim),(hrows, frows) = self.frame_top_bottom(
                                                         (maxcol, maxrow), focus)
@@ -214,6 +215,13 @@ class MainFrame(urwid.Frame):
             combinelist.append((foot, 'footer', self.focus_part == 'footer'))
 
         return CanvasCombine(combinelist)
+
+    def refresh(self):
+        for _, body in self.bodies.iteritems():
+            try:
+                body.commands.refresh(self)
+            except AttributeError: # body don't have refresh
+                pass
 
 class Footer(urwid.AttrWrap):
     """Footer widget used to display message and for inputs.

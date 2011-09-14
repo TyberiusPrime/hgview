@@ -25,7 +25,7 @@ import difflib
 from itertools import chain
 
 from mercurial.node import nullrev
-from mercurial import patch, util, match
+from mercurial import patch, util, match, error, hg
 
 import hgviewlib # force apply monkeypatches
 from hgviewlib.util import tounicode, isbfile
@@ -505,10 +505,13 @@ class HgRepoListWalker(object):
         self.graph = None
         self.rowcount = 0
         self.repo = repo
+        super(HgRepoListWalker, self).__init__()
         self.load_config()
         self.setRepo(repo, branch=branch, fromhead=fromhead, follow=follow)
 
-    def setRepo(self, repo, branch='', fromhead=None, follow=False):
+    def setRepo(self, repo=None, branch='', fromhead=None, follow=False):
+        if repo is None:
+            repo = hg.repository(self.repo.ui, self.repo.root)
         oldrepo = self.repo
         self.repo = repo
         if oldrepo.root != repo.root:
