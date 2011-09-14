@@ -26,6 +26,7 @@ from mercurial import hg, ui
 from mercurial.error import RepoError
 
 from hgviewlib.util import find_repository, rootpath
+from hgviewlib.config import HgConfig
 
 class Viewer(object):
     """Base viewer class interface."""
@@ -106,11 +107,9 @@ class HgViewApplication(object):
     def exec_(self):
         raise NotImplementedError()
 
-def main(console=False):
+def main():
     """
     Main application acces point.
-
-    * console==True => console mode
     """
 
     usage = '''%prog [options] [filename]
@@ -127,6 +126,9 @@ def main(console=False):
     '''
 
     parser = OptionParser(usage)
+    parser.add_option('-I', '--interface', dest='interface',
+                      help='which GUI interface to use (among "qt" and "raw")',
+                      )
     parser.add_option('-R', '--repository', dest='repo',
                       help='location of the repository to explore')
     parser.add_option('-r', '--rev', dest='rev', default=None,
@@ -152,11 +154,17 @@ def main(console=False):
         raise
         parser.error("You are not in a repo, are you?")
 
+    config = HgConfig(repo.ui)
+    if opts.interface is None:
+        opts.interface = config.getInterface()
 
-    if console:
+    if opts.interface == 'raw':
         from hgviewlib.curses.application import HgViewUrwidApplication as Application
-    else:
+    elif opts.interface == 'qt':
         from hgviewlib.qt4.application import HgViewQtApplication as Application
+    else:
+        parser.error('Unknown interface: "%s"' % opts.interface)
+
     try:
         app = Application(repo, opts, args)
     except ApplicationError, err:

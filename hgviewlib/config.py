@@ -240,6 +240,13 @@ class HgConfig(object):
         """
         return self.ui.config(self.section, 'mqhidetags', default)
 
+    @cached
+    def getInterface(self, default='qt'):
+        """
+        interface: which GUI interface to use (among "qt" or "raw")
+        """
+        return self.ui.config(self.section, 'interface', default)
+
 
 
 _HgConfig = HgConfig
