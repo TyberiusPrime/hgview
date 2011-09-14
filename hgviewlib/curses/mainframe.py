@@ -62,6 +62,30 @@ class CommandsList(object):
             CommandsList.qall(mf)
     q = quit
 
+    @staticmethod
+    def help(mf, command=None):
+        """show help massage
+
+        :param command: a command name for which to display the help. If omited,
+                        the overall program help is displayed.
+        """
+        # XXX
+        from hgviewlib.curses import helpviewer
+        from textwrap import dedent
+        doc = None
+        if command:
+            try:
+                doc = dedent(getattr(CommandsList, command).func_doc)
+                title = 'help on command "%s"' % command
+            except AttributeError:
+                raise CommandError('Could not find help for "%s"' % command)
+        else:
+            title = 'help'
+        helpbody = helpviewer.HelpViewer(doc)
+        helpbody.title = title
+        mf.append_body(helpbody)
+    h = help
+
 class BodyMixin(object):
     commands = CommandsList
     title = ''
