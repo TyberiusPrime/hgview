@@ -294,8 +294,15 @@ def main():
     mainloop = urwid.MainLoop(frame, palette, screen)
 
     enable_inotify = True # XXX config
+    optimize_inotify = True # XXX config
     if enable_inotify:
+        if optimize_inotify:
+            import ctypes.util
+            orig = ctypes.util.find_library
+            ctypes.util.find_library = lambda lib: None # durty optim
         inotify(mainloop)
+        if optimize_inotify:
+            ctypes.util.find_library = orig
 
     mainloop.run()
 
