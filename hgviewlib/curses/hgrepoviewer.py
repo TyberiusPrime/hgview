@@ -154,9 +154,11 @@ class ContextViewer(Columns):
         ctx = self._manifest.body.body.ctx
         numbering = False
         if filename is None:
+            wrap = 'space' # Do not cut description and wrap content
             data = ctx.description()
             lexer = lexers.RstLexer()
         else:
+            wrap = 'clip' # truncate lines
             graph = self.walker.graph
             rev = ctx.rev()
             flag, data = graph.filedata(filename, rev, 'diff')
@@ -169,6 +171,7 @@ class ContextViewer(Columns):
             elif flag == '+':
                 numbering = True
                 lexer = None
+        self._source._source.set_wrap_mode(wrap)
         self._source._source.set_text(data or '')
         self._source._source.lexer = lexer
         self._source._source.numbering = numbering
