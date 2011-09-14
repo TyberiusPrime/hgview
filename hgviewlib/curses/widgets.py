@@ -92,12 +92,12 @@ class SourceText(SelectableText):
         if lexer is None and self.filename: # try to get lexer from filename
             try:
                 lexer = lexers.get_lexer_for_filename(self.filename, text)
-            except ClassNotFound:
+            except (ClassNotFound, TypeError): #TypeError: pygments is confused
                 pass
         if lexer is None and text: # try to get lexer from text
             try:
                lexer = lexers.guess_lexer(text)
-            except ClassNotFound:
+            except (ClassNotFound, TypeError): #TypeError: pygments is confused
                 pass
         self._lexer = lexer
         if lexer == None: # No lexer found => finish
