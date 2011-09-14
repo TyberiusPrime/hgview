@@ -346,6 +346,8 @@ hg_command_map = HgCommandMap()
 
 # _____________________________________________________________________ Screen
 
+from urwid.raw_display import Screen as _Screen
+
 PALETTE = [
     ('default','default','default'),
     ('body','default','default', 'standout'),
@@ -383,6 +385,7 @@ try:
     from pygments.token import Token, _TokenType
 
     PALETTE += [
+        (Token, 'default', 'default'),
         (Token.Text, 'default', 'default'),
         (Token.Comment, 'dark gray', 'default'),
         (Token.Punctuation, 'white', 'default', 'bold'),
@@ -409,26 +412,46 @@ try:
         def __contains__(self, key):
             if super(Palette, self).__contains__(key):
                 return True
-            if not isinstance(key, _TokenType) or not key.parent:
+            if (not isinstance(key, _TokenType)) or (key.parent is None):
                 return False
             if key.parent in self: # fonction is now recursive
                 self[key] = self[key.parent] # cache + __getitem__ ok
                 return True
             return False
+        has_key = __contains__
 
-    class Screen(urwid.raw_display.Screen):
+    class Screen(_Screen):
         """hack Screen to allow parent token inheritence in the palette"""
+        # Use a special container for storing style definition. This container
+        # take into accoutn parent token inheritence
+        # raw_display.Screen store the palette definition in the container
+        # ``_pal_escape``, web_display and curses display in ``palette`` and
+        # ``attrconv``
+
         def __init__(self, *args):
-            self.__pal_escape = None
-            super(Screen, self).__init__()
-        def get_pal_escape(self):
-            return self.__pal_escape
-        def set_pal_escape(self, value):
-            self.__pal_escape = Palette()
+            self._hgview_palette = None
+            self._hgview_attrconv = None
+            # mro problem with web_display, so do not use super
+            _Screen.__init__(self)
+
+
+        def _hgview_get_palette(self):
+            return self._hgview_palette
+        def _hgview_set_palette(self, value):
+            self._hgview_palette = Palette()
             if value:
-                self.__pal_escape.update(value)
-        _pal_escape = property(get_pal_escape, set_pal_escape)
+                self._hgview_palette.update(value)
+        _pal_escape = property(_hgview_get_palette, _hgview_set_palette)
+        palette = _pal_escape
+
+        def _hgview_get_attrconv(self):
+            return self._hgview_attrconv
+        def _hgview_set_attrconv(self, value):
+            self._hgview_attrconv = Palette()
+            if value:
+                self._hgview_attrconv.update(value)
+        attrconv = property(_hgview_get_attrconv, _hgview_set_attrconv)
 
 except ImportError:
-    Screen = urwid.raw_display.Screen
+    Screen = _Screen
 

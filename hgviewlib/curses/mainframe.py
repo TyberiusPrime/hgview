@@ -106,9 +106,6 @@ class MainFrame(urwid.Frame):
         unregister_command('h')
         self.body.unregister_commands()
 
-    def __del__(self):
-        self.unregister_command()
-
     def _get_visible(self):
         return self._visible
     def _set_visible(self, name):
@@ -188,7 +185,7 @@ class Footer(urwid.AttrWrap):
     def __init__(self, *args, **kwargs):
         self.__super.__init__(
             urwid.Edit('type ":help<Enter>" for information'),
-            'footer_style', *args, **kwargs)
+            'INFO', *args, **kwargs)
 
     def keypress(self, size, key):
         "allow subclasses to intercept keystrokes"
@@ -234,7 +231,7 @@ class Footer(urwid.AttrWrap):
             return
         try:
             emit_command(cmdline)
-            self.set('info')
+            self.set('INFO')
         except urwid.ExitMainLoop: # exit, so do not catch this
             raise
         except Exception, err:
