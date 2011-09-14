@@ -27,6 +27,7 @@ from mercurial.revlog import LookupError
 from PyQt4 import QtGui, QtCore, Qsci
 from PyQt4.QtCore import Qt
 
+from hgviewlib.application import ManifestViewer as _ManifestViewer
 from hgviewlib.util import tounicode
 
 from hgviewlib.qt4 import icon as geticon
@@ -40,7 +41,7 @@ SIGNAL = QtCore.SIGNAL
 nullvariant = QtCore.QVariant()
 
 
-class ManifestViewer(QtGui.QMainWindow, HgDialogMixin):
+class ManifestViewer(QtGui.QMainWindow, HgDialogMixin, _ManifestViewer):
     """
     Qt4 dialog to display all files of a repo at a given revision
     """

@@ -17,7 +17,8 @@ from PyQt4 import QtCore, QtGui, Qsci
 from mercurial import ui, hg
 from mercurial import util
 
-from hgviewlib.util import tounicode, has_closed_branch_support, choose_viewer
+from hgviewlib.application import HgRepoViewer as _HgRepoViewer
+from hgviewlib.util import tounicode, has_closed_branch_support
 from hgviewlib.util import rootpath, find_repository
 from hgviewlib.hggraph import diff as revdiff
 from hgviewlib.decorators import timeit
@@ -41,7 +42,7 @@ connect = QtCore.QObject.connect
 SIGNAL = QtCore.SIGNAL
 
 
-class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
+class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin, _HgRepoViewer):
     """hg repository viewer/browser application"""
     _uifile = 'hgqv.ui'
     def __init__(self, repo, fromhead=None):
@@ -523,27 +524,3 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin):
         w.raise_()
         w.activateWindow()
 
-
-def main():
-    """
-    Main entry point for qt4.
-    """
-    # make Ctrl+C works
-    import signal
-    signal.signal(signal.SIGINT, signal.SIG_DFL)
-
-    app = QtGui.QApplication(sys.argv)
-    from hgviewlib.qt4 import setup_font_substitutions
-    setup_font_substitutions()
-
-    mainwindow = choose_viewer(FileViewer, FileDiffViewer, ManifestViewer,
-                         HgRepoViewer)
-    mainwindow.show()
-    sys.exit(app.exec_())
-
-if __name__ == "__main__":
-    # remove current dir from sys.path
-    while sys.path.count('.'):
-        sys.path.remove('.')
-        print 'removed'
-    main()

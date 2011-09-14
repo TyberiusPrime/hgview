@@ -24,7 +24,7 @@ except ImportError:
                                         os.readlink(execpath)))
     sys.path.append(pos.abspath(pos.join(pos.dirname(execpath), "..")))
 
-from hgviewlib.qt4.hgrepoviewer import main 
+from hgviewlib.application import main
 main()
 
 DosExitLabel = """

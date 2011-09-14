@@ -28,6 +28,8 @@ from mercurial import ui, hg, util
 from PyQt4 import QtGui, QtCore, Qsci
 from PyQt4.QtCore import Qt
 
+from hgviewlib.application import (FileViewer as _FileViewer,
+                                   FileDiffViewer as _FileDiffViewer)
 from hgviewlib.util import tounicode, rootpath
 
 from hgviewlib.qt4 import icon as geticon
@@ -111,7 +113,7 @@ class AbstractFileDialog(QtGui.QMainWindow, HgDialogMixin):
         self.repoviewer.activateWindow()
         self.repoviewer.raise_()
 
-class FileViewer(AbstractFileDialog):
+class FileViewer(AbstractFileDialog, _FileViewer):
     """
     A dialog showing a revision graph for a file.
     """
@@ -224,7 +226,7 @@ class FileViewer(AbstractFileDialog):
         self.actionNextDiff.setEnabled(self.textView.fileMode() and self.textView.nDiffs())
 
 
-class FileDiffViewer(AbstractFileDialog):
+class FileDiffViewer(AbstractFileDialog, _FileDiffViewer):
     """
     Qt4 dialog to display diffs between different mercurial revisions of a file.
     """
