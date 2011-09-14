@@ -54,7 +54,11 @@ class HgViewUrwidApplication(HgViewApplication):
 
     def get_screen(self):
         """return the screen instance to use"""
-        from urwid.raw_display import Screen
+        if self.opts.interface == 'raw':
+            from urwid.raw_display import Screen
+        elif self.opts.interface == 'curses':
+            from urwid.curses_display import Screen
+
         if pygments:
             return patch_screen(Screen)()
         return Screen()

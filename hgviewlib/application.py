@@ -127,7 +127,8 @@ def main():
 
     parser = OptionParser(usage)
     parser.add_option('-I', '--interface', dest='interface',
-                      help='which GUI interface to use (among "qt" and "raw")',
+                      help=('which GUI interface to use (among "qt", "raw"'
+                             ' and "curses")'),
                       )
     parser.add_option('-R', '--repository', dest='repo',
                       help='location of the repository to explore')
@@ -158,7 +159,7 @@ def main():
     if opts.interface is None:
         opts.interface = config.getInterface()
 
-    if opts.interface == 'raw':
+    if opts.interface in ('raw', 'curses'):
         from hgviewlib.curses.application import HgViewUrwidApplication as Application
     elif opts.interface == 'qt':
         from hgviewlib.qt4.application import HgViewQtApplication as Application

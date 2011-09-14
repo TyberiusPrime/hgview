@@ -243,7 +243,7 @@ class HgConfig(object):
     @cached
     def getInterface(self, default='qt'):
         """
-        interface: which GUI interface to use (among "qt" or "raw")
+        interface: which GUI interface to use (among "qt", "raw" and "curses")
         """
         return self.ui.config(self.section, 'interface', default)
 
