@@ -190,26 +190,30 @@ class Commands(object):
         except ValueError:
             raise RegisterCommandError('Callbacks not connected.')
 
-    def emit(self, name, cmd=None, args=None, kwargs=None):
-        """Call all callbacks connected to the registered command ``name`` as
-        following::
+    def emit(self, cmdline, args=None, kwargs=None):
+        """Call all callbacks connected to the command previously registred.
+
+        Callbacks are processed as following::
 
           registered_callback(*args, **kwargs)
 
         where ``args = connect_args + emit_args + commandline_args``
         and ``kwargs = connect_kwargs.copy(); kwargs.update(emit_kwargs)``
 
+        :cmdline: a string that contains the complete command line.
+
         :return: True is a callback return True, else False
 
         """
         result = False
+        name, rawargs = (cmdline.strip().split(None, 1) + [''])[:2]
         if not name in self:
-            raise RegisterCommandError('Command not registered: %s' % name)
+            raise UnknownCommand(name)
 
         cmdargs = []
-        if cmd and self._args[name]:
+        if rawargs and self._args[name]:
             data = self._args[name]
-            for idx, arg in enumerate(shlex.split(cmd)):
+            for idx, arg in enumerate(shlex.split(rawargs)):
                 try:
                     parser = data[idx].parser
                 except IndexError:
@@ -273,14 +277,14 @@ help_command = _commands.help
 class HgCommandMap(CommandMap):
     _command_defaults = container((
 
-        ('f1', 'help'),
+        ('f1', '@help'),
         ('enter', 'validate'),
-        ('m', 'maximize pane'),
+        ('m', '@maximize-context'),
 
         # Qt interface
         ('f5', 'command key'),
         ('esc', 'escape'),
-        ('ctrl l', 'refresh'),
+        ('ctrl l', '@refresh'),
         ('ctrl w', 'close pane'),
 
         ('up', 'graphlog up'),
@@ -300,7 +304,7 @@ class HgCommandMap(CommandMap):
         # vim interface
         (':', 'command key'),
         #'esc','escape', already set in Qt interface
-        ('r', 'refresh'),
+        ('r', '@refresh'),
         ('q', 'close pane'),
 
         ('k', 'graphlog up'),
@@ -320,7 +324,7 @@ class HgCommandMap(CommandMap):
         # emacs interface
         ('meta x', 'command key'),
         ('ctrl g', 'escape'),
-        ('ctrl v', 'refresh'),
+        ('ctrl v', '@refresh'),
         ('ctrl k', 'close pane'),
 
         ('ctrl p', 'graphlog up'),

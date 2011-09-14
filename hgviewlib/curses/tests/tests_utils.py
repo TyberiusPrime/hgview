@@ -185,7 +185,7 @@ class TestCommandsRegister(TestCase):
         self.assertEqual(ref, res)
 
     def test_emit_not_registered(self):
-        self.assertRaises(exceptions.RegisterCommandError,
+        self.assertRaises(exceptions.UnknownCommand,
                           utils.emit_command, 'foo')
 
     def test_emit_not_connected(self):
@@ -225,7 +225,7 @@ class TestCommandsRegister(TestCase):
         self.assertEqual(False, utils.emit_command('foo', args=(2,), kwargs={'d':4}))
 
     def test_emit_convert_cmdargs(self):
-        cmd = '1 2 "2 + 1" 4.'
+        cmd = 'foo 1 2 "2 + 1" 4.'
         args = (utils.CommandArg('a', int, 'argument1'),
                 utils.CommandArg('b', str, 'argument2'),
                 utils.CommandArg('c', eval, 'argument2'),
@@ -234,17 +234,17 @@ class TestCommandsRegister(TestCase):
 
         func = lambda a, b, c, d: a==1 and b=="2" and c==3 and d==4.
         utils.connect_command('foo', func)
-        self.assertEqual(True, utils.emit_command('foo', cmd))
+        self.assertEqual(True, utils.emit_command(cmd))
 
     def test_emit_convert_mixed(self):
-        cmd = '"2 + 1" 4.'
+        cmd = 'foo "2 + 1" 4.'
         args = (utils.CommandArg('c', eval, 'argument2'),
                 utils.CommandArg('d', float, 'argument2'), )
         utils.register_command('foo', 'A command', *args)
 
         func3 = lambda a, b, c, d, e, f: (a,b,c,d,e,f) == (1, "2", 3, 4., 5, 6)
         utils.connect_command('foo', func3, args=(1,), kwargs={'e':5})
-        self.assertEqual(True, utils.emit_command('foo', cmd, ("2",), {'f':6}))
+        self.assertEqual(True, utils.emit_command(cmd, ("2",), {'f':6}))
 
 if __name__ == '__main__':
     testmod(utils)

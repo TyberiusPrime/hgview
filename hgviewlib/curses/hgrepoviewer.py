@@ -270,9 +270,6 @@ class RepoViewer(Pile):
         if self._show_context == 0 and hg_command_map[key] == 'validate':
             self.show_context()
             return
-        if hg_command_map[key] == 'maximize pane':
-            self.maximize_context()
-            return
         if hg_command_map[key] == 'close pane' and self._show_context > 0:
             # allows others to catch 'close pane'
             self.hide_context()

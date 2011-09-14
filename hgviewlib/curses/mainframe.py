@@ -152,12 +152,12 @@ class MainFrame(urwid.Frame):
         elif hg_command_map[key] == 'escape':
             self.footer.set('default', '', '')
             self.set_focus('body')
-        elif hg_command_map[key] == 'refresh':
-            emit_command('refresh')
         elif hg_command_map[key] == 'close pane':
             emit_command('quit')
-        elif hg_command_map[key] == 'help':
-            self.show_command_help()
+        else:
+            cmd = hg_command_map[key]
+            if cmd and cmd[0] == '@':
+                emit_command(hg_command_map[key][1:])
 
     def show_command_help(self, command=None):
         """
@@ -228,16 +228,16 @@ class Footer(urwid.AttrWrap):
     def call_command(self):
         '''Call the command that corresponds to the string given in the edit area
         '''
-        cmd = self.get_edit_text().strip()
-        if not cmd:
+        cmdline = self.get_edit_text()
+        if not cmdline:
             self.footer.set('default', '', '')
             return
         try:
-            name, args = (cmd.split(None, 1) + [''])[:2]
-            emit_command(name, args)
+            emit_command(cmdline)
             self.set('info')
         except urwid.ExitMainLoop: # exit, so do not catch this
             raise
         except Exception, err:
             logging.warn(err.__class__.__name__ + ': %s', str(err))
-            logging.debug('Exception on: "%s"', name, exc_info=True)
+            logging.debug('Exception on: "%s"', cmdline, exc_info=True)
+
