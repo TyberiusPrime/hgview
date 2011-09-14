@@ -42,6 +42,20 @@ class HelpViewer(urwid.AttrWrap, BodyMixin):
         listbox = urwid.ListBox(urwid.SimpleListWalker(pads))
         self.__super.__init__(listbox, 'body', *args, **kwargs)
 
+    def keypress(self, size, key):
+        "allow subclasses to intercept keystrokes"
+        key = self.__super.keypress(size, key)
+        if key:
+            self.unhandled_key(size, key)
+        return key
+
+    def unhandled_key(self, size, key):
+        """Overwrite this method to intercept keystrokes in subclasses.
+        Default behavior: run command from ':xxx'
+        """
+        if key in (':', 'esc'):
+            self.mainframe.remove_body(self)
+
 def build_pad_text(message):
     """return a pad with a text that contains a message.
     """

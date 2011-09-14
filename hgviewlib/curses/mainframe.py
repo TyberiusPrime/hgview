@@ -49,13 +49,23 @@ class CommandsList(object):
     "basic commands list"
     @staticmethod
     def qall(mf):
-        "Quit the program"
+        """
+        usage: quall
+        alias: qa
+
+        Quit the program
+        """
         raise urwid.ExitMainLoop()
     qa = qall
 
     @staticmethod
     def quit(mf):
-        """Close the current buffer"""
+        """
+        usage: quit
+        alias: q
+
+        Close the current buffer
+        """
         try:
             mf.remove_body()
         except StopIteration: # last body => quit program
@@ -64,10 +74,14 @@ class CommandsList(object):
 
     @staticmethod
     def help(mf, command=None):
-        """show help massage
+        """
+        usage: edit [command]
+        alias: h
 
-        :param command: a command name for which to display the help. If omited,
-                        the overall program help is displayed.
+        Show the help massage of the ``command``
+
+        :param command: a command name for which to display the help.
+                        If omited, the overall program help is displayed.
         """
         # XXX
         from hgviewlib.curses import helpviewer
@@ -75,15 +89,15 @@ class CommandsList(object):
         doc = None
         if command:
             try:
-                doc = dedent(getattr(CommandsList, command).func_doc)
-                title = 'help on command "%s"' % command
+                doc = dedent(getattr(mf.get_body().commands, command).func_doc)
+                mf.set_focus('footer')
+                mf.footer.set('default', '', doc)
             except AttributeError:
                 raise CommandError('Could not find help for "%s"' % command)
         else:
-            title = 'help'
-        helpbody = helpviewer.HelpViewer(doc)
-        helpbody.title = title
-        mf.append_body(helpbody)
+            helpbody = helpviewer.HelpViewer(doc)
+            helpbody.title = 'main help'
+            mf.append_body(helpbody)
     h = help
 
 class BodyMixin(object):
