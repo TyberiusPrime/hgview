@@ -48,20 +48,49 @@ from hgviewlib.curses.exceptions import CommandError
 class CommandsList(object):
     "basic commands list"
     @staticmethod
-    def quit(mainframe):
+    def qall(mf):
         "Quit the program"
         raise urwid.ExitMainLoop()
+    qa = qall
+
+    @staticmethod
+    def quit(mf):
+        """Close the current buffer"""
+        try:
+            mf.remove_body()
+        except StopIteration: # last body => quit program
+            CommandsList.qall(mf)
     q = quit
+
+class BodyMixin(object):
+    commands = CommandsList
+    title = ''
+    name = None
+    def __eq__(self, body):
+        return self.name == body.name
 
 class MainFrame(urwid.Frame):
     """Main console frame that mimic the vim interface.
     """
-    def __init__(self, body, title='', *args, **kwargs):
-        header = W(urwid.Text(title), 'banner')
+    def __init__(self, body, *args, **kwargs):
+        header = W(urwid.Text(body.title), 'banner')
         footer = Footer(self)
-        body.mainframe = body.parent = self
-        self.__super.__init__(body, header=header, footer=footer,
+        self.bodies = {body.name:body}
+        self.__super.__init__(body=body, header=header, footer=footer,
                               *args, **kwargs)
+
+    def append_body(self, body):
+        """ add a body buffer to the mainframe and focus on it"""
+        self.set_body(body)
+        self.banner.set_text(body.title)
+        self.bodies[body.name] = body
+
+    def remove_body(self, body=None):
+        """Remove the body buffer (default to current) and focus on the last"""
+        if body is None:
+            body = self.body
+        del self.bodies[body.name]
+        self.append_body(self.bodies.iteritems().next()[1])
 
     def keypress(self, size, key):
         "allow subclasses to intercept keystrokes"
@@ -200,8 +229,10 @@ if __name__ == '__main__':
         ('entry', 'dark blue', 'default', 'bold')
         ]
 
-    class Body(AttrWrap):
+    class MainWidget(AttrWrap, BodyMixin):
         commands = CommandsList
+        name = 'example'
+        title = 'Type ":q<enter>" to quit'
         def __init__(self, *args, **kwargs):
             # XXX: just for trying, shall be removed
             repo = hg.repository(ui.ui(), find_repository('.'))
@@ -214,7 +245,7 @@ if __name__ == '__main__':
                       for rev in repo.changelog]
             self.__super.__init__(ListBox(SimpleListWalker(lines)), 'body',
                                   *args, **kwargs)
-    frame = MainFrame(Body(), 'Type ":q<enter>" to quit')
+    frame = MainFrame(MainWidget())
     screen = urwid.raw_display.Screen()
     urwid.MainLoop(frame, PALETTE, screen).run()
 
