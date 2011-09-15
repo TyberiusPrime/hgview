@@ -22,10 +22,6 @@ A Module that contains usefull utilities.
 
 import shlex
 from collections import namedtuple
-try:
-    from collections import OrderedDict as Container # better for help
-except ImportError:
-    Container = dict
 
 from urwid.command_map import CommandMap
 from hgviewlib.curses.exceptions import UnknownCommand, RegisterCommandError
@@ -57,7 +53,7 @@ class Commands(object):
     """
     def __init__(self):
         self._args = {}
-        self._helps = Container()
+        self._helps = {}
         self._calls = {}
 
     def register(self, names, help, *args):
@@ -219,7 +215,7 @@ class Commands(object):
 
     def helps(self):
         """Return a generator that gives (name, help) for each command"""
-        for name in self._helps:
+        for name in sorted(self._helps.keys()):
             yield name, self.help(name)
 
 # Instanciate a Commands object to handle command from a global scope.
@@ -237,9 +233,9 @@ help_commands = _commands.helps
 # _________________________________________________________________ command map
 
 
-class HgCommandMap(CommandMap):
+class HgCommandMap(object):
     """Map keys to more expliite action names."""
-    _command_defaults = Container((
+    _command_defaults = (
 
         ('f1', '@help'),
         ('enter', 'validate'),
@@ -304,10 +300,20 @@ class HgCommandMap(CommandMap):
         ('meta f', 'manifest page down'),
         ('meta a', 'source page up'),
         ('meta e', 'source page down'),
-    ))
-    keys = _command_defaults.keys
-    iteritems = _command_defaults.iteritems
-
+    )
+    def __init__(self):
+        self._map = dict(self._command_defaults)
+    def __getitem__(self, key):
+        """a.__getitem__(key) <=> a[key]
+        return an explicite name associated to the key or None if not found.
+        """
+        return self._map.get(key)
+    def items(self):
+        """return the list of (registered keys, associated name)"""
+        return self._command_defaults
+    def keys(self):
+        """return the list of registered keys"""
+        return self._map.keys()
 
 hg_command_map = HgCommandMap()
 

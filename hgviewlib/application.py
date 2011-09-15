@@ -83,7 +83,7 @@ class HgViewApplication(object):
         """Choose the right viewer"""
         if len(self.args) == 1:
             filename = rootpath(self.repo, self.opts.rev, self.args[0])
-            if filename is None:
+            if not filename:
                 ApplicationError("%s is not a tracked file" % self.args[0])
 
             # should be a filename of a file managed in the repo
@@ -93,7 +93,7 @@ class HgViewApplication(object):
                 viewer = self.FileDiffViewer(self.repo, filename)
         else:
             rev = self.opts.rev
-            if rev is not None:
+            if rev:
                 try:
                     self.repo.changectx(rev)
                 except RepoError, e:
@@ -106,6 +106,29 @@ class HgViewApplication(object):
 
     def exec_(self):
         raise NotImplementedError()
+
+def start(repo, opts, args, fnerror):
+    """
+    start hgview
+    """
+
+    config = HgConfig(repo.ui)
+    if not opts.interface:
+        opts.interface = config.getInterface()
+
+    if opts.interface in ('raw', 'curses'):
+        from hgviewlib.curses.application import HgViewUrwidApplication as Application
+    elif opts.interface == 'qt':
+        from hgviewlib.qt4.application import HgViewQtApplication as Application
+    else:
+        fnerror('Unknown interface: "%s"' % opts.interface)
+
+    try:
+        app = Application(repo, opts, args)
+    except ApplicationError, err:
+        fnerror(str(err))
+
+    sys.exit(app.exec_())
 
 def main():
     """
@@ -154,24 +177,8 @@ def main():
     except:
         raise
         parser.error("You are not in a repo, are you?")
+    start(repo, opts, args, parser.error)
 
-    config = HgConfig(repo.ui)
-    if opts.interface is None:
-        opts.interface = config.getInterface()
-
-    if opts.interface in ('raw', 'curses'):
-        from hgviewlib.curses.application import HgViewUrwidApplication as Application
-    elif opts.interface == 'qt':
-        from hgviewlib.qt4.application import HgViewQtApplication as Application
-    else:
-        parser.error('Unknown interface: "%s"' % opts.interface)
-
-    try:
-        app = Application(repo, opts, args)
-    except ApplicationError, err:
-        parser.error(str(err))
-
-    sys.exit(app.exec_())
 
 if __name__ == "__main__":
     main()

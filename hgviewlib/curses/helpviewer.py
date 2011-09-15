@@ -39,7 +39,7 @@ class HelpViewer(Body):
             messages = []
             keys = hg_command_map.keys()
             longest = max(len(key) for key in keys)
-            for name, cmd in hg_command_map.iteritems():
+            for name, cmd in hg_command_map.items():
                 messages.append(('ERROR', name.rjust(longest)))
                 messages.append(('WARNING', ' | '))
                 messages.append(cmd)
