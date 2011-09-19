@@ -307,11 +307,13 @@ class HgRepoView(QtGui.QTableView):
         """
         Select revision 'rev' (can be anything understood by repo.changectx())
         """
+        if ':' in rev:
+            rev = rev.split(':')[1]
         repo = self.model().repo
         try:
             rev = repo.changectx(rev).rev()
         except RepoError:
-            self.emit(SIGNAL('showMessage'), "Can't find revision '%s'"%rev, 2000)
+            self.emit(SIGNAL('showMessage'), "Can't find revision '%s'" % rev, 2000)
         else:
             idx = self.model().indexFromRev(rev)
             if idx is not None:
