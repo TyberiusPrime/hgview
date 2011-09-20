@@ -25,7 +25,7 @@ import os
 import sys
 import shutil
 from distutils.core import setup
-from distutils.command import install_lib
+from distutils.command import install_lib, install as _install
 from distutils.command.build import build
 from os.path import isdir, exists, join, walk, splitext
 
@@ -135,6 +135,34 @@ def export(from_dir, to_dir,
 
 EMPTY_FILE = '"""generated file, don\'t modify or your data will be lost"""\n'
 
+class MyInstall(_install.install):
+    user_options = [
+            ('install-qt', None, "install qt library part [default]"),
+            ('install-curses', None, "install curses library part [default]"),
+            ('no-install-qt', None, "don't install qt library part"),
+            ('no-install-curses', None, "don't install curses library part"),
+            ] + _install.install.user_options
+
+    boolean_options = ['install-qt', 'install-curses'] + _install.install.boolean_options
+    negative_opt = dict([('no-install-qt','install-qt'), ('no-install-curses', 'install-curses')] 
+                        + _install.install.negative_opt.items())
+
+    def initialize_options(self):
+        self.install_qt = 1
+        self.install_curses = 1
+        _install.install.initialize_options(self)
+
+    def finalize_options(self):
+        _install.install.finalize_options(self)
+        if not hasattr(self.distribution, 'install_qt'):
+            self.distribution.install_qt = self.install_qt
+        if not hasattr(self.distribution, 'install_curses'):
+            self.distribution.install_curses = self.install_curses
+        if not self.distribution.install_qt and 'hgviewlib.qt4' in self.distribution.packages:
+            self.distribution.packages.remove('hgviewlib.qt4')
+        if not self.distribution.install_curses and 'hgviewlib.curses' in self.distribution.packages:
+            self.distribution.packages.remove('hgviewlib.curses')
+
 class MyInstallLib(install_lib.install_lib):
     """extend install_lib command to handle  package __init__.py and
     include_dirs variable if necessary
@@ -209,7 +237,7 @@ def install():
         scripts = ['bin/hgview']
 
     kwargs['package_dir'] = {modname : modname}
-    packages = ['hgviewlib', 'hgviewlib.qt4', 'hgext'] # [modname] + get_packages(modname, modname)
+    packages = ['hgviewlib', 'hgext', 'hgviewlib.qt4', 'hgviewlib.curses']
     kwargs['packages'] = packages
     return setup(name=distname,
                  version=version,
@@ -223,6 +251,7 @@ def install():
                  data_files=data_files,
                  ext_modules=ext_modules,
                  cmdclass={'install_lib': MyInstallLib,
+                           'install':MyInstall,
                            'build' : QtBuild,
                            },
                  **kwargs
