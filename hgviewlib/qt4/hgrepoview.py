@@ -307,7 +307,7 @@ class HgRepoView(QtGui.QTableView):
         """
         Select revision 'rev' (can be anything understood by repo.changectx())
         """
-        if ':' in rev:
+        if isinstance(rev, basestring) and ':' in rev:
             rev = rev.split(':')[1]
         repo = self.model().repo
         try:
