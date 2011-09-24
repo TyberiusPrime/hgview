@@ -24,6 +24,7 @@ from time import sleep
 from array import array
 from fcntl import ioctl
 from termios import FIONREAD
+from struct import unpack, calcsize
 
 from pyinotify import WatchManager
 
@@ -40,6 +41,7 @@ class Inotify(object):
 
     def __init__(self, repo, callback=None):
         self.watchmanager = WatchManager()
+        self._fd = self.watchmanager.get_fd()
         self.repo = repo
         self.callback = callback
 
@@ -47,39 +49,48 @@ class Inotify(object):
         '''update watchers'''
         # sorry :P. Import them here to reduce stating time
         from pyinotify import (IN_MODIFY, IN_ATTRIB, IN_MOVED_FROM, IN_MOVED_TO,
-                               IN_DELETE_SELF, IN_MOVE_SELF)
-        mask = (IN_MODIFY | IN_ATTRIB | IN_MOVED_FROM | IN_MOVED_TO 
-                | IN_DELETE_SELF | IN_MOVE_SELF)
-        # Watch for events from the repository root directory and subdirs
-        # (take into account excluded patterns)
-        self.watchmanager.add_watch(
-                self.repo.root, mask, rec=True, auto_add=True,
-                exclude_filter=self.repo.dirstate._dirignore)
-        # Watch for events from .hg/dirstate that occur while manipulating the
-        # repository. Note that we shall add a watch on to the .hg directory
-        # as Hg build the new .hg/dirstate file from a temporary file and move
-        # it the the right name (instead of modifying the original file)
-        hgdir = osp.join(self.repo.root, '.hg')
-        self.watchmanager.add_watch(hgdir, mask)
-        self.watchmanager.add_watch(osp.join(hgdir, 'dirstate'), mask)
-        # why not to look for mqueues patches ?
-        if osp.exists(osp.join(hgdir, 'patches')):
-            self.watchmanager.add_watch(osp.join(hgdir, 'patches'), mask)
-
+                               IN_DELETE_SELF, IN_MOVE_SELF, ALL_EVENTS,
+                               IN_CLOSE_WRITE, IN_CREATE, IN_DELETE)
+        mask = (IN_MODIFY | IN_ATTRIB | IN_MOVED_FROM | IN_MOVED_TO
+                | IN_DELETE_SELF | IN_MOVE_SELF | IN_CLOSE_WRITE | IN_CREATE
+                | IN_DELETE)
+        self.watchmanager.add_watch(self.repo.root, mask,
+                                    rec=True, auto_add=True,)
 
     def get_fd(self):
         """Return assigned inotify's file descriptor."""
         return self.watchmanager.get_fd()
 
     def read_events(self):
-        """Read event from events device"""
+        """
+        Read events and return related file name.
+        """
         buf_ = array('i', [0])
         # get event queue size
-        if ioctl(self.watchmanager.get_fd(), FIONREAD, buf_, 1) == -1:
+        if ioctl(self._fd, FIONREAD, buf_, 1) == -1:
             return
         queue_size = buf_[0]
-        # Read content from file
-        return read(self.watchmanager.get_fd(), queue_size)
+        try:
+            # Read content from file
+            raw = read(self._fd, queue_size)
+        except Exception, msg:
+            raise NotifierError(msg)
+        rsum = 0  # counter
+
+        data_fmt = 'iIII'
+        data_size = calcsize(data_fmt)
+        while rsum < queue_size:
+            # Retrieve wd, mask, cookie and fname_len
+            wd, mask, cookie, fname_len = unpack(data_fmt,
+                                                 raw[rsum:rsum + data_size])
+            # Retrieve name
+            fname, = unpack('%ds' % fname_len,
+                            raw[rsum + data_size:rsum + data_size + fname_len])
+            end = fname.find('\x00')
+            if end != -1:
+                fname = fname[:end]
+            rsum += data_size + fname_len
+            yield fname
 
     def process(self):
         '''process events'''

@@ -108,13 +108,22 @@ def inotify(mainloop):
 
         def process_on_any_event(self):
             """Process all inotify events and prevent over-processing"""
+            # get all events on every files.
+            # Ignore files that shall be ignored be mercurial
+            # Also ignore hg-checkexec* files that are created by mercurial
+            # to check available file status.
+            for fname in self.read_events():
+                if fname.startswith('hg-checkexec'):
+                    break
+                if self.repo.dirstate._dirignore(fname):
+                    break
+            else:
             # use the urwid mainloop to schedule the screen refreshing in 0.2s
             # and ignore events received during this time.
             # It prevents over-refreshing (See ../inotify.py comments).
-            if self._input_timeout is None:
-                self._input_timeout = mainloop.set_alarm_in(
-                        0.2, lambda *args: self.process_finally())
-            self.read_events()
+                if self._input_timeout is None:
+                    self._input_timeout = mainloop.set_alarm_in(
+                            0.2, lambda *args: self.process_finally())
     try:
         refresh = lambda: emit_command('refresh')
         inot = UrwidInotify(mainloop.widget.get_body().repo, refresh)
