@@ -140,10 +140,18 @@ class SourceText(SelectableText):
         self._lexer = lexer
         if lexer == None: # No lexer found => finish
             return
-        signals.delay_emit_signal(self, 'highlight', 0.05)
+        # reduce "lag" while rendering the text as pyments may take a while to
+        # highligth the text. So we colorize only the first part of the text
+        # and delay coloring the full text. The 3000st chars seems good on my
+        # laptop :)
+        signals.delay_emit_signal(self, 'highlight', 0.05, self.text)
+        colored = list(lex(self.text[:3000], self._lexer))
+        #remove the f*@!king \n added by lex
+        colored[-1] = (colored[-1][0], colored[-1][1][:-1])
+        self.set_text(colored + [self.text[3000:]])
 
-    def _highlight(self):
-        self.set_text(list(lex(self.text, self._lexer)))
+    def _highlight(self, text):
+        self.set_text(list(lex(text, self._lexer)))
 
     def clear_lexer(self):
         """Disable source highlighting"""
