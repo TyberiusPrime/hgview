@@ -1,0 +1,66 @@
+#!/usr/bin/make -f
+# Sample debian/rules that uses debhelper.
+# GNU copyright 1997 to 1999 by Joey Hess.
+#
+# adapted by Logilab for automatic generation by debianize
+# (part of the devtools project, http://www.logilab.org/projects/devtools)
+#
+# Copyright (c) 2003-2011 LOGILAB S.A. (Paris, FRANCE).
+# http://www.logilab.fr/ -- mailto:contact@logilab.fr
+
+# Uncomment this to turn on verbose mode.
+#export DH_VERBOSE=1
+
+build: build-stamp
+build-stamp: 
+	dh_testdir
+	make -C doc
+	python setup.py -q build 
+	touch build-stamp
+
+clean: 
+	dh_testdir
+	dh_testroot
+	rm -f build-stamp configure-stamp
+	rm -rf build
+	python setup.py clean
+	rm -f hgviewlib/qt4/*_ui.py hgviewlib/qt4/hgqv_rc.py
+	make -C doc clean
+	find . -name "*.pyc" | xargs rm -f
+	rm -f changelog.gz
+	dh_clean
+
+install: build
+	dh_testdir
+	dh_testroot
+	dh_clean -k
+	dh_installdirs
+	python setup.py -q install --no-compile --root=debian/hgview/ --install-layout=deb
+	rm -rf debian/hgview/usr/lib/python*/site-packages/hgview/test
+	rm -f debian/hgview/usr/lib/python*/site-packages/hgext/__init__.py*
+
+
+# Build architecture-independent files here.
+binary-indep: build install
+	dh_testdir 
+	dh_testroot 
+	dh_install -i
+	dh_pysupport -i
+	dh_installchangelogs -i ChangeLog
+	dh_installexamples -i
+	dh_installdocs -i 
+	dh_installman -i
+	dh_link -i
+	dh_compress -i -X.py -X.ini -X.xml -Xtest
+	dh_fixperms -i
+	dh_installdeb -i
+	dh_gencontrol -i 
+	dh_md5sums -i
+	dh_builddeb -i
+
+
+binary: binary-indep
+binary-arch:
+
+.PHONY: build clean binary binary-indep binary-arch
+
