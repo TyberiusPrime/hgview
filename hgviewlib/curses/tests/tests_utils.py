@@ -25,62 +25,6 @@ import urwid
 
 from hgviewlib.curses import utils, exceptions
 
-class TestConsoleHandler(TestCase):
-    def setUp(self):
-        self.redrawed = []
-        self.displayed = []
-        def redraw():
-            self.redrawed.append(True)
-        def display(levelname, message):
-            self.displayed.append(levelname)
-            self.displayed.append(message)
-
-        logger = logging.getLogger()
-        handler = utils.ConsoleHandler(display, redraw, logging.CRITICAL)
-        logger.addHandler(handler)
-
-    def test_emit_message(self):
-        logging.warn('hello world')
-        self.assertEqual(['WARNING', 'hello world'], self.displayed)
-
-    def test_redraw_on_critical(self):
-        logging.critical("babar")
-        self.assertEqual([True], self.redrawed)
-
-class TestConnectLogging(TestCase):
-    def setUp(self):
-        from urwid import Text, Filler, Text, raw_display, MainLoop
-        from hgviewlib.curses import connect_logging, MainFrame, Body
-        import logging
-        PALETTE = [('default','default','default'),
-                   ('edit', 'white', 'default'),
-                   ('banner','black','light gray'),
-                   ('DEBUG', 'yellow', 'default'),
-                   ('INFO', 'dark gray', 'default'),
-                   ('WARNING', 'brown', 'default'),
-                   ('ERROR', 'light red', 'default'),
-                   ('CRITICAL', 'white', 'dark red'),
-                  ]
-        self.mainframe = MainFrame('', Body(Filler(Text('Hello world'))))
-        screen = raw_display.Screen()
-        mainloop = MainLoop(self.mainframe, PALETTE, screen)
-        connect_logging(mainloop, logging.DEBUG)
-
-    def test_simple_info(self):
-        logging.info('noo')
-        res = self.mainframe.render((15, 2), False).text
-        self.assertEqual('noo', self.mainframe.footer.get_text()[0])
-        self.assertEqual('INFO', self.mainframe.footer.attr)
-
-    def test_display_traceback(self):
-        try:
-            1/0
-        except:
-            logging.debug('hello world', exc_info=True)
-        res = self.mainframe.footer.get_text()[0].splitlines()
-        ref = ['hello world', 'Traceback (most recent call last):']
-        self.assertEqual(ref, res[:2])
-
 class TestCommandsRegister(TestCase):
 
     def tearDown(self):
@@ -225,7 +169,7 @@ class TestCommandsRegister(TestCase):
         self.assertEqual(False, utils.emit_command('foo', args=(2,), kwargs={'d':4}))
 
     def test_emit_convert_cmdargs(self):
-        cmd = 'foo 1 2 "2 + 1" 4.'
+        cmd = 'foo 1 2 2+1 4.'
         args = (utils.CommandArg('a', int, 'argument1'),
                 utils.CommandArg('b', str, 'argument2'),
                 utils.CommandArg('c', eval, 'argument2'),

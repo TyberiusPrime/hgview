@@ -164,7 +164,11 @@ class Commands(object):
         cmdargs = []
         if rawargs and self._args[name]:
             data = self._args[name]
-            for idx, arg in enumerate(shlex.split(rawargs)):
+            # shlex does not support unicode, so we have to encode/decode the
+            # command line
+            arguments = (item.decode('utf-8')
+                         for item in shlex.split(rawargs.encode('utf-8')))
+            for idx, arg in enumerate(arguments):
                 try:
                     parser = data[idx].parser
                 except IndexError:
