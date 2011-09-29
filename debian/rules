@@ -20,7 +20,6 @@ build-stamp:
 
 clean: 
 	dh_testdir
-	dh_testroot
 	rm -f build-stamp configure-stamp
 	rm -rf build
 	python setup.py clean
@@ -35,16 +34,16 @@ install: build
 	dh_testroot
 	dh_clean -k
 	dh_installdirs
-	python setup.py -q install --no-compile --root=debian/hgview/ --install-layout=deb
-	rm -rf debian/hgview/usr/lib/python*/site-packages/hgview/test
-	rm -f debian/hgview/usr/lib/python*/site-packages/hgext/__init__.py*
+	python setup.py -q install --no-compile --root=debian/tmp/ --install-layout=deb
+	rm -rf debian/tmp/usr/lib/python*/site-packages/hgview/test
+	rm -f debian/tmp/usr/lib/python*/site-packages/hgext/__init__.py*
 
 
 # Build architecture-independent files here.
 binary-indep: build install
 	dh_testdir 
 	dh_testroot 
-	dh_install -i
+	dh_install -i --list-missing --sourcedir=debian/tmp
 	dh_python2 -i
 	dh_installchangelogs -i ChangeLog
 	dh_installexamples -i

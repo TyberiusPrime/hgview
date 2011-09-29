@@ -13,9 +13,53 @@ Homepage: http://www.logilab.org/project/hgview
 
 Package: hgview
 Architecture: all
-Depends: ${python:Depends}, ${misc:Depends}, python-qt4, python-qscintilla2, python-egenix-mxdatetime, mercurial (>= 1.1.0), python-docutils
+Depends: 
+  ${python:Depends},
+  ${misc:Depends},
+  python-qt4,
+  python-qscintilla2,
+  python-docutils,
+  hgview-common (= ${source:Version})
 Enhances: mercurial
-Description: mercurial interactive history viewer
+Description: mercurial interactive history viewer (Qt4 interface)
  Its purpose is to easily navigate in a mercurial repository
  history. It has been written with efficiency in mind when dealing
  with quite big repositories.
+ .
+ This package installs the Qt4 interface.
+
+Package: hgview-common
+Architecture: all
+Depends:
+  ${python:Depends},
+  ${misc:Depends},
+  mercurial (>= 1.1.0),
+Enhances: mercurial
+Recommends: hgview | hgview-curses
+Description: mercurial interactive history viewer (common files)
+ Its purpose is to easily navigate in a mercurial repository
+ history. It has been written with efficiency in mind when dealing
+ with quite big repositories.
+ .
+ This package install the common files.
+ You may want to install a user interface (hgview or hgview-curses).
+
+Package: hgview-curses
+Architecture: all
+Depends:
+ ${python:Depends},
+ ${misc:Depends},
+ python-urwid,
+ python-pygments,
+ python-pyinotify,
+ hgview-common (= ${source:Version}),
+Enhances: mercurial
+Description: mercurial interactive history viewer (text interface)
+ Its purpose is to easily navigate in a mercurial repository
+ history. It has been written with efficiency in mind when dealing
+ with quite big repositories.
+ .
+ This package installs the text interface. 
+ Note that the Qt interface is more complete than the text interface and
+ provides more views.
+
