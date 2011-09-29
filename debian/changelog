@@ -1,10 +1,15 @@
+hgview (1.4.0-2) unstable; urgency=low
+
+  * Fix upgrade path to 1.4.  Thanks to Nicolas Chauvat for the report.
+
+ -- Julien Cristau <jcristau@debian.org>  Thu, 29 Sep 2011 14:43:08 +0200
+
 hgview (1.4.0-1) unstable; urgency=low
 
   * Add a new text based user interface
   * Remove mx.Datetime dependency (closes: #73687)
   * Don't crash/close when exploring an empty repository (closes: #20996)
   * Propagate errors from mercurial.hg.repository() (closes: #73678)
-  * 
 
  -- Alain Leufroy <alain.leufroy@logilab.fr>  Mon, 26 Sep 2011 15:22:18 +0200
 

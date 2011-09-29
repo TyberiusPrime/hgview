@@ -35,6 +35,8 @@ Depends:
   ${misc:Depends},
   mercurial (>= 1.1.0),
 Enhances: mercurial
+Replaces: hgview (<< 1.4)
+Conflicts: hgview (<< 1.4)
 Recommends: hgview | hgview-curses
 Description: mercurial interactive history viewer (common files)
  Its purpose is to easily navigate in a mercurial repository
