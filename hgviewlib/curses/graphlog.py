@@ -181,7 +181,7 @@ class RevisionsWalker(ListWalker):
         for graph, fields in zzip(self.graphlog(gnode, ctx), self._allfields):
             graph = graph or ''
             fields = fields or ()
-            txts.append(('GraphLog', graph.ljust(GRAPH_MIN_WIDTH)))
+            txts.append(graph)
             txts.append(' ')
             for field in fields:
                 if field not in self._columns:
@@ -205,14 +205,13 @@ class RevisionsWalker(ListWalker):
         # normal style: use special styles for woking directory and tip
         style = None
         if gnode.rev is None:
-            style = 'Modified' # pending changes
+            style = 'GraphLog.working' # pending changes
         elif gnode.rev in self.walker.wd_revs:
-            style = 'Current'
-        spec_style = style and dict.fromkeys(['GraphLog'], style) or {}
+            style = 'GraphLog.current'
+        spec_style = {'ID':style} if style else {}
         # focused style: use special stles for working directory and tip
-        style = style or 'focus'
-        foc_style = dict.fromkeys(self._columns + ('GraphLog', None),
-                                  style)
+        foc_style = dict.fromkeys(self._columns + ('GraphLog', None,),
+                                  style or 'focus')
         # wrap widget with style modified
         widget = AttrMap(Columns(columns, 1), spec_style, foc_style)
         widget = AppliedItem(widget, gnode, ctx)
@@ -223,14 +222,18 @@ class RevisionsWalker(ListWalker):
         """
         # define node symbol
         char = 'o'
+        style = 'GraphLog'
         if gnode.rev is None:
-            char = '!' # pending changes
-        elif len(ctx.parents()) > 1:
+            style, char = 'GraphLog.working', '!' # pending changes
+        elif gnode.rev in self.walker.wd_revs:
+            style, char = 'GraphLog.current', '@'
+
+        if len(ctx.parents()) > 1:
             char = 'M' # merge
         elif set(ctx.tags()).intersection(self.walker.mqueues):
             char = '*' # applied patch from mq
-        elif gnode.rev in self.walker.wd_revs:
-            char = '@'
+        item = (style, char)
+
         # build the column data for the graphlogger from data given by hgview
         curcol = gnode.x
         curedges = [(start, end) for start, end, _ in gnode.bottomlines
@@ -242,7 +245,7 @@ class RevisionsWalker(ListWalker):
             prv, nxt = 1, 0
         coldata = (curcol, curedges, prv, nxt - prv)
         self.asciistate = self.asciistate or [0, 0]
-        return hgview_ascii(self.asciistate, char, len(self._allfields),
+        return hgview_ascii(self.asciistate, item, len(self._allfields),
                             coldata)
 
     def get_focus(self):
@@ -374,8 +377,10 @@ def hgview_ascii(state, char, height, coldata):
     # print lines
     indentation_level = max(ncols, ncols + coldiff)
     for line in lines:
-        out = "%-*s" % (2 * indentation_level, "".join(line))
-        yield out
+        # justify to GRAPH_MIN_WIDTH for conveniance
+        if len(line) < GRAPH_MIN_WIDTH:
+            line.append(' ' * (GRAPH_MIN_WIDTH - len(line)))
+        yield [('GraphLog', item) if isinstance(item, basestring) else item for item in line]
     # ... and start over
     state[0] = coldiff
     state[1] = idx

@@ -288,14 +288,14 @@ PALETTE = [
     ('ID', 'brown', 'default', 'standout'),
     ('Log', 'default', 'default'),
     ('GraphLog', 'default', 'default', 'bold'),
+    ('GraphLog.working', 'black', 'dark red', 'bold'),
+    ('GraphLog.current', 'black', 'dark green', 'bold'),
     ('Author', 'dark blue', 'default', 'bold'),
     ('Date', 'dark green', 'default', 'bold'),
     ('Tags', 'yellow', 'dark red', 'bold'),
     ('Branch', 'yellow', 'default', 'bold'),
     ('Filename', 'white', 'default', 'bold'),
     ('Unapplied', 'light cyan', 'black'),
-    ('Current', 'black', 'dark green'),
-    ('Modified', 'black', 'dark red'),
 
     # filelist
     ('+', 'dark green', 'default'),
