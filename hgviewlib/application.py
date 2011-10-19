@@ -176,8 +176,7 @@ def main():
     except RepoError, e:
         parser.error(e)
     except:
-        raise
-        parser.error("You are not in a repo, are you?")
+        parser.error("There is no Mercurial repository here (.hg not found)!")
     start(repo, opts, args, parser.error)
 
 
