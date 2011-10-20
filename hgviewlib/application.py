@@ -116,17 +116,18 @@ def start(repo, opts, args, fnerror):
     if not opts.interface:
         opts.interface = config.getInterface()
 
-    if opts.interface in ('raw', 'curses'):
-        from hgviewlib.curses.application import HgViewUrwidApplication as Application
-    elif opts.interface == 'qt':
-        from hgviewlib.qt4.application import HgViewQtApplication as Application
-    else:
-        fnerror('Unknown interface: "%s"' % opts.interface)
-
     try:
+        if opts.interface in ('raw', 'curses'):
+            from hgviewlib.curses.application import HgViewUrwidApplication as Application
+        elif opts.interface == 'qt':
+            from hgviewlib.qt4.application import HgViewQtApplication as Application
+        else:
+            fnerror('Unknown interface: "%s"' % opts.interface)
         app = Application(repo, opts, args)
     except ApplicationError, err:
         fnerror(str(err))
+    except ImportError:
+        fnerror('Interface is not available: %s' % opts.interface)
 
     sys.exit(app.exec_())
 
