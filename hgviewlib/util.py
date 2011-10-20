@@ -9,9 +9,8 @@
 Several helper functions
 """
 import os
-import sys
 import string
-from mercurial import cmdutil, ui, hg
+from mercurial import ui
 
 def tounicode(string):
     """
@@ -82,7 +81,13 @@ def rootpath(repo, rev, path):
     path is relative to cwd
     """
     ctx = repo[rev]
-    filenames = list(ctx.walk(cmdutil.match(repo, [path], {})))
+    try:
+        from mercurial.cmdutil import match as hg_match
+        filenames = list(ctx.walk(hg_match(repo, [path], {})))
+    except ImportError:
+        # XXX it seems this changed since hg 1.9
+        from mercurial.scmutil import match as hg_match
+        filenames = list(ctx.walk(hg_match(ctx, [path], {})))
     if len(filenames) != 1 or filenames[0] not in ctx.manifest():
         return None
     else:
