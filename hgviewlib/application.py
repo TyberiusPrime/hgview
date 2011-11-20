@@ -84,7 +84,7 @@ class HgViewApplication(object):
         if len(self.args) == 1:
             filename = rootpath(self.repo, self.opts.rev, self.args[0])
             if not filename:
-                ApplicationError("%s is not a tracked file" % self.args[0])
+                raise ApplicationError("%s is not a tracked file" % self.args[0])
 
             # should be a filename of a file managed in the repo
             if self.opts.navigate:
@@ -97,7 +97,7 @@ class HgViewApplication(object):
                 try:
                     self.repo.changectx(rev)
                 except RepoError, e:
-                    ApplicationError("Cannot find revision %s" % rev)
+                    raise ApplicationError("Cannot find revision %s" % rev)
                 else:
                     viewer = self.ManifestViewer(self.repo, rev)
             else:
@@ -135,7 +135,7 @@ def start(repo, opts, args, fnerror):
         fnerror('Interface is not available: %s' % opts.interface)
     try:
         app = Application(repo, opts, args)
-    except ApplicationError, err:
+    except (ApplicationError, NotImplementedError), err:
         fnerror(str(err))
 
     sys.exit(app.exec_())
