@@ -20,6 +20,7 @@ Application utilities.
 """
 import threading
 import logging
+import sys
 
 from urwid import AttrWrap, MainLoop
 
@@ -83,6 +84,8 @@ class HgViewUrwidApplication(HgViewApplication):
 
     def exec_(self):
         '''main entry point'''
+        if '--profile' in sys.argv or '--time' in sys.argv:
+            self.mainloop._run = self.mainloop.draw_screen
         out = self.mainloop.run()
         self.mainframe.unregister_commands()
         return out

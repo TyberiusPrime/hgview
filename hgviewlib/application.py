@@ -138,7 +138,7 @@ def start(repo, opts, args, fnerror):
     except (ApplicationError, NotImplementedError), err:
         fnerror(str(err))
 
-    sys.exit(app.exec_())
+    return app.exec_()
 
 def main():
     """
@@ -186,8 +186,10 @@ def main():
         parser.error(e)
     except:
         parser.error("There is no Mercurial repository here (.hg not found)!")
-    start(repo, opts, args, parser.error)
-
+    try:
+        sys.exit(start(repo, opts, args, parser.error))
+    except KeyboardInterrupt:
+        print 'interrupted!'
 
 if __name__ == "__main__":
     main()

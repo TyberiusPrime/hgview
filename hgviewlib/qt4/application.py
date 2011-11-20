@@ -53,6 +53,8 @@ class HgViewQtApplication(HgViewApplication):
 
     def exec_(self):
         self.viewer.show()
+        if '--profile' in sys.argv or '--time' in sys.argv:
+            return 0
         return self.app.exec_()
 
 
