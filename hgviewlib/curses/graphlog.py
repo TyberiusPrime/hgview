@@ -205,13 +205,14 @@ class RevisionsWalker(ListWalker):
         # normal style: use special styles for woking directory and tip
         style = None
         if gnode.rev is None:
-            style = 'GraphLog.working' # pending changes
+            style = 'modified' # pending changes
         elif gnode.rev in self.walker.wd_revs:
-            style = 'GraphLog.current'
-        spec_style = {'ID':style} if style else {}
+            style = 'current'
+        spec_style = {'ID':style, 'GraphLog.node':style} if style else {}
         # focused style: use special stles for working directory and tip
         foc_style = dict.fromkeys(self._columns + ('GraphLog', None,),
                                   style or 'focus')
+        foc_style['GraphLog.node'] = 'focus.alternate'
         # wrap widget with style modified
         widget = AttrMap(Columns(columns, 1), spec_style, foc_style)
         widget = AppliedItem(widget, gnode, ctx)
@@ -222,17 +223,15 @@ class RevisionsWalker(ListWalker):
         """
         # define node symbol
         char = 'o'
-        style = 'GraphLog'
         if gnode.rev is None:
-            style, char = 'GraphLog.working', '!' # pending changes
+            char = '!' # pending changes
         elif gnode.rev in self.walker.wd_revs:
-            style, char = 'GraphLog.current', '@'
+            char = '@'
 
         if len(ctx.parents()) > 1:
             char = 'M' # merge
         elif set(ctx.tags()).intersection(self.walker.mqueues):
             char = '*' # applied patch from mq
-        item = (style, char)
 
         # build the column data for the graphlogger from data given by hgview
         curcol = gnode.x
@@ -245,7 +244,7 @@ class RevisionsWalker(ListWalker):
             prv, nxt = 1, 0
         coldata = (curcol, curedges, prv, nxt - prv)
         self.asciistate = self.asciistate or [0, 0]
-        return hgview_ascii(self.asciistate, item, len(self._allfields),
+        return hgview_ascii(self.asciistate, char, len(self._allfields),
                             coldata)
 
     def get_focus(self):
@@ -343,7 +342,7 @@ def hgview_ascii(state, char, height, coldata):
 
     # nodeline is the line containing the node character (typically o)
     nodeline = ["|", " "] * idx
-    nodeline.extend([char, " "])
+    nodeline.extend([('GraphLog.node', char), " "])
     nodeline.extend(get_nodeline_edges_tail(idx, state[1], ncols, coldiff,
                                             state[0], fix_nodeline_tail))
     # shift_interline is the line containing the non-vertical

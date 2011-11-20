@@ -279,6 +279,9 @@ PALETTE = [
     ('body','default','default', 'standout'),
     ('banner','black','light gray', 'bold'),
     ('focus','black','dark cyan', 'bold'),
+    ('focus.alternate','black','dark magenta', 'bold'),
+    ('current', 'black', 'dark green', 'bold'),
+    ('modified', 'black', 'brown', 'bold'),
 
     # logging
     ('DEBUG', 'dark magenta', 'default'),
@@ -291,8 +294,7 @@ PALETTE = [
     ('ID', 'brown', 'default', 'standout'),
     ('Log', 'default', 'default'),
     ('GraphLog', 'default', 'default', 'bold'),
-    ('GraphLog.working', 'black', 'dark red', 'bold'),
-    ('GraphLog.current', 'black', 'dark green', 'bold'),
+    ('GraphLog.node', 'default', 'default', 'bold'),
     ('Author', 'dark blue', 'default', 'bold'),
     ('Date', 'dark green', 'default', 'bold'),
     ('Tags', 'yellow', 'dark red', 'bold'),
