@@ -442,7 +442,7 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin, _HgRepoViewer):
         Callback called when a revision is selected in the revisions table
         """
         if self.repomodel.graph:
-            ctx = self.repomodel.repo.changectx(rev)
+            ctx = self.repomodel.repo[rev]
             self.textview_status.setContext(ctx)
             self.textview_header.displayRevision(ctx)
             self.filelistmodel.setSelectedRev(ctx)

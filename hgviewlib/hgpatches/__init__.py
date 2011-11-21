@@ -23,3 +23,7 @@ if not hasattr(changelog.changelog, '__len__'):
     changelog.changelog.__len__ = changelog.changelog.count
 if not hasattr(filelog.filelog, '__len__'):
     filelog.filelog.__len__ = filelog.filelog.count
+
+from mercurial import context
+if not hasattr(context.filectx, 'p1'):
+    context.filectx.p1 = lambda self: self.parents()[0]

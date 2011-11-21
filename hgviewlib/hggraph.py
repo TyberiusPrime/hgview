@@ -33,23 +33,31 @@ from hgviewlib.config import HgConfig
 
 def diff(repo, ctx1, ctx2=None, files=None):
     """
-    Compute the diff of files between 2 changectx
+    Compute the diff of ``files`` between the 2 contexts ``ctx1`` and ``ctx2``.
+
+    :Note: context may be a changectx or a filectx.
+
+    * If ``ctx2`` is None, the parent of ``ctx1`` is used. If ``ctx1`` is a
+      file ctx, the parent is the first ancestor that contains modification
+      on the given file
+    * If ``files`` is None, return the diff for all files.
+
     """
     if ctx2 is None:
-        ctx2 = ctx1.parents()[0]
+        ctx2 = ctx1.p1()
     if files is None:
-        m = match.always(repo.root, repo.getcwd())
+        matchfn = match.always(repo.root, repo.getcwd())
     else:
-        m = match.exact(repo.root, repo.getcwd(), files)
+        matchfn = match.exact(repo.root, repo.getcwd(), files)
     # try/except for the sake of hg compatibility (API changes between
     # 1.0 and 1.1)
     try:
         out = StringIO()
-        patch.diff(repo, ctx2.node(), ctx1.node(), match=m, fp=out)
+        patch.diff(repo, ctx2.node(), ctx1.node(), match=matchfn, fp=out)
         diffdata = out.getvalue()
     except:
         diffdata = '\n'.join(patch.diff(repo, ctx2.node(), ctx1.node(),
-                                        match=m))
+                                        match=matchfn))
     # XXX how to deal diff encodings?
     try:
         diffdata = unicode(diffdata, "utf-8")
@@ -455,9 +463,7 @@ class Graph(object):
                 if isinstance(mode, int):
                     parentctx = self.repo.changectx(mode)
                 else:
-                    parent = self.fileparent(filename, rev)
-                    parentctx = self.repo.changectx(parent)
-                # return the diff but the 3 first lines
+                    parentctx = self.repo[self._fileparent(fctx)]
                 data = diff(self.repo, ctx, parentctx, files=[filename])
                 data = u'\n'.join(data.splitlines()[3:])
             elif flag == '':
@@ -477,19 +483,14 @@ class Graph(object):
                 data = u'\n'.join(tounicode(elt) for elt in data)
         return flag, data
 
+    def _fileparent(self, fctx):
+        try:
+            return fctx.p1().rev()
+        except IndexError: # reach bottom
+            return -1
+
     def fileparent(self, filename, rev):
-        if rev is not None:
-            node = self.repo.changelog.node(rev)
-        else:
-            node = self.repo.changectx(rev).node()
-        for parent in self.nodesdict[rev].parents:
-            pnode = self.repo.changelog.node(parent)
-            changes = self.repo.status(pnode, node)[:5]
-            allchanges = []
-            [allchanges.extend(e) for e in changes]
-            if filename in allchanges:
-                return parent
-        return None
+        return self._fileparent(self.repo[rev].filectx(filename))
 
 class HgRepoListWalker(object):
     """
