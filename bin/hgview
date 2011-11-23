@@ -31,4 +31,3 @@ except ImportError:
 from hgviewlib.application import main
 
 main()
-

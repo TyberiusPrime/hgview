@@ -1,4 +1,3 @@
-#! /usr/bin/env python
 # -*- coding: utf-8 -*-
 # Copyright (c) 2003-2011 LOGILAB S.A. (Paris, FRANCE).
 # http://www.logilab.fr/ -- mailto:contact@logilab.fr
@@ -190,7 +189,4 @@ def main():
         sys.exit(start(repo, opts, args, parser.error))
     except KeyboardInterrupt:
         print 'interrupted!'
-
-if __name__ == "__main__":
-    main()
 
