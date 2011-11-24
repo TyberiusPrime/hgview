@@ -27,7 +27,7 @@ from itertools import chain
 from mercurial.node import nullrev
 from mercurial import patch, util, match, error, hg
 
-import hgviewlib # force apply monkeypatches
+import hgviewlib.hgpatches # force apply patches to mercurial
 from hgviewlib.util import tounicode, isbfile
 from hgviewlib.config import HgConfig
 

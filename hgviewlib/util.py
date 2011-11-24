@@ -12,6 +12,8 @@ import os
 import string
 from mercurial import ui
 
+from hgviewlib.hgpatches.scmutil import match
+
 def tounicode(string):
     """
     Tries to convert s into a unicode string
@@ -81,13 +83,7 @@ def rootpath(repo, rev, path):
     path is relative to cwd
     """
     ctx = repo[rev]
-    try:
-        from mercurial.cmdutil import match as hg_match
-        filenames = list(ctx.walk(hg_match(repo, [path], {})))
-    except ImportError:
-        # XXX it seems this changed since hg 1.9
-        from mercurial.scmutil import match as hg_match
-        filenames = list(ctx.walk(hg_match(ctx, [path], {})))
+    filenames = list(ctx.walk(match(ctx, [path], {})))
     if len(filenames) != 1 or filenames[0] not in ctx.manifest():
         return None
     else:
