@@ -293,6 +293,7 @@ class HgCommandMap(object):
         ('f1', '@help'),
         ('enter', 'validate'),
         ('m', '@maximize-context'),
+        ('.', '@toggle-hidden'),
 
         # Qt interface
         ('f5', 'command key'),

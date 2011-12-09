@@ -63,12 +63,19 @@ class GraphlogViewer(Body):
                 ('goto', 'g'), 'Set focus on a particular revision',
                 CA('revision', int,
                 'The revision number to focus on (default to last)'))
+        register_command(
+                ('toggle-hidden',), 'Show/hide hidden changesets',)
+        connect_command('toggle-hidden', self.toggle_hidden)
         self.graphlog_walker.connect_commands()
 
     def unregister_commands(self):
         '''Unregister commands'''
         unregister_command('goto')
         unregister_command('g')
+
+    def toggle_hidden(self, _current=[]):
+        self.walker.show_hidden = not self.walker.show_hidden
+        emit_command('refresh')
 
     def render(self, size, focus=True):
         '''Render the widget. Always use the focus style.'''

@@ -115,7 +115,7 @@ class HgRepoListModel(QtCore.QAbstractTableModel, HgRepoListWalker):
     _stretchs = {'Log': 1, }
     _getcolumns = "getChangelogColumns"
 
-    def __init__(self, repo, branch='', fromhead=None, follow=False, parent=None):
+    def __init__(self, repo, branch='', fromhead=None, follow=False, parent=None, show_hidden=False):
         """
         repo is a hg repo instance
         """

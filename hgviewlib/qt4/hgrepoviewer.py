@@ -21,6 +21,7 @@ from hgviewlib.util import tounicode, has_closed_branch_support
 from hgviewlib.util import rootpath, find_repository
 from hgviewlib.hggraph import diff as revdiff
 from hgviewlib.decorators import timeit
+from hgviewlib.config import HgConfig
 
 from hgviewlib.qt4 import icon as geticon
 from hgviewlib.qt4.hgrepomodel import HgRepoListModel, HgFileListModel
@@ -46,6 +47,7 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin, _HgRepoViewer):
     _uifile = 'hgqv.ui'
     def __init__(self, repo, fromhead=None):
         self.repo = repo
+        self.cfg = HgConfig(repo.ui)
         self._closed_branch_supp = has_closed_branch_support(self.repo)
 
         # these are used to know where to go after a reload
@@ -157,6 +159,16 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin, _HgRepoViewer):
 
         self.branch_label_action = self.toolBar_treefilters.addWidget(self.branch_label)
         self.branch_comboBox_action = self.toolBar_treefilters.addWidget(self.branch_comboBox)
+        # hidden changeset action
+        self.hidden_action = QtGui.QAction(self.tr('Show Hidden'), self)
+        self.hidden_action.setCheckable(True)
+        self.hidden_action.setChecked(self.cfg.getShowHidden())
+        self.hidden_action.setToolTip(self.tr('Show hidden changeset'))
+        self.hidden_action.setStatusTip(self.tr('Show hidden changeset'))
+        self.toolBar_treefilters.addAction(self.hidden_action)
+        connect(self.hidden_action, SIGNAL('triggered()'),
+                self.refreshRevisionTable)
+        # separator
         self.toolBar_treefilters.addSeparator()
 
         self.startrev_label = QtGui.QToolButton()
@@ -171,13 +183,13 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin, _HgRepoViewer):
         follow_action.setStatusTip("Follow changeset history from start revision")
         self.startrev_follow_action = follow_action
         self.startrev_label.setMenu(self.startrev_menu)
+        connect(self.startrev_entry, SIGNAL('editingFinished()'),
+                self.refreshRevisionTable)
 
         self.revscompl_model = QtGui.QStringListModel(['tip'])
         self.revcompleter = QtGui.QCompleter(self.revscompl_model, self)
         self.startrev_entry.setCompleter(self.revcompleter)
 
-        connect(self.startrev_entry, SIGNAL('editingFinished()'),
-                self.refreshRevisionTable)
         connect(self.startrev_follow_action, SIGNAL('toggled(bool)'),
                 self.refreshRevisionTable)
         self.startrev_label_action = self.toolBar_treefilters.addWidget(self.startrev_label)
@@ -497,6 +509,7 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin, _HgRepoViewer):
             return
         startrev = self.repo.changectx(startrev).rev()
         follow = self.startrev_follow_action.isChecked()
+        self.repomodel.show_hidden = self.hidden_action.isChecked()
         self.revscompl_model.setStringList(self.repo.tags().keys())
 
         self.repomodel.setRepo(self.repo, branch=branch, fromhead=startrev,

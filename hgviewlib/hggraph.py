@@ -121,7 +121,7 @@ def ismerge(ctx):
         return len(ctx.parents()) == 2 and ctx.parents()[1]
     return False
 
-def revision_grapher(repo, start_rev=None, stop_rev=0, branch=None, follow=False):
+def revision_grapher(repo, start_rev=None, stop_rev=0, branch=None, follow=False, show_hidden=False):
     """incremental revision grapher
 
     This generator function walks through the revision history from
@@ -145,12 +145,11 @@ def revision_grapher(repo, start_rev=None, stop_rev=0, branch=None, follow=False
     If branch is set, only generated the subtree for the given named branch.
 
     """
-    if start_rev == -1 and hasattr(repo, 'mq'):
+    if show_hidden and start_rev == None and hasattr(repo, 'mq'):
         series = list(reversed(repo.mq.series))
         for patchname in series:
             if not repo.mq.isapplied(patchname):
                 yield (patchname, 0, 0, [(0,0,0)], [])
-        start_rev = None
 
     if start_rev is None and repo.status() == ([],)*7:
         start_rev = len(repo.changelog)
@@ -159,11 +158,13 @@ def revision_grapher(repo, start_rev=None, stop_rev=0, branch=None, follow=False
     revs = []
     rev_color = {}
     nextcolor = 0
+    hiddenrevs = getattr(repo.changelog, 'hiddenrevs', ())
     while curr_rev is None or curr_rev >= stop_rev:
         # Compute revs and next_revs.
+        if (not show_hidden) and curr_rev in hiddenrevs:
+            continue
         if curr_rev not in revs:
             if branch:
-                ctx = repo.changectx(curr_rev)
                 if ctx.branch() != branch:
                     if curr_rev is None:
                         curr_rev = len(repo.changelog)
@@ -539,6 +540,7 @@ class HgRepoListWalker(object):
         self.graph = None
         self.rowcount = 0
         self.repo = repo
+        self.show_hidden = False
         super(HgRepoListWalker, self).__init__()
         self.load_config()
         self.setRepo(repo, branch=branch, fromhead=fromhead, follow=follow)
@@ -569,10 +571,9 @@ class HgRepoListWalker(object):
         # precompute named branch color for stable value.
         for branch_name in chain(['default', 'stable'], sorted(repo.branchtags().keys())):
             self.namedbranch_color(branch_name)
-        if fromhead is None and not self.hide_mq_unapplieds:
-            fromhead = -1
         grapher = revision_grapher(self.repo, start_rev=fromhead,
-                                   follow=follow, branch=branch)
+                                   follow=follow, branch=branch,
+                                   show_hidden=self.show_hidden)
         self.graph = Graph(self.repo, grapher, self.max_file_size)
         self.rowcount = 0
         self.heads = [self.repo.changectx(x).rev() for x in self.repo.heads()]
@@ -623,7 +624,7 @@ class HgRepoListWalker(object):
         self.fill_step = cfg.getFillingStep()
         self.max_file_size = cfg.getMaxFileSize()
         self.hide_mq_tags = cfg.getMQHideTags()
-        self.hide_mq_unapplieds = cfg.getMQHideUnapplieds()
+        self.show_hidden = cfg.getShowHidden()
 
         cols = getattr(cfg, self._getcolumns)()
         if cols is not None:

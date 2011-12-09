@@ -258,11 +258,11 @@ class HgConfig(object):
         return self.ui.config(self.section, 'mqhidetags', default)
 
     @cached
-    def getMQHideUnapplieds(self, default=False):
+    def getShowHidden(self, default=False):
         """
-        mqhideunapplieds: hide unapplied mq patches
+        showhidden: show hidden changeset at startup
         """
-        return self.ui.config(self.section, 'mqhideunapplieds', default)
+        return bool(self.ui.config(self.section, 'showhidden', default))
 
     @cached
     def getInterface(self, default=None):
