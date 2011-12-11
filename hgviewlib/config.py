@@ -20,8 +20,10 @@
 Module for managing configuration parameters of hgview using Hg's
 configuration system
 """
+from functools import partial
 import os
 import re
+import shlex
 
 def cached(meth):
     """
@@ -45,6 +47,22 @@ class HgConfig(object):
         self.ui = ui
         self.section = section
         self._cache = {}
+
+    @cached
+    def getFancyReplace(self):
+        r"""
+        fancyreplace: ``"patt" "repl"`` used to modify description by replacing
+            ``patt`` by ``repl`` using regular expression (``re.sub`` for instance).
+            Ex: "#(\d+)":"`#\\1 <http://www.logilab.org/ticket/\\1>`_"
+        """
+        data = self.ui.config(self.section, 'fancyreplace', None)
+        if data is None:
+            return data
+        data = shlex.split(data)
+        assert len(data) == 2
+        patt, repl = data
+        return partial(re.compile(patt).sub, repl)
+
 
     @cached
     def getFont(self):

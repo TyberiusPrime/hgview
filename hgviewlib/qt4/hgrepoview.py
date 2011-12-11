@@ -422,9 +422,10 @@ class RevDisplay(QtGui.QTextBrowser):
     def refreshDisplay(self):
         ctx = self.ctx
         rev = ctx.rev()
+        cfg = HgConfig(ctx._repo.ui)
         buf = "<table width=100%>\n"
         if self.mqpatch:
-            buf += '<tr bgcolor=%s>' % HgConfig(ctx._repo.ui).getMQFGColor()
+            buf += '<tr bgcolor=%s>' % cfg.getMQFGColor()
             buf += '<td colspan=3 width=100%><b>Patch queue:</b>&nbsp;'
             for p in self.mqseries:
                 if p in self.mqunapplied:
@@ -495,6 +496,9 @@ class RevDisplay(QtGui.QTextBrowser):
         buf += "</table>\n"
         desc = unicode(ctx.description(), 'utf-8', 'replace')
         if self.rst_action is not None  and self.rst_action.isChecked():
+            replace = cfg.getFancyReplace()
+            if replace:
+                desc = replace(desc)
             desc = rst2html(desc).decode('utf-8')
         else:
             desc = raw2html(desc)
