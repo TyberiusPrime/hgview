@@ -20,16 +20,22 @@ Based on graphlog's algorithm, with insipration stolen to TortoiseHg
 revision grapher.
 """
 
+import os
 from cStringIO import StringIO
 import difflib
 from itertools import chain
+from time import strftime, localtime
 
 from mercurial.node import nullrev
 from mercurial import patch, util, match, error, hg
 
 import hgviewlib.hgpatches # force apply patches to mercurial
+from hgviewlib.hgpatches import mqsupport
+
 from hgviewlib.util import tounicode, isbfile
 from hgviewlib.config import HgConfig
+
+DATE_FMT = '%F %R'
 
 def diff(repo, ctx1, ctx2=None, files=None):
     """
@@ -43,6 +49,8 @@ def diff(repo, ctx1, ctx2=None, files=None):
     * If ``files`` is None, return the diff for all files.
 
     """
+    if not getattr(ctx1, 'applied', True): #no diff vs ctx2 on unapplied patch
+        return ''.join(chain(ctx1.filectx(fname).data() for fname in files))
     if ctx2 is None:
         ctx2 = ctx1.p1()
     if files is None:
@@ -101,6 +109,11 @@ def gettags(model, ctx, gnode):
         tags = [t for t in tags if t not in mqtags]
     return ",".join(tags)
 
+def getdate(model, ctx, gnode):
+    if not ctx.date():
+        return ""
+    return strftime(DATE_FMT, localtime(int(ctx.date()[0])))
+
 def ismerge(ctx):
     """
     Return True if the changecontext ctx is a merge mode (should work
@@ -125,10 +138,22 @@ def revision_grapher(repo, start_rev=None, stop_rev=0, branch=None, follow=False
         the current row and the next row
       - parent revisions of current revision
 
+    If start_rev is -1, shown unapplied mq patches (if available)
+
+    If start_rev is None, started from working directory node
+
     If follow is True, only generated the subtree from the start_rev head.
 
     If branch is set, only generated the subtree for the given named branch.
+
     """
+    if start_rev == -1 and hasattr(repo, 'mq'):
+        series = list(reversed(repo.mq.series))
+        for patchname in series:
+            if not repo.mq.isapplied(patchname):
+                yield (patchname, 0, 0, [(0,0,0)], [])
+        start_rev = None
+
     if start_rev is None and repo.status() == ([],)*7:
         start_rev = len(repo.changelog)
     assert start_rev is None or start_rev >= stop_rev
@@ -311,7 +336,6 @@ class Graph(object):
         """
         Build up to `nnodes` more nodes in our graph, or build as many
         nodes required to reach `rev`.
-
         If both rev and nnodes are set, build as many nodes as
         required to reach rev plus nnodes more.
         """
@@ -323,7 +347,7 @@ class Graph(object):
             if vnext is None:
                 continue
             nrev, xpos, color, lines, parents = vnext[:5]
-            if nrev >= self.maxlog:
+            if isinstance(nrev, int) and nrev >= self.maxlog:
                 continue
             gnode = GraphNode(nrev, xpos, color, lines, parents,
                               extra=vnext[5:])
@@ -433,10 +457,12 @@ class Graph(object):
         if flag is None:
             flag = self.fileflag(filename, rev)
         ctx = self.repo.changectx(rev)
+        filesize = 0
         try:
             fctx = ctx.filectx(filename)
+            filesize = fctx.size() # compute size here to lookup data securely
         except LookupError:
-            fctx = None # may happen for renamed files?
+            fctx = None # may happen for renamed files or mq patch ?
 
         if isbfile(filename):
             data = "[bfile]\n"
@@ -447,7 +473,7 @@ class Graph(object):
         if flag not in ('-', '?'):
             if fctx is None:# or fctx.node() is None:
                 return '', None
-            if fctx.size() > self.maxfilesize:
+            if filesize > self.maxfilesize:
                 data = "file too big"
                 return flag, data
             if flag == "+" or mode == 'file':
@@ -465,7 +491,7 @@ class Graph(object):
                 else:
                     parentctx = self.repo[self._fileparent(fctx)]
                 data = diff(self.repo, ctx, parentctx, files=[filename])
-                data = u'\n'.join(data.splitlines()[3:])
+                data = data.split(os.linesep, 3)[-1]
             elif flag == '':
                 data = ''
             else: # file renamed
@@ -522,6 +548,9 @@ class HgRepoListWalker(object):
     def setRepo(self, repo=None, branch='', fromhead=None, follow=False):
         if repo is None:
             repo = hg.repository(self.repo.ui, self.repo.root)
+        self._hasmq = hasattr(self.repo, "mq")
+        if not getattr(repo, '__hgview__', False) and self._hasmq:
+            mqsupport.reposetup(repo.ui, repo)
         oldrepo = self.repo
         self.repo = repo
         if oldrepo.root != repo.root:
@@ -533,7 +562,6 @@ class HgRepoListWalker(object):
             # might occur if reloading during a mq operation (or
             # whatever operation playing with hg history)
             return
-        self._hasmq = hasattr(self.repo, "mq")
         if self._hasmq:
             self.mqueues = self.repo.mq.series[:]
         self.wd_revs = [ctx.rev() for ctx in wdctxs]
@@ -543,6 +571,8 @@ class HgRepoListWalker(object):
         # precompute named branch color for stable value.
         for branch_name in chain(['default', 'stable'], sorted(repo.branchtags().keys())):
             self.namedbranch_color(branch_name)
+        if fromhead is None and not self.hide_mq_unapplieds:
+            fromhead = -1
         grapher = revision_grapher(self.repo, start_rev=fromhead,
                                    follow=follow, branch=branch)
         self.graph = Graph(self.repo, grapher, self.max_file_size)
@@ -595,6 +625,7 @@ class HgRepoListWalker(object):
         self.fill_step = cfg.getFillingStep()
         self.max_file_size = cfg.getMaxFileSize()
         self.hide_mq_tags = cfg.getMQHideTags()
+        self.hide_mq_unapplieds = cfg.getMQHideUnapplieds()
 
         cols = getattr(cfg, self._getcolumns)()
         if cols is not None:

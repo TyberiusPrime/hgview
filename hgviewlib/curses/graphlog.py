@@ -19,7 +19,6 @@ Contains a listbox definition that walk the repo log and display an ascii graph
 '''
 
 from itertools import izip_longest as zzip
-from time import strftime, localtime
 
 from urwid import AttrMap, Text, ListWalker, Columns, WidgetWrap, emit_signal
 
@@ -27,7 +26,7 @@ from hgext.graphlog import (fix_long_right_edges, get_nodeline_edges_tail,
                             draw_edges, get_padding_line)
 
 from hgviewlib.util import tounicode
-from hgviewlib.hggraph import getlog, gettags, HgRepoListWalker
+from hgviewlib.hggraph import getlog, gettags, getdate, HgRepoListWalker
 from hgviewlib.curses import connect_command, SelectableText
 
 # __________________________________________________________________ constants
@@ -36,13 +35,12 @@ COLORS = ["brown", "dark red", "dark magenta", "dark blue", "dark cyan",
           "dark green", "yellow", "light red", "light magenta", "light blue",
           "light cyan", "light green"]
 
-DATE_FMT = '%F %R'
 
 _COLUMNMAP = {
     'ID': lambda m, c, g: c.rev() is not None and str(c.rev()) or "",
     'Log': getlog,
     'Author': lambda m, c, g: tounicode(c.user().split('<',1)[0]),
-    'Date': lambda m, c, g: strftime(DATE_FMT, localtime(int(c.date()[0]))),
+    'Date': getdate,
     'Tags': gettags,
     'Branch': lambda m, c, g: c.branch() != 'default' and c.branch(),
     'Filename': lambda m, c, g: g.extra[0],
@@ -50,20 +48,6 @@ _COLUMNMAP = {
 GRAPH_MIN_WIDTH = 6
 
 # ____________________________________________________________________ classes
-
-class AppliedItem(WidgetWrap):
-    """Wrap widget that displays basic changeset"""
-    def __init__(self, widget, gnode, ctx, *args, **kwargs):
-        self.gnode = gnode
-        self.ctx = ctx
-        super(AppliedItem, self).__init__(widget, *args, **kwargs)
-
-class UnappliedItem(WidgetWrap):
-    """Wrap widget that diplays unapplied mq patch"""
-    def __init__(self, widget, idx, name, *args, **kwargs):
-        self.idx = idx
-        self.name = name
-        super(UnappliedItem, self).__init__(widget, *args, **kwargs)
 
 class RevisionsWalker(ListWalker):
     """ListWalker-compatible class for browsing log changeset.
@@ -78,21 +62,15 @@ class RevisionsWalker(ListWalker):
     def __init__(self, walker, branch='', fromhead=None, follow=False,
                  *args, **kwargs):
         self._data_cache = {}
-        self._focus = 0L
+        self._focus = 0
         self.walker = walker
         super(RevisionsWalker, self).__init__(*args, **kwargs)
-        if hasattr(self.walker.repo, "mq"): # focus on first mq patch if any
-            self._focus = -len(self._get_unapplied())
         self.asciistate = [0, 0] # graphlog.asciistate()
 
     def connect_commands(self):
         """Connect usefull commands to callbacks"""
         connect_command('goto', self.set_rev)
         connect_command('refresh', self.refresh)
-
-    def _get_unapplied(self):
-        """return unapplied mq patches"""
-        return self.walker.repo.mq.unapplied(self.walker.repo)
 
     def _modified(self):
         """obsolete widget content"""
@@ -127,45 +105,14 @@ class RevisionsWalker(ListWalker):
         # (cpython for instance: >1.5GB)
         if pos in self._data_cache: # speed up rendering
             return self._data_cache[pos], pos
-        if pos < 0:
-            widget = self.get_unapplied_widget(pos)
-        else:
-            widget = self.get_applied_widget(pos)
+        widget = self.get_widget(pos)
         if widget is None:
             return None, None
         self._data_cache[pos] = widget
         return widget, pos
 
-    def get_unapplied_widget(self, pos):
-        """return a widget for unapplied patch"""
-        # blank columns
-        idx, name = self._get_unapplied()[-pos - 1]
-        info = {'Branch':'[Unapplied patches]', 'ID':str(idx), 'Log':name}
-        # prepare the last columns content
-        txts = ['.' + ' ' * GRAPH_MIN_WIDTH] # mock graph log
-        for fields in self._allfields:
-            if not fields:
-                continue
-            for field in fields:
-                if field not in info:
-                    continue
-                txts.append(('Unapplied', info.get(field)))
-                txts.append(('default', ' '))
-            txts.append('\n')
-        txt = SelectableText(txts[:-1], wrap='clip')
-        # prepare other columns
-        columns = [('fixed', sz, Text(('Unapplied', info.get(col, '')),
-                                      align='right', wrap='clip'))
-                   for col, sz in self._allcolumns
-                   if col in self._columns]
-        txt = Columns(columns + [txt], 1)
-        txt = AttrMap(txt, {}, {'Unapplied':'focus'})
-        txt = UnappliedItem(txt, idx, name)
-        return txt
-
-    def get_applied_widget(self, pos):
-        """Return a widget for changeset, applied patches and working
-        directory state"""
+    def get_widget(self, pos):
+        """Return a widget for the node"""
         if pos in self._data_cache: # speed up rendering
             return self._data_cache[pos], pos
 
@@ -214,7 +161,6 @@ class RevisionsWalker(ListWalker):
         foc_style['GraphLog.node'] = 'focus.alternate'
         # wrap widget with style modified
         widget = AttrMap(Columns(columns, 1), spec_style, foc_style)
-        widget = AppliedItem(widget, gnode, ctx)
         return widget
 
     def graphlog(self, gnode, ctx):
@@ -229,8 +175,10 @@ class RevisionsWalker(ListWalker):
 
         if len(ctx.parents()) > 1:
             char = 'M' # merge
+        elif not getattr(ctx, 'applied', True):
+            char = ' '
         elif set(ctx.tags()).intersection(self.walker.mqueues):
-            char = '*' # applied patch from mq
+            char = '*'
 
         # build the column data for the graphlogger from data given by hgview
         curcol = gnode.x
@@ -254,7 +202,7 @@ class RevisionsWalker(ListWalker):
             if self._focus > 0:
                 self._focus = 0
             else:
-                self._focus = -len(self._get_unapplied())
+                self._focus = 0
         try:
             return self.data(self._focus)
         except:
@@ -299,6 +247,8 @@ class RevisionsWalker(ListWalker):
     def get_prev(self, start_from):
         """get the previous widget to display"""
         focus = start_from - 1
+        if focus < 0:
+            return None, None
         try:
             return self.data(focus)
         except IndexError:

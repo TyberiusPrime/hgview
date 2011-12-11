@@ -93,7 +93,7 @@ class AbstractFileDialog(QtGui.QMainWindow, HgDialogMixin):
     def modelFilled(self):
         disconnect(self.filerevmodel, SIGNAL('filled'),
                    self.modelFilled)
-        if self._show_rev is not None:
+        if isinstance(self._show_rev, int):
             index = self.filerevmodel.indexFromRev(self._show_rev)
             self._show_rev = None
         else:

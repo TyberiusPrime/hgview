@@ -365,7 +365,7 @@ class RevDisplay(QtGui.QTextBrowser):
             # TODO: emit a signal to recompute the diff
             self.emit(SIGNAL('parentRevisionSelected'), self.diffrev)
         else:
-            self.emit(SIGNAL('revisionSelected'), int(rev))
+            self.emit(SIGNAL('revisionSelected'), rev)
 
     def setDiffRevision(self, rev):
         if rev != self.diffrev:
@@ -437,7 +437,7 @@ class RevDisplay(QtGui.QTextBrowser):
             buf += "<td><b>Working Directory</b></td>\n"
         else:
             buf += '<td><b>Revision:</b>&nbsp;'\
-                   '<span class="rev_number">%d</span>:'\
+                   '<span class="rev_number">%s</span>:'\
                    '<span class="rev_hash">%s</span></td>'\
                    '\n' % (ctx.rev(), short_hex(ctx.node()))
 
@@ -451,7 +451,7 @@ class RevDisplay(QtGui.QTextBrowser):
         parents = [p for p in ctx.parents() if p]
         for p in parents:
             if p.rev() > -1:
-                short = short_hex(p.node())
+                short = short_hex(p.node()) if getattr(p, 'applied', True) else p.node()
                 desc = format_desc(p.description(), self.descwidth)
                 p_rev = p.rev()
                 p_fmt = '<span class="rev_number">%s</span>:'\
@@ -482,10 +482,10 @@ class RevDisplay(QtGui.QTextBrowser):
 
         for p in ctx.children():
             if p.rev() > -1:
-                short = short_hex(p.node())
+                short = short_hex(p.node()) if getattr(p, 'applied', True) else p.node()
                 desc = format_desc(p.description(), self.descwidth)
                 buf += '<tr><td class="label"><b>Child:</b></td>'\
-                       '<td colspan=5><span class="rev_number">%d</span>:'\
+                       '<td colspan=5><span class="rev_number">%s</span>:'\
                        '<a href="%s" class="rev_hash">%s</a>&nbsp;'\
                        '<span class="short_desc"><i>%s</i></span></td></tr>'\
                        '\n' % (p.rev(), p.rev(), short, desc)
@@ -533,7 +533,7 @@ if __name__ == "__main__":
     view.setWindowTitle("Simple Hg List Model")
 
     disp = RevDisplay(w)
-    connect(view, SIGNAL('revisionSelected'), lambda rev: disp.displayRevision(repo.changectx(rev)))
+    connect(view, SIGNAL('revisionSelected'), lambda rev: disp.displayRevision(repo.changectx(int(rev) if rev.isdigit() else rev)))
     connect(disp, SIGNAL('revisionSelected'), view.goto)
     #connect(view, SIGNAL('revisionActivated'), rev_act)
 

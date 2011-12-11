@@ -18,12 +18,21 @@ This modules contains monkey patches for Mercurial allowing hgview to support
 older versions
 """
 
-from mercurial import changelog, filelog
+from functools import partial
+from mercurial import changelog, filelog, patch, context
+
 if not hasattr(changelog.changelog, '__len__'):
     changelog.changelog.__len__ = changelog.changelog.count
 if not hasattr(filelog.filelog, '__len__'):
     filelog.filelog.__len__ = filelog.filelog.count
 
-from mercurial import context
+# mercurial ~< 1.8.4
+if patch.iterhunks.func_code.co_varnames[0] == 'ui':
+    iterhunks_orig = patch.iterhunks
+    ui = type('UI', (), {'debug':lambda *x: None})()
+    iterhunks = partial(iterhunks_orig, ui)
+    patch.iterhunks = iterhunks
+
+#  mercurial ~< 1.8.3
 if not hasattr(context.filectx, 'p1'):
     context.filectx.p1 = lambda self: self.parents()[0]

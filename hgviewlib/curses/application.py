@@ -300,7 +300,6 @@ PALETTE = [
     ('Tags', 'yellow', 'dark red', 'bold'),
     ('Branch', 'yellow', 'default', 'bold'),
     ('Filename', 'white', 'default', 'bold'),
-    ('Unapplied', 'light cyan', 'black'),
 
     # filelist
     ('+', 'dark green', 'default'),

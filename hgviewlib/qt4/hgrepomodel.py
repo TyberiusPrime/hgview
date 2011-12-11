@@ -50,6 +50,8 @@ def cvrt_date(date):
     Convert a date given the hg way, ie. couple (date, tz), into a
     formatted QString
     """
+    if not date:
+        return QtCore.QString(u'')
     date, tzdelay = date
     return QtCore.QDateTime.fromTime_t(int(date)).toString(QtCore.Qt.LocaleDate)
 
@@ -214,6 +216,8 @@ class HgRepoListModel(QtCore.QAbstractTableModel, HgRepoListWalker):
                 return QtCore.QVariant(QtGui.QColor(self.namedbranch_color(ctx.branch())))
         elif role == QtCore.Qt.DecorationRole:
             if column == 'Log':
+                if not getattr(ctx, 'applied', True):
+                    return nullvariant
                 radius = self.dot_radius
                 w = (gnode.cols)*(1*radius + 0) + 20
                 h = self.rowheight
@@ -519,14 +523,14 @@ class HgFileListModel(QtCore.QAbstractTableModel):
         for row, desc in enumerate(self._files):
             filename = desc['path']
             if desc['flag'] == '=' and self._displaydiff:
-                diff = revdiff(self.repo, self.current_ctx, desc['parent'],
-                               files=[filename])
                 try:
+                    diff = revdiff(self.repo, self.current_ctx, None, files=[filename])
                     tot = self.current_ctx.filectx(filename).data().count('\n')
-                except LookupError:
-                    tot = 0
-                add = len(replus.findall(diff))
-                rem = len(reminus.findall(diff))
+                    add = len(replus.findall(diff))
+                    rem = len(reminus.findall(diff))
+                except (LookupError, TypeError): # unknown revision and mq support
+                    tot, add, rem = 0, 0, 0
+
                 if tot == 0:
                     tot = max(add + rem, 1)
                 desc['stats'] = (tot, add, rem)

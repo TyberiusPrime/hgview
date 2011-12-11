@@ -52,9 +52,7 @@ class GraphlogViewer(Body):
 
     def update_title(self, ctx):
         """update title depending on the given context ``ctx``."""
-        if ctx is None:
-            hex_ = 'UNAPPLIED MQ PATCH'
-        elif ctx.node() is None:
+        if ctx.node() is None:
             hex_ = 'WORKING DIRECTORY'
         else:
             hex_ = ctx.hex()
@@ -255,9 +253,6 @@ class RepoViewer(Pile):
 
     def update_context(self, ctx):
         """Change the current displayed context"""
-        if ctx is None: # unapplied patch
-            self.context.clear()
-            return
         self.context.manifest_walker.ctx = ctx
 
     def register_commands(self):
