@@ -363,8 +363,11 @@ class RevDisplay(QtGui.QTextBrowser):
             self.refreshDisplay()
             # TODO: emit a signal to recompute the diff
             self.emit(SIGNAL('parentRevisionSelected'), self.diffrev)
-        else:
+        elif rev.isdigit():
             self.emit(SIGNAL('revisionSelected'), rev)
+        else:
+            QtGui.QDesktopServices.openUrl(qurl)
+            self.refreshDisplay()
 
     def setDiffRevision(self, rev):
         if rev != self.diffrev:
@@ -532,7 +535,7 @@ if __name__ == "__main__":
     view.setWindowTitle("Simple Hg List Model")
 
     disp = RevDisplay(w)
-    connect(view, SIGNAL('revisionSelected'), lambda rev: disp.displayRevision(repo.changectx(int(rev) if rev.isdigit() else rev)))
+    connect(view, SIGNAL('revisionSelected'), lambda rev: disp.displayRevision(repo.changectx(rev)))
     connect(disp, SIGNAL('revisionSelected'), view.goto)
     #connect(view, SIGNAL('revisionActivated'), rev_act)
 
