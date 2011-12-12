@@ -26,6 +26,7 @@ except ImportError:
 
 import urwid
 from urwid import AttrWrap, Pile, Columns, SolidFill, signals
+from urwid.util import is_mouse_press
 
 from hgviewlib.hggraph import HgRepoListWalker
 from hgviewlib.util import exec_flag_changed, isbfile
@@ -117,11 +118,32 @@ class ManifestViewer(Body):
 
 class SourceViewer(Body):
     """Source Viewer"""
+
+    signals = ['translated']
+
     def __init__(self, text, *args, **kwargs):
         self.text = SourceText(text, wrap='clip')
+        self.position = 0
         body = ScrollableListBox([self.text])
         super(SourceViewer, self).__init__(body=body, *args, **kwargs)
 
+    def update_position(self, size):
+        curr, tot = self.body.inset_fraction
+        tot -= size[1]
+        self.position = max(min((curr * 100) / tot, 100), 0)
+        signals.emit_signal(self, 'translated')
+
+    def keypress(self, size, key):
+        if key.endswith(('up', 'down')):
+            self.update_position(size)
+        super(SourceViewer, self).keypress(size, key)
+
+    def mouse_event(self, size, event, button, col, row, focus):
+        """Scroll content"""
+        if is_mouse_press(event) and button in (4, 5):
+            self.update_position(size)
+        return super(SourceViewer, self).mouse_event(size, event, button,
+                                                     col, row, focus)
 class ContextViewer(Columns):
     """Context viewer (manifest and source)"""
     signals = ['update source title']
@@ -131,6 +153,7 @@ class ContextViewer(Columns):
         self.manifest_walker = self.manifest.manifest_walker
         self.source = SourceViewer('')
         self.source_text = self.source.text
+        self._source_title_cache = ''
 
         widget_list = [('weight', 1 - self.MANIFEST_SIZE, self.source),
                        ('fixed', 1, AttrWrap(SolidFill(' '), 'banner')),
@@ -142,9 +165,10 @@ class ContextViewer(Columns):
         signals.connect_signal(self.manifest_walker, 'focus changed',
                                self.update_source)
         signals.connect_signal(self, 'update source title',
-                               self.update_source_title)
+                               self.update_source_title_cache)
+        signals.connect_signal(self.source, 'translated', self.update_source_title)
 
-    def update_source_title(self, filename, flag):
+    def update_source_title_cache(self, filename, flag):
         """
         Display information about the file in the title of the source body.
         """
@@ -165,7 +189,11 @@ class ContextViewer(Columns):
             if renamed:
                 title += [' Renamed from: ', ('focus', renamed[0])]
             title += [' File name: ', ('focus', filename)]
-        self.source.title = title
+        self._source_title_cache = title
+        self.update_source_title()
+
+    def update_source_title(self):
+        self.source.title = ['[%s%%]' % self.source.position] + self._source_title_cache
 
     def update_source(self, filename):
         """Update the source content."""
@@ -200,6 +228,7 @@ class ContextViewer(Columns):
             self.source_text.lexer = lexer
         self.source_text.numbering = numbering
         self.source.body.set_focus_valign('top') # reset offset
+        self.source.position = 0
 
     def keypress(self, size, key):
         "allow subclasses to intercept keystrokes"

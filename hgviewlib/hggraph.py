@@ -165,7 +165,7 @@ def revision_grapher(repo, start_rev=None, stop_rev=0, branch=None, follow=False
             continue
         if curr_rev not in revs:
             if branch:
-                if ctx.branch() != branch:
+                if repo[curr_rev].branch() != branch:
                     if curr_rev is None:
                         curr_rev = len(repo.changelog)
                     else:
