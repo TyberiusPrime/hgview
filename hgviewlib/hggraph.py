@@ -211,13 +211,15 @@ def revision_grapher(repo, start_rev=None, stop_rev=0, branch=None, follow=False
 
         lines = []
         for i, rev in enumerate(revs):
-            if rev in next_revs:
-                color = rev_color[rev]
-                lines.append( (i, next_revs.index(rev), color) )
-            elif rev == curr_rev:
-                for parent in parents:
-                    color = rev_color[parent]
-                    lines.append( (i, next_revs.index(parent), color) )
+            if rev == curr_rev:
+                # one or more line to parents
+                targets = parents
+            else:
+                # single line to the same rev
+                targets = [rev]
+            for tgr in targets:
+                color = rev_color[tgr]
+                lines.append( (i, next_revs.index(tgr), color) )
 
         yield (curr_rev, rev_index, curcolor, lines, parents)
         revs = next_revs
