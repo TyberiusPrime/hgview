@@ -157,6 +157,9 @@ def revision_grapher(repo, start_rev=None, stop_rev=0, branch=None, follow=False
     If branch is set, only generated the subtree for the given named branch.
 
     """
+    # follow is disabled when start_rev is None (== not revision specified)
+    follow = start_rev is not None and follow # disable follow is start_rev is None
+
     if show_hidden and start_rev == None and hasattr(repo, 'mq'):
         series = list(reversed(repo.mq.series))
         for patchname in series:
@@ -178,13 +181,10 @@ def revision_grapher(repo, start_rev=None, stop_rev=0, branch=None, follow=False
         # Compute revs and next_revs.
         if (not show_hidden) and curr_rev in hiddenrevs:
             continue
-        if curr_rev not in revs:
-            if branch:
-                if repo[curr_rev].branch() != branch:
-                    continue
-
-            # New head.
-            if start_rev and follow and curr_rev != start_rev:
+        if curr_rev not in revs: # rev not ancestor of already processed node
+            # shall we ignore this new heads ?
+            if (branch and repo[curr_rev].branch() != branch) or \
+               (follow and curr_rev != start_rev):
                 continue
             revs.append(curr_rev)
             rev_color[curr_rev] = curcolor = nextcolor
