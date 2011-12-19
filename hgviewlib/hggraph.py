@@ -186,38 +186,27 @@ def revision_grapher(repo, start_rev=None, stop_rev=0, branch=None, follow=False
             if (branch and repo[curr_rev].branch() != branch) or \
                (follow and curr_rev != start_rev):
                 continue
+            # we add this new head to know revision
             revs.append(curr_rev)
             rev_color[curr_rev] = curcolor = free_color.next()
-            p_revs = __get_parents(repo, curr_rev, branch)
-            while p_revs:
-                rev0 = p_revs[0]
-                if rev0 < stop_rev or rev0 in rev_color:
-                    break
-                rev_color[rev0] = curcolor
-                p_revs = __get_parents(repo, rev0, branch)
-        curcolor = rev_color[curr_rev]
-        rev_index = revs.index(curr_rev)
+        else:
+            curcolor = rev_color[curr_rev]
+        # copy known revisions for this line
         next_revs = revs[:]
 
         # Add parents to next_revs.
         parents = __get_parents(repo, curr_rev, branch)
         parents_to_add = []
-        if len(parents) > 1:
-            preferred_color = None
-        else:
-            preferred_color = curcolor
-        for parent in parents:
-            if parent not in next_revs:
+        for idx, parent in enumerate(parents):
+            if parent not in next_revs: # could have been added by another children
                 parents_to_add.append(parent)
-                if parent not in rev_color:
-                    if preferred_color:
-                        rev_color[parent] = preferred_color
-                        preferred_color = None
-                    else:
-                        rev_color[parent] = free_color.next()
-            preferred_color = None
+                if idx == 0: # first parent inherit the color
+                    rev_color[parent] = curcolor
+                else: # second don't
+                    rev_color[parent] = free_color.next()
 
-        # parents_to_add.sort()
+        rev_index = next_revs.index(curr_rev) # rev_index is also the column index
+        # replace curr_rev by its parents.
         next_revs[rev_index:rev_index + 1] = parents_to_add
 
         lines = []
