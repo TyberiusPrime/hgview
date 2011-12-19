@@ -267,7 +267,7 @@ class MqFileCtx(context.filectx):
 
     def parents(self):
         try:
-            return [self._changectx._repo[self._changectx._header.parent]]
+            return [self._changectx._repo[self._changectx._header.parent].filectx(self.path)]
         except error.RepoLookupError:
             return [self]
 
