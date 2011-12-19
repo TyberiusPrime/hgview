@@ -21,7 +21,7 @@ revision grapher.
 import os
 from cStringIO import StringIO
 import difflib
-from itertools import chain
+from itertools import chain, count
 from time import strftime, localtime
 
 from mercurial.node import nullrev
@@ -175,7 +175,7 @@ def revision_grapher(repo, start_rev=None, stop_rev=0, branch=None, follow=False
     # it's combined with next_revs to compute how we must draw lines
     revs = []
     rev_color = {}
-    nextcolor = 0
+    free_color = count(0)
     hiddenrevs = getattr(repo.changelog, 'hiddenrevs', ())
     for curr_rev in _graph_iterator(repo, start_rev, stop_rev):
         # Compute revs and next_revs.
@@ -187,8 +187,7 @@ def revision_grapher(repo, start_rev=None, stop_rev=0, branch=None, follow=False
                (follow and curr_rev != start_rev):
                 continue
             revs.append(curr_rev)
-            rev_color[curr_rev] = curcolor = nextcolor
-            nextcolor += 1
+            rev_color[curr_rev] = curcolor = free_color.next()
             p_revs = __get_parents(repo, curr_rev, branch)
             while p_revs:
                 rev0 = p_revs[0]
@@ -215,8 +214,7 @@ def revision_grapher(repo, start_rev=None, stop_rev=0, branch=None, follow=False
                         rev_color[parent] = preferred_color
                         preferred_color = None
                     else:
-                        rev_color[parent] = nextcolor
-                        nextcolor += 1
+                        rev_color[parent] = free_color.next()
             preferred_color = None
 
         # parents_to_add.sort()
