@@ -472,7 +472,8 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin, _HgRepoViewer):
         """Return the last modification time for the repo"""
         watchedfiles = [(self.repo.root, ".hg", "store"),
                         (self.repo.root, ".hg", "store", "00changelog.i"),
-                        (self.repo.root, ".hg", "dirstate")]
+                        (self.repo.root, ".hg", "dirstate"),
+                        (self.repo.root, ".hg", "store", "phasesroots"),]
         watchedfiles = [os.path.join(*wf) for wf in watchedfiles]
         mtime = [os.path.getmtime(wf) for wf in watchedfiles \
                  if os.path.exists(wf)]
