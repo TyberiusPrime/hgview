@@ -121,6 +121,18 @@ def ismerge(ctx):
         return len(ctx.parents()) == 2 and ctx.parents()[1]
     return False
 
+def _graph_iterator(repo, start_rev, stop_rev):
+    """Iter thought revisions from start_rev to stop_rev (included)
+    Handle Working directory as None.
+    """
+    # check parameters
+    assert start_rev is None or start_rev >= stop_rev
+    if start_rev is None:
+        yield start_rev
+        start_rev = len(repo.changelog)
+    for curr_rev in xrange(start_rev, stop_rev-1, -1):
+        yield curr_rev
+
 def revision_grapher(repo, start_rev=None, stop_rev=0, branch=None, follow=False, show_hidden=False):
     """incremental revision grapher
 
@@ -151,35 +163,28 @@ def revision_grapher(repo, start_rev=None, stop_rev=0, branch=None, follow=False
             if not repo.mq.isapplied(patchname):
                 yield (patchname, 0, 0, [(0,0,0)], [])
 
+    # No uncommited change
     if start_rev is None and repo.status() == ([],)*7:
         start_rev = len(repo.changelog)
     assert start_rev is None or start_rev >= stop_rev
-    curr_rev = start_rev
+
+    # all known revs for this line. This is used to compute column index
+    # it's combined with next_revs to compute how we must draw lines
     revs = []
     rev_color = {}
     nextcolor = 0
     hiddenrevs = getattr(repo.changelog, 'hiddenrevs', ())
-    while curr_rev is None or curr_rev >= stop_rev:
+    for curr_rev in _graph_iterator(repo, start_rev, stop_rev):
         # Compute revs and next_revs.
         if (not show_hidden) and curr_rev in hiddenrevs:
-            if curr_rev is None:
-                curr_rev = len(repo.changelog)
-            else:
-                curr_rev -= 1
             continue
         if curr_rev not in revs:
             if branch:
                 if repo[curr_rev].branch() != branch:
-                    if curr_rev is None:
-                        curr_rev = len(repo.changelog)
-                    else:
-                        curr_rev -= 1
-                    yield None
                     continue
 
             # New head.
             if start_rev and follow and curr_rev != start_rev:
-                curr_rev -= 1
                 continue
             revs.append(curr_rev)
             rev_color[curr_rev] = curcolor = nextcolor
@@ -229,10 +234,6 @@ def revision_grapher(repo, start_rev=None, stop_rev=0, branch=None, follow=False
 
         yield (curr_rev, rev_index, curcolor, lines, parents)
         revs = next_revs
-        if curr_rev is None:
-            curr_rev = len(repo.changelog)
-        else:
-            curr_rev -= 1
 
 
 def filelog_grapher(repo, path):
