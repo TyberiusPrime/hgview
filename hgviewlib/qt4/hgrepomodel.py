@@ -44,6 +44,8 @@ COLORS = [str(QtGui.QColor(x).name()) for x in COLORS]
 #COLORS = [str(color) for color in QtGui.QColor.colorNames()]
 
 
+PUBLIC_PHASE, DRAFT_PHASE, SECRET_PHASE = 0, 1, 2
+
 def cvrt_date(date):
     """
     Convert a date given the hg way, ie. couple (date, tz), into a
@@ -274,6 +276,8 @@ class HgRepoListModel(QtCore.QAbstractTableModel, HgRepoListWalker):
                     if [True for st in status if st]:
                         modified = True
 
+                phase = getattr(ctx, 'phase', lambda : PUBLIC_PHASE)()
+
                 if gnode.rev is None:
                     # WD is displayed only if there are local
                     # modifications, so let's use the modified icon
@@ -283,10 +287,26 @@ class HgRepoListModel(QtCore.QAbstractTableModel, HgRepoListWalker):
                 #elif modified:
                 #    icn = geticon('modified')
                 elif atwd:
-                    icn = geticon('clean')
+                    if phase > PUBLIC_PHASE:
+                        pen_color = QtCore.Qt.red
+                        pen = QtGui.QPen(pen_color)
+                        pen.setWidth(penradius)
+                        painter.setPen(pen)
+                    else:
+                        icn = geticon('clean')
+
 
                 if icn:
                     icn.paint(painter, dot_x-5, dot_y-5, 17, 17)
+                elif phase == DRAFT_PHASE:
+                    painter.drawRect(dot_x, dot_y, radius, radius)
+                elif phase == SECRET_PHASE:
+                    P = QtCore.QPointF
+                    painter.drawPolygon(
+                        P(dot_x + (radius//2), dot_y),
+                        P(dot_x, dot_y + radius),
+                        P(dot_x + radius, dot_y+radius)
+                        )
                 else:
                     painter.drawEllipse(dot_x, dot_y, radius, radius)
                 painter.end()
