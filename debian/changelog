@@ -1,8 +1,8 @@
-hgview (1.5.0-2) UNRELEASED; urgency=low
+hgview (1.5.0-2) unstable; urgency=low
 
   * Add missing hgpatches directory.
 
- -- Julien Cristau <jcristau@debian.org>  Thu, 22 Dec 2011 17:57:28 +0100
+ -- Julien Cristau <jcristau@debian.org>  Thu, 22 Dec 2011 17:58:57 +0100
 
 hgview (1.5.0-1) unstable; urgency=low
 
