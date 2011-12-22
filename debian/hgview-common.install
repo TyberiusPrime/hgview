@@ -1,4 +1,5 @@
 usr/lib/python*/*-packages/hgext
 usr/lib/python*/*-packages/hgviewlib/*.py
+usr/lib/python*/*-packages/hgviewlib/hgpatches
 usr/bin
 usr/share/man
