@@ -6,20 +6,20 @@ hgview (1.5.0-2) unstable; urgency=low
 
 hgview (1.5.0-1) unstable; urgency=low
 
-  * GUI> replace text in description for fancy display (#84465)
-  * GUI> links in fancy view opens browser (#76254)
-  * GUI> Add support for incoming phase feature in hg 2.1 (#86349)
+  * GUI> replace text in description for fancy display
+  * GUI> links in fancy view opens browser
+  * GUI> Add support for incoming phase feature in hg 2.1
     Node have different shape given their phase.
-  * TUI> fancier graph highlighting in TUI (#79263)
-  * TUI> add history and completion for command (#84733)
-  * TUI> display text translation in source/diff pane (closes #83773)
-  * Hg> Allow toggle hidden changesets visibility (#19875)
-  * Hg> improve mq support (#19194)
+  * TUI> fancier graph highlighting in TUI
+  * TUI> add history and completion for command
+  * TUI> display text translation in source/diff pane
+  * Hg> Allow toggle hidden changesets visibility
+  * Hg> improve mq support
   * Hg> enable --profile/--time/--traceback/--debug options
-    as mercurial extension (#83309)
-  * support mercurial 2.0 (#79058, #84549)
-  * bugfixes (#77984, #79255, #84939, #78004, #83307)
-  * others (#75296, #78002, #75295)
+    as mercurial extension
+  * support mercurial 2.0
+  * bugfixes
+  * others
 
  -- Alain Leufroy <alain.leufroy@logilab.fr>  Wed, 21 Dec 2011 12:00:00 +0100
 
@@ -32,9 +32,9 @@ hgview (1.4.0-2) unstable; urgency=low
 hgview (1.4.0-1) unstable; urgency=low
 
   * Add a new text based user interface
-  * Remove mx.Datetime dependency (closes: #73687)
-  * Don't crash/close when exploring an empty repository (closes: #20996)
-  * Propagate errors from mercurial.hg.repository() (closes: #73678)
+  * Remove mx.Datetime dependency
+  * Don't crash/close when exploring an empty repository
+  * Propagate errors from mercurial.hg.repository()
 
  -- Alain Leufroy <alain.leufroy@logilab.fr>  Mon, 26 Sep 2011 15:22:18 +0200
 
