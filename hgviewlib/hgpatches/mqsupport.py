@@ -232,6 +232,12 @@ class MqFileCtx(context.filectx):
         self._operation = meta.op
         self._data = '\n\n\n'
         self._data += ''.join(l for h in hunks for l in h.hunk if h)
+        # XXX how to deal diff encodings?
+        try:
+            self._data = unicode(self._data, "utf-8")
+        except UnicodeError:
+            # XXX use a default encoding from config?
+            self._data = unicode(self._data, "iso-8859-15", 'ignore')
 
     @property
     def path(self):
