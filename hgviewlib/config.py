@@ -125,6 +125,22 @@ class HgConfig(object):
         return users, aliases
 
     @cached
+    def getFileDescriptionView(self, default='persistent'):
+        """
+        descriptionview:
+
+          :asfile: compact view with changeset description in the file list
+          :persistent: persistent view with changeset description always visible (default)
+        """
+        return self.ui.config(self.section, 'descriptionview', default).lower()
+
+    @cached
+    def getFileDescriptionColor(self, default='magenta'):
+        """
+        filedescriptioncolor: display color of the "description" entry
+        """
+        return self.ui.config(self.section, 'filedescriptioncolor', default)
+    @cached
     def getFileModifiedColor(self, default='blue'):
         """
         filemodifiedcolor: display color of a modified file

@@ -533,6 +533,8 @@ class HgFileListView(QtGui.QTableView):
 
     def fileActivated(self, index, alternate=False):
         sel_file = self.model().fileFromIndex(index)
+        if sel_file is '':
+            return
         if alternate:
             self.navigate(sel_file)
         else:
@@ -551,7 +553,7 @@ class HgFileListView(QtGui.QTableView):
         if filename is None:
             filename = self.currentFile()
         model = self.model()
-        if filename is not None and len(model.repo.file(filename))>0:
+        if filename and len(model.repo.file(filename))>0:
             if filename not in dlgdict:
                 dlg = dlgclass(model.repo, filename,
                                repoviewer=self.window())

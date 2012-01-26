@@ -383,11 +383,24 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin, _HgRepoViewer):
         self.textview_status.setModel(self.repomodel)
         self.find_toolbar.setModel(self.repomodel)
 
-        filetable = self.tableView_filelist
-        connect(filetable, SIGNAL('fileSelected'),
-                self.textview_status.displayFile)
+        if self.cfg.getFileDescriptionView() == 'asfile':
+            fileselcallback = self.displaySelectedFile
+        else:
+            fileselcallback = self.textview_status.displayFile
+        connect(self.tableView_filelist, SIGNAL('fileSelected'),
+                fileselcallback)
+
         connect(self.textview_status, SIGNAL('revForDiffChanged'),
                 self.textview_header.setDiffRevision)
+
+    def displaySelectedFile(self, filename=None, rev=None):
+        if filename == '':
+            self.textview_status.hide()
+            self.textview_header.show()
+        else:
+            self.textview_header.hide()
+            self.textview_status.show()
+            self.textview_status.displayFile(filename, rev)
 
     def setupRevisionTable(self):
         view = self.tableView_revisions
