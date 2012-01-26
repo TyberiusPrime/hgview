@@ -464,8 +464,8 @@ class Graph(object):
         try:
             fctx = ctx.filectx(filename)
             filesize = fctx.size() # compute size here to lookup data securely
-        except LookupError:
-            fctx = None # may happen for renamed files or mq patch ?
+        except (LookupError, OSError):
+            fctx = None # may happen for renamed/removed files or mq patch ?
 
         if isbfile(filename):
             data = "[bfile]\n"
