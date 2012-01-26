@@ -18,7 +18,9 @@ Contains a listbox definition that walk the repo log and display an ascii graph
 '''
 
 from itertools import izip_longest as zzip
+from logging import warn
 
+from mercurial.node import short
 from urwid import AttrMap, Text, ListWalker, Columns, WidgetWrap, emit_signal
 
 from hgext.graphlog import (fix_long_right_edges, get_nodeline_edges_tail,
@@ -43,6 +45,7 @@ _COLUMNMAP = {
     'Tags': gettags,
     'Branch': lambda m, c, g: c.branch() != 'default' and c.branch(),
     'Filename': lambda m, c, g: g.extra[0],
+    'Phase': lambda model, ctx, gnode: ctx.phasestr(),
     }
 GRAPH_MIN_WIDTH = 6
 
@@ -166,18 +169,20 @@ class RevisionsWalker(ListWalker):
         """Return a generator that get lines of graph log for the node
         """
         # define node symbol
-        char = 'o'
         if gnode.rev is None:
             char = '!' # pending changes
-        elif gnode.rev in self.walker.wd_revs:
-            char = '@'
-
-        if len(ctx.parents()) > 1:
-            char = 'M' # merge
         elif not getattr(ctx, 'applied', True):
             char = ' '
         elif set(ctx.tags()).intersection(self.walker.mqueues):
             char = '*'
+        else:
+            phase = ctx.phase()
+            try:
+                char = 'o#^'[phase]
+            except IndexError:
+                warn('"%(node)s" has an unknown phase: %(phase)i',
+                     {'node':short(ctx.node()), 'phase':phase})
+                char = '?'
 
         # build the column data for the graphlogger from data given by hgview
         curcol = gnode.x

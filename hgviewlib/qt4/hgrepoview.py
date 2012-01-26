@@ -426,7 +426,7 @@ class RevDisplay(QtGui.QTextBrowser):
         buf = "<table width=100%>\n"
         if self.mqpatch:
             buf += '<tr bgcolor=%s>' % cfg.getMQFGColor()
-            buf += '<td colspan=3 width=100%><b>Patch queue:</b>&nbsp;'
+            buf += '<td colspan=4 width=100%><b>Patch queue:</b>&nbsp;'
             for p in self.mqseries:
                 if p in self.mqunapplied:
                     p = "<i>%s</i>" % p
@@ -439,15 +439,15 @@ class RevDisplay(QtGui.QTextBrowser):
         if rev is None:
             buf += "<td><b>Working Directory</b></td>\n"
         else:
-            buf += '<td><b>Revision:</b>&nbsp;'\
+            buf += '<td title="Revision"><b>'\
                    '<span class="rev_number">%s</span>:'\
-                   '<span class="rev_hash">%s</span></td>'\
-                   '\n' % (ctx.rev(), short_hex(ctx.node()))
+                   '<span class="rev_hash">%s</span>'\
+                   '</b></td>\n' % (ctx.rev(), short_hex(ctx.node()))
 
-        buf += '<td><b>Author:</b>&nbsp;'\
-               '%s</td>'\
-               '\n' %  tounicode(ctx.user())
-        buf += '<td><b>Branch:</b>&nbsp;%s</td>' % ctx.branch()
+        buf += '<td title="Author">%s</td>\n' \
+               % tounicode(ctx.user())
+        buf += '<td title="Branch name">%s</td>\n' % ctx.branch()
+        buf += '<td title="Phase name">%s</td>\n' % ctx.phasestr()
         buf += '</tr>'
         buf += "</table>\n"
         buf += "<table width=100%>\n"
@@ -458,7 +458,7 @@ class RevDisplay(QtGui.QTextBrowser):
                 desc = format_desc(p.description(), self.descwidth)
                 p_rev = p.rev()
                 p_fmt = '<span class="rev_number">%s</span>:'\
-                        '<a href="%s" class="rev_hash">%s</a>'
+                        '<a title="go to" href="%s" class="rev_hash">%s</a>'
                 if p_rev == self.diffrev:
                     p_rev = '<b>%s</b>' % (p_fmt % (p_rev, p_rev, short))
                 else:
@@ -473,11 +473,11 @@ class RevDisplay(QtGui.QTextBrowser):
             desc = format_desc(p.description(), self.descwidth)
             p_rev = p.rev()
             p_fmt = '<span class="rev_number">%s</span>:'\
-                    '<a href="%s" class="rev_hash">%s</a>'
+                    '<a title="go to" href="%s" class="rev_hash">%s</a>'
             if p_rev == self.diffrev:
                 p_rev = '<b>%s</b>' % (p_fmt % (p_rev, p_rev, short))
             else:
-                p_rev = p_fmt % ('<a href="diff_%s" class="rev_diff">%s</a>' % (p_rev, p_rev), p_rev, short)
+                p_rev = p_fmt % ('<a title="go to" href="diff_%s" class="rev_diff">%s</a>' % (p_rev, p_rev), p_rev, short)
             buf += '<tr><td width=50 class="label"><b>Ancestor:</b></td>'\
                    '<td colspan=5>%s&nbsp;'\
                    '<span class="short_desc"><i>%s</i></span></td></tr>'\
@@ -489,7 +489,7 @@ class RevDisplay(QtGui.QTextBrowser):
                 desc = format_desc(p.description(), self.descwidth)
                 buf += '<tr><td class="label"><b>Child:</b></td>'\
                        '<td colspan=5><span class="rev_number">%s</span>:'\
-                       '<a href="%s" class="rev_hash">%s</a>&nbsp;'\
+                       '<a title="go to" href="%s" class="rev_hash">%s</a>&nbsp;'\
                        '<span class="short_desc"><i>%s</i></span></td></tr>'\
                        '\n' % (p.rev(), p.rev(), short, desc)
 

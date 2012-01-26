@@ -56,7 +56,10 @@ class GraphlogViewer(Body):
             hex_ = 'WORKING DIRECTORY'
         else:
             hex_ = ctx.hex()
-        self.title = '%s [%s]' % (self.walker.repo.root, hex_)
+        self.title = '%(root)s [%(hex)s] %(phase)s' % {
+            'root':self.walker.repo.root,
+            'hex':hex_,
+            'phase':ctx.phasestr()}
 
     def register_commands(self):
         '''Register commands and connect commands for bodies'''

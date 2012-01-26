@@ -43,6 +43,8 @@ from collections import namedtuple
 from mercurial import error, node, patch, context, manifest
 from hgext.mq import patchheader
 
+from hgviewlib.hgpatches import phases
+
 MODIFY, ADD, REMOVE, DELETE, UNKNOWN, RENAME = range(6) # order is important for status
 
 PatchMetaData = namedtuple('Meta', 'path oldpath op')
@@ -173,6 +175,9 @@ class MqChangeCtx(MqCtx):
 
     def hidden(self):
         return True
+
+    def phase(self):
+        return phases.secret
 
     def manifest(self):
         return manifest.manifestdict.fromkeys(self.files(), '=')

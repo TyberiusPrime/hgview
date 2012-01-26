@@ -32,6 +32,13 @@ if patch.iterhunks.func_code.co_varnames[0] == 'ui':
     iterhunks = partial(iterhunks_orig, ui)
     patch.iterhunks = iterhunks
 
-#  mercurial ~< 1.8.3
+# mercurial ~< 1.8.3
 if not hasattr(context.filectx, 'p1'):
     context.filectx.p1 = lambda self: self.parents()[0]
+
+# mercurial < 2.1
+if not hasattr(context.changectx, 'phase'):
+    from hgviewlib.hgpatches.phases import phasenames
+    context.changectx.phase = lambda self: 0
+    context.changectx.phasestr = lambda self: phasenames[self.phase()]
+    context.workingctx.phase = lambda self: 1

@@ -30,6 +30,7 @@ from hgviewlib.config import HgConfig
 from hgviewlib.util import tounicode, isbfile, Curry
 from hgviewlib.qt4 import icon as geticon
 from hgviewlib.decorators import timeit
+from hgviewlib.hgpatches import phases
 
 from PyQt4 import QtCore, QtGui
 connect = QtCore.QObject.connect
@@ -44,7 +45,6 @@ COLORS = [str(QtGui.QColor(x).name()) for x in COLORS]
 #COLORS = [str(color) for color in QtGui.QColor.colorNames()]
 
 
-PUBLIC_PHASE, DRAFT_PHASE, SECRET_PHASE = 0, 1, 2
 
 def cvrt_date(date):
     """
@@ -66,6 +66,7 @@ _columnmap = {'ID': lambda model, ctx, gnode: ctx.rev() is not None and str(ctx.
               'Tags': gettags,
               'Branch': lambda model, ctx, gnode: ctx.branch(),
               'Filename': lambda model, ctx, gnode: gnode.extra[0],
+              'Phase': lambda model, ctx, gnode: ctx.phasestr(),
               }
 
 _tooltips = {'ID': lambda model, ctx, gnode: ctx.rev() is not None and ctx.hex() or "Working Directory",
@@ -80,13 +81,12 @@ def auth_width(model, repo):
 # in following lambdas, r is a hg repo
 _maxwidth = {'ID': lambda self, r: str(len(r.changelog)),
              'Date': lambda self, r: cvrt_date(r.changectx(0).date()),
-             'Tags': lambda self, r: sorted(r.tags().keys(),
-                                            key=lambda x: len(x))[-1][:10],
-             'Branch': lambda self, r: sorted(r.branchtags().keys(),
-                                              key=lambda x: len(x))[-1]
+             'Tags': lambda self, r: sorted(r.tags().keys(), key=len)[-1][:10],
+             'Branch': lambda self, r: sorted(r.branchtags().keys(), key=len)[-1]
                                               if r.branchtags().keys() else None,
              'Author': lambda self, r: 'author name',
              'Filename': lambda self, r: self.filename,
+             'Phase': lambda self, r: sorted(phases.phasenames, key=len)[-1]
              }
 
 def datacached(meth):
@@ -200,6 +200,7 @@ class HgRepoListModel(QtCore.QAbstractTableModel, HgRepoListWalker):
             return QtCore.QVariant(_columnmap[column](self, ctx, gnode))
         elif role == QtCore.Qt.ToolTipRole:
             msg = "<b>Branch:</b> %s<br>\n" % ctx.branch()
+            msg += "<b>Phase:</b> %s<br>\n" % ctx.phasestr()
             if gnode.rev in self.wd_revs:
                 msg += " <i>Working Directory position"
                 states = 'modified added removed deleted'.split()
@@ -276,7 +277,7 @@ class HgRepoListModel(QtCore.QAbstractTableModel, HgRepoListWalker):
                     if [True for st in status if st]:
                         modified = True
 
-                phase = getattr(ctx, 'phase', lambda : PUBLIC_PHASE)()
+                phase = ctx.phase()
 
                 if gnode.rev is None:
                     # WD is displayed only if there are local
@@ -287,7 +288,7 @@ class HgRepoListModel(QtCore.QAbstractTableModel, HgRepoListWalker):
                 #elif modified:
                 #    icn = geticon('modified')
                 elif atwd:
-                    if phase > PUBLIC_PHASE:
+                    if phase > phases.public:
                         pen_color = QtCore.Qt.red
                         pen = QtGui.QPen(pen_color)
                         pen.setWidth(penradius)
@@ -298,9 +299,9 @@ class HgRepoListModel(QtCore.QAbstractTableModel, HgRepoListWalker):
 
                 if icn:
                     icn.paint(painter, dot_x-5, dot_y-5, 17, 17)
-                elif phase == DRAFT_PHASE:
+                elif phase == phases.draft:
                     painter.drawRect(dot_x, dot_y, radius, radius)
-                elif phase == SECRET_PHASE:
+                elif phase == phases.secret:
                     P = QtCore.QPointF
                     painter.drawPolygon(
                         P(dot_x + (radius//2), dot_y),
