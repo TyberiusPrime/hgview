@@ -36,6 +36,9 @@ Revlog graph
 The main revision graph display the repository history as a graph,
 sorted by revision number.
 
+Hit Space key or click on a revision item to display/hide the revision
+content.
+
 The color of the node of each revision depends on the named branch the
 revision belongs to.
 

@@ -63,6 +63,9 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin, _HgRepoViewer):
         self.splitter_2.setStretchFactor(0, 2)
         self.splitter_2.setStretchFactor(1, 1)
 
+        # hide bottom at startup
+        self.frame_maincontent.setVisible(self.cfg.getContentAtStartUp())
+
         self.createActions()
         self.createToolbars()
 
@@ -132,6 +135,7 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin, _HgRepoViewer):
         self.attachQuickBar(self.find_toolbar)
 
         # navigation toolbar
+        self.toolBar_edit.addAction(self.actionShowMainContent)
         self.toolBar_edit.addAction(self.tableView_revisions._actions['back'])
         self.toolBar_edit.addAction(self.tableView_revisions._actions['forward'])
 
@@ -160,14 +164,7 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin, _HgRepoViewer):
         self.branch_label_action = self.toolBar_treefilters.addWidget(self.branch_label)
         self.branch_comboBox_action = self.toolBar_treefilters.addWidget(self.branch_comboBox)
         # hidden changeset action
-        self.hidden_action = QtGui.QAction(self.tr('Show Hidden'), self)
-        self.hidden_action.setCheckable(True)
-        self.hidden_action.setChecked(self.cfg.getShowHidden())
-        self.hidden_action.setToolTip(self.tr('Show hidden changeset'))
-        self.hidden_action.setStatusTip(self.tr('Show hidden changeset'))
-        self.toolBar_treefilters.addAction(self.hidden_action)
-        connect(self.hidden_action, SIGNAL('triggered()'),
-                self.refreshRevisionTable)
+        self.toolBar_treefilters.addAction(self.actionShowHidden)
         # separator
         self.toolBar_treefilters.addSeparator()
 
@@ -230,6 +227,25 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin, _HgRepoViewer):
         self.actionHelp.setIcon(geticon('help'))
         connect(self.actionHelp, SIGNAL('triggered()'),
                 self.on_help)
+
+        self.actionShowHidden = QtGui.QAction(self.tr('Show Hidden'), self)
+        self.actionShowHidden.setCheckable(True)
+        self.actionShowHidden.setChecked(self.cfg.getShowHidden())
+        self.actionShowHidden.setToolTip(self.tr('Show hidden changeset'))
+        self.actionShowHidden.setStatusTip(self.tr('Show hidden changeset'))
+        connect(self.actionShowHidden, SIGNAL('triggered()'),
+                self.refreshRevisionTable)
+
+        self.actionShowMainContent = QtGui.QAction('Content', self)
+        self.actionShowMainContent.setIcon(geticon('content'))
+        self.actionShowMainContent.setCheckable(True)
+        self.actionShowMainContent.setChecked(self.cfg.getContentAtStartUp())
+        tip = self.tr('Show/Hide changeset content')
+        self.actionShowMainContent.setToolTip(tip)
+        self.actionShowMainContent.setStatusTip(tip)
+        self.actionShowMainContent.setShortcut(Qt.Key_Space)
+        connect(self.actionShowMainContent, SIGNAL('triggered()'),
+                self.toggleMainContent)
 
         # Next/Prev diff (in full file mode)
         self.actionNextDiff = QtGui.QAction(geticon('down'), 'Next diff', self)
@@ -332,6 +348,17 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin, _HgRepoViewer):
                 self.clearStartAtRev)
         self.addAction(self.actionClearStartAtRev)
 
+    def toggleMainContent(self, visible=None):
+        if visible is None:
+            visible = self.actionShowMainContent.isChecked()
+        visible = bool(visible)
+        if visible == self.frame_maincontent.isVisible():
+            return
+        self.actionShowMainContent.setChecked(visible)
+        self.frame_maincontent.setVisible(visible)
+        if visible:
+            self.revision_selected(-1)
+
     def startAtCurrentRev(self):
         crev = self.tableView_revisions.current_rev
         if crev:
@@ -405,6 +432,8 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin, _HgRepoViewer):
     def setupRevisionTable(self):
         view = self.tableView_revisions
         view.installEventFilter(self)
+        connect(view, SIGNAL('clicked (const QModelIndex &)'),
+                self.toggleMainContent)
         connect(view, SIGNAL('revisionSelected'), self.revision_selected)
         connect(view, SIGNAL('revisionActivated'), self.revision_activated)
         connect(self.textview_header, SIGNAL('revisionSelected'), view.goto)
@@ -452,6 +481,7 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin, _HgRepoViewer):
         """
         if rev is None:
             rev = self.tableView_revisions.current_rev
+        self.toggleMainContent(True)
         self._manifestdlg = ManifestViewer(self.repo, rev)
         self._manifestdlg.show()
 
@@ -464,14 +494,22 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin, _HgRepoViewer):
     def revision_selected(self, rev):
         """
         Callback called when a revision is selected in the revisions table
+        if rev == -1: refresh the current selected revision
         """
-        if self.repomodel.graph:
-            ctx = self.repomodel.repo[rev]
-            self.textview_status.setContext(ctx)
-            self.textview_header.displayRevision(ctx)
-            self.filelistmodel.setSelectedRev(ctx)
-            if len(self.filelistmodel):
-                self.tableView_filelist.selectRow(0)
+        if not self.frame_maincontent.isVisible() or not self.repomodel.graph:
+            return
+        if rev == -1:
+            view = self.tableView_revisions
+            indexes = view.selectedIndexes()
+            if not indexes:
+                return
+            rev = view.revFromindex(indexes[0])
+        ctx = self.repomodel.repo[rev]
+        self.textview_status.setContext(ctx)
+        self.textview_header.displayRevision(ctx)
+        self.filelistmodel.setSelectedRev(ctx)
+        if len(self.filelistmodel):
+            self.tableView_filelist.selectRow(0)
 
     def goto(self, rev):
         if len(self.tableView_revisions.model().graph):
@@ -523,7 +561,7 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin, _HgRepoViewer):
             return
         startrev = self.repo.changectx(startrev).rev()
         follow = self.startrev_follow_action.isChecked()
-        self.repomodel.show_hidden = self.hidden_action.isChecked()
+        self.repomodel.show_hidden = self.actionShowHidden.isChecked()
         self.revscompl_model.setStringList(self.repo.tags().keys())
 
         self.repomodel.setRepo(self.repo, branch=branch, fromhead=startrev,

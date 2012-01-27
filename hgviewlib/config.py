@@ -274,6 +274,13 @@ class HgConfig(object):
         return self.ui.config(self.section, 'mqhidetags', default)
 
     @cached
+    def getContentAtStartUp(self, default=True):
+        """
+        contentatstartup: show the content of changeset at startup (bottom part)
+        """
+        return bool(self.ui.config(self.section, 'contentatstartup', default))
+
+    @cached
     def getShowHidden(self, default=False):
         """
         showhidden: show hidden changeset at startup

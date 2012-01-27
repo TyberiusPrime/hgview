@@ -28,6 +28,7 @@ import urwid
 from urwid import AttrWrap, Pile, Columns, SolidFill, signals
 from urwid.util import is_mouse_press
 
+from hgviewlib.config import HgConfig
 from hgviewlib.hggraph import HgRepoListWalker
 from hgviewlib.util import exec_flag_changed, isbfile
 
@@ -278,6 +279,7 @@ class RepoViewer(Pile):
 
     def __init__(self, repo, *args, **kwargs):
         self.repo = repo
+        self.cfg = HgConfig(repo.ui)
         self._show_context = 0 # O:hide, 1:half, 2:maximized
 
         walker = HgRepoListWalker(repo)
@@ -288,6 +290,8 @@ class RepoViewer(Pile):
 
         super(RepoViewer, self).__init__(widget_list=widget_list, focus_item=0,
                                          *args, **kwargs)
+        if self.cfg.getContentAtStartUp():
+            self.show_context()
 
     def update_context(self, ctx):
         """Change the current displayed context"""
