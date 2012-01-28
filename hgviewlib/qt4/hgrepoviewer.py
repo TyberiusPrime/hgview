@@ -201,6 +201,7 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin, _HgRepoViewer):
         # rev mod toolbar
         if self.textview_header.rst_action is not None:
             self.toolBar_rev.addAction(self.textview_header.rst_action)
+        self.toolBar_rev.setVisible(self.cfg.getToolBarRevAtStartup())
 
     def createActions(self):
         # main window actions (from .ui file)

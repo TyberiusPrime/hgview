@@ -274,6 +274,13 @@ class HgConfig(object):
         return self.ui.config(self.section, 'mqhidetags', default)
 
     @cached
+    def getToolBarRevAtStartup(self, default=True):
+        """
+        toolbarrev: show hidden changeset at startup
+        """
+        return bool(self.ui.config(self.section, 'toolbarrev', default))
+
+    @cached
     def getContentAtStartUp(self, default=True):
         """
         contentatstartup: show the content of changeset at startup (bottom part)
