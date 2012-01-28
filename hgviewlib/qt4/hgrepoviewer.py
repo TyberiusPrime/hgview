@@ -232,11 +232,12 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin, _HgRepoViewer):
         connect(self.actionHelp, SIGNAL('triggered()'),
                 self.on_help)
 
-        self.actionShowHidden = QtGui.QAction(self.tr('Show Hidden'), self)
+        self.actionShowHidden = QtGui.QAction(self.tr('Show/Hide Hidden'), self)
+        self.actionShowHidden.setIcon(geticon('showhide'))
         self.actionShowHidden.setCheckable(True)
         self.actionShowHidden.setChecked(self.cfg.getShowHidden())
-        self.actionShowHidden.setToolTip(self.tr('Show hidden changeset'))
-        self.actionShowHidden.setStatusTip(self.tr('Show hidden changeset'))
+        self.actionShowHidden.setToolTip(self.tr('Show/Hide hidden changeset'))
+        self.actionShowHidden.setStatusTip(self.tr('Show/hide hidden changeset'))
         connect(self.actionShowHidden, SIGNAL('triggered()'),
                 self.refreshRevisionTable)
 
