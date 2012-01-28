@@ -144,6 +144,8 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin, _HgRepoViewer):
         self.toolBar_edit.addAction(findaction)
 
         # tree filters toolbar
+        self.toolBar_treefilters.addAction(self.tableView_revisions._actions['unfilter'])
+
         self.branch_label = QtGui.QToolButton()
         self.branch_label.setText("Branch")
         self.branch_label.setStatusTip("Display graph the named branch only")
@@ -180,15 +182,16 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin, _HgRepoViewer):
         follow_action.setStatusTip("Follow changeset history from start revision")
         self.startrev_follow_action = follow_action
         self.startrev_label.setMenu(self.startrev_menu)
-        connect(self.startrev_entry, SIGNAL('editingFinished()'),
-                self.refreshRevisionTable)
+        callback = lambda *a: self.tableView_revisions.emit(
+                    SIGNAL('startFromRev'),
+                    self.startrev_entry, self.startrev_follow_action)
+        connect(self.startrev_entry, SIGNAL('editingFinished()'), callback)
+        connect(self.startrev_follow_action, SIGNAL('toggled(bool)'), callback)
 
         self.revscompl_model = QtGui.QStringListModel(['tip'])
         self.revcompleter = QtGui.QCompleter(self.revscompl_model, self)
         self.startrev_entry.setCompleter(self.revcompleter)
 
-        connect(self.startrev_follow_action, SIGNAL('toggled(bool)'),
-                self.refreshRevisionTable)
         self.startrev_label_action = self.toolBar_treefilters.addWidget(self.startrev_label)
         self.startrev_entry_action = self.toolBar_treefilters.addWidget(self.startrev_entry)
 
@@ -327,27 +330,6 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin, _HgRepoViewer):
                 lambda self=self:
                 self.tableView_filelist.fileActivated(self.tableView_filelist.currentIndex(),
                                                       alternate=True))
-        self.actionActivateRev = QtGui.QAction('Activate rev.', self)
-        self.actionActivateRev.setShortcuts([Qt.SHIFT+Qt.Key_Return, Qt.SHIFT+Qt.Key_Enter])
-        connect(self.actionActivateRev, SIGNAL('triggered()'),
-                self.revision_activated)
-        self.addAction(self.actionActivateFile)
-        self.addAction(self.actionActivateFileAlt)
-        self.addAction(self.actionActivateRev)
-        self.disab_shortcuts.append(self.actionActivateFile)
-        self.disab_shortcuts.append(self.actionActivateRev)
-
-        self.actionStartAtRev = QtGui.QAction('Start at rev.', self)
-        self.actionStartAtRev.setShortcuts([Qt.Key_Backspace,])
-        connect(self.actionStartAtRev, SIGNAL('triggered()'),
-                self.startAtCurrentRev)
-        self.addAction(self.actionStartAtRev)
-
-        self.actionClearStartAtRev = QtGui.QAction('Clear start at rev.', self)
-        self.actionClearStartAtRev.setShortcuts([Qt.SHIFT + Qt.Key_Backspace,])
-        connect(self.actionClearStartAtRev, SIGNAL('triggered()'),
-                self.clearStartAtRev)
-        self.addAction(self.actionClearStartAtRev)
 
     def toggleMainContent(self, visible=None):
         if visible is None:
@@ -359,20 +341,6 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin, _HgRepoViewer):
         self.frame_maincontent.setVisible(visible)
         if visible:
             self.revision_selected(-1)
-
-    def startAtCurrentRev(self):
-        crev = self.tableView_revisions.current_rev
-        if crev:
-            self.startrev_entry.setText(str(crev))
-            # XXX workaround: see refreshRevisionTable method
-            self.refreshRevisionTable(sender=self)
-
-    def clearStartAtRev(self):
-        self.startrev_entry.setText("")
-        self._reload_rev = self.tableView_revisions.current_rev
-        self._reload_file = self.tableView_filelist.currentFile()
-        # XXX workaround: see refreshRevisionTable method
-        self.refreshRevisionTable(sender=self)
 
     def setMode(self, mode):
         self.textview_status.setMode(mode)
@@ -437,12 +405,25 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin, _HgRepoViewer):
                 self.toggleMainContent)
         connect(view, SIGNAL('revisionSelected'), self.revision_selected)
         connect(view, SIGNAL('revisionActivated'), self.revision_activated)
+        connect(view, SIGNAL('startFromRev'), self.start_from_rev)
         connect(self.textview_header, SIGNAL('revisionSelected'), view.goto)
-        connect(self.textview_header, SIGNAL('parentRevisionSelected'), self.textview_status.displayDiff)
+        connect(self.textview_header, SIGNAL('parentRevisionSelected'),
+                self.textview_status.displayDiff)
         self.attachQuickBar(view.goto_toolbar)
         gotoaction = view.goto_toolbar.toggleViewAction()
         gotoaction.setIcon(geticon('goto'))
         self.toolBar_edit.addAction(gotoaction)
+
+    def start_from_rev(self, rev=None, follow=False):
+        if rev == self.startrev_entry:
+            rev = str(self.startrev_entry.text()).strip() or None
+        if follow == self.startrev_follow_action:
+            follow = self.startrev_follow_action.isChecked()
+
+        self.startrev_entry.setText(str(rev or ''))
+        self.startrev_follow_action.setChecked(follow)
+
+        self.refreshRevisionTable(rev=rev, follow=follow)
 
     def _setup_table(self, table):
         table.setTabKeyNavigation(False)
@@ -543,28 +524,21 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin, _HgRepoViewer):
         self.setupBranchCombo()
         self.setupModels()
         # XXX workaround: see refreshRevisionTable method
-        self.refreshRevisionTable(sender=self)
+        self.refreshRevisionTable()
 
     #@timeit
     def refreshRevisionTable(self, *args, **kw):
         """Starts the process of filling the HgModel"""
-        branch = self.branch_comboBox.currentText()
-        branch = str(branch)
-        startrev = str(self.startrev_entry.text()).strip()
-        if not startrev:
-            startrev = None
+        branch = str(self.branch_comboBox.currentText())
+        startrev = kw.get('rev', None)
         # XXX workaround: self.sender() may provoque a core dump if
         # this method is called directly (not via a connected signal);
         # the 'sender' keyword is a way to discrimimne that the method
         # has been called directly (thus caller MUST set this kw arg)
         sender = kw.get('sender') or self.sender()
-        if sender is self.startrev_follow_action and startrev is None:
-            return
+        follow = kw.get('follow', False)
         startrev = self.repo.changectx(startrev).rev()
-        follow = self.startrev_follow_action.isChecked()
         self.repomodel.show_hidden = self.actionShowHidden.isChecked()
-        self.revscompl_model.setStringList(self.repo.tags().keys())
-
         self.repomodel.setRepo(self.repo, branch=branch, fromhead=startrev,
                                follow=follow)
 

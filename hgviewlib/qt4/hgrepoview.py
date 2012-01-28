@@ -16,6 +16,7 @@
 Qt4 high level widgets for hg repo changelogs and filelogs
 """
 import sys
+from collections import namedtuple
 
 from mercurial.node import hex, short as short_hex, bin as short_bin
 try:
@@ -131,11 +132,45 @@ class HgRepoView(QtGui.QTableView):
                 self.goto)
 
     def _action_defs(self):
-        a = [("back", self.tr("Back"), 'back', None, QtGui.QKeySequence(QtGui.QKeySequence.Back), self.back),
-             ("forward", self.tr("Forward"), 'forward', None, QtGui.QKeySequence(QtGui.QKeySequence.Forward), self.forward),
-             ("manifest", self.tr("Show at rev..."), None, self.tr("Show the manifest at selected revision"), None, self.showAtRev),
+        ActDef = namedtuple('ActDef', ['name', 'desc', 'icon', 'tip', 'keys', 'cb'])
+        return [
+            ActDef(name="back",
+                   desc=self.tr("Previous visited"),
+                   icon='back',
+                   tip=self.tr("Barward to the previous visited changeset"),
+                   keys=[QtGui.QKeySequence(QtGui.QKeySequence.Back)],
+                   cb=self.back),
+            ActDef(name="forward",
+                   desc=self.tr("Next visited"),
+                   icon='forward',
+                   tip=self.tr("Forward to the next visited changeset"),
+                   keys=[QtGui.QKeySequence(QtGui.QKeySequence.Forward)],
+                   cb=self.forward),
+            ActDef(name="manifest",
+                   desc=self.tr("Manifest"),
+                   icon=None,
+                   tip=self.tr("Show the manifest at selected revision"),
+                   keys=[Qt.SHIFT + Qt.Key_Enter, Qt.SHIFT + Qt.Key_Return],
+                   cb=self.showAtRev),
+            ActDef(name="start",
+                   desc=self.tr("Hide higher revisions"),
+                   icon=None,
+                   tip=self.tr("Start graph from this revision"),
+                   keys=[Qt.Key_Backspace],
+                   cb=self.startFromRev),
+            ActDef(name="follow",
+                   desc=self.tr("Focus on ancestors"),
+                   icon=None,
+                   tip=self.tr("Follow revision history from this revision"),
+                   keys=[Qt.SHIFT + Qt.Key_Backspace],
+                   cb=self.followFromRev),
+            ActDef(name="unfilter",
+                   desc=self.tr("Show all changesets"),
+                   icon="unfilter",
+                   tip=self.tr("Remove filter and show all changesets"),
+                   keys=[Qt.ALT + Qt.CTRL + Qt.Key_Backspace],
+                   cb=self.removeFilter),
              ]
-        return a
 
     def createActions(self):
         self._actions = {}
@@ -144,24 +179,38 @@ class HgRepoView(QtGui.QTableView):
         QtCore.QTimer.singleShot(0, self.configureActions)
 
     def configureActions(self):
-        for name, desc, icon, tip, key, cb in self._action_defs():
+        for name, desc, icon, tip, keys, cb in self._action_defs():
             act = self._actions[name]
             if icon:
                 act.setIcon(geticon(icon))
             if tip:
                 act.setStatusTip(tip)
-            if key:
-                act.setShortcut(key)
+            if keys:
+                act.setShortcuts(keys)
             if cb:
                 connect(act, SIGNAL('triggered()'), cb)
             self.addAction(act)
+        self._actions['unfilter'].setEnabled(False)
+        connect(self, SIGNAL('startFromRev'), self.update_filter_action)
+
+    def update_filter_action(self, rev=None, follow=None):
+        self._actions['unfilter'].setEnabled(rev is not None)
 
     def showAtRev(self):
         self.emit(SIGNAL('revisionActivated'), self.current_rev)
 
+    def startFromRev(self):
+        self.emit(SIGNAL('startFromRev'), self.current_rev, False)
+
+    def followFromRev(self):
+        self.emit(SIGNAL('startFromRev'), self.current_rev, True)
+
+    def removeFilter(self):
+        self.emit(SIGNAL('startFromRev'))
+
     def contextMenuEvent(self, event):
         menu = QtGui.QMenu(self)
-        for act in ['manifest', None, 'back', 'forward']:
+        for act in ['manifest', None, 'start', 'follow', 'unfilter', None, 'back', 'forward']:
             if act:
                 menu.addAction(self._actions[act])
             else:

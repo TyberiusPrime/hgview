@@ -20,5 +20,6 @@
     <file>icons/mqpatch.svg</file>
     <file>icons/mqpatch_x.svg</file>
     <file>icons/content.png</file>
+    <file>icons/unfilter.png</file>
   </qresource>
 </RCC>
