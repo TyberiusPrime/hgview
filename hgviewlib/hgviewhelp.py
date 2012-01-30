@@ -86,6 +86,16 @@ The area where current revision's metadata is displayed
   of its parents, or even with the common ancestor of these 2
   nodes.
 
+Revision description rendering
+------------------------------
+
+The revision's description text is interpreted as ReStructuredText.
+So, commit message may contains formatted text, links, tables, references, etc.
+
+Links with href as node/revision number/tag allows to jump to another revision::
+
+  `links in fancy view open browser <e449146a687d7ca71520>`_
+
 
 Revision's modified file list
 -----------------------------

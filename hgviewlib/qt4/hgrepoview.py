@@ -353,7 +353,9 @@ class HgRepoView(QtGui.QTableView):
 
     def goto(self, rev):
         """
-        Select revision 'rev' (can be anything understood by repo.changectx())
+        Select revision 'rev'.
+        It can be anything understood by repo.changectx():
+          revision number, node or tag for instance.
         """
         if isinstance(rev, basestring) and ':' in rev:
             rev = rev.split(':')[1]
@@ -407,16 +409,24 @@ class RevDisplay(QtGui.QTextBrowser):
         Callback called when a link is clicked in the text browser
         """
         rev = str(qurl.toString())
+        diff = False
         if rev.startswith('diff_'):
-            self.diffrev = int(rev[5:])
+            rev = int(rev[5:])
+            diff = True
+
+        try:
+            rev = self.ctx._repo.changectx(rev).rev()
+        except RepoError:
+            QtGui.QDesktopServices.openUrl(qurl)
+            self.refreshDisplay()
+
+        if diff:
+            self.diffrev = rev
             self.refreshDisplay()
             # TODO: emit a signal to recompute the diff
             self.emit(SIGNAL('parentRevisionSelected'), self.diffrev)
-        elif rev.isdigit():
-            self.emit(SIGNAL('revisionSelected'), rev)
         else:
-            QtGui.QDesktopServices.openUrl(qurl)
-            self.refreshDisplay()
+            self.emit(SIGNAL('revisionSelected'), rev)
 
     def setDiffRevision(self, rev):
         if rev != self.diffrev:
