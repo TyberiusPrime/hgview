@@ -21,5 +21,5 @@ try:
 except ImportError:
     from mercurial import cmdutil
     def match(ctx, *args, **kwargs):
-        cmdutil.match(ctx._repo, *args, **kwargs)
+        return cmdutil.match(ctx._repo, *args, **kwargs)
 
