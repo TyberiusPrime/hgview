@@ -115,7 +115,7 @@ def inotify(mainloop):
             # Also ignore hg-checkexec* files that are created by mercurial
             # to check available file status.
             for fname in self.read_events():
-                if fname.startswith('hg-checkexec'):
+                if fname.startswith(('hg-checkexec', 'hg-checklink')):
                     break
                 if self.repo.dirstate._dirignore(fname):
                     break
