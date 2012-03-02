@@ -17,6 +17,20 @@
 """
 console interface for hgview.
 """
+
+# disable lazy import for urwid
+from mercurial import demandimport
+demandimport.ignore.extend([
+    'urwid.html_fragment', 'urwid.tests', 'urwid', 'urwid.escape',
+    'urwid.command_map', 'urwid.signals', 'urwid.version', 'urwid.util',
+    'urwid.display_common', 'urwid.font', 'urwid.old_str_util',
+    'urwid.lcd_display', 'urwid.raw_display', 'urwid.split_repr',
+    'urwid.listbox', 'urwid.decoration', 'urwid.widget', 'urwid.graphics',
+    'urwid.wimp', 'urwid.container', 'urwid.web_display',
+    'urwid.curses_display', 'urwid.text_layout', 'urwid.compat',
+    'urwid.main_loop', 'urwid.monitored_list', 'urwid.__init__',
+    'urwid.vterm_test', 'urwid.treetools', 'urwid.canvas', 'urwid.vterm'])
+
 # use __all__ in the corresponding modules
 # pylint: disable-msg=W0401
 from hgviewlib.curses.utils import *

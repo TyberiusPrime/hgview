@@ -249,7 +249,10 @@ class MqFileCtx(context.filectx):
 
     def files(self):
         """List of modified files"""
-        return tuple(path for path in (self._path, self._oldpath) if path)
+        return tuple(path for path in (self._path, self._oldpath)
+                     if path and not os.devnull.endswith(path))
+    # note endswith is used as the complete path have been cut
+    # (expecting ``a/`` at the beginning of path)
 
     def data(self):
         """ return the patch hunks"""

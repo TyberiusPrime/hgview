@@ -120,12 +120,16 @@ def start(repo, opts, args, fnerror):
             from hgviewlib.qt4.application import HgViewQtApplication as Application
             opts.interface = 'qt'
         except ImportError:
+            if '--traceback' in sys.argv:
+                raise
             pass
     if not opts.interface or opts.interface in ('raw', 'curses'):
         try:
             from hgviewlib.curses.application import HgViewUrwidApplication as Application
             opts.interface = 'raw'
         except ImportError:
+            if '--traceback' in sys.argv:
+                raise
             pass
     if not opts.interface:
         fnerror('No interface found')
