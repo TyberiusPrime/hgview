@@ -31,7 +31,7 @@ nullvariant = QtCore.QVariant()
 
 from hgviewlib.decorators import timeit
 from hgviewlib.config import HgConfig
-from hgviewlib.util import format_desc, xml_escape
+from hgviewlib.util import format_desc, xml_escape, tounicode
 from hgviewlib.qt4 import icon as geticon
 from hgviewlib.qt4.hgmanifestdialog import ManifestViewer
 from hgviewlib.qt4.quickbar import QuickBar
@@ -446,7 +446,7 @@ class RevDisplay(QtGui.QTextBrowser):
 
         buf += '<td><b>Author:</b>&nbsp;'\
                '%s</td>'\
-               '\n' %  unicode(ctx.user(), 'utf-8', 'replace')
+               '\n' %  tounicode(ctx.user())
         buf += '<td><b>Branch:</b>&nbsp;%s</td>' % ctx.branch()
         buf += '</tr>'
         buf += "</table>\n"
@@ -494,7 +494,7 @@ class RevDisplay(QtGui.QTextBrowser):
                        '\n' % (p.rev(), p.rev(), short, desc)
 
         buf += "</table>\n"
-        desc = unicode(ctx.description(), 'utf-8', 'replace')
+        desc = tounicode(ctx.description())
         if self.rst_action is not None  and self.rst_action.isChecked():
             replace = cfg.getFancyReplace()
             if replace:
