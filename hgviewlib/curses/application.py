@@ -274,6 +274,7 @@ PALETTE = [
     ('Author', 'dark blue', 'default', 'bold'),
     ('Date', 'dark green', 'default', 'bold'),
     ('Tags', 'yellow', 'dark red', 'bold'),
+    ('Bookmarks', 'default', 'dark blue'),
     ('Branch', 'yellow', 'default', 'bold'),
     ('Filename', 'white', 'default', 'bold'),
 

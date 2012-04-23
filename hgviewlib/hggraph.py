@@ -531,7 +531,7 @@ class HgRepoListWalker(object):
     configurations.
     """
     _allcolumns = ('ID', 'Branch', 'Log', 'Author', 'Date', 'Tags',)
-    _columns = ('ID', 'Branch', 'Log', 'Author', 'Date', 'Tags',)
+    _columns = ('ID', 'Branch', 'Log', 'Author', 'Date', 'Tags', 'Bookmarks')
     _stretchs = {'Log': 1, }
     _getcolumns = "getChangelogColumns"
 

@@ -43,6 +43,7 @@ _COLUMNMAP = {
     'Author': lambda m, c, g: tounicode(c.user().split('<',1)[0]),
     'Date': getdate,
     'Tags': gettags,
+    'Bookmarks': lambda m, c, g: ', '.join(c.bookmarks() or ()),
     'Branch': lambda m, c, g: c.branch() != 'default' and c.branch(),
     'Filename': lambda m, c, g: g.extra[0],
     'Phase': lambda model, ctx, gnode: ctx.phasestr(),
@@ -58,7 +59,7 @@ class RevisionsWalker(ListWalker):
     signals = ['focus changed']
     _columns = HgRepoListWalker._columns
 
-    _allfields = (('Branch', 'Tags', 'Log'),)
+    _allfields = (('Bookmarks', 'Branch', 'Tags', 'Log'),)
     _allcolumns = (('Date', 16), ('Author', 20), ('ID', 6),)
 
     def __init__(self, walker, branch='', fromhead=None, follow=False,

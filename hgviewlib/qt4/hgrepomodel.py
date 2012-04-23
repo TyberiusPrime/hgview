@@ -196,6 +196,9 @@ class HgRepoListModel(QtCore.QAbstractTableModel, HgRepoListWalker):
                 return QtCore.QVariant(self.user_name(_columnmap[column](self, ctx, gnode)))
             elif column == 'Log':
                 msg = _columnmap[column](self, ctx, gnode)
+                bookmarks = ctx.bookmarks()
+                if bookmarks:
+                    msg = '<%s> ~ %s' % (','.join(bookmarks), msg)
                 return QtCore.QVariant(msg)
             return QtCore.QVariant(_columnmap[column](self, ctx, gnode))
         elif role == QtCore.Qt.ToolTipRole:
