@@ -121,7 +121,7 @@ def ismerge(ctx):
         return len(ctx.parents()) == 2 and ctx.parents()[1]
     return False
 
-def _graph_iterator(repo, start_rev, stop_rev):
+def _graph_iterator(repo, start_rev, stop_rev, show_hidden=False):
     """Iter thought revisions from start_rev to stop_rev (included)
     Handle Working directory as None.
     """
@@ -134,7 +134,7 @@ def _graph_iterator(repo, start_rev, stop_rev):
 
     target_revs = xrange(start_rev, stop_rev-1, -1)
     phaserev = getattr(repo, '_phaserev', None)
-    if phaserev is None:
+    if show_hidden or phaserev is None:
         # old hg
         for curr_rev in target_revs:
             yield curr_rev
@@ -190,7 +190,7 @@ def revision_grapher(repo, start_rev=None, stop_rev=0, branch=None, follow=False
     rev_color = {}
     free_color = count(0)
     hiddenrevs = getattr(repo.changelog, 'hiddenrevs', ())
-    for curr_rev in _graph_iterator(repo, start_rev, stop_rev):
+    for curr_rev in _graph_iterator(repo, start_rev, stop_rev, show_hidden):
         # Compute revs and next_revs.
         if (not show_hidden) and curr_rev in hiddenrevs:
             continue
