@@ -127,11 +127,24 @@ def _graph_iterator(repo, start_rev, stop_rev):
     """
     # check parameters
     assert start_rev is None or start_rev >= stop_rev
+    assert start_rev < len(repo)
     if start_rev is None:
         yield start_rev
-        start_rev = len(repo.changelog)
-    for curr_rev in xrange(start_rev, stop_rev-1, -1):
-        yield curr_rev
+        start_rev = len(repo.changelog) -1
+
+    target_revs = xrange(start_rev, stop_rev-1, -1)
+    phaserev = getattr(repo, '_phaserev', None)
+    if phaserev is None:
+        # old hg
+        for curr_rev in target_revs:
+            yield curr_rev
+    else:
+        data = [(bool(phaserev[r]), r) for r in target_revs]
+        data.sort(reverse=True)
+        for _, r in data:
+            yield r
+
+
 
 def revision_grapher(repo, start_rev=None, stop_rev=0, branch=None, follow=False, show_hidden=False):
     """incremental revision grapher
@@ -168,7 +181,7 @@ def revision_grapher(repo, start_rev=None, stop_rev=0, branch=None, follow=False
 
     # No uncommited change
     if start_rev is None and repo.status() == ([],)*7:
-        start_rev = len(repo.changelog)
+        start_rev = len(repo.changelog) -1
     assert start_rev is None or start_rev >= stop_rev
 
     # all known revs for this line. This is used to compute column index
