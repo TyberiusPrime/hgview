@@ -185,6 +185,9 @@ class MqChangeCtx(MqCtx):
     def node(self):
         '''Return the name of the patch'''
         return self.name
+    @property
+    def _node(self):
+        return self.node() # in that way to support old hg
 
     def parents(self):
         if self._header.parent:
