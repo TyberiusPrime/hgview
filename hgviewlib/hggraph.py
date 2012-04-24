@@ -121,7 +121,7 @@ def ismerge(ctx):
         return len(ctx.parents()) == 2 and ctx.parents()[1]
     return False
 
-def _graph_iterator(repo, start_rev, stop_rev, show_hidden=False):
+def _graph_iterator(repo, start_rev, stop_rev, reorder=False):
     """Iter thought revisions from start_rev to stop_rev (included)
     Handle Working directory as None.
     """
@@ -134,7 +134,7 @@ def _graph_iterator(repo, start_rev, stop_rev, show_hidden=False):
 
     target_revs = xrange(start_rev, stop_rev-1, -1)
     phaserev = getattr(repo, '_phaserev', None)
-    if show_hidden or phaserev is None:
+    if not reorder or phaserev is None:
         # old hg
         for curr_rev in target_revs:
             yield curr_rev
@@ -146,7 +146,8 @@ def _graph_iterator(repo, start_rev, stop_rev, show_hidden=False):
 
 
 
-def revision_grapher(repo, start_rev=None, stop_rev=0, branch=None, follow=False, show_hidden=False):
+def revision_grapher(repo, start_rev=None, stop_rev=0, branch=None, follow=False,
+                     show_hidden=False, reorder=False):
     """incremental revision grapher
 
     This generator function walks through the revision history from
@@ -190,7 +191,7 @@ def revision_grapher(repo, start_rev=None, stop_rev=0, branch=None, follow=False
     rev_color = {}
     free_color = count(0)
     hiddenrevs = getattr(repo.changelog, 'hiddenrevs', ())
-    for curr_rev in _graph_iterator(repo, start_rev, stop_rev, show_hidden):
+    for curr_rev in _graph_iterator(repo, start_rev, stop_rev, not show_hidden and reorder):
         # Compute revs and next_revs.
         if (not show_hidden) and curr_rev in hiddenrevs:
             continue
@@ -580,7 +581,8 @@ class HgRepoListWalker(object):
             self.namedbranch_color(branch_name)
         grapher = revision_grapher(self.repo, start_rev=fromhead,
                                    follow=follow, branch=branch,
-                                   show_hidden=self.show_hidden)
+                                   show_hidden=self.show_hidden,
+                                   reorder=self.reorder_changesets)
         self.graph = Graph(self.repo, grapher, self.max_file_size)
         self.rowcount = 0
         self.heads = [self.repo.changectx(x).rev() for x in self.repo.heads()]
@@ -632,6 +634,7 @@ class HgRepoListWalker(object):
         self.max_file_size = cfg.getMaxFileSize()
         self.hide_mq_tags = cfg.getMQHideTags()
         self.show_hidden = cfg.getShowHidden()
+        self.reorder_changesets = cfg.getNonPublicOnTop()
 
         cols = getattr(cfg, self._getcolumns)()
         if cols is not None:

@@ -308,6 +308,12 @@ class HgConfig(object):
         """
         return self.ui.config(self.section, 'interface', default)
 
+    @cached
+    def getNonPublicOnTop(self, default=False):
+        """
+        nonpublicontop: display non public changesets on top of the graph log (disabled with *show hidden*)
+        """
+        return bool(self.ui.config(self.section, 'nonpublicontop', default))
 
 
 _HgConfig = HgConfig
