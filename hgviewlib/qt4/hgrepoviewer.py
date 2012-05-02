@@ -467,12 +467,20 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin, _HgRepoViewer):
                         (self.repo.root, ".hg", "dirstate"),
                         (self.repo.root, ".hg", "store", "phasesroots"),]
         watchedfiles = [os.path.join(*wf) for wf in watchedfiles]
-        mtime = [os.path.getmtime(wf) for wf in watchedfiles \
-                 if os.path.exists(wf)]
-        if mtime:
-            return max(mtime)
-        # humm, directory has probably been deleted, exiting...
-        self.close()
+        for l in (self.repo.sjoin('lock'), self.repo.join('wlock')):
+            try:
+                if util.readlock(l):
+                    break
+            except OSError, err:
+                if err.errno != 2:
+                    raise
+        else: # repo not locked by an Hg operation
+            mtime = [os.path.getmtime(wf) for wf in watchedfiles \
+                     if os.path.exists(wf)]
+            if mtime:
+                return max(mtime)
+            # humm, directory has probably been deleted, exiting...
+            self.close()
 
     def reload(self):
         """Reload the repository"""
