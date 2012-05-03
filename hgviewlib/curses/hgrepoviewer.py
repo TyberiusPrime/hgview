@@ -64,9 +64,10 @@ class GraphlogViewer(Body):
 
     def register_commands(self):
         '''Register commands and connect commands for bodies'''
+        cnvt = lambda entry: self.walker.repo[entry].rev()
         register_command(
                 ('goto', 'g'), 'Set focus on a particular revision',
-                CA('revision', int,
+                CA('revision', cnvt,
                 'The revision number to focus on (default to last)'))
         register_command(
                 ('toggle-hidden',), 'Show/hide hidden changesets',)
