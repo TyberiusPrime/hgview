@@ -551,6 +551,12 @@ class RevDisplay(QtGui.QTextBrowser):
                        '<a title="go to" href="%s" class="rev_hash">%s</a>&nbsp;'\
                        '<span class="short_desc"><i>%s</i></span></td></tr>'\
                        '\n' % (p.rev(), p.rev(), short, desc)
+        bookmarks = ', '.join(ctx.bookmarks())
+        if bookmarks:
+            buf += '<tr><td width=50 class="label"><b>Bookmarks:</b></td>'\
+                   '<td colspan=5>&nbsp;'\
+                   '<span class="short_desc">%s</span></td></tr>'\
+                   '\n' % bookmarks
 
         buf += "</table>\n"
         desc = tounicode(ctx.description())
