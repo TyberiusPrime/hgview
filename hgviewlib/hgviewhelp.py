@@ -205,7 +205,20 @@ def get_options_helpmsg(rest=False):
 Configuration options
 =====================
 
-These should be set under the [hgview] section of the hgrc config file.
+These should be set under the ``[hgview]`` section of the hgrc config file.
+
+:Note: *Per-interface configuration* is permitted.
+       You can add a ``"interface."`` prefix to each option
+       (where ``interface`` is an interface name like ``qt`` or ``raw``)
+       in order to target a particular interface.
+
+       Without any prefix, the value is available for all interfaces, as
+       global configuration value.
+
+       Both per-interface and global configuration values can be set.
+       For each option, per-interface configuration values take precedance
+       over the global configuration value.
+
 
 """
     msg += '\n'.join(["- " + v for v in options]) + '\n'

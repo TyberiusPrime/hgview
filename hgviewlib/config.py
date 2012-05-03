@@ -48,6 +48,17 @@ class HgConfig(object):
         self.section = section
         self._cache = {}
 
+    def _fromconfig(self, name, default):
+        '''allow per-interface configuration.
+        look for ``interface.config`` then for ``config`` if the first were not
+        found'''
+        out = self.ui.config(self.section,
+                             '.'.join((self.ui.opts.interface, name)),
+                             None)
+        if out is not None:
+            return out
+        return self.ui.config(self.section, name, default)
+
     @cached
     def getFancyReplace(self):
         r"""
@@ -55,7 +66,7 @@ class HgConfig(object):
             ``patt`` by ``repl`` using regular expression (``re.sub`` for instance).
             Ex: "#(\d+)":"`#\\1 <http://www.logilab.org/ticket/\\1>`_"
         """
-        data = self.ui.config(self.section, 'fancyreplace', None)
+        data = self._fromconfig('fancyreplace', None)
         if data is None:
             return data
         data = shlex.split(data)
@@ -65,26 +76,25 @@ class HgConfig(object):
 
 
     @cached
-    def getFont(self):
+    def getFont(self, default='Monospace'):
         """
         font: default font used to display diffs and files. Use Qt4 format.
         """
-        return self.ui.config(self.section, 'font', 'Monospace')
+        return self._fromconfig('font', default)
 
     @cached
     def getFontSize(self, default=9):
         """
         fontsize: text size in file content viewer
         """
-        return int(self.ui.config(self.section, 'fontsize', default))
+        return int(self._fromconfig('fontsize', default))
 
     @cached
     def getDotRadius(self, default=8):
         """
         dotradius: radius (in pixels) of the dot in the revision graph
         """
-        r = self.ui.config(self.section, 'dotradius', default)
-        return int(r)
+        return int(self._fromconfig('dotradius', default))
 
     @cached
     def getUsers(self):
@@ -93,8 +103,7 @@ class HgConfig(object):
         """
         users = {}
         aliases = {}
-        usersfile = self.ui.config(self.section, 'users',
-                                   os.path.join('~', ".hgusers"))
+        usersfile = self._fromconfig('users', os.path.join('~', ".hgusers"))
         cfgfile = None
         if usersfile:
             try:
@@ -132,59 +141,59 @@ class HgConfig(object):
           :asfile: compact view with changeset description in the file list
           :persistent: persistent view with changeset description always visible (default)
         """
-        return self.ui.config(self.section, 'descriptionview', default).lower()
+        return self._fromconfig('descriptionview', default).lower()
 
     @cached
     def getFileDescriptionColor(self, default='magenta'):
         """
         filedescriptioncolor: display color of the "description" entry
         """
-        return self.ui.config(self.section, 'filedescriptioncolor', default)
+        return self._fromconfig('filedescriptioncolor', default)
     @cached
     def getFileModifiedColor(self, default='blue'):
         """
         filemodifiedcolor: display color of a modified file
         """
-        return self.ui.config(self.section, 'filemodifiedcolor', default)
+        return self._fromconfig('filemodifiedcolor', default)
     @cached
     def getFileRemovedColor(self, default='red'):
         """
         fileremovedcolor: display color of a removed file
         """
-        return self.ui.config(self.section, 'fileremovededcolor', default)
+        return self._fromconfig('fileremovededcolor', default)
     @cached
     def getFileDeletedColor(self, default='darkred'):
         """
         filedeletedcolor: display color of a deleted file
         """
-        return self.ui.config(self.section, 'filedeletedcolor', default)
+        return self._fromconfig('filedeletedcolor', default)
     @cached
     def getFileAddedColor(self, default='green'):
         """
         fileaddedcolor: display color of an added file
         """
-        return self.ui.config(self.section, 'fileaddedcolor', default)
+        return self._fromconfig('fileaddedcolor', default)
 
     @cached
     def getRowHeight(self, default=20):
         """
         rowheight: height (in pixels) on a row of the revision table
         """
-        return int(self.ui.config(self.section, 'rowheight', default))
+        return int(self._fromconfig('rowheight', default))
 
     @cached
     def getHideFindDelay(self, default=10000):
         """
         hidefinddelay: delay (in ms) after which the find bar will disappear
         """
-        return int(self.ui.config(self.section, 'hidefindddelay', default))
+        return int(self._fromconfig('hidefindddelay', default))
 
     @cached
     def getFillingStep(self, default=300):
         """
         fillingstep: number of nodes 'loaded' at a time when updating repo graph log
         """
-        return int(self.ui.config(self.section, 'fillingstep', default))
+        return int(self._fromconfig('fillingstep', default))
 
     @cached
     def getChangelogColumns(self, default=None):
@@ -192,7 +201,7 @@ class HgConfig(object):
         changelogcolumns: ordered list of displayed columns in changelog views;
                     defaults to ID, Branch, Log, Author, Date, Tags
         """
-        cols = self.ui.config(self.section, 'changelogcolumns', default)
+        cols = self._fromconfig('changelogcolumns', default)
         if cols is None:
             return None
         return [col.strip() for col in cols.split(',') if col.strip()]
@@ -203,7 +212,7 @@ class HgConfig(object):
         filelogcolumns: ordered list of displayed columns in filelog views;
                   defaults to ID, Log, Author, Date
         """
-        cols = self.ui.config(self.section, 'filelogcolumns', default)
+        cols = self._fromconfig('filelogcolumns', default)
         if cols is None:
             return None
         return [col.strip() for col in cols.split(',') if col.strip()]
@@ -214,7 +223,7 @@ class HgConfig(object):
         displaydiffstats: flag controllong the appearance of the
                     'Diff' column in a revision's file list
         """
-        val = str(self.ui.config(self.section, 'displaydiffstats', default))
+        val = str(self._fromconfig('displaydiffstats', default))
         return val.lower() in ['true', 'yes', '1', 'on']
 
     @cached
@@ -222,84 +231,84 @@ class HgConfig(object):
         """
         maxfilesize: max size of a file (for diff computations, display content, etc.)
         """
-        return int(self.ui.config(self.section, 'maxfilesize', default))
+        return int(self._fromconfig('maxfilesize', default))
 
     @cached
     def getDiffBGColor(self, default='black'):
         """
         diffbgcolor: background color of diffs
         """
-        return self.ui.config(self.section, 'diffbgcolor', default)
+        return self._fromconfig('diffbgcolor', default)
 
     @cached
     def getDiffFGColor(self, default='white'):
         """
         difffgcolor: text color of diffs
         """
-        return self.ui.config(self.section, 'difffgcolor', default)
+        return self._fromconfig('difffgcolor', default)
 
     @cached
     def getDiffPlusColor(self, default='green'):
         """
         diffpluscolor: text color of added lines in diffs
         """
-        return self.ui.config(self.section, 'diffpluscolor', default)
+        return self._fromconfig('diffpluscolor', default)
 
     @cached
     def getDiffMinusColor(self, default='red'):
         """
         diffminuscolor: text color of removed lines in diffs
         """
-        return self.ui.config(self.section, 'diffminuscolor', default)
+        return self._fromconfig('diffminuscolor', default)
 
     @cached
     def getDiffSectionColor(self, default='magenta'):
         """
         diffsectioncolor: text color of new section in diffs
         """
-        return self.ui.config(self.section, 'diffsectioncolor', default)
+        return self._fromconfig('diffsectioncolor', default)
 
     @cached
     def getMQFGColor(self, default='#ff8183'):
         """
         mqfgcolor: bg color to highlight mq patches
         """
-        return self.ui.config(self.section, 'mqfgcolor', default)
+        return self._fromconfig('mqfgcolor', default)
 
     @cached
     def getMQHideTags(self, default=False):
         """
         mqhidetags: hide mq tags
         """
-        return self.ui.config(self.section, 'mqhidetags', default)
+        return self._fromconfig('mqhidetags', default)
 
     @cached
     def getToolBarRevAtStartup(self, default=True):
         """
         toolbarrev: show hidden changeset at startup
         """
-        return bool(self.ui.config(self.section, 'toolbarrev', default))
+        return bool(self._fromconfig('toolbarrev', default))
 
     @cached
     def getToolBarDiffAtStartup(self, default=True):
         """
         toolbardiff: show hidden changeset at startup
         """
-        return bool(self.ui.config(self.section, 'toolbardiff', default))
+        return bool(self._fromconfig('toolbardiff', default))
 
     @cached
     def getContentAtStartUp(self, default=True):
         """
         contentatstartup: show the content of changeset at startup (bottom part)
         """
-        return bool(self.ui.config(self.section, 'contentatstartup', default))
+        return bool(self._fromconfig('contentatstartup', default))
 
     @cached
     def getShowHidden(self, default=False):
         """
         showhidden: show hidden changeset at startup
         """
-        return bool(self.ui.config(self.section, 'showhidden', default))
+        return bool(self._fromconfig('showhidden', default))
 
     @cached
     def getInterface(self, default=None):
@@ -311,9 +320,10 @@ class HgConfig(object):
     @cached
     def getNonPublicOnTop(self, default=False):
         """
-        nonpublicontop: display non public changesets on top of the graph log (disabled with *show hidden*)
+        nonpublicontop: display non public changesets on top of the graph log
+                        (disabled with *show hidden*)
         """
-        return bool(self.ui.config(self.section, 'nonpublicontop', default))
+        return bool(self._fromconfig('nonpublicontop', default))
 
 
 _HgConfig = HgConfig

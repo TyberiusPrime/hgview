@@ -109,8 +109,8 @@ def start(repo, opts, args, fnerror):
     """
     start hgview
     """
-
     config = HgConfig(repo.ui)
+    repo.ui.opts = opts
     if not opts.interface:
         opts.interface = config.getInterface()
 
@@ -126,7 +126,7 @@ def start(repo, opts, args, fnerror):
     if not opts.interface or opts.interface in ('raw', 'curses'):
         try:
             from hgviewlib.curses.application import HgViewUrwidApplication as Application
-            opts.interface = 'raw'
+            opts.interface = opts.interface or 'raw'
         except ImportError:
             if '--traceback' in sys.argv:
                 raise
