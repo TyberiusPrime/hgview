@@ -776,8 +776,11 @@ class ManifestModel(QtCore.QAbstractItemModel):
             return self.rootItem.columnCount()
 
     def setupModelData(self):
-        rootData = ["rev %s:%s" % (self.changectx.rev(),
-                                   short_hex(self.changectx.node()))]
+        if self.changectx.rev() is not None:
+            rootData = ["rev %s:%s" % (self.changectx.rev(),
+                                       short_hex(self.changectx.node()))]
+        else:
+            rootData = ['Working Directory']
         self.rootItem = TreeItem(rootData)
 
         for path in sorted(self.changectx.manifest()):
