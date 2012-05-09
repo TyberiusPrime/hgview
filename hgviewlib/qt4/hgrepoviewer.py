@@ -77,8 +77,6 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin, _HgRepoViewer):
 
         # setup tables and views
         self.setupHeaderTextview()
-        connect(self.textview_status, SIGNAL('fileDisplayed'),
-                self.file_displayed)
         self.setupBranchCombo()
         self.setupModels(fromhead)
         if fromhead:
@@ -144,7 +142,9 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin, _HgRepoViewer):
         self.toolBar_edit.addAction(findaction)
 
         # tree filters toolbar
+        self.toolBar_treefilters.addAction(self.actionShowHidden)
         self.toolBar_treefilters.addAction(self.tableView_revisions._actions['unfilter'])
+        self.toolBar_treefilters.addAction(self.actionShowHidden)
 
         self.branch_label = QtGui.QToolButton()
         self.branch_label.setText("Branch")
@@ -165,8 +165,6 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin, _HgRepoViewer):
 
         self.branch_label_action = self.toolBar_treefilters.addWidget(self.branch_label)
         self.branch_comboBox_action = self.toolBar_treefilters.addWidget(self.branch_comboBox)
-        # hidden changeset action
-        self.toolBar_treefilters.addAction(self.actionShowHidden)
         # separator
         self.toolBar_treefilters.addSeparator()
 
@@ -196,10 +194,10 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin, _HgRepoViewer):
         self.startrev_entry_action = self.toolBar_treefilters.addWidget(self.startrev_entry)
 
         # diff mode toolbar
-        self.toolBar_diff.addAction(self.actionDiffMode)
-        self.toolBar_diff.addAction(self.actionAnnMode)
-        self.toolBar_diff.addAction(self.actionNextDiff)
-        self.toolBar_diff.addAction(self.actionPrevDiff)
+        actions = self.textview_status.sci._actions
+        for action_name in ('diffmode', 'prev', 'next'):
+            self.toolBar_diff.addAction(actions[action_name])
+        self.toolBar_diff.setVisible(self.cfg.getToolBarDiffAtStartup())
 
         # rev mod toolbar
         if self.textview_header.rst_action is not None:
@@ -216,16 +214,6 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin, _HgRepoViewer):
                 self.close)
         self.actionQuit.setIcon(geticon('quit'))
         self.actionRefresh.setIcon(geticon('reload'))
-
-        self.actionDiffMode = QtGui.QAction('Diff mode', self)
-        self.actionDiffMode.setCheckable(True)
-        connect(self.actionDiffMode, SIGNAL('toggled(bool)'),
-                self.setMode)
-
-        self.actionAnnMode = QtGui.QAction('Annotate', self)
-        self.actionAnnMode.setCheckable(True)
-        connect(self.actionAnnMode, SIGNAL('toggled(bool)'),
-                self.textview_status.setAnnotate)
 
         self.actionHelp.setShortcut(Qt.Key_F1)
         self.actionHelp.setIcon(geticon('help'))
@@ -251,17 +239,6 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin, _HgRepoViewer):
         self.actionShowMainContent.setShortcut(Qt.Key_Space)
         connect(self.actionShowMainContent, SIGNAL('triggered()'),
                 self.toggleMainContent)
-
-        # Next/Prev diff (in full file mode)
-        self.actionNextDiff = QtGui.QAction(geticon('down'), 'Next diff', self)
-        self.actionNextDiff.setShortcut('Alt+Down')
-        self.actionPrevDiff = QtGui.QAction(geticon('up'), 'Previous diff', self)
-        self.actionPrevDiff.setShortcut('Alt+Up')
-        connect(self.actionNextDiff, SIGNAL('triggered()'),
-                self.nextDiff)
-        connect(self.actionPrevDiff, SIGNAL('triggered()'),
-                self.prevDiff)
-        self.actionDiffMode.setChecked(True)
 
         # Next/Prev file
         self.actionNextFile = QtGui.QAction('Next file', self)
@@ -345,19 +322,6 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin, _HgRepoViewer):
 
     def setMode(self, mode):
         self.textview_status.setMode(mode)
-        self.actionAnnMode.setEnabled(not mode)
-        self.actionNextDiff.setEnabled(not mode)
-        self.actionPrevDiff.setEnabled(not mode)
-
-    def nextDiff(self):
-        notlast = self.textview_status.nextDiff()
-        self.actionNextDiff.setEnabled(self.textview_status.fileMode() and notlast and self.textview_status.nDiffs())
-        self.actionPrevDiff.setEnabled(self.textview_status.fileMode() and self.textview_status.nDiffs())
-
-    def prevDiff(self):
-        notfirst = self.textview_status.prevDiff()
-        self.actionPrevDiff.setEnabled(self.textview_status.fileMode() and notfirst and self.textview_status.nDiffs())
-        self.actionNextDiff.setEnabled(self.textview_status.fileMode() and self.textview_status.nDiffs())
 
     def load_config(self):
         cfg = HgDialogMixin.load_config(self)
@@ -467,12 +431,6 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin, _HgRepoViewer):
         self.toggleMainContent(True)
         self._manifestdlg = ManifestViewer(self.repo, rev)
         self._manifestdlg.show()
-
-    def file_displayed(self, filename):
-        self.actionPrevDiff.setEnabled(False)
-        connect(self.textview_status, SIGNAL('filled'),
-                lambda self=self: self.actionNextDiff.setEnabled(self.textview_status.fileMode() \
-                                                                 and self.textview_status.nDiffs()))
 
     def revision_selected(self, rev):
         """

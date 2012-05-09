@@ -281,6 +281,13 @@ class HgConfig(object):
         return bool(self.ui.config(self.section, 'toolbarrev', default))
 
     @cached
+    def getToolBarDiffAtStartup(self, default=True):
+        """
+        toolbardiff: show hidden changeset at startup
+        """
+        return bool(self.ui.config(self.section, 'toolbardiff', default))
+
+    @cached
     def getContentAtStartUp(self, default=True):
         """
         contentatstartup: show the content of changeset at startup (bottom part)

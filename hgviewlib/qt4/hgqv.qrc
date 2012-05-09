@@ -22,5 +22,6 @@
     <file>icons/showhide.png</file>
     <file>icons/content.png</file>
     <file>icons/unfilter.png</file>
+    <file>icons/diffmode.png</file>
   </qresource>
 </RCC>

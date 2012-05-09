@@ -91,6 +91,56 @@ class Annotator(qsci):
 
 
 
+class HgQsci(qsci):
+
+    def __init__(self, *args, **kwargs):
+        super(HgQsci, self).__init__(*args, **kwargs)
+        self.createActions()
+
+    def _action_defs(self):
+        return [
+            ('selectall', self.tr("Select all"), None,
+             self.tr("Select all the text"), Qt.CTRL + Qt.Key_A,
+             self.selectAll),
+            ('copy', self.tr("Copy"), None, self.tr("Copy any selected text"),
+             Qt.CTRL + Qt.Key_C, self.copy),
+            ("diffmode", self.tr("Diff mode"), 'diffmode' ,
+             self.tr('Enable/Disable Diff mode'), None, None),
+            ("annmode", self.tr("Annotate mode"), None,
+             self.tr('Anable/Disable Annotatte mode'), None, None),
+            ("next", self.tr('Next hunk'), 'down', self.tr('Jump to the next hunk'),
+             Qt.ALT + Qt.Key_Down, None),
+            ("prev", self.tr('Prior hunk'), 'up', self.tr('Jump to the previous hunk'),
+             Qt.ALT + Qt.Key_Up, None),
+        ]
+
+    def createActions(self):
+        self._actions = {}
+        for name, desc, icon, tip, key, cb in self._action_defs():
+            act = QtGui.QAction(desc, self)
+            if icon:
+                act.setIcon(geticon(icon))
+            if tip:
+                act.setStatusTip(tip)
+            if key:
+                act.setShortcut(key)
+            if cb:
+                connect(act, SIGNAL('triggered()'), cb)
+            self._actions[name] = act
+            self.addAction(act)
+        self._actions['diffmode'].setCheckable(True)
+        self._actions['annmode'].setCheckable(True)
+
+    def contextMenuEvent(self, event):
+        menu = QtGui.QMenu(self)
+        for act in ['selectall', 'copy', None, 'diffmode', 'prev', 'next']:
+            if act:
+                menu.addAction(self._actions[act])
+            else:
+                menu.addSeparator()
+        self._actions['copy'].setEnabled(self.hasSelectedText())
+        menu.exec_(event.globalPos())
+
 class HgFileView(QtGui.QFrame):
     def __init__(self, parent=None):
         QtGui.QFrame.__init__(self, parent)
@@ -116,7 +166,7 @@ class HgFileView(QtGui.QFrame):
         framelayout.addLayout(self.topLayout)
         framelayout.addLayout(l, 1)
 
-        self.sci = qsci(self)
+        self.sci = HgQsci(self)
         self.sci.setFrameStyle(0)
         l.addWidget(self.sci, 1)
         self.sci.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
@@ -183,6 +233,15 @@ class HgFileView(QtGui.QFrame):
         self.timer.setSingleShot(False)
         self.connect(self.timer, QtCore.SIGNAL("timeout()"),
                      self.idle_fill_files)
+        self.connect(self.sci._actions['diffmode'], SIGNAL('toggled(bool)'),
+                     self.setMode)
+        self.connect(self.sci._actions['annmode'], SIGNAL('toggled(bool)'),
+                     self.setAnnotate)
+        self.connect(self.sci._actions['prev'], SIGNAL('triggered()'),
+                     self.prevDiff)
+        self.connect(self.sci._actions['next'], SIGNAL('triggered()'),
+                     self.nextDiff)
+        self.sci._actions['diffmode'].setChecked(True)
 
     def resizeEvent(self, event):
         QtGui.QFrame.resizeEvent(self, event)
@@ -194,6 +253,10 @@ class HgFileView(QtGui.QFrame):
         if isinstance(mode, bool):
             mode = ['file', 'diff'][mode]
         assert mode in ('diff', 'file')
+
+        self.sci._actions['annmode'].setEnabled(not mode)
+        self.sci._actions['next'].setEnabled(not mode)
+        self.sci._actions['prev'].setEnabled(not mode)
         if mode != self._mode:
             self._mode = mode
             self.blk.setVisible(self._mode == 'file')
@@ -294,7 +357,7 @@ class HgFileView(QtGui.QFrame):
         self.sci.setText(data)
         if self._find_text:
             self.highlightSearchString(self._find_text)
-        self.emit(SIGNAL('fileDisplayed'), self._filename)
+        self.sci._actions['prev'].setEnabled(False)
         self.updateDiffDecorations()
         if self._mode == 'file' and self._annotate:
             if filectx.rev() is None: # XXX hide also for binary files
@@ -338,7 +401,7 @@ class HgFileView(QtGui.QFrame):
                 self.blk.syncPageStep()
                 self.timer.start()
 
-    def nextDiff(self):
+    def _nextDiff(self):
         if self._mode == 'file':
             row, column = self.sci.getCursorPosition()
             for i, (lo, hi) in enumerate(self._diffs):
@@ -351,7 +414,12 @@ class HgFileView(QtGui.QFrame):
             self.sci.verticalScrollBar().setValue(lo)
             return not last
 
-    def prevDiff(self):
+    def nextDiff(self):
+        notlast = self._nextDiff()
+        self.sci._actions['next'].setEnabled(self.fileMode() and notlast and self.nDiffs())
+        self.sci._actions['prev'].setEnabled(self.fileMode() and self.nDiffs())
+
+    def _prevDiff(self):
         if self._mode == 'file':
             row, column = self.sci.getCursorPosition()
             for i, (lo, hi) in enumerate(reversed(self._diffs)):
@@ -363,6 +431,13 @@ class HgFileView(QtGui.QFrame):
             self.sci.setCursorPosition(lo, 0)
             self.sci.verticalScrollBar().setValue(lo)
             return not first
+
+    def prevDiff(self):
+        notfirst = self._prevDiff()
+        self.sci._actions['prev'].setEnabled(self.fileMode() and notfirst and self.nDiffs())
+        self.sci._actions['next'].setEnabled(self.fileMode() and self.nDiffs())
+
+
 
     def nextLine(self):
         x, y = self.sci.getCursorPosition()
@@ -443,7 +518,7 @@ class HgFileView(QtGui.QFrame):
             if self._diff is None or not self._diff.get_opcodes():
                 self._diff = None
                 self.timer.stop()
-                self.emit(SIGNAL('filled'))
+                self.sci._actions['next'].setEnabled(self.fileMode() and self.nDiffs())
                 break
 
             tag, alo, ahi, blo, bhi = self._diff.get_opcodes().pop(0)
