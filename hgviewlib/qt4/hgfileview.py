@@ -99,11 +99,6 @@ class HgQsci(qsci):
 
     def _action_defs(self):
         return [
-            ('selectall', self.tr("Select all"), None,
-             self.tr("Select all the text"), Qt.CTRL + Qt.Key_A,
-             self.selectAll),
-            ('copy', self.tr("Copy"), None, self.tr("Copy any selected text"),
-             Qt.CTRL + Qt.Key_C, self.copy),
             ("diffmode", self.tr("Diff mode"), 'diffmode' ,
              self.tr('Enable/Disable Diff mode'), None, None),
             ("annmode", self.tr("Annotate mode"), None,
@@ -132,14 +127,14 @@ class HgQsci(qsci):
         self._actions['annmode'].setCheckable(True)
 
     def contextMenuEvent(self, event):
-        menu = QtGui.QMenu(self)
-        for act in ['selectall', 'copy', None, 'diffmode', 'prev', 'next']:
+        menu = self.createStandardContextMenu()
+        for act in [None, 'diffmode', 'prev', 'next']:
             if act:
                 menu.addAction(self._actions[act])
             else:
                 menu.addSeparator()
-        self._actions['copy'].setEnabled(self.hasSelectedText())
         menu.exec_(event.globalPos())
+
 
 class HgFileView(QtGui.QFrame):
     def __init__(self, parent=None):
