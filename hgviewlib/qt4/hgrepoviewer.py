@@ -490,8 +490,6 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin, _HgRepoViewer):
         self._repodate = self._getrepomtime()
         self.setupBranchCombo()
         self.setupModels()
-        # XXX workaround: see refreshRevisionTable method
-        self.refreshRevisionTable(sender=self)
 
     #@timeit
     def refreshRevisionTable(self, *args, **kw):
