@@ -25,13 +25,6 @@ def tounicode(string):
             pass
     return unicode(string, 'utf-8', 'replace')
 
-def has_closed_branch_support(repo):
-    """
-    Return True is repository have support for closed branches
-    """
-    # what a hack...
-    return "closed" in repo.heads.im_func.func_code.co_varnames
-
 def isexec(filectx):
     """
     Return True is the file at filectx revision is executable

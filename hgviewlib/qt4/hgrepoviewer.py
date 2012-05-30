@@ -17,7 +17,7 @@ from mercurial import ui, hg
 from mercurial import util
 
 from hgviewlib.application import HgRepoViewer as _HgRepoViewer
-from hgviewlib.util import tounicode, has_closed_branch_support
+from hgviewlib.util import tounicode
 from hgviewlib.util import rootpath, find_repository
 from hgviewlib.hggraph import diff as revdiff
 from hgviewlib.decorators import timeit
@@ -48,7 +48,6 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin, _HgRepoViewer):
     def __init__(self, repo, fromhead=None):
         self.repo = repo
         self.cfg = HgConfig(repo.ui)
-        self._closed_branch_supp = has_closed_branch_support(self.repo)
 
         # these are used to know where to go after a reload
         self._reload_rev = None
@@ -97,16 +96,14 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin, _HgRepoViewer):
 
     def setupBranchCombo(self, *args):
         allbranches = sorted(self.repo.branchtags().items())
-        if self._closed_branch_supp:
-            openbr = []
-            for branch, brnode in allbranches:
-                openbr.extend(self.repo.branchheads(branch, closed=False))
-            clbranches = [br for br, node in allbranches if node not in openbr]
-            branches = [br for br, node in allbranches if node in openbr]
-            if self.branch_checkBox_action.isChecked():
-                branches = branches + clbranches
-        else:
-            branches = [br for br, node in allbranches] # open branches
+
+        openbr = []
+        for branch, brnode in allbranches:
+            openbr.extend(self.repo.branchheads(branch, closed=False))
+        clbranches = [br for br, node in allbranches if node not in openbr]
+        branches = [br for br, node in allbranches if node in openbr]
+        if self.branch_checkBox_action.isChecked():
+            branches = branches + clbranches
 
         if len(branches) == 1:
             self.branch_label_action.setEnabled(False)
