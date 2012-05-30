@@ -147,7 +147,7 @@ def _graph_iterator(repo, start_rev, stop_rev, reorder=False):
 
 
 def revision_grapher(repo, start_rev=None, stop_rev=0, branch=None, follow=False,
-                     show_hidden=False, reorder=False):
+                     show_hidden=False, reorder=False, closed=False):
     """incremental revision grapher
 
     This generator function walks through the revision history from
@@ -191,6 +191,8 @@ def revision_grapher(repo, start_rev=None, stop_rev=0, branch=None, follow=False
     rev_color = {}
     free_color = count(0)
     hiddenrevs = getattr(repo.changelog, 'hiddenrevs', ())
+    closedbranches = [tag for tag, node in repo.branchtags().items()
+                      if repo.lookup(node) not in repo.branchheads(tag, closed=False)]
     for curr_rev in _graph_iterator(repo, start_rev, stop_rev, not show_hidden and reorder):
         # Compute revs and next_revs.
         if (not show_hidden) and curr_rev in hiddenrevs:
@@ -198,7 +200,8 @@ def revision_grapher(repo, start_rev=None, stop_rev=0, branch=None, follow=False
         if curr_rev not in revs: # rev not ancestor of already processed node
             # shall we ignore this new heads ?
             if (branch and repo[curr_rev].branch() != branch) or \
-               (follow and curr_rev != start_rev):
+               (follow and curr_rev != start_rev) or \
+               (not closed and repo[curr_rev].branch() in closedbranches):
                 continue
             # we add this new head to know revision
             revs.append(curr_rev)
@@ -535,7 +538,7 @@ class HgRepoListWalker(object):
     _stretchs = {'Log': 1, }
     _getcolumns = "getChangelogColumns"
 
-    def __init__(self, repo, branch='', fromhead=None, follow=False,
+    def __init__(self, repo, branch='', fromhead=None, follow=False, closed=False,
                  parent=None, *args, **kwargs):
         """
         repo is a hg repo instance
@@ -549,11 +552,10 @@ class HgRepoListWalker(object):
         self.rowcount = 0
         self.repo = repo
         self.show_hidden = False
-        super(HgRepoListWalker, self).__init__()
         self.load_config()
-        self.setRepo(repo, branch=branch, fromhead=fromhead, follow=follow)
+        self.setRepo(repo, branch=branch, fromhead=fromhead, follow=follow, closed=closed)
 
-    def setRepo(self, repo=None, branch='', fromhead=None, follow=False):
+    def setRepo(self, repo=None, branch='', fromhead=None, follow=False, closed=False):
         if repo is None:
             repo = hg.repository(self.repo.ui, self.repo.root)
         self._hasmq = hasattr(self.repo, "mq")
@@ -582,7 +584,8 @@ class HgRepoListWalker(object):
         grapher = revision_grapher(self.repo, start_rev=fromhead,
                                    follow=follow, branch=branch,
                                    show_hidden=self.show_hidden,
-                                   reorder=self.reorder_changesets)
+                                   reorder=self.reorder_changesets,
+                                   closed=closed)
         self.graph = Graph(self.repo, grapher, self.max_file_size)
         self.rowcount = 0
         self.heads = [self.repo.changectx(x).rev() for x in self.repo.heads()]
