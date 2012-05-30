@@ -117,16 +117,16 @@ class HgRepoListModel(QtCore.QAbstractTableModel, HgRepoListWalker):
     _stretchs = {'Log': 1, }
     _getcolumns = "getChangelogColumns"
 
-    def __init__(self, repo, branch='', fromhead=None, follow=False, parent=None, show_hidden=False):
+    def __init__(self, repo, branch='', fromhead=None, follow=False, parent=None, show_hidden=False, closed=False):
         """
         repo is a hg repo instance
         """
         self._fill_timer = None
         QtCore.QAbstractTableModel.__init__(self, parent)
-        HgRepoListWalker.__init__(self, repo, branch, fromhead, follow)
+        HgRepoListWalker.__init__(self, repo, branch, fromhead, follow, closed=closed)
 
-    def setRepo(self, repo, branch='', fromhead=None, follow=False):
-        HgRepoListWalker.setRepo(self, repo, branch, fromhead, follow)
+    def setRepo(self, repo, branch='', fromhead=None, follow=False, closed=False):
+        HgRepoListWalker.setRepo(self, repo, branch, fromhead, follow, closed=closed)
         self.emit(SIGNAL('layoutChanged()'))
         QtCore.QTimer.singleShot(0, Curry(self.emit, SIGNAL('filled')))
         self._fill_timer = self.startTimer(50)
@@ -355,7 +355,7 @@ class FileRevModel(HgRepoListModel):
         HgRepoListModel.__init__(self, repo, parent=parent)
         self.setFilename(filename)
 
-    def setRepo(self, repo, branch='', fromhead=None, follow=False):
+    def setRepo(self, repo, branch='', fromhead=None, follow=False, closed=False):
         self.repo = repo
         self._datacache = {}
         self.load_config()

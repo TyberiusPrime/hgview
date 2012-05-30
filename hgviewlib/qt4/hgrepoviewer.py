@@ -94,6 +94,10 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin, _HgRepoViewer):
 
                 self.reload()
 
+    def setupBranchComboAndReload(self, *args):
+        self.setupBranchCombo()
+        self.reload()
+
     def setupBranchCombo(self, *args):
         allbranches = sorted(self.repo.branchtags().items())
 
@@ -156,7 +160,7 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin, _HgRepoViewer):
         connect(self.branch_comboBox, SIGNAL('activated(const QString &)'),
                 self.refreshRevisionTable)
         connect(cbranch_action, SIGNAL('toggled(bool)'),
-                self.setupBranchCombo)
+                self.setupBranchComboAndReload)
 
         self.toolBar_treefilters.layout().setSpacing(3)
 
@@ -501,10 +505,11 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin, _HgRepoViewer):
         # has been called directly (thus caller MUST set this kw arg)
         sender = kw.get('sender') or self.sender()
         follow = kw.get('follow', False)
+        closed = self.branch_checkBox_action.isChecked()
         startrev = self.repo.changectx(startrev).rev()
         self.repomodel.show_hidden = self.actionShowHidden.isChecked()
         self.repomodel.setRepo(self.repo, branch=branch, fromhead=startrev,
-                               follow=follow)
+                               follow=follow, closed=closed)
 
     def on_about(self, *args):
         """ Display about dialog """
