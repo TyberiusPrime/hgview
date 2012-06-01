@@ -288,6 +288,7 @@ class RepoViewer(Pile):
         self.repo = repo
         self.cfg = HgConfig(repo.ui)
         self._show_context = 0 # O:hide, 1:half, 2:maximized
+        self.refreshing = False # flag to now if the repo is refreshing
 
         walker = HgRepoListWalker(repo)
         self.graphlog = GraphlogViewer(walker=walker)
@@ -302,7 +303,7 @@ class RepoViewer(Pile):
 
     def update_context(self, ctx):
         """Change the current displayed context"""
-        self.context.manifest_walker.ctx = ctx
+        self.context.manifest_walker.set_ctx(ctx, reset_focus=(not self.refreshing))
 
     def register_commands(self):
         """Register commands and commands of bodies"""
@@ -315,10 +316,25 @@ class RepoViewer(Pile):
         connect_command('hide-context', self.hide_context)
         connect_command('show-context', self.show_context)
         connect_command('maximize-context', self.maximize_context)
+        connect_command('refresh', self.refresh)
 
     def unregister_commands(self):
         """Unregister commands and commands of bodies"""
         self.graphlog.unregister_commands()
+
+    def refresh(self):
+        graphlog_walker = self.graphlog.graphlog_walker
+        manifest_walker = self.context.manifest_walker
+        self.refreshing = True
+        rev = graphlog_walker.rev
+        filename = manifest_walker.filename
+        self._walker.setRepo()
+        try:
+            graphlog_walker.set_rev(rev) # => focus changed => update_context
+        except AttributeError: # rev stripped
+            graphlog_walker.rev = None
+        manifest_walker.filename = filename
+        self.refreshing = False
 
     def hide_context(self):
         ''' hide the context widget'''

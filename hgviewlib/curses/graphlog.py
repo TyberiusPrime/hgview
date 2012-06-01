@@ -73,18 +73,10 @@ class RevisionsWalker(ListWalker):
     def connect_commands(self):
         """Connect usefull commands to callbacks"""
         connect_command('goto', self.set_rev)
-        connect_command('refresh', self.refresh)
 
     def _modified(self):
         """obsolete widget content"""
         super(RevisionsWalker, self)._modified()
-
-    def refresh(self):
-        """refresh widget content"""
-        self._invalidate()
-        self.walker.setRepo()
-        emit_signal(self, 'focus changed', self.get_ctx())
-        self._modified()
 
     def _invalidate(self):
         """obsolete rendering cache"""
