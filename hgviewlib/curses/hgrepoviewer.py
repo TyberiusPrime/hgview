@@ -50,6 +50,12 @@ class GraphlogViewer(Body):
         self.title = walker.repo.root
         signals.connect_signal(self.graphlog_walker, 'focus changed',
                                self.update_title)
+        wc = walker.repo[None]
+        rev = None
+        if not wc.dirty() and wc.p1().rev() >= 0:
+            # parent of working directory is not nullrev
+            rev = wc.p1().rev()
+        self.graphlog_walker.rev = rev
 
     def update_title(self, ctx):
         """update title depending on the given context ``ctx``."""

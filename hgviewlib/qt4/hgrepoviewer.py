@@ -421,7 +421,12 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin, _HgRepoViewer):
                 return
             except IndexError:
                 pass
-        tv.setCurrentIndex(tv.model().index(0, 0))
+        wc = self.repo[None]
+        idx = tv.model().index(0, 0) # Working directory or tip
+        if not wc.dirty() and wc.p1().rev() >= 0:
+            # parent of working directory is not nullrev
+            idx = tv.model().indexFromRev(wc.p1().rev())
+        tv.setCurrentIndex(idx)
 
     def revision_activated(self, rev=None):
         """
