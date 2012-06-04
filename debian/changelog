@@ -1,3 +1,10 @@
+hgview (1.5.0-4) unstable; urgency=low
+
+  * Rebuild the source package with the .install files so Ubuntu doesn't get
+    empty binary packages (LP: #929741).  Oops.
+
+ -- Julien Cristau <jcristau@debian.org>  Tue, 29 May 2012 18:13:58 +0200
+
 hgview (1.5.0-3) unstable; urgency=low
 
   * Remove logilab.org ticket references from debian/changelog

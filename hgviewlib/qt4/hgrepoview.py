@@ -387,14 +387,12 @@ class RevDisplay(QtGui.QTextBrowser):
         QtGui.QTextBrowser.__init__(self, parent)
         self.descwidth = 60 # number of chars displayed for parent/child descriptions
 
-        self._context_menu = self.createStandardContextMenu()
         if rst2html:
             self.rst_action = QtGui.QAction(self.tr('Fancy Display'), self)
             self.rst_action.setCheckable(True)
             self.rst_action.setChecked(True)
             self.rst_action.setToolTip(self.tr('Interpret ReST comments'))
             self.rst_action.setStatusTip(self.tr('Interpret ReST comments'))
-            self._context_menu.addAction(self.rst_action)
 
             connect(self.rst_action, SIGNAL('triggered()'),
                     self.refreshDisplay)
@@ -571,7 +569,9 @@ class RevDisplay(QtGui.QTextBrowser):
         self.setHtml(buf)
 
     def contextMenuEvent(self, event):
-        self._context_menu.exec_(event.globalPos())
+        _context_menu = self.createStandardContextMenu()
+        _context_menu.addAction(self.rst_action)
+        _context_menu.exec_(event.globalPos())
 
 if __name__ == "__main__":
     from mercurial import ui, hg
