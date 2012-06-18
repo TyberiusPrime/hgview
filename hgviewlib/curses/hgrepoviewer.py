@@ -290,9 +290,9 @@ class RepoViewer(Pile):
         self._show_context = 0 # O:hide, 1:half, 2:maximized
         self.refreshing = False # flag to now if the repo is refreshing
 
-        walker = HgRepoListWalker(repo)
-        self.graphlog = GraphlogViewer(walker=walker)
-        self.context = ContextViewer(walker=walker)
+        self._walker = HgRepoListWalker(repo)
+        self.graphlog = GraphlogViewer(walker=self._walker)
+        self.context = ContextViewer(walker=self._walker)
 
         widget_list = [('weight', 1 - self.CONTEXT_SIZE, self.graphlog),]
 
