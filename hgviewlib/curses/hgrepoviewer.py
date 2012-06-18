@@ -160,6 +160,9 @@ class ContextViewer(Columns):
     signals = ['update source title']
     MANIFEST_SIZE = 0.3
     def __init__(self, walker, *args, **kwargs):
+        self._walker = walker
+        self._filename = None
+        self.cfg = HgConfig(walker.repo.ui)
         self.manifest = ManifestViewer(walker=walker, ctx=None)
         self.manifest_walker = self.manifest.manifest_walker
         self.source = SourceViewer('')
@@ -178,6 +181,22 @@ class ContextViewer(Columns):
         signals.connect_signal(self, 'update source title',
                                self.update_source_title_cache)
         signals.connect_signal(self.source, 'translated', self.update_source_title)
+
+    def register_commands(self):
+        """Register commands and commands of bodies"""
+        register_command('set-max-file-size',
+                         'max size of handled file for diff computation, and so on.',
+                         CA('size', int, 'octets (-1 means no max size)'))
+        connect_command('set-max-file-size', self.modify_max_file_size)
+
+    def unregister_commands(self):
+        """Unregister commands and commands of bodies"""
+        unregister_command('set-max-file-size')
+
+    def modify_max_file_size(self, size):
+        """Modify the max handled file size and update the source content."""
+        self._walker.graph.maxfilesize = size
+        self.update_source(self._filename)
 
     def update_source_title_cache(self, filename, flag):
         """
@@ -211,6 +230,7 @@ class ContextViewer(Columns):
         ctx = self.manifest_walker.ctx
         if ctx is None:
             return
+        self._filename = filename
         numbering = False
         flag = ''
         if filename is None: # source content is the changeset description
@@ -313,6 +333,7 @@ class RepoViewer(Pile):
                          'Relative height [0-1] of the context pane.'))
         register_command('maximize-context', 'Maximize context pane.')
         self.graphlog.register_commands()
+        self.context.register_commands()
         connect_command('hide-context', self.hide_context)
         connect_command('show-context', self.show_context)
         connect_command('maximize-context', self.maximize_context)
@@ -321,6 +342,7 @@ class RepoViewer(Pile):
     def unregister_commands(self):
         """Unregister commands and commands of bodies"""
         self.graphlog.unregister_commands()
+        self.context.unregister_commands()
 
     def refresh(self):
         graphlog_walker = self.graphlog.graphlog_walker

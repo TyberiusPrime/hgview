@@ -473,7 +473,6 @@ class Graph(object):
             filesize = fctx.size() # compute size here to lookup data securely
         except (LookupError, OSError):
             fctx = None # may happen for renamed/removed files or mq patch ?
-
         if isbfile(filename):
             data = "[bfile]\n"
             if fctx:
@@ -483,8 +482,15 @@ class Graph(object):
         if flag not in ('-', '?'):
             if fctx is None:# or fctx.node() is None:
                 return '', None
-            if filesize > self.maxfilesize:
-                data = "file too big"
+            if self.maxfilesize >= 0 and filesize > self.maxfilesize:
+                try:
+                    div = int(filesize).bit_length() // 10
+                    sym = ('', 'K', 'M', 'G', 'T', 'E')[div] # more, really ???
+                    val = int(filesize / (2 ** (div * 10)))
+                except AttributeError: # py<2.7
+                    val = filesize
+                    sym = ''
+                data = "File too big ! (~%i%so)" % (val, sym)
                 return flag, data
             if flag == "+" or mode == 'file':
                 flag = '+'

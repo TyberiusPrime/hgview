@@ -196,7 +196,7 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin, _HgRepoViewer):
 
         # diff mode toolbar
         actions = self.textview_status.sci._actions
-        for action_name in ('diffmode', 'prev', 'next'):
+        for action_name in ('diffmode', 'prev', 'next', 'show-big-file'):
             self.toolBar_diff.addAction(actions[action_name])
         self.toolBar_diff.setVisible(self.cfg.getToolBarDiffAtStartup())
 

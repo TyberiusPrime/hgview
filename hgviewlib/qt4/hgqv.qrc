@@ -23,5 +23,6 @@
     <file>icons/content.png</file>
     <file>icons/unfilter.png</file>
     <file>icons/diffmode.png</file>
+    <file>icons/heavy.png</file>
   </qresource>
 </RCC>

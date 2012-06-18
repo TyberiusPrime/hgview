@@ -107,6 +107,11 @@ class HgQsci(qsci):
              Qt.ALT + Qt.Key_Down, None),
             ("prev", self.tr('Prior hunk'), 'up', self.tr('Jump to the previous hunk'),
              Qt.ALT + Qt.Key_Up, None),
+            ("show-big-file", self.tr('Display heavy file'), 'heavy',
+             self.tr('Display file Content even if it is marked as too big'
+                     '[config: maxfilesize]'),
+             None, None),
+
         ]
 
     def createActions(self):
@@ -125,10 +130,12 @@ class HgQsci(qsci):
             self.addAction(act)
         self._actions['diffmode'].setCheckable(True)
         self._actions['annmode'].setCheckable(True)
+        self._actions['show-big-file'].setCheckable(True)
 
     def contextMenuEvent(self, event):
-        menu = self.createStandardContextMenu()
-        for act in [None, 'diffmode', 'prev', 'next']:
+        menu = QtGui.QMenu(self)
+        for act in [None, 'diffmode', 'prev', 'next',
+                    None, 'show-big-file']:
             if act:
                 menu.addAction(self._actions[act])
             else:
@@ -236,6 +243,8 @@ class HgFileView(QtGui.QFrame):
                      self.prevDiff)
         self.connect(self.sci._actions['next'], SIGNAL('triggered()'),
                      self.nextDiff)
+        self.connect(self.sci._actions['show-big-file'], SIGNAL('toggled(bool)'),
+                     self.showBigFile)
         self.sci._actions['diffmode'].setChecked(True)
 
     def resizeEvent(self, event):
@@ -243,6 +252,16 @@ class HgFileView(QtGui.QFrame):
         h = self.sci.horizontalScrollBar().height()
         self._spacer.setMinimumHeight(h)
         self._spacer.setMaximumHeight(h)
+
+    def showBigFile(self, state):
+        """Force displaying the content related to a file considered previously as
+        too big.
+        """
+        if not state:
+            self._model.graph.maxfilesize = self.cfg.getMaxFileSize()
+        else:
+            self._model.graph.maxfilesize = -1
+        self.displayFile()
 
     def setMode(self, mode):
         if isinstance(mode, bool):
@@ -267,6 +286,8 @@ class HgFileView(QtGui.QFrame):
     def setModel(self, model):
         # XXX we really need only the "Graph" instance
         self._model = model
+        self.cfg = HgConfig(self._model.repo.ui)
+        self.sci._actions['show-big-file'].setChecked(self._model.graph.maxfilesize < 0)
         self.sci.clear()
 
     def setContext(self, ctx):
@@ -318,8 +339,7 @@ class HgFileView(QtGui.QFrame):
         if flag == '':
             return
 
-        cfg = HgConfig(self._model.repo.ui)
-        lexer = get_lexer(filename, data, flag, cfg)
+        lexer = get_lexer(filename, data, flag, self.cfg)
         if flag == "+":
             nlines = data.count('\n')
             self.sci.setMarginWidth(1, str(nlines)+'0')

@@ -229,7 +229,8 @@ class HgConfig(object):
     @cached
     def getMaxFileSize(self, default=100000):
         """
-        maxfilesize: max size of a file (for diff computations, display content, etc.)
+        maxfilesize: max size of a file for diff computations, display content, etc.
+                     (-1 means no max size)
         """
         return int(self._fromconfig('maxfilesize', default))
 
