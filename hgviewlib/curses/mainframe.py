@@ -266,7 +266,7 @@ class Footer(urwid.AttrWrap):
         '''
         cmdline = self.get_edit_text()
         if not cmdline:
-            self.footer.set('default', '', '')
+            self.set('default', '', '')
             return
         cmdline = cmdline.strip()
         if cmdline == '?':
