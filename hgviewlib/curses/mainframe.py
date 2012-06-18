@@ -269,7 +269,9 @@ class Footer(urwid.AttrWrap):
             self.footer.set('default', '', '')
             return
         cmdline = cmdline.strip()
-        if cmdline.endswith('?'):
+        if cmdline == '?':
+            cmdline = 'help'
+        elif cmdline.endswith('?'):
             cmdline = 'help %s' % cmdline[:-1].split(None, 1)[0]
         elif cmdline.startswith('?'):
             cmdline = 'help %s' % cmdline[1:].split(None, 1)[0]
