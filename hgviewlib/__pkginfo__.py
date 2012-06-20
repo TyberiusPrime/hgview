@@ -59,15 +59,6 @@ pyversions = ["2.5"]
 debian_handler = 'python-dep-standalone'
 
 from os.path import join
-include_dirs = [] #join('tests', 'data'), join('tests', 'packages')]
-data_files = [ #('share/hgview', ['hgviewlib/qt4/hgqv.ui',
-               #               'hgviewlib/qt4/filediffviewer.ui',
-               #               'hgviewlib/qt4/fileviewer.ui',
-               #               'hgviewlib/qt4/manifestviewer.ui',
-               #               ]),
-              ('share/man/man1', ['doc/hgview.1',
-                                 ]),
-              #('share/python-support/mercurial-common/hgext', ['hgext/hgview.py',]),
-              #('../etc/mercurial/hgrc.d', ['hgext/hgview.rc',]),
-              ]
+include_dirs = []
+data_files = []
 
