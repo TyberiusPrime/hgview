@@ -19,6 +19,10 @@ older versions
 
 from functools import partial
 from mercurial import changelog, filelog, patch, context
+from mercurial import demandimport
+
+# for CPython > 2.7 (see pkg_resources) module [loaded by pygments])
+demandimport.ignore.append("_frozen_importlib")
 
 if not hasattr(changelog.changelog, '__len__'):
     changelog.changelog.__len__ = changelog.changelog.count
