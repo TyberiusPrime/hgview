@@ -21,8 +21,9 @@ from itertools import izip_longest as zzip
 
 from urwid import AttrMap, Text, ListWalker, Columns, WidgetWrap, emit_signal
 
-from hgext.graphlog import (fix_long_right_edges, get_nodeline_edges_tail,
-                            draw_edges, get_padding_line)
+from hgviewlib.hgpatches.graphmod import (_fixlongrightedges,
+                                          _getnodelineedgestail,
+                                          _drawedges, _getpaddingline)
 
 from hgviewlib.util import tounicode
 from hgviewlib.hggraph import getlog, gettags, getdate, HgRepoListWalker
@@ -281,7 +282,7 @@ def hgview_ascii(state, char, height, coldata):
     assert -2 < coldiff < 2
     assert height > 0
     if coldiff == -1:
-        fix_long_right_edges(edges)
+        _fixlongrightedges(edges)
     # add_padding_line says whether to rewrite
     add_padding_line = (height > 2 and coldiff == -1 and
                         [x for (x, y) in edges if x + 1 < y])
@@ -291,7 +292,7 @@ def hgview_ascii(state, char, height, coldata):
     # nodeline is the line containing the node character (typically o)
     nodeline = ["|", " "] * idx
     nodeline.extend([('GraphLog.node', char), " "])
-    nodeline.extend(get_nodeline_edges_tail(idx, state[1], ncols, coldiff,
+    nodeline.extend(_getnodelineedgestail(idx, state[1], ncols, coldiff,
                                             state[0], fix_nodeline_tail))
     # shift_interline is the line containing the non-vertical
     # edges between this entry and the next
@@ -308,11 +309,11 @@ def hgview_ascii(state, char, height, coldata):
     shift_interline.extend(n_spaces * [" "])
     shift_interline.extend([edge_ch, " "] * (ncols - idx - 1))
     # draw edges from the current node to its parents
-    draw_edges(edges, nodeline, shift_interline)
+    _drawedges(edges, nodeline, shift_interline)
     # lines is the list of all graph lines to print
     lines = [nodeline]
     if add_padding_line:
-        lines.append(get_padding_line(idx, ncols, edges))
+        lines.append(_getpaddingline(idx, ncols, edges))
     if not set(shift_interline).issubset(set([' ', '|'])): # compact
         lines.append(shift_interline)
     # make sure that there are as many graph lines as there are
@@ -331,6 +332,4 @@ def hgview_ascii(state, char, height, coldata):
     # ... and start over
     state[0] = coldiff
     state[1] = idx
-
-
 
