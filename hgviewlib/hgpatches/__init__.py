@@ -18,7 +18,7 @@ older versions
 """
 
 from functools import partial
-from mercurial import changelog, filelog, patch, context
+from mercurial import changelog, filelog, patch, context, localrepo
 from mercurial import demandimport
 
 # for CPython > 2.7 (see pkg_resources) module [loaded by pygments])
@@ -39,3 +39,13 @@ if patch.iterhunks.func_code.co_varnames[0] == 'ui':
 #  mercurial ~< 1.8.3
 if not hasattr(context.filectx, 'p1'):
     context.filectx.p1 = lambda self: self.parents()[0]
+
+
+# mercurial < 2.3
+# note: use dir(...) has localrepo.localrepository.hiddenrevs always raises
+#       an attribute error - because the repo is not set yet
+if 'hiddenrevs' not in dir(localrepo.localrepository):
+    def hiddenrevs(self):
+        return getattr(self.changelog, 'hiddenrevs', ())
+    localrepo.localrepository.hiddenrevs = property(hiddenrevs, None, None)
+

@@ -158,7 +158,7 @@ def revision_grapher(repo, start_rev=None, stop_rev=0, branch=None, follow=False
     revs = []
     rev_color = {}
     nextcolor = 0
-    hiddenrevs = getattr(repo.changelog, 'hiddenrevs', ())
+    hiddenrevs = repo.hiddenrevs
     while curr_rev is None or curr_rev >= stop_rev:
         # Compute revs and next_revs.
         if (not show_hidden) and curr_rev in hiddenrevs:
