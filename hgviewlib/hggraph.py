@@ -314,6 +314,8 @@ class GraphNode(object):
         if ncols is None:
             ncols = len(lines)
         self.cols = ncols
+        if not parents:
+            self.cols += 1 # root misses its own column
         self.parents = parents
         self.bottomlines = lines
         self.toplines = []
