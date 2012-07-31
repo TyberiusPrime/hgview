@@ -53,7 +53,7 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin, _HgRepoViewer):
         # these are used to know where to go after a reload
         self._reload_rev = None
         self._reload_file = None
-
+        QtGui.QApplication.setStyle(QtGui.QStyleFactory.create('Cleanlooks'))
         QtGui.QMainWindow.__init__(self)
         HgDialogMixin.__init__(self)
 

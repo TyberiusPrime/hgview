@@ -22,7 +22,11 @@ bold = QtGui.QFont.Bold
 connect = QtCore.QObject.connect
 SIGNAL = QtCore.SIGNAL
 
-from docutils.core import publish_string
+try:
+    from docutils.core import publish_string
+except:
+    def publish_string(s, *args, **kwargs):
+        return s
 
 class HelpViewer(QtGui.QDialog, HgDialogMixin):
     """hgview simple help viewer"""
@@ -33,8 +37,8 @@ class HelpViewer(QtGui.QDialog, HgDialogMixin):
         HgDialogMixin.__init__(self)
         data = help_msg + get_options_helpmsg(rest=True)
 
-        html = publish_string(data, writer_name='html')
-        self.textBrowser.setText(html)
+        formated_text = publish_string(data, writer_name='html')
+        self.textBrowser.setText(formated_text)
 
     # must be redefined cause it's a QDialog
     def accept(self):
