@@ -190,7 +190,7 @@ def revision_grapher(repo, start_rev=None, stop_rev=0, branch=None, follow=False
     revs = []
     rev_color = {}
     free_color = count(0)
-    hiddenrevs = getattr(repo.changelog, 'hiddenrevs', ())
+    hiddenrevs = repo.hiddenrevs
     closedbranches = [tag for tag, node in repo.branchtags().items()
                       if repo.lookup(node) not in repo.branchheads(tag, closed=False)]
     for curr_rev in _graph_iterator(repo, start_rev, stop_rev, not show_hidden and reorder):
@@ -321,6 +321,8 @@ class GraphNode(object):
         if ncols is None:
             ncols = len(lines)
         self.cols = ncols
+        if not parents:
+            self.cols += 1 # root misses its own column
         self.parents = parents
         self.bottomlines = lines
         self.toplines = []

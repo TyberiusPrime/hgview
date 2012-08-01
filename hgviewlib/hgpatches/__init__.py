@@ -18,7 +18,11 @@ older versions
 """
 
 from functools import partial
-from mercurial import changelog, filelog, patch, context
+from mercurial import changelog, filelog, patch, context, localrepo
+from mercurial import demandimport
+
+# for CPython > 2.7 (see pkg_resources) module [loaded by pygments])
+demandimport.ignore.append("_frozen_importlib")
 
 if not hasattr(changelog.changelog, '__len__'):
     changelog.changelog.__len__ = changelog.changelog.count
@@ -42,3 +46,11 @@ if not hasattr(context.changectx, 'phase'):
     context.changectx.phase = lambda self: 0
     context.changectx.phasestr = lambda self: phasenames[self.phase()]
     context.workingctx.phase = lambda self: 1
+
+# mercurial < 2.3
+# note: use dir(...) has localrepo.localrepository.hiddenrevs always raises
+#       an attribute error - because the repo is not set yet
+if 'hiddenrevs' not in dir(localrepo.localrepository):
+    def hiddenrevs(self):
+        return getattr(self.changelog, 'hiddenrevs', ())
+    localrepo.localrepository.hiddenrevs = property(hiddenrevs, None, None)

@@ -179,8 +179,8 @@ class HgRepoListModel(QtCore.QAbstractTableModel, HgRepoListWalker):
                 pass
         return HgRepoListWalker.user_color(self, user)
 
-    def col2x(self, col):
-        return (1.2*self.dot_radius + 0) * col + self.dot_radius/2 + 3
+    def col2x(self, col, pan):
+        return (self.dot_radius + pan) * col + 2  # max pen width
 
     @datacached
     def data(self, index, role):
@@ -224,10 +224,11 @@ class HgRepoListModel(QtCore.QAbstractTableModel, HgRepoListWalker):
                 if not getattr(ctx, 'applied', True):
                     return nullvariant
                 radius = self.dot_radius
-                w = (gnode.cols)*(1*radius + 0) + 20
+                pan = 2
+                w = self.col2x(gnode.cols, pan)
                 h = self.rowheight
 
-                dot_x = self.col2x(gnode.x) - radius / 2
+                dot_x = self.col2x(gnode.x, pan)
                 dot_y = h / 2
 
                 pix = QtGui.QPixmap(w, h)
@@ -250,8 +251,8 @@ class HgRepoListModel(QtCore.QAbstractTableModel, HgRepoListWalker):
                         lpen.setColor(QtGui.QColor(self.get_color(color)))
                         lpen.setWidth(2)
                         painter.setPen(lpen)
-                        x1 = self.col2x(start)
-                        x2 = self.col2x(end)
+                        x1 = self.col2x(start, pan) + radius / 2
+                        x2 = self.col2x(end, pan) + radius / 2
                         painter.drawLine(x1, dot_y + y1, x2, dot_y + y2)
 
                 dot_color = QtGui.QColor(self.namedbranch_color(ctx.branch()))

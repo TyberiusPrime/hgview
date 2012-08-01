@@ -30,7 +30,7 @@ from urwid.util import is_mouse_press
 
 from hgviewlib.config import HgConfig
 from hgviewlib.hggraph import HgRepoListWalker
-from hgviewlib.util import exec_flag_changed, isbfile
+from hgviewlib.util import exec_flag_changed, isbfile, tounicode
 
 from hgviewlib.curses.graphlog import RevisionsWalker
 from hgviewlib.curses.manifest import ManifestWalker
@@ -235,7 +235,7 @@ class ContextViewer(Columns):
         flag = ''
         if filename is None: # source content is the changeset description
             wrap = 'space' # Do not cut description and wrap content
-            data = ctx.description()
+            data = tounicode(ctx.description())
             if pygments:
                 lexer = lexers.RstLexer()
         else: # source content is a file
