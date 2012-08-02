@@ -23,12 +23,13 @@ from cStringIO import StringIO
 import difflib
 from itertools import chain, count
 from time import strftime, localtime
+from functools import partial
 
 from mercurial.node import nullrev
 from mercurial import patch, util, match, error, hg
 
 import hgviewlib.hgpatches # force apply patches to mercurial
-from hgviewlib.hgpatches import mqsupport
+from hgviewlib.hgpatches import mqsupport, phases
 
 from hgviewlib.util import tounicode, isbfile
 from hgviewlib.config import HgConfig
@@ -133,15 +134,19 @@ def _graph_iterator(repo, start_rev, stop_rev, reorder=False):
         start_rev = len(repo.changelog) -1
 
     target_revs = xrange(start_rev, stop_rev-1, -1)
-    phaserev = getattr(repo, '_phaserev', None)
-    if not reorder or phaserev is None:
+    phaserevs = None
+    if getattr(repo, '_phasecache', None) is not None:
+        phaserevs = repo._phasecache._phaserevs
+    elif getattr(repo, '_phaserev', None) is not None:
+        phaserevs = repo._phaserev
+    if not reorder or phaserevs is None:
         # old hg
         for curr_rev in target_revs:
             yield curr_rev
     else:
-        data = [(bool(phaserev[r]), r) for r in target_revs]
-        data.sort(reverse=True)
-        for _, r in data:
+        _cmp = lambda a, b: cmp(phases.public == phaserevs[a],
+                                phases.public == phaserevs[b])
+        for r in sorted(target_revs, cmp=_cmp):
             yield r
 
 
