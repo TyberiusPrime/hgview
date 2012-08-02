@@ -58,3 +58,5 @@ if 'hiddenrevs' not in dir(localrepo.localrepository):
 # obsolete feature
 if getattr(context.changectx, 'obsolete', None) is None:
     context.changectx.obsolete = lambda self: False
+if getattr(context.changectx, 'unstable', None) is None:
+    context.changectx.unstable = lambda self: False

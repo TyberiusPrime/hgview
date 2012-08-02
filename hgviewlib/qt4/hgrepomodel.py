@@ -46,6 +46,8 @@ COLORS = [str(QtGui.QColor(x).name()) for x in COLORS]
 
 # We use two colors, One for even nd one for odd rows
 COLOR_BG_OBSOLETE = [QtGui.QColor(255, 250, 250), QtGui.QColor(243, 230, 230)]
+COLOR_BG_TROUBLED = [QtGui.QColor(255, 193,  71), QtGui.QColor(255, 153,  51)]
+
 
 
 def cvrt_date(date):
@@ -233,6 +235,8 @@ class HgRepoListModel(QtCore.QAbstractTableModel, HgRepoListWalker):
         elif role == QtCore.Qt.BackgroundRole:
             if ctx.obsolete():
                 return COLOR_BG_OBSOLETE[index.row() % 2]
+            elif ctx.unstable():
+                return COLOR_BG_TROUBLED[index.row() % 2]
 
         elif role == QtCore.Qt.DecorationRole:
             if column == 'Log':
