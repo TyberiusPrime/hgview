@@ -60,3 +60,22 @@ if getattr(context.changectx, 'obsolete', None) is None:
     context.changectx.obsolete = lambda self: False
 if getattr(context.changectx, 'unstable', None) is None:
     context.changectx.unstable = lambda self: False
+
+
+### unofficial API implemented by mutable extension
+# They will probably because official, but maybe with a different name
+if getattr(context.changectx, 'conflicting', None) is None:
+    context.changectx.conflicting = lambda self: False
+if getattr(context.changectx, 'latecomer', None) is None:
+    context.changectx.latecomer = lambda self: False
+if getattr(context.changectx, 'troubles', None) is None:
+    def troubles(ctx):
+        troubles = []
+        if ctx.unstable():
+            troubles.append('unstable')
+        if ctx.latecomer():
+            troubles.append('latecomer')
+        if ctx.conflicting():
+            troubles.append('conflicting')
+        return tuple(troubles)
+    context.changectx.troubles = troubles

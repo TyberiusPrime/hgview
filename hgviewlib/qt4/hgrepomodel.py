@@ -235,7 +235,7 @@ class HgRepoListModel(QtCore.QAbstractTableModel, HgRepoListWalker):
         elif role == QtCore.Qt.BackgroundRole:
             if ctx.obsolete():
                 return COLOR_BG_OBSOLETE[index.row() % 2]
-            elif ctx.unstable():
+            elif ctx.troubles():
                 return COLOR_BG_TROUBLED[index.row() % 2]
 
         elif role == QtCore.Qt.DecorationRole:
