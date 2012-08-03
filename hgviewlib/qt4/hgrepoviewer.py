@@ -453,6 +453,10 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin, _HgRepoViewer):
             rev = view.revFromindex(indexes[0])
         ctx = self.repomodel.repo[rev]
         self.textview_status.setContext(ctx)
+        if self.repomodel.show_hidden:
+            self.textview_header.excluded = ()
+        else:
+            self.textview_header.excluded = self.repo.hiddenrevs
         self.textview_header.displayRevision(ctx)
         self.filelistmodel.setSelectedRev(ctx)
         if len(self.filelistmodel):

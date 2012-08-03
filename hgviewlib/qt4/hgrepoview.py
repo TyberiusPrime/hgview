@@ -385,6 +385,7 @@ class RevDisplay(QtGui.QTextBrowser):
     """
     def __init__(self, parent=None):
         QtGui.QTextBrowser.__init__(self, parent)
+        self.excluded = ()
         self.descwidth = 60 # number of chars displayed for parent/child descriptions
 
         if rst2html:
@@ -507,6 +508,7 @@ class RevDisplay(QtGui.QTextBrowser):
         buf += '<td title="Phase name">%s</td>\n' % ctx.phasestr()
         buf += '</tr>'
         buf += "</table>\n"
+
         buf += "<table width=100%>\n"
         parents = [p for p in ctx.parents() if p]
         for p in parents:
@@ -517,7 +519,8 @@ class RevDisplay(QtGui.QTextBrowser):
             buf += self._html_ctx_info(p, 'Ancestor', 'Direct ancestor of this changeset')
 
         for p in ctx.children():
-            if p.rev() > -1:
+            r = p.rev()
+            if r > -1 and r not in self.excluded:
                 buf += self._html_ctx_info(p, 'Child', 'Direct descendant of this changeset')
         bookmarks = ', '.join(ctx.bookmarks())
         if bookmarks:
