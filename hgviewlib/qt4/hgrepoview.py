@@ -511,44 +511,14 @@ class RevDisplay(QtGui.QTextBrowser):
         parents = [p for p in ctx.parents() if p]
         for p in parents:
             if p.rev() > -1:
-                short = short_hex(p.node()) if getattr(p, 'applied', True) else p.node()
-                desc = format_desc(p.description(), self.descwidth)
-                p_rev = p.rev()
-                p_fmt = '<span class="rev_number">%s</span>:'\
-                        '<a title="go to" href="%s" class="rev_hash">%s</a>'
-                if p_rev == self.diffrev:
-                    p_rev = '<b>%s</b>' % (p_fmt % (p_rev, p_rev, short))
-                else:
-                    p_rev = p_fmt % ('<a href="diff_%s" class="rev_diff">%s</a>' % (p_rev, p_rev), p_rev, short)
-                buf += '<tr><td width=50 class="label"><b>Parent:</b></td>'\
-                       '<td colspan=5>%s&nbsp;'\
-                       '<span class="short_desc"><i>%s</i></span></td></tr>'\
-                       '\n' % (p_rev, desc)
+                buf += self._html_ctx_info(p, 'Parent', 'Direct ancestor of this changeset')
         if len(parents) == 2:
             p = parents[0].ancestor(parents[1])
-            short = short_hex(p.node())
-            desc = format_desc(p.description(), self.descwidth)
-            p_rev = p.rev()
-            p_fmt = '<span class="rev_number">%s</span>:'\
-                    '<a title="go to" href="%s" class="rev_hash">%s</a>'
-            if p_rev == self.diffrev:
-                p_rev = '<b>%s</b>' % (p_fmt % (p_rev, p_rev, short))
-            else:
-                p_rev = p_fmt % ('<a title="go to" href="diff_%s" class="rev_diff">%s</a>' % (p_rev, p_rev), p_rev, short)
-            buf += '<tr><td width=50 class="label"><b>Ancestor:</b></td>'\
-                   '<td colspan=5>%s&nbsp;'\
-                   '<span class="short_desc"><i>%s</i></span></td></tr>'\
-                   '\n' % (p_rev, desc)
+            buf += self._html_ctx_info(p, 'Ancestor', 'Direct ancestor of this changeset')
 
         for p in ctx.children():
             if p.rev() > -1:
-                short = short_hex(p.node()) if getattr(p, 'applied', True) else p.node()
-                desc = format_desc(p.description(), self.descwidth)
-                buf += '<tr><td class="label"><b>Child:</b></td>'\
-                       '<td colspan=5><span class="rev_number">%s</span>:'\
-                       '<a title="go to" href="%s" class="rev_hash">%s</a>&nbsp;'\
-                       '<span class="short_desc"><i>%s</i></span></td></tr>'\
-                       '\n' % (p.rev(), p.rev(), short, desc)
+                buf += self._html_ctx_info(p, 'Child', 'Direct descendant of this changeset')
         bookmarks = ', '.join(ctx.bookmarks())
         if bookmarks:
             buf += '<tr><td width=50 class="label"><b>Bookmarks:</b></td>'\
@@ -572,6 +542,29 @@ class RevDisplay(QtGui.QTextBrowser):
         _context_menu = self.createStandardContextMenu()
         _context_menu.addAction(self.rst_action)
         _context_menu.exec_(event.globalPos())
+
+    def _html_ctx_info(self, ctx, title, tooltip=None):
+        isdiffrev = ctx.rev() == self.diffrev
+        if not tooltip:
+            tooltip = title
+        short = short_hex(ctx.node()) if getattr(ctx, 'applied', True) else ctx.node()
+        descr = format_desc(ctx.description(), self.descwidth)
+        rev = ctx.rev()
+        out = '<tr>'\
+              '<td width=60 class="label" title="%(tooltip)s"><b>%(title)s:</b></td>'\
+              '<td colspan=5>' % locals()
+        if isdiffrev:
+            out += '<b>'
+        out += '<span class="rev_number">'\
+               '<a href="diff_%(rev)s" class="rev_diff" title="display diff from there">%(rev)s</a>'\
+               '</span>:'\
+               '<a title="go to there" href="%(rev)s" class="rev_hash">%(short)s</a>&nbsp;'\
+               '<span class="short_desc"><i>%(descr)s</i></span>' % locals()
+        if isdiffrev:
+            out += '</b>'
+        out += '</td></tr>\n'
+        return out
+
 
 if __name__ == "__main__":
     from mercurial import ui, hg
