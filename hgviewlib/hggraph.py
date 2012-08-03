@@ -31,7 +31,7 @@ from mercurial import patch, util, match, error, hg
 import hgviewlib.hgpatches # force apply patches to mercurial
 from hgviewlib.hgpatches import mqsupport, phases
 
-from hgviewlib.util import tounicode, isbfile
+from hgviewlib.util import tounicode, isbfile, first_known_precursors
 from hgviewlib.config import HgConfig
 
 DATE_FMT = '%F %R'
@@ -223,6 +223,9 @@ def revision_grapher(repo, start_rev=None, stop_rev=0, branch=None, follow=False
 
         # Add parents to next_revs.
         parents = [(p, True) for p in __get_parents(repo, curr_rev, branch)]
+        ctx = repo[curr_rev]
+        for prec in first_known_precursors(ctx, excluded):
+            parents.append((prec.rev(), False))
         parents_to_add = []
         max_levels = dict(zip(next_revs, next_levels))
         for idx, (parent, level) in enumerate(parents):
