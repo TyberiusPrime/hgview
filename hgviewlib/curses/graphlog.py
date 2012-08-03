@@ -187,10 +187,11 @@ class RevisionsWalker(ListWalker):
 
         # build the column data for the graphlogger from data given by hgview
         curcol = gnode.x
-        curedges = [(start, end) for start, end, _ in gnode.bottomlines
+        curedges = [(start, end)
+                    for start, end, color, fill in gnode.bottomlines
                     if start == curcol]
         try:
-            prv, nxt, _ = zip(*gnode.bottomlines)
+            prv, nxt, _, _ = zip(*gnode.bottomlines)
             prv, nxt = len(set(prv)), len(set(nxt))
         except ValueError: # last
             prv, nxt = 1, 0
@@ -284,7 +285,9 @@ def hgview_ascii(state, char, height, coldata):
            graphlog extension for mercurial
     """
     idx, edges, ncols, coldiff = coldata
-    assert -2 < coldiff < 2
+    # graphlog is broken with multiple parent. But we have ignore that to allow
+    # some support of obsolet relation display
+    # assert -2 < coldiff < 2
     assert height > 0
     if coldiff == -1:
         _fixlongrightedges(edges)

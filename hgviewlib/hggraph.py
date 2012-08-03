@@ -183,7 +183,7 @@ def revision_grapher(repo, start_rev=None, stop_rev=0, branch=None, follow=False
         series = list(reversed(repo.mq.series))
         for patchname in series:
             if not repo.mq.isapplied(patchname):
-                yield (patchname, 0, 0, [(0,0,0)], [])
+                yield (patchname, 0, 0, [(0, 0 ,0, False)], [])
 
     # No uncommited change
     if start_rev is None and repo.status() == ([],)*7:
@@ -193,6 +193,9 @@ def revision_grapher(repo, start_rev=None, stop_rev=0, branch=None, follow=False
     # all known revs for this line. This is used to compute column index
     # it's combined with next_revs to compute how we must draw lines
     revs = []
+    levels = []     # a rev -> level mapping.
+                    # level are True for real relation (parent),
+                    #            False for weak one (obsolete)
     rev_color = {}
     free_color = count(0)
     excluded = () if show_hidden else repo.hiddenrevs
@@ -210,26 +213,32 @@ def revision_grapher(repo, start_rev=None, stop_rev=0, branch=None, follow=False
                 continue
             # we add this new head to know revision
             revs.append(curr_rev)
+            levels.append(True)
             rev_color[curr_rev] = curcolor = free_color.next()
         else:
             curcolor = rev_color[curr_rev]
         # copy known revisions for this line
         next_revs = revs[:]
+        next_levels = levels[:]
 
         # Add parents to next_revs.
-        parents = __get_parents(repo, curr_rev, branch)
+        parents = [(p, True) for p in __get_parents(repo, curr_rev, branch)]
         parents_to_add = []
-        for idx, parent in enumerate(parents):
-            if parent not in next_revs: # could have been added by another children
+        max_levels = dict(zip(next_revs, next_levels))
+        for idx, (parent, level) in enumerate(parents):
+            # could have been added by another children
+            if parent not in next_revs:
                 parents_to_add.append(parent)
-                if idx == 0: # first parent inherit the color
+                if idx == 0:  # first parent inherit the color
                     rev_color[parent] = curcolor
-                else: # second don't
+                else:  # second don't
                     rev_color[parent] = free_color.next()
-
-        rev_index = next_revs.index(curr_rev) # rev_index is also the column index
+            max_levels[parent] = level or max_levels.get(parent, False)
+        # rev_index is also the column index
+        rev_index = next_revs.index(curr_rev)
         # replace curr_rev by its parents.
         next_revs[rev_index:rev_index + 1] = parents_to_add
+        next_levels = [max_levels[r] for r in next_revs]
 
         lines = []
         for i, rev in enumerate(revs):
@@ -238,13 +247,14 @@ def revision_grapher(repo, start_rev=None, stop_rev=0, branch=None, follow=False
                 targets = parents
             else:
                 # single line to the same rev
-                targets = [rev]
-            for tgr in targets:
-                color = rev_color[tgr]
-                lines.append( (i, next_revs.index(tgr), color) )
+                targets = [(rev, levels[i])]
+            for trg, level in targets:
+                color = rev_color[trg]
+                lines.append((i, next_revs.index(trg), color, level))
 
         yield (curr_rev, rev_index, curcolor, lines, parents)
         revs = next_revs
+        levels = next_levels
 
 
 def filelog_grapher(repo, path):

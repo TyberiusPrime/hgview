@@ -261,9 +261,18 @@ class HgRepoListModel(QtCore.QAbstractTableModel, HgRepoListWalker):
 
                 for y1, y2, lines in ((0, h, gnode.bottomlines),
                                       (-h, 0, gnode.toplines)):
-                    for start, end, color in lines:
+                    for temp in lines:
+                        if len(temp) == 3:
+                            start, end, color = temp
+                            fill = False
+                        else:
+                            start, end, color, fill = temp
                         lpen = QtGui.QPen(pen)
-                        lpen.setColor(QtGui.QColor(self.get_color(color)))
+                        color = QtGui.QColor(self.get_color(color))
+                        if not fill:
+                             lpen.setStyle(QtCore.Qt.DotLine)
+                             color.setAlpha(150)
+                        lpen.setColor(color)
                         lpen.setWidth(2)
                         painter.setPen(lpen)
                         x1 = self.col2x(start, pan) + radius / 2
