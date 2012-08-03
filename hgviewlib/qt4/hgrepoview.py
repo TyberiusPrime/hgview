@@ -379,7 +379,12 @@ class HgRepoView(QtGui.QTableView):
         row = self.currentIndex().row()
         self.setCurrentIndex(self.model().index(max(row - 1, 0), 0))
 
-
+TROUBLE_EXPLANATIONS = {
+    'unstable': "Based on obsolete ancestor",
+    'latecomer': "Hopeless successors of a public changeset",
+    'conflicting': "Another changeset are also a successors of "
+                   "one of your precursor",
+}
 class RevDisplay(QtGui.QTextBrowser):
     """
     Display metadata for one revision (rev, author, description, etc.)
@@ -537,10 +542,13 @@ class RevDisplay(QtGui.QTextBrowser):
                    '\n' % bookmarks
         troubles = ctx.troubles()
         if troubles:
+            span = '<span title="%s"  style="color: red;">%s</span>'
+            content = [span % (TROUBLE_EXPLANATIONS[troub], troub)
+                       for troub in troubles]
             buf += '<tr><td width=50 class="label"><b>Troubles:</b></td>'\
                    '<td colspan=5>&nbsp;'\
-                   '<span class="short_desc">%s</span></td></tr>'\
-                   '\n' % troubles
+                   '<span class="short_desc" >%s</span></td></tr>'\
+                   '\n' % ''.join(content)
         buf += "</table>\n"
         desc = tounicode(ctx.description())
         if self.rst_action is not None  and self.rst_action.isChecked():
