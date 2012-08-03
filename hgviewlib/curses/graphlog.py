@@ -144,17 +144,24 @@ class RevisionsWalker(ListWalker):
                    for col, sz in self._allcolumns
                    if col in self._columns]
         columns.append(SelectableText(txts, wrap='clip'))
+        # tune style
+        spec_style = {} # style modifier for normal
+        foc_style = {} # style modifier for focused
+        all_styles = set(self._columns) | set(['GraphLog', 'GraphLog.node', None])
+        important_styles = set(['ID', 'GraphLog.node'])
+        if ctx.obsolete():
+            spec_style.update(dict.fromkeys(all_styles, 'obsolete'))
         # normal style: use special styles for woking directory and tip
         style = None
         if gnode.rev is None:
             style = 'modified' # pending changes
         elif gnode.rev in self.walker.wd_revs:
             style = 'current'
-        spec_style = {'ID':style, 'GraphLog.node':style} if style else {}
+        if style is not None:
+            spec_style.update(dict.fromkeys(important_styles, style))
         # focused style: use special stles for working directory and tip
-        foc_style = dict.fromkeys(self._columns + ('GraphLog', None,),
-                                  style or 'focus')
-        foc_style['GraphLog.node'] = 'focus.alternate'
+        foc_style.update(dict.fromkeys(all_styles, style or 'focus'))
+        foc_style.update(dict.fromkeys(important_styles, 'focus.alternate'))
         # wrap widget with style modified
         widget = AttrMap(Columns(columns, 1), spec_style, foc_style)
         return widget

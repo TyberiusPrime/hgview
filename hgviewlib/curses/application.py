@@ -277,6 +277,7 @@ PALETTE = [
     ('Bookmarks', 'default', 'dark blue'),
     ('Branch', 'yellow', 'default', 'bold'),
     ('Filename', 'white', 'default', 'bold'),
+    ('obsolete', 'dark cyan', 'default'),
 
     # filelist
     ('+', 'dark green', 'default'),

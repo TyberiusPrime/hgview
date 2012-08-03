@@ -54,3 +54,7 @@ if 'hiddenrevs' not in dir(localrepo.localrepository):
     def hiddenrevs(self):
         return getattr(self.changelog, 'hiddenrevs', ())
     localrepo.localrepository.hiddenrevs = property(hiddenrevs, None, None)
+
+# obsolete feature
+if getattr(context.changectx, 'obsolete', None) is None:
+    context.changectx.obsolete = lambda self: False

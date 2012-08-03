@@ -44,6 +44,8 @@ COLORS = [ "blue", "darkgreen", "red", "green", "darkblue", "purple",
 COLORS = [str(QtGui.QColor(x).name()) for x in COLORS]
 #COLORS = [str(color) for color in QtGui.QColor.colorNames()]
 
+# We use two colors, One for even nd one for odd rows
+COLOR_BG_OBSOLETE = [QtGui.QColor(255, 250, 250), QtGui.QColor(243, 230, 230)]
 
 
 def cvrt_date(date):
@@ -215,10 +217,23 @@ class HgRepoListModel(QtCore.QAbstractTableModel, HgRepoListWalker):
             msg += _tooltips.get(column, _columnmap[column])(self, ctx, gnode)
             return QtCore.QVariant(msg)
         elif role == QtCore.Qt.ForegroundRole:
+            color = None
             if column == 'Author': #author
-                return QtCore.QVariant(QtGui.QColor(self.user_color(ctx.user())))
-            if column == 'Branch': #branch
-                return QtCore.QVariant(QtGui.QColor(self.namedbranch_color(ctx.branch())))
+                color = QtGui.QColor(self.user_color(ctx.user()))
+                if ctx.obsolete():
+                    color = color.lighter()
+            elif column == 'Branch': #branch
+                color = QtGui.QColor(self.namedbranch_color(ctx.branch()))
+                if ctx.obsolete():
+                    color = color.lighter()
+            elif ctx.obsolete():
+                color = QtGui.QColor('grey')
+            if color is not None:
+                return QtCore.QVariant(color)
+        elif role == QtCore.Qt.BackgroundRole:
+            if ctx.obsolete():
+                return COLOR_BG_OBSOLETE[index.row() % 2]
+
         elif role == QtCore.Qt.DecorationRole:
             if column == 'Log':
                 if not getattr(ctx, 'applied', True):
@@ -257,7 +272,10 @@ class HgRepoListModel(QtCore.QAbstractTableModel, HgRepoListWalker):
 
                 dot_color = QtGui.QColor(self.namedbranch_color(ctx.branch()))
                 dotcolor = QtGui.QColor(dot_color)
-                if gnode.rev in self.heads:
+                if ctx.obsolete():
+                    penradius = 1
+                    pencolor = dotcolor.setAlpha(150)
+                elif gnode.rev in self.heads:
                     penradius = 2
                     pencolor = dotcolor.darker()
                 else:
