@@ -195,12 +195,12 @@ def revision_grapher(repo, start_rev=None, stop_rev=0, branch=None, follow=False
     revs = []
     rev_color = {}
     free_color = count(0)
-    hiddenrevs = repo.hiddenrevs
+    excluded = () if show_hidden else repo.hiddenrevs
     closedbranches = [tag for tag, node in repo.branchtags().items()
                       if repo.lookup(node) not in repo.branchheads(tag, closed=False)]
     for curr_rev in _graph_iterator(repo, start_rev, stop_rev, not show_hidden and reorder):
         # Compute revs and next_revs.
-        if (not show_hidden) and curr_rev in hiddenrevs:
+        if curr_rev in excluded:
             continue
         if curr_rev not in revs: # rev not ancestor of already processed node
             # shall we ignore this new heads ?
