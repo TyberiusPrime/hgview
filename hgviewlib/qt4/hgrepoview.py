@@ -535,6 +535,12 @@ class RevDisplay(QtGui.QTextBrowser):
                    '<td colspan=5>&nbsp;'\
                    '<span class="short_desc">%s</span></td></tr>'\
                    '\n' % bookmarks
+        troubles = ctx.troubles()
+        if troubles:
+            buf += '<tr><td width=50 class="label"><b>Troubles:</b></td>'\
+                   '<td colspan=5>&nbsp;'\
+                   '<span class="short_desc">%s</span></td></tr>'\
+                   '\n' % troubles
         buf += "</table>\n"
         desc = tounicode(ctx.description())
         if self.rst_action is not None  and self.rst_action.isChecked():
