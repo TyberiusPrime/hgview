@@ -62,7 +62,7 @@ class GraphlogViewer(Body):
         if ctx.node() is None:
             hex_ = 'WORKING DIRECTORY'
         else:
-            hex_ = ctx.hex()
+            hex_ = str(ctx)
         self.title = '%(root)s [%(hex)s] %(phase)s' % {
             'root':self.walker.repo.root,
             'hex':hex_,
