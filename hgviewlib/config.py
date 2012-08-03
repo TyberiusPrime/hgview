@@ -326,6 +326,12 @@ class HgConfig(object):
         """
         return bool(self._fromconfig('nonpublicontop', default))
 
+    @cached
+    def getShowObsolete(self, default=True):
+        """
+        showobsolete: display obsolete relations
+        """
+        return bool(self._fromconfig('showobsolete', default))
 
 _HgConfig = HgConfig
 # HgConfig is instanciated only once (singleton)

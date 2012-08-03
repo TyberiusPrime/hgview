@@ -152,7 +152,8 @@ def _graph_iterator(repo, start_rev, stop_rev, reorder=False):
 
 
 def revision_grapher(repo, start_rev=None, stop_rev=0, branch=None, follow=False,
-                     show_hidden=False, reorder=False, closed=False):
+                     show_hidden=False, reorder=False, closed=False,
+                     show_obsolete=False):
     """incremental revision grapher
 
     This generator function walks through the revision history from
@@ -223,9 +224,10 @@ def revision_grapher(repo, start_rev=None, stop_rev=0, branch=None, follow=False
 
         # Add parents to next_revs.
         parents = [(p, True) for p in __get_parents(repo, curr_rev, branch)]
-        ctx = repo[curr_rev]
-        for prec in first_known_precursors(ctx, excluded):
-            parents.append((prec.rev(), False))
+        if show_obsolete:
+            ctx = repo[curr_rev]
+            for prec in first_known_precursors(ctx, excluded):
+                parents.append((prec.rev(), False))
         parents_to_add = []
         max_levels = dict(zip(next_revs, next_levels))
         for idx, (parent, level) in enumerate(parents):
@@ -611,7 +613,9 @@ class HgRepoListWalker(object):
                                    follow=follow, branch=branch,
                                    show_hidden=self.show_hidden,
                                    reorder=self.reorder_changesets,
-                                   closed=closed)
+                                   closed=closed,
+                                   show_obsolete=self.show_obsolete)
+
         self.graph = Graph(self.repo, grapher, self.max_file_size)
         self.rowcount = 0
         self.heads = [self.repo.changectx(x).rev() for x in self.repo.heads()]
@@ -664,6 +668,7 @@ class HgRepoListWalker(object):
         self.hide_mq_tags = cfg.getMQHideTags()
         self.show_hidden = cfg.getShowHidden()
         self.reorder_changesets = cfg.getNonPublicOnTop()
+        self.show_obsolete = cfg.getShowObsolete()
 
         cols = getattr(cfg, self._getcolumns)()
         if cols is not None:
