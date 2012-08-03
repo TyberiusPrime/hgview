@@ -33,6 +33,7 @@ nullvariant = QtCore.QVariant()
 from hgviewlib.decorators import timeit
 from hgviewlib.config import HgConfig
 from hgviewlib.util import format_desc, xml_escape, tounicode
+from hgviewlib.util import first_known_precursors, first_known_successors
 from hgviewlib.qt4 import icon as geticon
 from hgviewlib.qt4.hgmanifestdialog import ManifestViewer
 from hgviewlib.qt4.quickbar import QuickBar
@@ -522,13 +523,18 @@ class RevDisplay(QtGui.QTextBrowser):
             r = p.rev()
             if r > -1 and r not in self.excluded:
                 buf += self._html_ctx_info(p, 'Child', 'Direct descendant of this changeset')
+        for prec in first_known_precursors(ctx, self.excluded):
+            buf += self._html_ctx_info(prec, 'Precursor',
+                'Previous version obsolete by this changeset')
+        for suc in first_known_successors(ctx, self.excluded):
+            buf += self._html_ctx_info(suc, 'Successors',
+                'Updated version that make this changeset obsolete')
         bookmarks = ', '.join(ctx.bookmarks())
         if bookmarks:
             buf += '<tr><td width=50 class="label"><b>Bookmarks:</b></td>'\
                    '<td colspan=5>&nbsp;'\
                    '<span class="short_desc">%s</span></td></tr>'\
                    '\n' % bookmarks
-
         buf += "</table>\n"
         desc = tounicode(ctx.description())
         if self.rst_action is not None  and self.rst_action.isChecked():

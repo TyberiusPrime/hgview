@@ -146,3 +146,25 @@ def first_known_precursors(ctx, excluded=()):
                     if mark[0] not in seen:
                         candidates.add(mark[0])
                         seen.add(mark[0])
+
+def first_known_successors(ctx, excluded=()):
+    obsstore = getattr(ctx._repo, 'obsstore', None)
+    nm = ctx._repo.changelog.nodemap
+    if obsstore is not None:
+        markers = obsstore.precursors.get(ctx.node(), ())
+        # consider all precursors
+        candidates = set()
+        for mark in markers:
+            candidates.update(mark[1])
+        seen = set(candidates)
+        while candidates:
+            current = candidates.pop()
+            # is this changeset in the displayed set ?
+            crev = nm.get(current)
+            if crev is not None and crev not in excluded:
+                yield ctx._repo[crev]
+            else:
+                for mark in obsstore.successors.get(current, ()):
+                    if mark[0] not in seen:
+                        candidates.add(mark[0])
+                        seen.add(mark[0])
