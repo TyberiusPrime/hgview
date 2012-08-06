@@ -34,7 +34,7 @@ from hgviewlib.qt4.helpviewer import HelpViewer
 try:
     from mercurial.error import RepoError
 except ImportError: # old API
-    from mercurial.repo import RepoError
+    from mercurial.repo import RepoError #pylint: disable=E0611
 
 Qt = QtCore.Qt
 bold = QtGui.QFont.Bold
