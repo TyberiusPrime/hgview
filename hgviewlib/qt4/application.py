@@ -36,6 +36,8 @@ class HgViewQtApplication(HgViewApplication):
     ManifestViewer = ManifestViewer
 
     def __init__(self, *args, **kwargs):
+        # This import is critical for qt initialization (at least on Mac os X)
+        import hgviewlib.qt4.hgqv_rc
         # make Ctrl+C works
         import signal
         signal.signal(signal.SIGINT, signal.SIG_DFL)
