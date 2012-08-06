@@ -543,8 +543,8 @@ class RevDisplay(QtGui.QTextBrowser):
         troubles = ctx.troubles()
         if troubles:
             span = '<span title="%s"  style="color: red;">%s</span>'
-            content = [span % (TROUBLE_EXPLANATIONS[troub], troub)
-                       for troub in troubles]
+            content = ', '.join([span % (TROUBLE_EXPLANATIONS[troub], troub)
+                                for troub in troubles])
             buf += '<tr><td width=50 class="label"><b>Troubles:</b></td>'\
                    '<td colspan=5>&nbsp;'\
                    '<span class="short_desc" >%s</span></td></tr>'\
