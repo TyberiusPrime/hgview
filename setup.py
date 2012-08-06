@@ -34,25 +34,6 @@ from os.path import isdir, exists, join, walk, splitext, basename
 from subprocess import check_call, call as sub_call
 
 
-# backport from 2.6 for 2.5
-
-try:
-    from os.path import relpath
-except ImportError:
-    def relpath(path, start=os.curdir):
-        """Return a relative version of a path"""
-        if not path:
-            raise ValueError("no path specified")
-        start_list = os.path.abspath(start).split(os.sep)
-        path_list = os.path.abspath(path).split(os.sep)
-        # Work out how much of the filepath is shared by start and path.
-        i = len(os.path.commonprefix([start_list, path_list]))
-        rel_list = [os.pardir] * (len(start_list) - i) + path_list[i:]
-        if not rel_list:
-            return os.curdir
-        return join(*rel_list)
-
-
 # import required features
 from hgviewlib.__pkginfo__ import modname, version, license, description, \
      web, author, author_email
