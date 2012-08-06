@@ -370,6 +370,13 @@ class HgRepoListModel(QtCore.QAbstractTableModel, HgRepoListWalker):
     def notify_data_changed(self):
         self.emit(SIGNAL("layoutChanged()"))
 
+    def indexFromRev(self, rev):
+        self.ensureBuilt(rev=rev)
+        row = self.rowFromRev(rev)
+        if row is not None:
+            return self.index(row, 0)
+        return None
+
 class FileRevModel(HgRepoListModel):
     """
     Model used to manage the list of revisions of a file, in file

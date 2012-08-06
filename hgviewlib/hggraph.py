@@ -712,13 +712,6 @@ class HgRepoListWalker(object):
             row = None
         return row
 
-    def indexFromRev(self, rev):
-        self.ensureBuilt(rev=rev)
-        row = self.rowFromRev(rev)
-        if row is not None:
-            return self.index(row, 0)
-        return None
-
     def clear(self):
         """empty the list"""
         self.graph = None
