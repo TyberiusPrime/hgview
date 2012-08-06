@@ -520,7 +520,7 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin, _HgRepoViewer):
 
     def on_about(self, *args):
         """ Display about dialog """
-        from hgviewlib.__pkginfo__ import modname, version, short_desc, long_desc
+        from hgviewlib.__pkginfo__ import modname, version, description
         try:
             from mercurial.version import get_version
             hgversion = get_version()
@@ -529,8 +529,7 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin, _HgRepoViewer):
 
         msg = "<h2>About %(appname)s %(version)s</h2> (using hg %(hgversion)s)" % \
               {"appname": modname, "version": version, "hgversion": hgversion}
-        msg += "<p><i>%s</i></p>" % short_desc.capitalize()
-        msg += "<p>%s</p>" % long_desc
+        msg += "<p><i>%s</i></p>" % description.capitalize()
         QtGui.QMessageBox.about(self, "About %s" % modname, msg)
 
     def on_help(self, *args):
