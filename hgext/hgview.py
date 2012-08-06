@@ -13,7 +13,7 @@ graphical way. It requires PyQt4 with QScintilla.
 
 import os
 from optparse import Values
-from mercurial import hg, commands, dispatch, error
+from mercurial import error
     
 # every command must take a ui and and repo as arguments.
 # opts is a dict where you can find other command line flags
