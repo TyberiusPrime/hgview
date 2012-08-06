@@ -33,6 +33,26 @@ from distutils.command.install_data import install_data as _install_data
 from os.path import isdir, exists, join, walk, splitext, basename
 from subprocess import check_call, call as sub_call
 
+
+# backport from 2.6 for 2.5
+
+try:
+    from os.path import relpath
+except ImportError:
+    def relpath(path, start=os.curdir):
+        """Return a relative version of a path"""
+        if not path:
+            raise ValueError("no path specified")
+        start_list = os.path.abspath(start).split(os.sep)
+        path_list = os.path.abspath(path).split(os.sep)
+        # Work out how much of the filepath is shared by start and path.
+        i = len(os.path.commonprefix([start_list, path_list]))
+        rel_list = [os.pardir] * (len(start_list) - i) + path_list[i:]
+        if not rel_list:
+            return os.curdir
+        return join(*rel_list)
+
+
 # import required features
 from hgviewlib.__pkginfo__ import modname, version, license, description, \
      web, author, author_email
@@ -234,7 +254,7 @@ class install_doc(_install_data):
         self.set_undefined_options('install', ('install_base', 'install_dir'))
 
     def run(self):
-        to_dir = os.path.relpath(self.install_dir, self.build_dir)
+        to_dir = relpath(self.install_dir, self.build_dir)
         check_call(['make', '-C', self.build_dir, '-f', '../../doc/Makefile', 'VPATH=../../doc', 'install', 'PREFIX=%s' % to_dir])
 
 
