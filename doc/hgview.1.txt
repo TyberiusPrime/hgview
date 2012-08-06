@@ -59,7 +59,7 @@ http://www.logilab.org/project/hgview
 
 COPYRIGHT
 ---------
-Copyright \(C) 2011 David Douard (david.douard@logilab.fr).
+Copyright \(C) 2012 David Douard (david.douard@logilab.fr).
 Copyright \(C) 2007-2011 LOGILAB S.A. (Paris, FRANCE), http://www.logilab.fr/ -- mailto:contact@logilab.fr
 
 LICENSING

@@ -1,4 +1,4 @@
-# Copyright (c) 2003-2011 LOGILAB S.A. (Paris, FRANCE).
+# Copyright (c) 2003-2012 LOGILAB S.A. (Paris, FRANCE).
 # http://www.logilab.fr/ -- mailto:contact@logilab.fr
 #
 # This program is free software; you can redistribute it and/or modify it under
@@ -310,11 +310,11 @@ def filelog_grapher(repo, path):
         for i, nrev in enumerate(revs):
             if nrev in next_revs:
                 color = rev_color[nrev]
-                lines.append( (i, next_revs.index(nrev), color) )
+                lines.append( (i, next_revs.index(nrev), color, True) )
             elif nrev == rev:
                 for parent in parents:
                     color = rev_color[parent]
-                    lines.append( (i, next_revs.index(parent), color) )
+                    lines.append( (i, next_revs.index(parent), color, True) )
 
         pcrevs = [pfc.rev() for pfc in fctx.parents()]
         yield (fctx.rev(), index, curcolor, lines, pcrevs,
@@ -711,13 +711,6 @@ class HgRepoListWalker(object):
         if row == -1:
             row = None
         return row
-
-    def indexFromRev(self, rev):
-        self.ensureBuilt(rev=rev)
-        row = self.rowFromRev(rev)
-        if row is not None:
-            return self.index(row, 0)
-        return None
 
     def clear(self):
         """empty the list"""

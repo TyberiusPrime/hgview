@@ -1,4 +1,4 @@
-# Copyright (c) 2009-2011 LOGILAB S.A. (Paris, FRANCE).
+# Copyright (c) 2009-2012 LOGILAB S.A. (Paris, FRANCE).
 # http://www.logilab.fr/ -- mailto:contact@logilab.fr
 #
 # This program is free software; you can redistribute it and/or modify it under
@@ -265,12 +265,7 @@ class HgRepoListModel(QtCore.QAbstractTableModel, HgRepoListWalker):
 
                 for y1, y2, lines in ((0, h, gnode.bottomlines),
                                       (-h, 0, gnode.toplines)):
-                    for temp in lines:
-                        if len(temp) == 3:
-                            start, end, color = temp
-                            fill = False
-                        else:
-                            start, end, color, fill = temp
+                    for start, end, color, fill in lines:
                         lpen = QtGui.QPen(pen)
                         color = QtGui.QColor(self.get_color(color))
                         if not fill:
@@ -369,6 +364,13 @@ class HgRepoListModel(QtCore.QAbstractTableModel, HgRepoListWalker):
 
     def notify_data_changed(self):
         self.emit(SIGNAL("layoutChanged()"))
+
+    def indexFromRev(self, rev):
+        self.ensureBuilt(rev=rev)
+        row = self.rowFromRev(rev)
+        if row is not None:
+            return self.index(row, 0)
+        return None
 
 class FileRevModel(HgRepoListModel):
     """

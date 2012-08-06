@@ -1,4 +1,4 @@
-# pylint: disable-msg=W0622
+# pylint: disable=W0622
 # coding: iso-8859-1
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -11,7 +11,7 @@
 #
 # You should have received a copy of the GNU General Public License along with
 # this program.  If not, see <http://www.gnu.org/licenses/>.
-"""Copyright (c) 2000-2011 LOGILAB S.A. (Paris, FRANCE).
+"""Copyright (c) 2000-2012 LOGILAB S.A. (Paris, FRANCE).
 http://www.logilab.fr/ -- mailto:contact@logilab.fr
 """
 

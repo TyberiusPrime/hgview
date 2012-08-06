@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # util functions
 #
-# Copyright (C) 2009-2011 Logilab. All rights reserved.
+# Copyright (C) 2009-2012 Logilab. All rights reserved.
 #
 # This software may be used and distributed according to the terms
 # of the GNU General Public License, incorporated herein by reference.

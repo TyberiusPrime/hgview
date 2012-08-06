@@ -1,4 +1,4 @@
-# Copyright (c) 2009-2011 LOGILAB S.A. (Paris, FRANCE).
+# Copyright (c) 2009-2012 LOGILAB S.A. (Paris, FRANCE).
 # http://www.logilab.fr/ -- mailto:contact@logilab.fr
 #
 # This program is free software; you can redistribute it and/or modify it under
@@ -257,6 +257,8 @@ class HgFileView(QtGui.QFrame):
         """Force displaying the content related to a file considered previously as
         too big.
         """
+        if not self._model.graph:
+            return
         if not state:
             self._model.graph.maxfilesize = self.cfg.getMaxFileSize()
         else:
@@ -287,7 +289,11 @@ class HgFileView(QtGui.QFrame):
         # XXX we really need only the "Graph" instance
         self._model = model
         self.cfg = HgConfig(self._model.repo.ui)
-        self.sci._actions['show-big-file'].setChecked(self._model.graph.maxfilesize < 0)
+        if self._model.graph:
+            is_show_big_file = self._model.graph.maxfilesize < 0
+        else:
+            is_show_big_file = self.cfg.getMaxFileSize()
+        self.sci._actions['show-big-file'].setChecked(is_show_big_file)
         self.sci.clear()
 
     def setContext(self, ctx):
