@@ -50,7 +50,7 @@ class HgViewQtApplication(HgViewApplication):
         self.app = app
 
     def exec_(self):
-        self.viewer.show()
+        self.viewer.show()  #pylint: disable=E1103
         if '--profile' in sys.argv or '--time' in sys.argv:
             return 0
         return self.app.exec_()

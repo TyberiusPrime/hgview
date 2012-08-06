@@ -316,7 +316,7 @@ def reposetup(ui, repo):
         __hgview__ = True
 
         def __getitem__(self, changeid):
-            if changeid not in self.unapplieds:
+            if changeid not in self.unapplieds: #pylint: disable=E1101
                 return getitem_orig(changeid)
             patch = MqChangeCtx(repo, changeid)
             if os.path.exists(patch.path):
