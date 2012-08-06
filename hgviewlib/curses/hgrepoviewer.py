@@ -21,7 +21,7 @@ try:
     import pygments
     from pygments import lexers
 except ImportError:
-    # pylint: enable-msg=C0103
+    # pylint: enable=C0103
     pygments = None
 
 import urwid

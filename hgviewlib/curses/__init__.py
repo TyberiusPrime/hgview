@@ -32,12 +32,12 @@ demandimport.ignore.extend([
     'urwid.vterm_test', 'urwid.treetools', 'urwid.canvas', 'urwid.vterm'])
 
 # use __all__ in the corresponding modules
-# pylint: disable-msg=W0401
+# pylint: disable=W0401
 from hgviewlib.curses.utils import *
 from hgviewlib.curses.exceptions import *
 from hgviewlib.curses.widgets import *
 from hgviewlib.curses.mainframe import MainFrame
-# pylint: enable-msg=W0401
+# pylint: enable=W0401
 
 # patching urwid
 

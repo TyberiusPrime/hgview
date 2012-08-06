@@ -237,7 +237,7 @@ class Commands(object):
             return tuple(sorted(fnmatch.filter(self._args, cmd)))
 
 # Instanciate a Commands object to handle command from a global scope.
-#pylint: disable-msg=C0103
+#pylint: disable=C0103
 _commands = Commands()
 register_command = _commands.register
 unregister_command = _commands.unregister
@@ -247,7 +247,7 @@ emit_command = _commands.emit
 help_command = _commands.help
 help_commands = _commands.helps
 complete_command = _commands.complete
-#pylint: enable-msg=C0103
+#pylint: enable=C0103
 
 class History(list):
     def __init__(self, list=None, current=None):

@@ -14,7 +14,7 @@
 # You should have received a copy of the GNU General Public License along with
 # this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# pylint: disable-msg=C0103
+# pylint: disable=C0103
 
 """
 Module for managing configuration parameters of hgview using Hg's
@@ -342,7 +342,7 @@ _hgconfig = None
 def HgConfig(ui):
     """Factory to instanciate HgConfig class as a singleton
     """
-    # pylint: disable-msg=E0102
+    # pylint: disable=E0102
     global _hgconfig
     if _hgconfig is None:
         _hgconfig = _HgConfig(ui)

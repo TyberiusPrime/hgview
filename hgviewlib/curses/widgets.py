@@ -25,7 +25,7 @@ try:
     from pygments import lex, lexers
     from pygments.util import ClassNotFound
 except ImportError:
-    # pylint: disable-msg=C0103
+    # pylint: disable=C0103
     pygments = None
 
 from hgviewlib.curses.canvas import apply_text_layout
@@ -80,7 +80,7 @@ class Body(Frame):
 class ScrollableListBox(ListBox):
     """Scrollable Content ListBox using mouse buttons 4/5"""
 
-    # pylint: disable-msg=R0913
+    # pylint: disable=R0913
     def mouse_event(self, size, event, button, col, row, focus):
         """Scroll content"""
         if is_mouse_press(event):
@@ -92,7 +92,7 @@ class ScrollableListBox(ListBox):
                 return
         return super(ScrollableListBox, self).mouse_event(size, event, button,
                                                           col, row, focus)
-    # pylint: enable-msg=R0913
+    # pylint: enable=R0913
 
 class SourceText(SelectableText):
     """A widget that display source code content.

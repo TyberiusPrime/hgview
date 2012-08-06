@@ -31,9 +31,9 @@ try:
     import pygments
     from pygments.token import Token, _TokenType
 except ImportError:
-    # pylint: disable-msg=C0103
+    # pylint: disable=C0103
     pygments = None
-    # pylint: enable-msg=C0103
+    # pylint: enable=C0103
 # _________________________________________________________________ Applicaiton
 
 class HgViewUrwidApplication(HgViewApplication):
@@ -177,7 +177,7 @@ def patch_screen(screen_cls):
             self._hgview_palette = Palette()
             if value:
                 self._hgview_palette.update(value)
-        # pylint: disable-msg=E0602
+        # pylint: disable=E0602
         _pal_escape = property(_hgview_get_palette, _hgview_set_palette)
         palette = _pal_escape
 
@@ -189,7 +189,7 @@ def patch_screen(screen_cls):
             self._hgview_attrconv = Palette()
             if value:
                 self._hgview_attrconv.update(value)
-        # pylint: disable-msg=E0602
+        # pylint: disable=E0602
         attrconv = property(_hgview_get_attrconv, _hgview_set_attrconv)
     return PatchedScreen
 

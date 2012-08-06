@@ -1,6 +1,6 @@
 #!/usr/bin/env python
-# pylint: disable-msg=W0142,W0403,W0404,E0611,W0613,W0622,W0622,W0704
-# pylint: disable-msg=R0904,C0103
+# pylint: disable=W0142,W0403,W0404,E0611,W0613,W0622,W0622,W0704
+# pylint: disable=R0904,C0103
 #
 # Copyright (c) 2003 LOGILAB S.A. (Paris, FRANCE).
 # http://www.logilab.fr/ -- mailto:contact@logilab.fr

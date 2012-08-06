@@ -729,7 +729,7 @@ class HgRepoListWalker(object):
         pass
 
 if __name__ == "__main__":
-    # pylint: disable-msg=C0103
+    # pylint: disable=C0103
     import sys
     from mercurial import ui, hg
     u = ui.ui()
