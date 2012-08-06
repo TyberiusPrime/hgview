@@ -19,7 +19,7 @@
 
 """ Generic Setup script, takes package info from hgviewlib.__pkginfo__.py file """
 
-from __future__ import nested_scopes
+from __future__ import nested_scopes, with_statement
 
 import os
 import sys
