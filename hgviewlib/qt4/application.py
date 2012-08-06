@@ -36,7 +36,6 @@ class HgViewQtApplication(HgViewApplication):
     ManifestViewer = ManifestViewer
 
     def __init__(self, *args, **kwargs):
-        import hgviewlib.qt4.hgqv_rc
         # make Ctrl+C works
         import signal
         signal.signal(signal.SIGINT, signal.SIG_DFL)
@@ -50,7 +49,7 @@ class HgViewQtApplication(HgViewApplication):
         self.app = app
 
     def exec_(self):
-        self.viewer.show()
+        self.viewer.show()  #pylint: disable=E1103
         if '--profile' in sys.argv or '--time' in sys.argv:
             return 0
         return self.app.exec_()

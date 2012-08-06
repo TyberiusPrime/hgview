@@ -370,6 +370,13 @@ class HgRepoListModel(QtCore.QAbstractTableModel, HgRepoListWalker):
     def notify_data_changed(self):
         self.emit(SIGNAL("layoutChanged()"))
 
+    def indexFromRev(self, rev):
+        self.ensureBuilt(rev=rev)
+        row = self.rowFromRev(rev)
+        if row is not None:
+            return self.index(row, 0)
+        return None
+
 class FileRevModel(HgRepoListModel):
     """
     Model used to manage the list of revisions of a file, in file
@@ -523,11 +530,11 @@ class HgFileListModel(QtCore.QAbstractTableModel):
         modified, added, removed = changes
         for lst, flag in ((added, '+'), (modified, '='), (removed, '-')):
             for f in [x for x in lst if self._filterFile(x, ctxfiles)]:
-                descr = f
+                desc = f
                 bfile = isbfile(f)
                 if bfile:
                     desc = desc.replace('.hgbfiles'+os.sep, '')
-                _files.append({'path': f, 'flag': flag, 'desc': descr, 'bfile': bfile,
+                _files.append({'path': f, 'flag': flag, 'desc': desc, 'bfile': bfile,
                                'parent': parent, 'fromside': fromside,
                                'infiles': f in ctxfiles})
                 # renamed/copied files are handled by background

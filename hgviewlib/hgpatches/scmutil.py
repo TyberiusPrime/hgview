@@ -17,7 +17,7 @@
 """
 
 try:
-    from mercurial.scmutil import match
+    from mercurial.scmutil import match  #pylint: disable=E1101
 except ImportError:
     from mercurial import cmdutil
     def match(ctx, *args, **kwargs):

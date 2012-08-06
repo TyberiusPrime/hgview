@@ -507,38 +507,3 @@ class FileDiffViewer(AbstractFileDialog, _FileDiffViewer):
             bvalue = bhi
         vbar.setValue(bvalue)
         self._invbarchanged = False
-
-
-if __name__ == '__main__':
-    from mercurial import ui, hg
-    from optparse import OptionParser
-    opt = OptionParser()
-    opt.add_option('-R', '--repo',
-                   dest='repo',
-                   default='.',
-                   help='Hg repository')
-    opt.add_option('-d', '--diff',
-                   dest='diff',
-                   default=False,
-                   action='store_true',
-                   help='Run in diff mode')
-
-    options, args = opt.parse_args()
-    if len(args)!=1:
-        opt.error('provide a filename please')
-
-    filename = rootpath(repo, options.rev, args[0])
-    if filename is None:
-        parser.error("%s is not a tracked file" % args[0])
-
-    u = ui.ui()
-    repo = hg.repository(u, options.repo)
-    app = QtGui.QApplication([])
-
-    if options.diff:
-        view = FileDiffViewer(repo, filename)
-    else:
-        view = FileViewer(repo, filename)
-    view.show()
-    sys.exit(app.exec_())
-

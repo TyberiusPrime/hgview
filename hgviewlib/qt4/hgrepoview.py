@@ -22,7 +22,7 @@ from mercurial.node import hex, short as short_hex, bin as short_bin
 try:
     from mercurial.error import RepoError
 except ImportError: # old API
-    from mercurial.repo import RepoError
+    from mercurial.repo import RepoError #pylint: disable=E0611
 
 from PyQt4 import QtCore, QtGui
 Qt = QtCore.Qt
