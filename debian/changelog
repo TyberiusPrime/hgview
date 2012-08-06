@@ -1,3 +1,9 @@
+hgview (1.6.0-1) unstable; urgency=low
+
+  * New Upstream Release
+
+ -- Pierre-Yves David <pierre-yves.david@logilab.fr>  Mon, 06 Aug 2012 15:09:10 +0200
+
 hgview (1.5.0-4) unstable; urgency=low
 
   * Rebuild the source package with the .install files so Ubuntu doesn't get
