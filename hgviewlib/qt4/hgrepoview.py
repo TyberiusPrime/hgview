@@ -1,4 +1,4 @@
-# Copyright (c) 2009-2011 LOGILAB S.A. (Paris, FRANCE).
+# Copyright (c) 2009-2012 LOGILAB S.A. (Paris, FRANCE).
 # http://www.logilab.fr/ -- mailto:contact@logilab.fr
 #
 # This program is free software; you can redistribute it and/or modify it under
@@ -16,12 +16,13 @@
 Qt4 high level widgets for hg repo changelogs and filelogs
 """
 import sys
+from collections import namedtuple
 
 from mercurial.node import hex, short as short_hex, bin as short_bin
 try:
     from mercurial.error import RepoError
 except ImportError: # old API
-    from mercurial.repo import RepoError
+    from mercurial.repo import RepoError #pylint: disable=E0611
 
 from PyQt4 import QtCore, QtGui
 Qt = QtCore.Qt
@@ -31,7 +32,8 @@ nullvariant = QtCore.QVariant()
 
 from hgviewlib.decorators import timeit
 from hgviewlib.config import HgConfig
-from hgviewlib.util import format_desc, xml_escape
+from hgviewlib.util import format_desc, xml_escape, tounicode
+from hgviewlib.util import first_known_precursors, first_known_successors
 from hgviewlib.qt4 import icon as geticon
 from hgviewlib.qt4.hgmanifestdialog import ManifestViewer
 from hgviewlib.qt4.quickbar import QuickBar
@@ -131,11 +133,45 @@ class HgRepoView(QtGui.QTableView):
                 self.goto)
 
     def _action_defs(self):
-        a = [("back", self.tr("Back"), 'back', None, QtGui.QKeySequence(QtGui.QKeySequence.Back), self.back),
-             ("forward", self.tr("Forward"), 'forward', None, QtGui.QKeySequence(QtGui.QKeySequence.Forward), self.forward),
-             ("manifest", self.tr("Show at rev..."), None, self.tr("Show the manifest at selected revision"), None, self.showAtRev),
+        ActDef = namedtuple('ActDef', ['name', 'desc', 'icon', 'tip', 'keys', 'cb'])
+        return [
+            ActDef(name="back",
+                   desc=self.tr("Previous visited"),
+                   icon='back',
+                   tip=self.tr("Barward to the previous visited changeset"),
+                   keys=[QtGui.QKeySequence(QtGui.QKeySequence.Back)],
+                   cb=self.back),
+            ActDef(name="forward",
+                   desc=self.tr("Next visited"),
+                   icon='forward',
+                   tip=self.tr("Forward to the next visited changeset"),
+                   keys=[QtGui.QKeySequence(QtGui.QKeySequence.Forward)],
+                   cb=self.forward),
+            ActDef(name="manifest",
+                   desc=self.tr("Manifest"),
+                   icon=None,
+                   tip=self.tr("Show the manifest at selected revision"),
+                   keys=[Qt.SHIFT + Qt.Key_Enter, Qt.SHIFT + Qt.Key_Return],
+                   cb=self.showAtRev),
+            ActDef(name="start",
+                   desc=self.tr("Hide higher revisions"),
+                   icon=None,
+                   tip=self.tr("Start graph from this revision"),
+                   keys=[Qt.Key_Backspace],
+                   cb=self.startFromRev),
+            ActDef(name="follow",
+                   desc=self.tr("Focus on ancestors"),
+                   icon=None,
+                   tip=self.tr("Follow revision history from this revision"),
+                   keys=[Qt.SHIFT + Qt.Key_Backspace],
+                   cb=self.followFromRev),
+            ActDef(name="unfilter",
+                   desc=self.tr("Show all changesets"),
+                   icon="unfilter",
+                   tip=self.tr("Remove filter and show all changesets"),
+                   keys=[Qt.ALT + Qt.CTRL + Qt.Key_Backspace],
+                   cb=self.removeFilter),
              ]
-        return a
 
     def createActions(self):
         self._actions = {}
@@ -144,24 +180,38 @@ class HgRepoView(QtGui.QTableView):
         QtCore.QTimer.singleShot(0, self.configureActions)
 
     def configureActions(self):
-        for name, desc, icon, tip, key, cb in self._action_defs():
+        for name, desc, icon, tip, keys, cb in self._action_defs():
             act = self._actions[name]
             if icon:
                 act.setIcon(geticon(icon))
             if tip:
                 act.setStatusTip(tip)
-            if key:
-                act.setShortcut(key)
+            if keys:
+                act.setShortcuts(keys)
             if cb:
                 connect(act, SIGNAL('triggered()'), cb)
             self.addAction(act)
+        self._actions['unfilter'].setEnabled(False)
+        connect(self, SIGNAL('startFromRev'), self.update_filter_action)
+
+    def update_filter_action(self, rev=None, follow=None):
+        self._actions['unfilter'].setEnabled(rev is not None)
 
     def showAtRev(self):
         self.emit(SIGNAL('revisionActivated'), self.current_rev)
 
+    def startFromRev(self):
+        self.emit(SIGNAL('startFromRev'), self.current_rev, False)
+
+    def followFromRev(self):
+        self.emit(SIGNAL('startFromRev'), self.current_rev, True)
+
+    def removeFilter(self):
+        self.emit(SIGNAL('startFromRev'))
+
     def contextMenuEvent(self, event):
         menu = QtGui.QMenu(self)
-        for act in ['manifest', None, 'back', 'forward']:
+        for act in ['manifest', None, 'start', 'follow', 'unfilter', None, 'back', 'forward']:
             if act:
                 menu.addAction(self._actions[act])
             else:
@@ -304,7 +354,9 @@ class HgRepoView(QtGui.QTableView):
 
     def goto(self, rev):
         """
-        Select revision 'rev' (can be anything understood by repo.changectx())
+        Select revision 'rev'.
+        It can be anything understood by repo.changectx():
+          revision number, node or tag for instance.
         """
         if isinstance(rev, basestring) and ':' in rev:
             rev = rev.split(':')[1]
@@ -327,13 +379,19 @@ class HgRepoView(QtGui.QTableView):
         row = self.currentIndex().row()
         self.setCurrentIndex(self.model().index(max(row - 1, 0), 0))
 
-
+TROUBLE_EXPLANATIONS = {
+    'unstable': "Based on obsolete ancestor",
+    'latecomer': "Hopeless successors of a public changeset",
+    'conflicting': "Another changeset are also a successors of "
+                   "one of your precursor",
+}
 class RevDisplay(QtGui.QTextBrowser):
     """
     Display metadata for one revision (rev, author, description, etc.)
     """
     def __init__(self, parent=None):
         QtGui.QTextBrowser.__init__(self, parent)
+        self.excluded = ()
         self.descwidth = 60 # number of chars displayed for parent/child descriptions
 
         if rst2html:
@@ -356,16 +414,24 @@ class RevDisplay(QtGui.QTextBrowser):
         Callback called when a link is clicked in the text browser
         """
         rev = str(qurl.toString())
+        diff = False
         if rev.startswith('diff_'):
-            self.diffrev = int(rev[5:])
+            rev = int(rev[5:])
+            diff = True
+
+        try:
+            rev = self.ctx._repo.changectx(rev).rev()
+        except RepoError:
+            QtGui.QDesktopServices.openUrl(qurl)
+            self.refreshDisplay()
+
+        if diff:
+            self.diffrev = rev
             self.refreshDisplay()
             # TODO: emit a signal to recompute the diff
             self.emit(SIGNAL('parentRevisionSelected'), self.diffrev)
-        elif rev.isdigit():
-            self.emit(SIGNAL('revisionSelected'), rev)
         else:
-            QtGui.QDesktopServices.openUrl(qurl)
-            self.refreshDisplay()
+            self.emit(SIGNAL('revisionSelected'), rev)
 
     def setDiffRevision(self, rev):
         if rev != self.diffrev:
@@ -424,7 +490,7 @@ class RevDisplay(QtGui.QTextBrowser):
         buf = "<table width=100%>\n"
         if self.mqpatch:
             buf += '<tr bgcolor=%s>' % cfg.getMQFGColor()
-            buf += '<td colspan=3 width=100%><b>Patch queue:</b>&nbsp;'
+            buf += '<td colspan=4 width=100%><b>Patch queue:</b>&nbsp;'
             for p in self.mqseries:
                 if p in self.mqunapplied:
                     p = "<i>%s</i>" % p
@@ -437,62 +503,54 @@ class RevDisplay(QtGui.QTextBrowser):
         if rev is None:
             buf += "<td><b>Working Directory</b></td>\n"
         else:
-            buf += '<td><b>Revision:</b>&nbsp;'\
+            buf += '<td title="Revision"><b>'\
                    '<span class="rev_number">%s</span>:'\
-                   '<span class="rev_hash">%s</span></td>'\
-                   '\n' % (ctx.rev(), short_hex(ctx.node()))
+                   '<span class="rev_hash">%s</span>'\
+                   '</b></td>\n' % (ctx.rev(), short_hex(ctx.node()))
 
-        buf += '<td><b>Author:</b>&nbsp;'\
-               '%s</td>'\
-               '\n' %  unicode(ctx.user(), 'utf-8', 'replace')
-        buf += '<td><b>Branch:</b>&nbsp;%s</td>' % ctx.branch()
+        buf += '<td title="Author">%s</td>\n' \
+               % tounicode(ctx.user())
+        buf += '<td title="Branch name">%s</td>\n' % ctx.branch()
+        buf += '<td title="Phase name">%s</td>\n' % ctx.phasestr()
         buf += '</tr>'
         buf += "</table>\n"
+
         buf += "<table width=100%>\n"
         parents = [p for p in ctx.parents() if p]
         for p in parents:
             if p.rev() > -1:
-                short = short_hex(p.node()) if getattr(p, 'applied', True) else p.node()
-                desc = format_desc(p.description(), self.descwidth)
-                p_rev = p.rev()
-                p_fmt = '<span class="rev_number">%s</span>:'\
-                        '<a href="%s" class="rev_hash">%s</a>'
-                if p_rev == self.diffrev:
-                    p_rev = '<b>%s</b>' % (p_fmt % (p_rev, p_rev, short))
-                else:
-                    p_rev = p_fmt % ('<a href="diff_%s" class="rev_diff">%s</a>' % (p_rev, p_rev), p_rev, short)
-                buf += '<tr><td width=50 class="label"><b>Parent:</b></td>'\
-                       '<td colspan=5>%s&nbsp;'\
-                       '<span class="short_desc"><i>%s</i></span></td></tr>'\
-                       '\n' % (p_rev, desc)
+                buf += self._html_ctx_info(p, 'Parent', 'Direct ancestor of this changeset')
         if len(parents) == 2:
             p = parents[0].ancestor(parents[1])
-            short = short_hex(p.node())
-            desc = format_desc(p.description(), self.descwidth)
-            p_rev = p.rev()
-            p_fmt = '<span class="rev_number">%s</span>:'\
-                    '<a href="%s" class="rev_hash">%s</a>'
-            if p_rev == self.diffrev:
-                p_rev = '<b>%s</b>' % (p_fmt % (p_rev, p_rev, short))
-            else:
-                p_rev = p_fmt % ('<a href="diff_%s" class="rev_diff">%s</a>' % (p_rev, p_rev), p_rev, short)
-            buf += '<tr><td width=50 class="label"><b>Ancestor:</b></td>'\
-                   '<td colspan=5>%s&nbsp;'\
-                   '<span class="short_desc"><i>%s</i></span></td></tr>'\
-                   '\n' % (p_rev, desc)
+            buf += self._html_ctx_info(p, 'Ancestor', 'Direct ancestor of this changeset')
 
         for p in ctx.children():
-            if p.rev() > -1:
-                short = short_hex(p.node()) if getattr(p, 'applied', True) else p.node()
-                desc = format_desc(p.description(), self.descwidth)
-                buf += '<tr><td class="label"><b>Child:</b></td>'\
-                       '<td colspan=5><span class="rev_number">%s</span>:'\
-                       '<a href="%s" class="rev_hash">%s</a>&nbsp;'\
-                       '<span class="short_desc"><i>%s</i></span></td></tr>'\
-                       '\n' % (p.rev(), p.rev(), short, desc)
-
+            r = p.rev()
+            if r > -1 and r not in self.excluded:
+                buf += self._html_ctx_info(p, 'Child', 'Direct descendant of this changeset')
+        for prec in first_known_precursors(ctx, self.excluded):
+            buf += self._html_ctx_info(prec, 'Precursor',
+                'Previous version obsolete by this changeset')
+        for suc in first_known_successors(ctx, self.excluded):
+            buf += self._html_ctx_info(suc, 'Successors',
+                'Updated version that make this changeset obsolete')
+        bookmarks = ', '.join(ctx.bookmarks())
+        if bookmarks:
+            buf += '<tr><td width=50 class="label"><b>Bookmarks:</b></td>'\
+                   '<td colspan=5>&nbsp;'\
+                   '<span class="short_desc">%s</span></td></tr>'\
+                   '\n' % bookmarks
+        troubles = ctx.troubles()
+        if troubles:
+            span = '<span title="%s"  style="color: red;">%s</span>'
+            content = ', '.join([span % (TROUBLE_EXPLANATIONS[troub], troub)
+                                for troub in troubles])
+            buf += '<tr><td width=50 class="label"><b>Troubles:</b></td>'\
+                   '<td colspan=5>&nbsp;'\
+                   '<span class="short_desc" >%s</span></td></tr>'\
+                   '\n' % ''.join(content)
         buf += "</table>\n"
-        desc = unicode(ctx.description(), 'utf-8', 'replace')
+        desc = tounicode(ctx.description())
         if self.rst_action is not None  and self.rst_action.isChecked():
             replace = cfg.getFancyReplace()
             if replace:
@@ -507,6 +565,29 @@ class RevDisplay(QtGui.QTextBrowser):
         _context_menu = self.createStandardContextMenu()
         _context_menu.addAction(self.rst_action)
         _context_menu.exec_(event.globalPos())
+
+    def _html_ctx_info(self, ctx, title, tooltip=None):
+        isdiffrev = ctx.rev() == self.diffrev
+        if not tooltip:
+            tooltip = title
+        short = short_hex(ctx.node()) if getattr(ctx, 'applied', True) else ctx.node()
+        descr = format_desc(ctx.description(), self.descwidth)
+        rev = ctx.rev()
+        out = '<tr>'\
+              '<td width=60 class="label" title="%(tooltip)s"><b>%(title)s:</b></td>'\
+              '<td colspan=5>' % locals()
+        if isdiffrev:
+            out += '<b>'
+        out += '<span class="rev_number">'\
+               '<a href="diff_%(rev)s" class="rev_diff" title="display diff from there">%(rev)s</a>'\
+               '</span>:'\
+               '<a title="go to there" href="%(rev)s" class="rev_hash">%(short)s</a>&nbsp;'\
+               '<span class="short_desc"><i>%(descr)s</i></span>' % locals()
+        if isdiffrev:
+            out += '</b>'
+        out += '</td></tr>\n'
+        return out
+
 
 if __name__ == "__main__":
     from mercurial import ui, hg

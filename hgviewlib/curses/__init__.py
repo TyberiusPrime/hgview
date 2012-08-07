@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2003-2011 LOGILAB S.A. (Paris, FRANCE).
+# Copyright (c) 2003-2012 LOGILAB S.A. (Paris, FRANCE).
 # http://www.logilab.fr/ -- mailto:contact@logilab.fr
 #
 # This program is free software; you can redistribute it and/or modify it under
@@ -32,10 +32,35 @@ demandimport.ignore.extend([
     'urwid.vterm_test', 'urwid.treetools', 'urwid.canvas', 'urwid.vterm'])
 
 # use __all__ in the corresponding modules
-# pylint: disable-msg=W0401
+# pylint: disable=W0401
 from hgviewlib.curses.utils import *
 from hgviewlib.curses.exceptions import *
 from hgviewlib.curses.widgets import *
 from hgviewlib.curses.mainframe import MainFrame
-# pylint: enable-msg=W0401
+# pylint: enable=W0401
 
+# patching urwid
+
+# patch urwid signals system in order to allow delayed signals
+import urwid.signals
+urwid.signals.delay_emit_signal = lambda o, n, d, *a: urwid.signals.emit_signal(o, n, *a)
+def activate_delayed_signals(mainloop):
+    """
+    patch urwid signals system in order to allow delayed signals
+    """
+    import urwid.signals
+    emit = urwid.signals.emit_signal
+    if mainloop is None:
+        urwid.signals.delay_emit_signal = lambda o, n, d, *a: emit(o, n, *a)
+        return
+    memorizer = {}
+    def delay_emit_signal(obj, name, delay, *args):
+        """Same as emit_signal but really process the signal in `delay` seconds"""
+        emit_hash = (id(obj), name)
+        # remove previous alarm even if already processed
+        if emit_hash in memorizer:
+            mainloop.remove_alarm(memorizer[emit_hash])
+        delayed_emit = lambda *ignored: emit(obj, name, *args)
+        handle = mainloop.set_alarm_in(delay, delayed_emit)
+        memorizer[(id(obj), name)] = handle
+    urwid.signals.delay_emit_signal = delay_emit_signal

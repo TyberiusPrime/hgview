@@ -1,4 +1,4 @@
-# Copyright (c) 2003-2011 LOGILAB S.A. (Paris, FRANCE).
+# Copyright (c) 2003-2012 LOGILAB S.A. (Paris, FRANCE).
 # http://www.logilab.fr/ -- mailto:contact@logilab.fr
 #
 # This program is free software; you can redistribute it and/or modify it under
@@ -21,16 +21,17 @@ revision grapher.
 import os
 from cStringIO import StringIO
 import difflib
-from itertools import chain
+from itertools import chain, count
 from time import strftime, localtime
+from functools import partial
 
 from mercurial.node import nullrev
 from mercurial import patch, util, match, error, hg
 
 import hgviewlib.hgpatches # force apply patches to mercurial
-from hgviewlib.hgpatches import mqsupport
+from hgviewlib.hgpatches import mqsupport, phases
 
-from hgviewlib.util import tounicode, isbfile
+from hgviewlib.util import tounicode, isbfile, first_known_precursors
 from hgviewlib.config import HgConfig
 
 DATE_FMT = '%F %R'
@@ -121,7 +122,38 @@ def ismerge(ctx):
         return len(ctx.parents()) == 2 and ctx.parents()[1]
     return False
 
-def revision_grapher(repo, start_rev=None, stop_rev=0, branch=None, follow=False, show_hidden=False):
+def _graph_iterator(repo, start_rev, stop_rev, reorder=False):
+    """Iter thought revisions from start_rev to stop_rev (included)
+    Handle Working directory as None.
+    """
+    # check parameters
+    assert start_rev is None or start_rev >= stop_rev
+    assert start_rev < len(repo)
+    if start_rev is None:
+        yield start_rev
+        start_rev = len(repo.changelog) -1
+
+    target_revs = xrange(start_rev, stop_rev-1, -1)
+    phaserevs = None
+    if getattr(repo, '_phasecache', None) is not None:
+        phaserevs = repo._phasecache._phaserevs
+    elif getattr(repo, '_phaserev', None) is not None:
+        phaserevs = repo._phaserev
+    if not reorder or phaserevs is None:
+        # old hg
+        for curr_rev in target_revs:
+            yield curr_rev
+    else:
+        _cmp = lambda a, b: cmp(phases.public == phaserevs[a],
+                                phases.public == phaserevs[b])
+        for r in sorted(target_revs, cmp=_cmp):
+            yield r
+
+
+
+def revision_grapher(repo, start_rev=None, stop_rev=0, branch=None, follow=False,
+                     show_hidden=False, reorder=False, closed=False,
+                     show_obsolete=False):
     """incremental revision grapher
 
     This generator function walks through the revision history from
@@ -145,94 +177,89 @@ def revision_grapher(repo, start_rev=None, stop_rev=0, branch=None, follow=False
     If branch is set, only generated the subtree for the given named branch.
 
     """
+    # follow is disabled when start_rev is None (== not revision specified)
+    follow = start_rev is not None and follow # disable follow is start_rev is None
+
     if show_hidden and start_rev == None and hasattr(repo, 'mq'):
         series = list(reversed(repo.mq.series))
         for patchname in series:
             if not repo.mq.isapplied(patchname):
-                yield (patchname, 0, 0, [(0,0,0)], [])
+                yield (patchname, 0, 0, [(0, 0 ,0, False)], [])
 
+    # No uncommited change
     if start_rev is None and repo.status() == ([],)*7:
-        start_rev = len(repo.changelog)
+        start_rev = len(repo.changelog) -1
     assert start_rev is None or start_rev >= stop_rev
-    curr_rev = start_rev
-    revs = []
-    rev_color = {}
-    nextcolor = 0
-    hiddenrevs = repo.hiddenrevs
-    while curr_rev is None or curr_rev >= stop_rev:
-        # Compute revs and next_revs.
-        if (not show_hidden) and curr_rev in hiddenrevs:
-            if curr_rev is None:
-                curr_rev = len(repo.changelog)
-            else:
-                curr_rev -= 1
-            continue
-        if curr_rev not in revs:
-            if branch:
-                if repo[curr_rev].branch() != branch:
-                    if curr_rev is None:
-                        curr_rev = len(repo.changelog)
-                    else:
-                        curr_rev -= 1
-                    yield None
-                    continue
 
-            # New head.
-            if start_rev and follow and curr_rev != start_rev:
-                curr_rev -= 1
+    # all known revs for this line. This is used to compute column index
+    # it's combined with next_revs to compute how we must draw lines
+    revs = []
+    levels = []     # a rev -> level mapping.
+                    # level are True for real relation (parent),
+                    #            False for weak one (obsolete)
+    rev_color = {}
+    free_color = count(0)
+    excluded = () if show_hidden else repo.hiddenrevs
+    closedbranches = [tag for tag, node in repo.branchtags().items()
+                      if repo.lookup(node) not in repo.branchheads(tag, closed=False)]
+    for curr_rev in _graph_iterator(repo, start_rev, stop_rev, not show_hidden and reorder):
+        # Compute revs and next_revs.
+        if curr_rev in excluded:
+            continue
+        if curr_rev not in revs: # rev not ancestor of already processed node
+            # shall we ignore this new heads ?
+            if (branch and repo[curr_rev].branch() != branch) or \
+               (follow and curr_rev != start_rev) or \
+               (not closed and repo[curr_rev].branch() in closedbranches):
                 continue
+            # we add this new head to know revision
             revs.append(curr_rev)
-            rev_color[curr_rev] = curcolor = nextcolor
-            nextcolor += 1
-            p_revs = __get_parents(repo, curr_rev, branch)
-            while p_revs:
-                rev0 = p_revs[0]
-                if rev0 < stop_rev or rev0 in rev_color:
-                    break
-                rev_color[rev0] = curcolor
-                p_revs = __get_parents(repo, rev0, branch)
-        curcolor = rev_color[curr_rev]
-        rev_index = revs.index(curr_rev)
+            levels.append(True)
+            rev_color[curr_rev] = curcolor = free_color.next()
+        else:
+            curcolor = rev_color[curr_rev]
+        # copy known revisions for this line
         next_revs = revs[:]
+        next_levels = levels[:]
 
         # Add parents to next_revs.
-        parents = __get_parents(repo, curr_rev, branch)
+        parents = [(p, True) for p in __get_parents(repo, curr_rev, branch)]
+        if show_obsolete:
+            ctx = repo[curr_rev]
+            for prec in first_known_precursors(ctx, excluded):
+                parents.append((prec.rev(), False))
         parents_to_add = []
-        if len(parents) > 1:
-            preferred_color = None
-        else:
-            preferred_color = curcolor
-        for parent in parents:
+        max_levels = dict(zip(next_revs, next_levels))
+        for idx, (parent, level) in enumerate(parents):
+            # could have been added by another children
             if parent not in next_revs:
                 parents_to_add.append(parent)
-                if parent not in rev_color:
-                    if preferred_color:
-                        rev_color[parent] = preferred_color
-                        preferred_color = None
-                    else:
-                        rev_color[parent] = nextcolor
-                        nextcolor += 1
-            preferred_color = None
-
-        # parents_to_add.sort()
+                if idx == 0:  # first parent inherit the color
+                    rev_color[parent] = curcolor
+                else:  # second don't
+                    rev_color[parent] = free_color.next()
+            max_levels[parent] = level or max_levels.get(parent, False)
+        # rev_index is also the column index
+        rev_index = next_revs.index(curr_rev)
+        # replace curr_rev by its parents.
         next_revs[rev_index:rev_index + 1] = parents_to_add
+        next_levels = [max_levels[r] for r in next_revs]
 
         lines = []
         for i, rev in enumerate(revs):
-            if rev in next_revs:
-                color = rev_color[rev]
-                lines.append( (i, next_revs.index(rev), color) )
-            elif rev == curr_rev:
-                for parent in parents:
-                    color = rev_color[parent]
-                    lines.append( (i, next_revs.index(parent), color) )
+            if rev == curr_rev:
+                # one or more line to parents
+                targets = parents
+            else:
+                # single line to the same rev
+                targets = [(rev, levels[i])]
+            for trg, level in targets:
+                color = rev_color[trg]
+                lines.append((i, next_revs.index(trg), color, level))
 
         yield (curr_rev, rev_index, curcolor, lines, parents)
         revs = next_revs
-        if curr_rev is None:
-            curr_rev = len(repo.changelog)
-        else:
-            curr_rev -= 1
+        levels = next_levels
 
 
 def filelog_grapher(repo, path):
@@ -283,11 +310,11 @@ def filelog_grapher(repo, path):
         for i, nrev in enumerate(revs):
             if nrev in next_revs:
                 color = rev_color[nrev]
-                lines.append( (i, next_revs.index(nrev), color) )
+                lines.append( (i, next_revs.index(nrev), color, True) )
             elif nrev == rev:
                 for parent in parents:
                     color = rev_color[parent]
-                    lines.append( (i, next_revs.index(parent), color) )
+                    lines.append( (i, next_revs.index(parent), color, True) )
 
         pcrevs = [pfc.rev() for pfc in fctx.parents()]
         yield (fctx.rev(), index, curcolor, lines, pcrevs,
@@ -468,7 +495,6 @@ class Graph(object):
             filesize = fctx.size() # compute size here to lookup data securely
         except (LookupError, OSError):
             fctx = None # may happen for renamed/removed files or mq patch ?
-
         if isbfile(filename):
             data = "[bfile]\n"
             if fctx:
@@ -478,8 +504,15 @@ class Graph(object):
         if flag not in ('-', '?'):
             if fctx is None:# or fctx.node() is None:
                 return '', None
-            if filesize > self.maxfilesize:
-                data = "file too big"
+            if self.maxfilesize >= 0 and filesize > self.maxfilesize:
+                try:
+                    div = int(filesize).bit_length() // 10
+                    sym = ('', 'K', 'M', 'G', 'T', 'E')[div] # more, really ???
+                    val = int(filesize / (2 ** (div * 10)))
+                except AttributeError: # py<2.7
+                    val = filesize
+                    sym = ''
+                data = "File too big ! (~%i%so)" % (val, sym)
                 return flag, data
             if flag == "+" or mode == 'file':
                 flag = '+'
@@ -529,11 +562,11 @@ class HgRepoListWalker(object):
     configurations.
     """
     _allcolumns = ('ID', 'Branch', 'Log', 'Author', 'Date', 'Tags',)
-    _columns = ('ID', 'Branch', 'Log', 'Author', 'Date', 'Tags',)
+    _columns = ('ID', 'Branch', 'Log', 'Author', 'Date', 'Tags', 'Bookmarks')
     _stretchs = {'Log': 1, }
     _getcolumns = "getChangelogColumns"
 
-    def __init__(self, repo, branch='', fromhead=None, follow=False,
+    def __init__(self, repo, branch='', fromhead=None, follow=False, closed=False,
                  parent=None, *args, **kwargs):
         """
         repo is a hg repo instance
@@ -547,11 +580,10 @@ class HgRepoListWalker(object):
         self.rowcount = 0
         self.repo = repo
         self.show_hidden = False
-        super(HgRepoListWalker, self).__init__()
         self.load_config()
-        self.setRepo(repo, branch=branch, fromhead=fromhead, follow=follow)
+        self.setRepo(repo, branch=branch, fromhead=fromhead, follow=follow, closed=closed)
 
-    def setRepo(self, repo=None, branch='', fromhead=None, follow=False):
+    def setRepo(self, repo=None, branch='', fromhead=None, follow=False, closed=False):
         if repo is None:
             repo = hg.repository(self.repo.ui, self.repo.root)
         self._hasmq = hasattr(self.repo, "mq")
@@ -579,7 +611,11 @@ class HgRepoListWalker(object):
             self.namedbranch_color(branch_name)
         grapher = revision_grapher(self.repo, start_rev=fromhead,
                                    follow=follow, branch=branch,
-                                   show_hidden=self.show_hidden)
+                                   show_hidden=self.show_hidden,
+                                   reorder=self.reorder_changesets,
+                                   closed=closed,
+                                   show_obsolete=self.show_obsolete)
+
         self.graph = Graph(self.repo, grapher, self.max_file_size)
         self.rowcount = 0
         self.heads = [self.repo.changectx(x).rev() for x in self.repo.heads()]
@@ -631,6 +667,8 @@ class HgRepoListWalker(object):
         self.max_file_size = cfg.getMaxFileSize()
         self.hide_mq_tags = cfg.getMQHideTags()
         self.show_hidden = cfg.getShowHidden()
+        self.reorder_changesets = cfg.getNonPublicOnTop()
+        self.show_obsolete = cfg.getShowObsolete()
 
         cols = getattr(cfg, self._getcolumns)()
         if cols is not None:
@@ -674,13 +712,6 @@ class HgRepoListWalker(object):
             row = None
         return row
 
-    def indexFromRev(self, rev):
-        self.ensureBuilt(rev=rev)
-        row = self.rowFromRev(rev)
-        if row is not None:
-            return self.index(row, 0)
-        return None
-
     def clear(self):
         """empty the list"""
         self.graph = None
@@ -691,7 +722,7 @@ class HgRepoListWalker(object):
         pass
 
 if __name__ == "__main__":
-    # pylint: disable-msg=C0103
+    # pylint: disable=C0103
     import sys
     from mercurial import ui, hg
     u = ui.ui()

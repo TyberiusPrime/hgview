@@ -1,4 +1,4 @@
-# Copyright (c) 2009-2011 LOGILAB S.A. (Paris, FRANCE).
+# Copyright (c) 2009-2012 LOGILAB S.A. (Paris, FRANCE).
 # http://www.logilab.fr/ -- mailto:contact@logilab.fr
 #
 # This program is free software; you can redistribute it and/or modify it under
@@ -30,6 +30,7 @@ from hgviewlib.config import HgConfig
 from hgviewlib.util import tounicode, isbfile, Curry
 from hgviewlib.qt4 import icon as geticon
 from hgviewlib.decorators import timeit
+from hgviewlib.hgpatches import phases
 
 from PyQt4 import QtCore, QtGui
 connect = QtCore.QObject.connect
@@ -43,8 +44,11 @@ COLORS = [ "blue", "darkgreen", "red", "green", "darkblue", "purple",
 COLORS = [str(QtGui.QColor(x).name()) for x in COLORS]
 #COLORS = [str(color) for color in QtGui.QColor.colorNames()]
 
+# We use two colors, One for even nd one for odd rows
+COLOR_BG_OBSOLETE = [QtGui.QColor(255, 250, 250), QtGui.QColor(243, 230, 230)]
+COLOR_BG_TROUBLED = [QtGui.QColor(255, 193,  71), QtGui.QColor(255, 153,  51)]
 
-PUBLIC_PHASE, DRAFT_PHASE, SECRET_PHASE = 0, 1, 2
+
 
 def cvrt_date(date):
     """
@@ -66,6 +70,7 @@ _columnmap = {'ID': lambda model, ctx, gnode: ctx.rev() is not None and str(ctx.
               'Tags': gettags,
               'Branch': lambda model, ctx, gnode: ctx.branch(),
               'Filename': lambda model, ctx, gnode: gnode.extra[0],
+              'Phase': lambda model, ctx, gnode: ctx.phasestr(),
               }
 
 _tooltips = {'ID': lambda model, ctx, gnode: ctx.rev() is not None and ctx.hex() or "Working Directory",
@@ -80,13 +85,12 @@ def auth_width(model, repo):
 # in following lambdas, r is a hg repo
 _maxwidth = {'ID': lambda self, r: str(len(r.changelog)),
              'Date': lambda self, r: cvrt_date(r.changectx(0).date()),
-             'Tags': lambda self, r: sorted(r.tags().keys(),
-                                            key=lambda x: len(x))[-1][:10],
-             'Branch': lambda self, r: sorted(r.branchtags().keys(),
-                                              key=lambda x: len(x))[-1]
+             'Tags': lambda self, r: sorted(r.tags().keys(), key=len)[-1][:10],
+             'Branch': lambda self, r: sorted(r.branchtags().keys(), key=len)[-1]
                                               if r.branchtags().keys() else None,
              'Author': lambda self, r: 'author name',
              'Filename': lambda self, r: self.filename,
+             'Phase': lambda self, r: sorted(phases.phasenames, key=len)[-1]
              }
 
 def datacached(meth):
@@ -117,16 +121,16 @@ class HgRepoListModel(QtCore.QAbstractTableModel, HgRepoListWalker):
     _stretchs = {'Log': 1, }
     _getcolumns = "getChangelogColumns"
 
-    def __init__(self, repo, branch='', fromhead=None, follow=False, parent=None, show_hidden=False):
+    def __init__(self, repo, branch='', fromhead=None, follow=False, parent=None, show_hidden=False, closed=False):
         """
         repo is a hg repo instance
         """
         self._fill_timer = None
         QtCore.QAbstractTableModel.__init__(self, parent)
-        HgRepoListWalker.__init__(self, repo, branch, fromhead, follow)
+        HgRepoListWalker.__init__(self, repo, branch, fromhead, follow, closed=closed)
 
-    def setRepo(self, repo, branch='', fromhead=None, follow=False):
-        HgRepoListWalker.setRepo(self, repo, branch, fromhead, follow)
+    def setRepo(self, repo, branch='', fromhead=None, follow=False, closed=False):
+        HgRepoListWalker.setRepo(self, repo, branch, fromhead, follow, closed=closed)
         self.emit(SIGNAL('layoutChanged()'))
         QtCore.QTimer.singleShot(0, Curry(self.emit, SIGNAL('filled')))
         self._fill_timer = self.startTimer(50)
@@ -196,10 +200,14 @@ class HgRepoListModel(QtCore.QAbstractTableModel, HgRepoListWalker):
                 return QtCore.QVariant(self.user_name(_columnmap[column](self, ctx, gnode)))
             elif column == 'Log':
                 msg = _columnmap[column](self, ctx, gnode)
+                bookmarks = ctx.bookmarks()
+                if bookmarks:
+                    msg = '<%s> ~ %s' % (','.join(bookmarks), msg)
                 return QtCore.QVariant(msg)
             return QtCore.QVariant(_columnmap[column](self, ctx, gnode))
         elif role == QtCore.Qt.ToolTipRole:
             msg = "<b>Branch:</b> %s<br>\n" % ctx.branch()
+            msg += "<b>Phase:</b> %s<br>\n" % ctx.phasestr()
             if gnode.rev in self.wd_revs:
                 msg += " <i>Working Directory position"
                 states = 'modified added removed deleted'.split()
@@ -211,10 +219,25 @@ class HgRepoListModel(QtCore.QAbstractTableModel, HgRepoListWalker):
             msg += _tooltips.get(column, _columnmap[column])(self, ctx, gnode)
             return QtCore.QVariant(msg)
         elif role == QtCore.Qt.ForegroundRole:
+            color = None
             if column == 'Author': #author
-                return QtCore.QVariant(QtGui.QColor(self.user_color(ctx.user())))
-            if column == 'Branch': #branch
-                return QtCore.QVariant(QtGui.QColor(self.namedbranch_color(ctx.branch())))
+                color = QtGui.QColor(self.user_color(ctx.user()))
+                if ctx.obsolete():
+                    color = color.lighter()
+            elif column == 'Branch': #branch
+                color = QtGui.QColor(self.namedbranch_color(ctx.branch()))
+                if ctx.obsolete():
+                    color = color.lighter()
+            elif ctx.obsolete():
+                color = QtGui.QColor('grey')
+            if color is not None:
+                return QtCore.QVariant(color)
+        elif role == QtCore.Qt.BackgroundRole:
+            if ctx.obsolete():
+                return COLOR_BG_OBSOLETE[index.row() % 2]
+            elif ctx.troubles():
+                return COLOR_BG_TROUBLED[index.row() % 2]
+
         elif role == QtCore.Qt.DecorationRole:
             if column == 'Log':
                 if not getattr(ctx, 'applied', True):
@@ -242,9 +265,13 @@ class HgRepoListModel(QtCore.QAbstractTableModel, HgRepoListWalker):
 
                 for y1, y2, lines in ((0, h, gnode.bottomlines),
                                       (-h, 0, gnode.toplines)):
-                    for start, end, color in lines:
+                    for start, end, color, fill in lines:
                         lpen = QtGui.QPen(pen)
-                        lpen.setColor(QtGui.QColor(self.get_color(color)))
+                        color = QtGui.QColor(self.get_color(color))
+                        if not fill:
+                             lpen.setStyle(QtCore.Qt.DotLine)
+                             color.setAlpha(150)
+                        lpen.setColor(color)
                         lpen.setWidth(2)
                         painter.setPen(lpen)
                         x1 = self.col2x(start, pan) + radius / 2
@@ -253,7 +280,10 @@ class HgRepoListModel(QtCore.QAbstractTableModel, HgRepoListWalker):
 
                 dot_color = QtGui.QColor(self.namedbranch_color(ctx.branch()))
                 dotcolor = QtGui.QColor(dot_color)
-                if gnode.rev in self.heads:
+                if ctx.obsolete():
+                    penradius = 1
+                    pencolor = dotcolor.setAlpha(150)
+                elif gnode.rev in self.heads:
                     penradius = 2
                     pencolor = dotcolor.darker()
                 else:
@@ -277,7 +307,7 @@ class HgRepoListModel(QtCore.QAbstractTableModel, HgRepoListWalker):
                     if [True for st in status if st]:
                         modified = True
 
-                phase = getattr(ctx, 'phase', lambda : PUBLIC_PHASE)()
+                phase = ctx.phase()
 
                 if gnode.rev is None:
                     # WD is displayed only if there are local
@@ -288,7 +318,7 @@ class HgRepoListModel(QtCore.QAbstractTableModel, HgRepoListWalker):
                 #elif modified:
                 #    icn = geticon('modified')
                 elif atwd:
-                    if phase > PUBLIC_PHASE:
+                    if phase > phases.public:
                         pen_color = QtCore.Qt.red
                         pen = QtGui.QPen(pen_color)
                         pen.setWidth(penradius)
@@ -299,9 +329,9 @@ class HgRepoListModel(QtCore.QAbstractTableModel, HgRepoListWalker):
 
                 if icn:
                     icn.paint(painter, dot_x-5, dot_y-5, 17, 17)
-                elif phase == DRAFT_PHASE:
+                elif phase == phases.draft:
                     painter.drawRect(dot_x, dot_y, radius, radius)
-                elif phase == SECRET_PHASE:
+                elif phase == phases.secret:
                     P = QtCore.QPointF
                     painter.drawPolygon(
                         P(dot_x + (radius//2), dot_y),
@@ -335,6 +365,13 @@ class HgRepoListModel(QtCore.QAbstractTableModel, HgRepoListWalker):
     def notify_data_changed(self):
         self.emit(SIGNAL("layoutChanged()"))
 
+    def indexFromRev(self, rev):
+        self.ensureBuilt(rev=rev)
+        row = self.rowFromRev(rev)
+        if row is not None:
+            return self.index(row, 0)
+        return None
+
 class FileRevModel(HgRepoListModel):
     """
     Model used to manage the list of revisions of a file, in file
@@ -352,7 +389,7 @@ class FileRevModel(HgRepoListModel):
         HgRepoListModel.__init__(self, repo, parent=parent)
         self.setFilename(filename)
 
-    def setRepo(self, repo, branch='', fromhead=None, follow=False):
+    def setRepo(self, repo, branch='', fromhead=None, follow=False, closed=False):
         self.repo = repo
         self._datacache = {}
         self.load_config()
@@ -389,6 +426,10 @@ class HgFileListModel(QtCore.QAbstractTableModel):
     """
     Model used for listing (modified) files of a given Hg revision
     """
+
+    _description_desc = dict(path='', flag='', desc='Display revision description',
+                             bfile=None, parent=None, fromside=None, infiles=False)
+
     def __init__(self, repo, parent=None):
         """
         data is a HgHLRepo instance
@@ -412,11 +453,13 @@ class HgFileListModel(QtCore.QAbstractTableModel):
     def load_config(self):
         cfg = HgConfig(self.repo.ui)
         self._flagcolor = {}
-        self._flagcolor['='] = cfg.getFileModifiedColor(default='blue')
-        self._flagcolor['-'] = cfg.getFileRemovedColor(default='red')
-        self._flagcolor['-'] = cfg.getFileDeletedColor(default='red')
-        self._flagcolor['+'] = cfg.getFileAddedColor(default='green')
+        self._flagcolor['='] = cfg.getFileModifiedColor()
+        self._flagcolor['-'] = cfg.getFileRemovedColor()
+        self._flagcolor['-'] = cfg.getFileDeletedColor()
+        self._flagcolor['+'] = cfg.getFileAddedColor()
+        self._flagcolor[''] = cfg.getFileDescriptionColor()
         self._displaydiff = cfg.getDisplayDiffStats()
+        self._descriptionview = cfg.getFileDescriptionView()
 
     def setDiffWidth(self, w):
         if w != self.diffwidth:
@@ -450,6 +493,7 @@ class HgFileListModel(QtCore.QAbstractTableModel):
         if not index.isValid() or index.row()>=len(self) or not self.current_ctx:
             return None
         row = index.row()
+        file_info = self._files[row]
         return self._files[row]['path']
 
     def revFromIndex(self, index):
@@ -457,11 +501,9 @@ class HgFileListModel(QtCore.QAbstractTableModel):
             if not index.isValid() or index.row()>=len(self) or not self.current_ctx:
                 return None
             row = index.row()
-            current_file_desc = self._files[row]
-            if current_file_desc['fromside'] == 'right':
+            if self._files[row]['fromside'] == 'right':
                 return self.current_ctx.parents()[1].rev()
-            else:
-                return self.current_ctx.parents()[0].rev()
+            return self.current_ctx.parents()[0].rev()
         return None
 
     def indexFromFile(self, filename):
@@ -483,17 +525,15 @@ class HgFileListModel(QtCore.QAbstractTableModel):
         modified, added, removed = changes
         for lst, flag in ((added, '+'), (modified, '='), (removed, '-')):
             for f in [x for x in lst if self._filterFile(x, ctxfiles)]:
-                _files.append({'path': f, 'flag': flag, 'desc': f,
+                desc = f
+                bfile = isbfile(f)
+                if bfile:
+                    desc = desc.replace('.hgbfiles'+os.sep, '')
+                _files.append({'path': f, 'flag': flag, 'desc': desc, 'bfile': bfile,
                                'parent': parent, 'fromside': fromside,
                                'infiles': f in ctxfiles})
                 # renamed/copied files are handled by background
                 # filling process since it can be a bit long
-        for fdesc in _files:
-            bfile = isbfile(fdesc['path'])
-            fdesc['bfile'] = bfile
-            if bfile:
-                fdesc['desc'] = fdesc['desc'].replace('.hgbfiles'+os.sep, '')
-
         return _files
 
     def loadFiles(self):
@@ -506,6 +546,8 @@ class HgFileListModel(QtCore.QAbstractTableModel):
             _files = self._buildDesc(self.current_ctx.parents()[1], 'right')
             self._files += [x for x in _files if x['path'] not in _paths]
         self._filesdict = dict([(f['path'], f) for f in self._files])
+        if self._descriptionview == 'asfile':
+            self._files.insert(0, self._description_desc)
         self.fillFileStats()
 
     def setSelectedRev(self, ctx):
@@ -540,7 +582,10 @@ class HgFileListModel(QtCore.QAbstractTableModel):
 
     def _fill(self):
         # the generator used to fill file stats as a background process
-        for row, desc in enumerate(self._files):
+        files = enumerate(self._files)
+        if self._descriptionview == 'asfile':
+            files.next() # consume description entry
+        for row, desc in files:
             filename = desc['path']
             if desc['flag'] == '=' and self._displaydiff:
                 try:
@@ -579,7 +624,6 @@ class HgFileListModel(QtCore.QAbstractTableModel):
             return nullvariant
         row = index.row()
         column = index.column()
-
         current_file_desc = self._files[row]
         current_file = current_file_desc['path']
         stats = current_file_desc.get('stats')
@@ -625,13 +669,15 @@ class HgFileListModel(QtCore.QAbstractTableModel):
                 return QtCore.QVariant(current_file_desc['desc'])
             elif role == QtCore.Qt.DecorationRole:
                 if self._fulllist and ismerge(self.current_ctx):
+                    icn = None
                     if current_file_desc['infiles']:
                         icn = geticon('leftright')
                     elif current_file_desc['fromside'] == 'left':
                         icn = geticon('left')
                     elif current_file_desc['fromside'] == 'right':
                         icn = geticon('right')
-                    return QtCore.QVariant(icn.pixmap(20,20))
+                    if icn:
+                        return QtCore.QVariant(icn.pixmap(20,20))
             elif role == QtCore.Qt.FontRole:
                 if self._fulllist and current_file_desc['infiles']:
                     font = QtGui.QFont()

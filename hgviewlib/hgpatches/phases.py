@@ -12,10 +12,11 @@
 #
 # You should have received a copy of the GNU General Public License along with
 # this program.  If not, see <http://www.gnu.org/licenses/>.
-"""mercurial interactive history viewer
-
-Its purpose is similar to the hgk tool of mercurial, and it has been
-written with efficiency in mind when dealing with big repositories
-(it can happily be used to browse Linux kernel source code
-repository).
 """
+add a phases mock to mercurial
+"""
+try:
+    from mercurial.phases import *
+except ImportError:
+    allphases = public, draft, secret = range(3)
+    phasenames = ['public', 'draft', 'secret']

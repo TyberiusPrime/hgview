@@ -2,7 +2,7 @@ Source: hgview
 Section: vcs
 Priority: optional
 Maintainer: David Douard <david.douard@logilab.fr>
-Uploaders: Alexandre Fayolle <afayolle@debian.org>, Alain Leufroy <alain.leufroy@logilab.fr>
+Uploaders: Julien Cristau <julien.cristau@logilab.fr>, Alain Leufroy <alain.leufroy@logilab.fr>, Pierre-Yves David <pierre-yves.david@logilab.fr>
 Build-Depends: debhelper (>= 5.0.38), pyqt4-dev-tools, python (>=2.5), xmlto, asciidoc, mercurial
 Build-Depends-Indep: python-support
 XS-Python-Version: >= 2.5

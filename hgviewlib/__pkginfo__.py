@@ -1,4 +1,4 @@
-# pylint: disable-msg=W0622
+# pylint: disable=W0622
 # coding: iso-8859-1
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -11,13 +11,13 @@
 #
 # You should have received a copy of the GNU General Public License along with
 # this program.  If not, see <http://www.gnu.org/licenses/>.
-"""Copyright (c) 2000-2011 LOGILAB S.A. (Paris, FRANCE).
+"""Copyright (c) 2000-2012 LOGILAB S.A. (Paris, FRANCE).
 http://www.logilab.fr/ -- mailto:contact@logilab.fr
 """
 
 import glob
 distname = modname = 'hgview'
-numversion = (1, 5, 0)
+numversion = (1, 6, 0)
 version = '.'.join([str(num) for num in numversion])
 
 
@@ -59,15 +59,6 @@ pyversions = ["2.5"]
 debian_handler = 'python-dep-standalone'
 
 from os.path import join
-include_dirs = [] #join('tests', 'data'), join('tests', 'packages')]
-data_files = [ #('share/hgview', ['hgviewlib/qt4/hgqv.ui',
-               #               'hgviewlib/qt4/filediffviewer.ui',
-               #               'hgviewlib/qt4/fileviewer.ui',
-               #               'hgviewlib/qt4/manifestviewer.ui',
-               #               ]),
-              ('share/man/man1', ['doc/hgview.1',
-                                 ]),
-              #('share/python-support/mercurial-common/hgext', ['hgext/hgview.py',]),
-              #('../etc/mercurial/hgrc.d', ['hgext/hgview.rc',]),
-              ]
+include_dirs = []
+data_files = []
 

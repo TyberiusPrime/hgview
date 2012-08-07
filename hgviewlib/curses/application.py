@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2003-2011 LOGILAB S.A. (Paris, FRANCE).
+# Copyright (c) 2003-2012 LOGILAB S.A. (Paris, FRANCE).
 # http://www.logilab.fr/ -- mailto:contact@logilab.fr
 #
 # This program is free software; you can redistribute it and/or modify it under
@@ -25,16 +25,15 @@ from urwid import AttrWrap, MainLoop
 
 from hgviewlib.application import HgViewApplication
 from hgviewlib.curses.hgrepoviewer import RepoViewer
-from hgviewlib.curses import MainFrame, emit_command
+from hgviewlib.curses import MainFrame, emit_command, activate_delayed_signals
 
 try:
     import pygments
     from pygments.token import Token, _TokenType
 except ImportError:
-    # pylint: disable-msg=C0103
+    # pylint: disable=C0103
     pygments = None
-    # pylint: enable-msg=C0103
-
+    # pylint: enable=C0103
 # _________________________________________________________________ Applicaiton
 
 class HgViewUrwidApplication(HgViewApplication):
@@ -52,7 +51,7 @@ class HgViewUrwidApplication(HgViewApplication):
         connect_logging(self.mainloop, level=logging.DEBUG)
         mainframe.register_commands()
         self.enable_inotify()
-        patch_signals(self.mainloop)
+        activate_delayed_signals(self.mainloop)
         self.mainframe = mainframe
 
 #        register_command('alarm', 'process callback in a given seconds',
@@ -135,28 +134,6 @@ def inotify(mainloop):
     # add watchers thought a thread to reduce start duration with a big repo
     threading.Thread(target=inot.update).start()
 
-# _______________________________________________________________ patch signals
-def patch_signals(mainloop):
-    """
-    patch urwid signalq system in order to allow delayed signals
-    """
-    import urwid.signals
-    memorizer = {}
-    def delay_emit_signal(obj, name, delay, *args):
-        """
-        Same as emit_signal but really process the signal in `delay` seconds
-        """
-        emit = urwid.signals.emit_signal
-        if not delay:
-            return emit(obj, name, *args)
-        emit_hash = (id(obj), name)
-        # remove previous alarm even if already processed
-        if emit_hash in memorizer:
-            mainloop.remove_alarm(memorizer[emit_hash])
-        delayed_emit = lambda *ignored: emit(obj, name, *args)
-        handle = mainloop.set_alarm_in(delay, delayed_emit)
-        memorizer[(id(obj), name)] = handle
-    urwid.signals.delay_emit_signal = delay_emit_signal
 # ________________________________________________________________ patch screen
 def patch_screen(screen_cls):
     """
@@ -200,7 +177,7 @@ def patch_screen(screen_cls):
             self._hgview_palette = Palette()
             if value:
                 self._hgview_palette.update(value)
-        # pylint: disable-msg=E0602
+        # pylint: disable=E0602
         _pal_escape = property(_hgview_get_palette, _hgview_set_palette)
         palette = _pal_escape
 
@@ -212,7 +189,7 @@ def patch_screen(screen_cls):
             self._hgview_attrconv = Palette()
             if value:
                 self._hgview_attrconv.update(value)
-        # pylint: disable-msg=E0602
+        # pylint: disable=E0602
         attrconv = property(_hgview_get_attrconv, _hgview_set_attrconv)
     return PatchedScreen
 
@@ -297,8 +274,10 @@ PALETTE = [
     ('Author', 'dark blue', 'default', 'bold'),
     ('Date', 'dark green', 'default', 'bold'),
     ('Tags', 'yellow', 'dark red', 'bold'),
+    ('Bookmarks', 'default', 'dark blue'),
     ('Branch', 'yellow', 'default', 'bold'),
     ('Filename', 'white', 'default', 'bold'),
+    ('obsolete', 'dark cyan', 'default'),
 
     # filelist
     ('+', 'dark green', 'default'),

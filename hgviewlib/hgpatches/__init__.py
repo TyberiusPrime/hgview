@@ -1,4 +1,4 @@
-# Copyright (c) 2003-2011 LOGILAB S.A. (Paris, FRANCE).
+# Copyright (c) 2003-2012 LOGILAB S.A. (Paris, FRANCE).
 # http://www.logilab.fr/ -- mailto:contact@logilab.fr
 #
 # This program is free software; you can redistribute it and/or modify it under
@@ -36,10 +36,16 @@ if patch.iterhunks.func_code.co_varnames[0] == 'ui':
     iterhunks = partial(iterhunks_orig, ui)
     patch.iterhunks = iterhunks
 
-#  mercurial ~< 1.8.3
+# mercurial ~< 1.8.3
 if not hasattr(context.filectx, 'p1'):
     context.filectx.p1 = lambda self: self.parents()[0]
 
+# mercurial < 2.1
+if not hasattr(context.changectx, 'phase'):
+    from hgviewlib.hgpatches.phases import phasenames
+    context.changectx.phase = lambda self: 0
+    context.changectx.phasestr = lambda self: phasenames[self.phase()]
+    context.workingctx.phase = lambda self: 1
 
 # mercurial < 2.3
 # note: use dir(...) has localrepo.localrepository.hiddenrevs always raises
@@ -49,3 +55,27 @@ if 'hiddenrevs' not in dir(localrepo.localrepository):
         return getattr(self.changelog, 'hiddenrevs', ())
     localrepo.localrepository.hiddenrevs = property(hiddenrevs, None, None)
 
+# obsolete feature
+if getattr(context.changectx, 'obsolete', None) is None:
+    context.changectx.obsolete = lambda self: False
+if getattr(context.changectx, 'unstable', None) is None:
+    context.changectx.unstable = lambda self: False
+
+
+### unofficial API implemented by mutable extension
+# They will probably because official, but maybe with a different name
+if getattr(context.changectx, 'conflicting', None) is None:
+    context.changectx.conflicting = lambda self: False
+if getattr(context.changectx, 'latecomer', None) is None:
+    context.changectx.latecomer = lambda self: False
+if getattr(context.changectx, 'troubles', None) is None:
+    def troubles(ctx):
+        troubles = []
+        if ctx.unstable():
+            troubles.append('unstable')
+        if ctx.latecomer():
+            troubles.append('latecomer')
+        if ctx.conflicting():
+            troubles.append('conflicting')
+        return tuple(troubles)
+    context.changectx.troubles = troubles

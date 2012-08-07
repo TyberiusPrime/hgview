@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # util functions
 #
-# Copyright (C) 2009-2011 Logilab. All rights reserved.
+# Copyright (C) 2009-2012 Logilab. All rights reserved.
 #
 # This software may be used and distributed according to the terms
 # of the GNU General Public License, incorporated herein by reference.
@@ -24,13 +24,6 @@ def tounicode(string):
         except UnicodeDecodeError:
             pass
     return unicode(string, 'utf-8', 'replace')
-
-def has_closed_branch_support(repo):
-    """
-    Return True is repository have support for closed branches
-    """
-    # what a hack...
-    return "closed" in repo.heads.im_func.func_code.co_varnames
 
 def isexec(filectx):
     """
@@ -133,3 +126,45 @@ def format_desc(desc, width):
         desc = desc[:width] + '...'
     return desc
 
+
+def first_known_precursors(ctx, excluded=()):
+    obsstore = getattr(ctx._repo, 'obsstore', None)
+    nm = ctx._repo.changelog.nodemap
+    if obsstore is not None:
+        markers = obsstore.successors.get(ctx.node(), ())
+        # consider all precursors
+        candidates = set(mark[0] for mark in markers)
+        seen = set(candidates)
+        while candidates:
+            current = candidates.pop()
+            # is this changeset in the displayed set ?
+            crev = nm.get(current)
+            if crev is not None and crev not in excluded:
+                yield ctx._repo[crev]
+            else:
+                for mark in obsstore.successors.get(current, ()):
+                    if mark[0] not in seen:
+                        candidates.add(mark[0])
+                        seen.add(mark[0])
+
+def first_known_successors(ctx, excluded=()):
+    obsstore = getattr(ctx._repo, 'obsstore', None)
+    nm = ctx._repo.changelog.nodemap
+    if obsstore is not None:
+        markers = obsstore.precursors.get(ctx.node(), ())
+        # consider all precursors
+        candidates = set()
+        for mark in markers:
+            candidates.update(mark[1])
+        seen = set(candidates)
+        while candidates:
+            current = candidates.pop()
+            # is this changeset in the displayed set ?
+            crev = nm.get(current)
+            if crev is not None and crev not in excluded:
+                yield ctx._repo[crev]
+            else:
+                for mark in obsstore.successors.get(current, ()):
+                    if mark[0] not in seen:
+                        candidates.add(mark[0])
+                        seen.add(mark[0])

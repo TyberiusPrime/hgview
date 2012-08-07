@@ -1,4 +1,4 @@
-# Copyright (c) 2003-2011 LOGILAB S.A. (Paris, FRANCE).
+# Copyright (c) 2003-2012 LOGILAB S.A. (Paris, FRANCE).
 # http://www.logilab.fr/ -- mailto:contact@logilab.fr
 #
 # This program is free software; you can redistribute it and/or modify it under
@@ -42,6 +42,8 @@ from collections import namedtuple
 
 from mercurial import error, node, patch, context, manifest
 from hgext.mq import patchheader
+
+from hgviewlib.hgpatches import phases
 
 MODIFY, ADD, REMOVE, DELETE, UNKNOWN, RENAME = range(6) # order is important for status
 
@@ -174,12 +176,18 @@ class MqChangeCtx(MqCtx):
     def hidden(self):
         return True
 
+    def phase(self):
+        return phases.secret
+
     def manifest(self):
         return manifest.manifestdict.fromkeys(self.files(), '=')
 
     def node(self):
         '''Return the name of the patch'''
         return self.name
+    @property
+    def _node(self):
+        return self.node() # in that way to support old hg
 
     def parents(self):
         if self._header.parent:
@@ -308,7 +316,7 @@ def reposetup(ui, repo):
         __hgview__ = True
 
         def __getitem__(self, changeid):
-            if changeid not in self.unapplieds:
+            if changeid not in self.unapplieds: #pylint: disable=E1101
                 return getitem_orig(changeid)
             patch = MqChangeCtx(repo, changeid)
             if os.path.exists(patch.path):
