@@ -11,7 +11,7 @@ class _LexerSelector(object):
         """
         Return a configured instance of the lexer
         """
-        return self.cfg_lexer(self._lexer(), cfg)
+        return self.cfg_lexer(self._lexer(), cfg) #pylint: disable=E1102
 
     def cfg_lexer(self, lexer, cfg=None):
         if cfg:

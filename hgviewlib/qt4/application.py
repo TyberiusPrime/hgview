@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2003-2011 LOGILAB S.A. (Paris, FRANCE).
+# Copyright (c) 2003-2012 LOGILAB S.A. (Paris, FRANCE).
 # http://www.logilab.fr/ -- mailto:contact@logilab.fr
 #
 # This program is free software; you can redistribute it and/or modify it under
@@ -36,6 +36,7 @@ class HgViewQtApplication(HgViewApplication):
     ManifestViewer = ManifestViewer
 
     def __init__(self, *args, **kwargs):
+        # This import is critical for qt initialization (at least on Mac os X)
         import hgviewlib.qt4.hgqv_rc
         # make Ctrl+C works
         import signal
@@ -50,7 +51,7 @@ class HgViewQtApplication(HgViewApplication):
         self.app = app
 
     def exec_(self):
-        self.viewer.show()
+        self.viewer.show()  #pylint: disable=E1103
         if '--profile' in sys.argv or '--time' in sys.argv:
             return 0
         return self.app.exec_()

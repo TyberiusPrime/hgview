@@ -1,6 +1,6 @@
 #!/usr/bin/env python
-# pylint: disable-msg=W0142,W0403,W0404,E0611,W0613,W0622,W0622,W0704
-# pylint: disable-msg=R0904,C0103
+# pylint: disable=W0142,W0403,W0404,E0611,W0613,W0622,W0622,W0704
+# pylint: disable=R0904,C0103
 #
 # Copyright (c) 2003 LOGILAB S.A. (Paris, FRANCE).
 # http://www.logilab.fr/ -- mailto:contact@logilab.fr
@@ -19,15 +19,19 @@
 
 """ Generic Setup script, takes package info from hgviewlib.__pkginfo__.py file """
 
-from __future__ import nested_scopes
+from __future__ import nested_scopes, with_statement
 
 import os
 import sys
 import shutil
 from distutils.core import setup
-from distutils.command import install_lib, install as _install
-from distutils.command.build import build
-from os.path import isdir, exists, join, walk, splitext
+from distutils.command.build import build as _build
+from distutils.command.build_py import build_py as _build_py
+from distutils.command.install import install as _install
+from distutils.command.install_lib import install_lib
+from distutils.command.install_data import install_data as _install_data
+from os.path import isdir, exists, join, walk, splitext, basename
+from subprocess import check_call, call as sub_call
 
 
 # import required features
@@ -61,9 +65,11 @@ except ImportError:
 
 long_description = file('README').read()
 
-BASE_BLACKLIST = ('CVS', 'debian', 'dist', 'build', '__buildlog', '.svn', '.hg')
-IGNORED_EXTENSIONS = ('.pyc', '.pyo', '.elc')
-    
+def setdefaultattr(obj, attrname, value=None):
+    if getattr(obj, attrname, None) is not None:
+        return getattr(obj, attrname)
+    setattr(obj, attrname, value)
+    return value
 
 def ensure_scripts(linux_scripts):
     """
@@ -78,151 +84,211 @@ def ensure_scripts(linux_scripts):
     return scripts_
 
 
-def get_packages(directory, prefix):
-    """return a list of subpackages for the given directory
-    """
-    result = []
-    for package in os.listdir(directory):
-        absfile = join(directory, package)
-        if isdir(absfile):
-            if exists(join(absfile, '__init__.py')) or \
-                   package in ('test', 'tests'):
-                if prefix:
-                    result.append('%s.%s' % (prefix, package))
-                else:
-                    result.append(package)
-                result += get_packages(absfile, result[-1])
-    return result
+class build_qt(_build_py):
 
-def export(from_dir, to_dir,
-           blacklist=BASE_BLACKLIST,
-           ignore_ext=IGNORED_EXTENSIONS):
-    """make a mirror of from_dir in to_dir, omitting directories and files
-    listed in the black list
-    """
-    def make_mirror(arg, directory, fnames):
-        """walk handler"""
-        for norecurs in blacklist:
-            try:
-                fnames.remove(norecurs)
-            except ValueError:
-                pass
-        for filename in fnames:
-            # don't include binary files
-            if filename[-4:] in ignore_ext:
-                continue
-            if filename[-1] == '~':
-                continue
-            src = '%s/%s' % (directory, filename)
-            dest = to_dir + src[len(from_dir):]
-            print >> sys.stderr, src, '->', dest
-            if os.path.isdir(src):
-                if not exists(dest):
-                    os.mkdir(dest)
-            else:
-                if exists(dest):
-                    os.remove(dest)
-                shutil.copy2(src, dest)
-    try:
-        os.mkdir(to_dir)
-    except OSError, ex:
-        # file exists ?
-        import errno
-        if ex.errno != errno.EEXIST:
-            raise
-    walk(from_dir, make_mirror, None)
+    description = "build every qt related resources (.uic and .qrc)"
 
+    PACKAGE = 'hgviewlib.qt4'
 
-EMPTY_FILE = '"""generated file, don\'t modify or your data will be lost"""\n'
+    def dir2pkg(self, dirpath):
+        os.sep.join(dispath.split('.'))
 
-class MyInstall(_install.install):
-    user_options = [
-            ('install-qt', None, "install qt library part [default]"),
-            ('install-curses', None, "install curses library part [default]"),
-            ('no-install-qt', None, "don't install qt library part"),
-            ('no-install-curses', None, "don't install curses library part"),
-            ] + _install.install.user_options
-
-    boolean_options = ['install-qt', 'install-curses'] + _install.install.boolean_options
-    negative_opt = dict([('no-install-qt','install-qt'), ('no-install-curses', 'install-curses')] 
-                        + _install.install.negative_opt.items())
-
-    def initialize_options(self):
-        self.install_qt = 1
-        self.install_curses = 1
-        _install.install.initialize_options(self)
-
-    def finalize_options(self):
-        _install.install.finalize_options(self)
-        if not hasattr(self.distribution, 'install_qt'):
-            self.distribution.install_qt = self.install_qt
-        if not hasattr(self.distribution, 'install_curses'):
-            self.distribution.install_curses = self.install_curses
-        if not self.distribution.install_qt and 'hgviewlib.qt4' in self.distribution.packages:
-            self.distribution.packages.remove('hgviewlib.qt4')
-        if not self.distribution.install_curses and 'hgviewlib.curses' in self.distribution.packages:
-            self.distribution.packages.remove('hgviewlib.curses')
-
-class MyInstallLib(install_lib.install_lib):
-    """extend install_lib command to handle  package __init__.py and
-    include_dirs variable if necessary
-    """
-    def run(self):
-        """overridden from install_lib class"""
-        install_lib.install_lib.run(self)
-        # create Products.__init__.py if needed
-        if subpackage_of:
-            product_init = join(self.install_dir, subpackage_of, '__init__.py')
-            if not exists(product_init):
-                self.announce('creating %s' % product_init)
-                stream = open(product_init, 'w')
-                stream.write(EMPTY_FILE)
-                stream.close()
-        # manually install included directories if any
-        if include_dirs:
-            if subpackage_of:
-                base = join(subpackage_of, modname)
-            else:
-                base = modname
-            for directory in include_dirs:
-                dest = join(self.install_dir, base, directory)
-                export(directory, dest)
-
-class QtBuild(build):
-    def compile_ui(self, ui_file, py_file=None):
-        # Search for pyuic4 in python bin dir, then in the $Path.
-        if py_file is None:
-            py_file = splitext(ui_file)[0] + "_ui.py"
-        try:
-            from PyQt4 import uic
-            fp = open(py_file, 'w')
-            uic.compileUi(ui_file, fp)
-            fp.close()
-            print "compiled", ui_file, "into", py_file
-        except Exception, e:
-            print 'Unable to compile user interface', e
+    def compile_src(self, src, dest):
+        compiler = self.get_compiler(src)
+        if not compiler:
             return
+        dir = os.path.dirname(dest)
+        self.mkpath(dir)
+        sys.stderr.write("compiling %s -> %s\n" % (src, dest))
+        try:
+            compiler(src, dest)
+        except Exception, e:
+            sys.stderr.write('[Error] %r\n' % str(e))
 
-    def compile_rc(self, qrc_file, py_file=None):
-        # Search for pyuic4 in python bin dir, then in the $Path.
-        if py_file is None:
-            py_file = splitext(qrc_file)[0] + "_rc.py"
-        if os.system('pyrcc4 "%s" -o "%s"' % (qrc_file, py_file)) > 0:
-            print "Unable to generate python module for resource file", qrc_file
-        
     def run(self):
         # be sure to compile man page
-        os.system('make -C doc') 
-        for dirpath, _, filenames in os.walk(join('hgviewlib', 'qt4')):
+        _package = self.PACKAGE.split('.')
+        for dirpath, _, filenames in os.walk(self.get_package_dir(self.PACKAGE)):
+            package =  dirpath.split(os.sep)
             for filename in filenames:
-                if filename.endswith('.ui'):
-                    self.compile_ui(join(dirpath, filename))
-                elif filename.endswith('.qrc'):
-                    self.compile_rc(join(dirpath, filename))
-        build.run(self)
-        
-        
-def install():
+                module = '_'.join(filename.split(os.extsep))
+                module_file = self.get_module_outfile(self.build_lib, package, module)
+                src_file = os.path.join(dirpath, filename)
+                self.compile_src(src_file, module_file)
+
+    @staticmethod
+    def compile_ui(ui_file, py_file):
+        from PyQt4 import uic
+        with open(py_file, 'w') as fp:
+            uic.compileUi(ui_file, fp)
+
+    @staticmethod
+    def compile_qrc(qrc_file, py_file):
+        check_call(['pyrcc4', qrc_file, '-o', py_file])
+
+    def get_compiler(self, source_file):
+        name = 'compile_' + source_file.rsplit(os.extsep, 1)[-1]
+        return getattr(self, name, None)
+
+class build_curses(_build_py):
+
+    description = "build every qt related curses"
+
+    def finalize_options(self):
+        _build_py.finalize_options(self)
+        self.packages = ['hgviewlib.curses']
+
+class build_doc(_build):
+
+    description = "build the documentation"
+
+    def initialize_options (self):
+        self.build_dir = None
+
+    def finalize_options (self):
+        self.set_undefined_options('build', ('build_doc', 'build_dir'))
+
+    def run(self):
+        # be sure to compile man page
+        self.mkpath(self.build_dir)
+        check_call(['make', '-C', self.build_dir, '-f', '../../doc/Makefile', 'VPATH=../../doc'])
+
+
+class build(_build):
+
+    user_options =  [
+        ('build-doc=', None, "build directory for documentation"),
+        ('no-qt', None, 'do not build qt resources'),
+        ('no-curses', None, 'do not build curses resources'),
+        ('no-doc', None, 'do not build the documentation'),
+        ] + _build.user_options
+
+    boolean_options = [
+        'no-qt', 'no-curses', 'no-doc'
+        ] + _build.boolean_options
+
+    def initialize_options (self):
+        _build.initialize_options(self)
+        self.build_doc = None
+        self.no_qt = False
+        self.no_curses = False
+        self.no_doc = False
+
+    def finalize_options(self):
+        _build.finalize_options(self)
+        for attr in ('with_qt', 'with_curses', 'with_doc'):
+            setdefaultattr(self.distribution, attr, True)
+        if self.build_doc is None:
+            self.build_doc = os.path.join(self.build_base, 'doc')
+        self.distribution.with_qt &= not self.no_qt
+        self.distribution.with_curses &= not self.no_curses
+        self.distribution.with_doc &= not self.no_doc
+
+    def has_qt(self):
+        return self.distribution.with_qt
+
+    def has_curses(self):
+        return self.distribution.with_curses
+
+    def has_doc(self):
+        return self.distribution.with_doc
+
+    # 'sub_commands': a list of commands this command might have to run to
+    # get its work done.  See cmd.py for more info.
+    sub_commands = [
+        ('build_qt', has_qt),
+        ('build_curses', has_curses),
+        ('build_doc', has_doc),
+        ] + _build.sub_commands
+
+
+class install_qt(install_lib):
+
+    description = "install the qt interface resources"
+
+    def run(self):
+        if not self.skip_build:
+            self.run_command('build_qt')
+        self.distribution.packages.append('hgviewlib.qt4')
+        install_lib.run(self)
+
+
+class install_curses(install_lib):
+
+    description = "install the curses interface resources"
+
+    def run(self):
+        self.distribution.packages.append('hgviewlib.curses')
+        install_lib.run(self)
+
+
+class install_doc(_install_data):
+
+    description = "install the documentation"
+
+    def initialize_options (self):
+        _install_data.initialize_options(self)
+        self.install_dir = None
+        self.build_dir = None
+
+    def finalize_options (self):
+        _install_data.finalize_options(self)
+        self.set_undefined_options('build', ('build_doc', 'build_dir'))
+        self.set_undefined_options('install', ('install_base', 'install_dir'))
+
+    def run(self):
+        check_call(['make', '-C', self.build_dir, '-f',
+                    '../../doc/Makefile',
+                    'VPATH=../../doc',
+                    'install',
+                    'PREFIX=%s' % self.install_dir])
+
+
+class install(_install):
+    user_options = [
+            ('no-qt', None, "do not install qt library part"),
+            ('no-curses', None, "do not install curses library part"),
+            ('no-doc', None, "do not install the documentation"),
+            ] + _install.user_options
+
+    boolean_options = [
+            'no-qt', 'no-curses', 'no-doc'
+            ] + _install.boolean_options
+
+    def initialize_options(self):
+        self.install_doc = None
+        self.no_qt = False
+        self.no_curses = False
+        self.no_doc = False
+        _install.initialize_options(self)
+
+    def finalize_options(self):
+        _install.finalize_options(self)
+        for attr in ('with_qt', 'with_curses', 'with_doc'):
+            setdefaultattr(self.distribution, attr, True)
+        self.distribution.with_qt &= not self.no_qt
+        self.distribution.with_curses &= not self.no_curses
+        self.distribution.with_doc &= not self.no_doc
+
+    def has_qt(self):
+        return self.distribution.with_qt
+
+    def has_curses(self):
+        return self.distribution.with_curses
+
+    def has_doc(self):
+        return self.distribution.with_doc
+
+    # 'sub_commands': a list of commands this command might have to run to
+    # get its work done.  See cmd.py for more info.
+    sub_commands = [
+        ('install_qt', has_qt),
+        ('install_curses', has_curses),
+        ('install_doc', has_doc),
+        ] + _install.sub_commands
+
+
+def main():
     """setup entry point"""
     kwargs = {}
     # to generate qct MSI installer, you run python setup.py bdist_msi
@@ -231,13 +297,13 @@ def install():
         # the msi will automatically install the qct.py plugin into hgext
         kwargs['data_files'] = [('lib/site-packages/hgext', ['hgext/hgview.py']),
                 ('mercurial/hgview.d', ['hgview.rc']),
-                ('share/hgview', ['doc/hgview.1.html', 'README', 'README.mercurial'])]
+                ('share/hgview', ['README'])]
         scripts = ['win32/hgview_postinstall.py']
     else:
         scripts = ['bin/hgview']
 
     kwargs['package_dir'] = {modname : modname}
-    packages = ['hgviewlib', 'hgext', 'hgviewlib.hgpatches', 'hgviewlib.qt4', 'hgviewlib.curses']
+    packages = ['hgviewlib', 'hgext', 'hgviewlib.hgpatches']
     kwargs['packages'] = packages
     return setup(name=distname,
                  version=version,
@@ -250,12 +316,17 @@ def install():
                  scripts=ensure_scripts(scripts),
                  data_files=data_files,
                  ext_modules=ext_modules,
-                 cmdclass={'install_lib': MyInstallLib,
-                           'install':MyInstall,
-                           'build' : QtBuild,
+                 cmdclass={'build_qt': build_qt,
+                           'build_curses': build_curses,
+                           'build_doc': build_doc,
+                           'build' : build,
+                           'install_qt': install_qt,
+                           'install_curses': install_curses,
+                           'install_doc': install_doc,
+                           'install':install,
                            },
                  **kwargs
                  )
-            
+
 if __name__ == '__main__' :
-    install()
+    main()

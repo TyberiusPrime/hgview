@@ -1,4 +1,4 @@
-# Copyright (c) 2003-2011 LOGILAB S.A. (Paris, FRANCE).
+# Copyright (c) 2003-2012 LOGILAB S.A. (Paris, FRANCE).
 # http://www.logilab.fr/ -- mailto:contact@logilab.fr
 #
 # This program is free software; you can redistribute it and/or modify it under
@@ -35,6 +35,9 @@ Revlog graph
 
 The main revision graph display the repository history as a graph,
 sorted by revision number.
+
+Hit Space key or click on a revision item to display/hide the revision
+content.
 
 The color of the node of each revision depends on the named branch the
 revision belongs to.
@@ -82,6 +85,16 @@ The area where current revision's metadata is displayed
   the diff. This allows you to compare the merged node with each
   of its parents, or even with the common ancestor of these 2
   nodes.
+
+Revision description rendering
+------------------------------
+
+The revision's description text is interpreted as ReStructuredText.
+So, commit message may contains formatted text, links, tables, references, etc.
+
+Links with href as node/revision number/tag allows to jump to another revision::
+
+  `links in fancy view open browser <e449146a687d7ca71520>`_
 
 
 Revision's modified file list
@@ -192,7 +205,20 @@ def get_options_helpmsg(rest=False):
 Configuration options
 =====================
 
-These should be set under the [hgview] section of the hgrc config file.
+These should be set under the ``[hgview]`` section of the hgrc config file.
+
+:Note: *Per-interface configuration* is permitted.
+       You can add a ``"interface."`` prefix to each option
+       (where ``interface`` is an interface name like ``qt`` or ``raw``)
+       in order to target a particular interface.
+
+       Without any prefix, the value is available for all interfaces, as
+       global configuration value.
+
+       Both per-interface and global configuration values can be set.
+       For each option, per-interface configuration values take precedance
+       over the global configuration value.
+
 
 """
     msg += '\n'.join(["- " + v for v in options]) + '\n'

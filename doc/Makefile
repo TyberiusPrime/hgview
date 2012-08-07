@@ -1,4 +1,5 @@
-SOURCES=$(wildcard *.[0-9].txt)
+SOURCES=hgview.1.txt
+#$(wildcard *.[0-9].txt)
 MAN=$(SOURCES:%.txt=%)
 HTML=$(SOURCES:%.txt=%.html)
 PREFIX=/usr/local
@@ -15,16 +16,16 @@ html: $(HTML)
 	xmlto man $*.xml
 
 %.xml: %.txt
-	asciidoc -d manpage -b docbook $*.txt
+	asciidoc -d manpage -b docbook -o $@ $<
 
 %.html: %.txt
-	asciidoc -b html4 $*.txt || asciidoc -b html $*.txt
+	asciidoc -b html4 -o $@ $< || asciidoc -b html -o $@ $<
 
 install: man
 	for i in $(MAN) ; do \
 	  subdir=`echo $$i | sed -n 's/..*\.\([0-9]\)$$/man\1/p'` ; \
-	  mkdir -p $(MANDIR)/$$subdir ; \
-	  $(INSTALL) $$i $(MANDIR)/$$subdir ; \
+	  $(INSTALL) -d $(DESTDIR)$(MANDIR)/$$subdir && \
+	  $(INSTALL) $$i $(DESTDIR)$(MANDIR)/$$subdir ; \
 	done
 
 clean:

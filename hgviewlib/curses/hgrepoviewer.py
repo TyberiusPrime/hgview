@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2003-2011 LOGILAB S.A. (Paris, FRANCE).
+# Copyright (c) 2003-2012 LOGILAB S.A. (Paris, FRANCE).
 # http://www.logilab.fr/ -- mailto:contact@logilab.fr
 #
 # This program is free software; you can redistribute it and/or modify it under
@@ -21,13 +21,14 @@ try:
     import pygments
     from pygments import lexers
 except ImportError:
-    # pylint: enable-msg=C0103
+    # pylint: enable=C0103
     pygments = None
 
 import urwid
 from urwid import AttrWrap, Pile, Columns, SolidFill, signals
 from urwid.util import is_mouse_press
 
+from hgviewlib.config import HgConfig
 from hgviewlib.hggraph import HgRepoListWalker
 from hgviewlib.util import exec_flag_changed, isbfile, tounicode
 
@@ -49,20 +50,30 @@ class GraphlogViewer(Body):
         self.title = walker.repo.root
         signals.connect_signal(self.graphlog_walker, 'focus changed',
                                self.update_title)
+        wc = walker.repo[None]
+        rev = None
+        if not wc.dirty() and wc.p1().rev() >= 0:
+            # parent of working directory is not nullrev
+            rev = wc.p1().rev()
+        self.graphlog_walker.rev = rev
 
     def update_title(self, ctx):
         """update title depending on the given context ``ctx``."""
         if ctx.node() is None:
             hex_ = 'WORKING DIRECTORY'
         else:
-            hex_ = ctx.hex()
-        self.title = '%s [%s]' % (self.walker.repo.root, hex_)
+            hex_ = str(ctx)
+        self.title = '%(root)s [%(hex)s] %(phase)s' % {
+            'root':self.walker.repo.root,
+            'hex':hex_,
+            'phase':ctx.phasestr()}
 
     def register_commands(self):
         '''Register commands and connect commands for bodies'''
+        cnvt = lambda entry: self.walker.repo[entry].rev()
         register_command(
                 ('goto', 'g'), 'Set focus on a particular revision',
-                CA('revision', int,
+                CA('revision', cnvt,
                 'The revision number to focus on (default to last)'))
         register_command(
                 ('toggle-hidden',), 'Show/hide hidden changesets',)
@@ -149,6 +160,9 @@ class ContextViewer(Columns):
     signals = ['update source title']
     MANIFEST_SIZE = 0.3
     def __init__(self, walker, *args, **kwargs):
+        self._walker = walker
+        self._filename = None
+        self.cfg = HgConfig(walker.repo.ui)
         self.manifest = ManifestViewer(walker=walker, ctx=None)
         self.manifest_walker = self.manifest.manifest_walker
         self.source = SourceViewer('')
@@ -167,6 +181,22 @@ class ContextViewer(Columns):
         signals.connect_signal(self, 'update source title',
                                self.update_source_title_cache)
         signals.connect_signal(self.source, 'translated', self.update_source_title)
+
+    def register_commands(self):
+        """Register commands and commands of bodies"""
+        register_command('set-max-file-size',
+                         'max size of handled file for diff computation, and so on.',
+                         CA('size', int, 'octets (-1 means no max size)'))
+        connect_command('set-max-file-size', self.modify_max_file_size)
+
+    def unregister_commands(self):
+        """Unregister commands and commands of bodies"""
+        unregister_command('set-max-file-size')
+
+    def modify_max_file_size(self, size):
+        """Modify the max handled file size and update the source content."""
+        self._walker.graph.maxfilesize = size
+        self.update_source(self._filename)
 
     def update_source_title_cache(self, filename, flag):
         """
@@ -200,6 +230,7 @@ class ContextViewer(Columns):
         ctx = self.manifest_walker.ctx
         if ctx is None:
             return
+        self._filename = filename
         numbering = False
         flag = ''
         if filename is None: # source content is the changeset description
@@ -275,20 +306,24 @@ class RepoViewer(Pile):
 
     def __init__(self, repo, *args, **kwargs):
         self.repo = repo
+        self.cfg = HgConfig(repo.ui)
         self._show_context = 0 # O:hide, 1:half, 2:maximized
+        self.refreshing = False # flag to now if the repo is refreshing
 
-        walker = HgRepoListWalker(repo)
-        self.graphlog = GraphlogViewer(walker=walker)
-        self.context = ContextViewer(walker=walker)
+        self._walker = HgRepoListWalker(repo)
+        self.graphlog = GraphlogViewer(walker=self._walker)
+        self.context = ContextViewer(walker=self._walker)
 
         widget_list = [('weight', 1 - self.CONTEXT_SIZE, self.graphlog),]
 
         super(RepoViewer, self).__init__(widget_list=widget_list, focus_item=0,
                                          *args, **kwargs)
+        if self.cfg.getContentAtStartUp():
+            self.show_context()
 
     def update_context(self, ctx):
         """Change the current displayed context"""
-        self.context.manifest_walker.ctx = ctx
+        self.context.manifest_walker.set_ctx(ctx, reset_focus=(not self.refreshing))
 
     def register_commands(self):
         """Register commands and commands of bodies"""
@@ -298,13 +333,30 @@ class RepoViewer(Pile):
                          'Relative height [0-1] of the context pane.'))
         register_command('maximize-context', 'Maximize context pane.')
         self.graphlog.register_commands()
+        self.context.register_commands()
         connect_command('hide-context', self.hide_context)
         connect_command('show-context', self.show_context)
         connect_command('maximize-context', self.maximize_context)
+        connect_command('refresh', self.refresh)
 
     def unregister_commands(self):
         """Unregister commands and commands of bodies"""
         self.graphlog.unregister_commands()
+        self.context.unregister_commands()
+
+    def refresh(self):
+        graphlog_walker = self.graphlog.graphlog_walker
+        manifest_walker = self.context.manifest_walker
+        self.refreshing = True
+        rev = graphlog_walker.rev
+        filename = manifest_walker.filename
+        self._walker.setRepo()
+        try:
+            graphlog_walker.set_rev(rev) # => focus changed => update_context
+        except AttributeError: # rev stripped
+            graphlog_walker.rev = None
+        manifest_walker.filename = filename
+        self.refreshing = False
 
     def hide_context(self):
         ''' hide the context widget'''

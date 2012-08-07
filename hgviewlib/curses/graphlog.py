@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2003-2011 LOGILAB S.A. (Paris, FRANCE).
+# Copyright (c) 2003-2012 LOGILAB S.A. (Paris, FRANCE).
 # http://www.logilab.fr/ -- mailto:contact@logilab.fr
 #
 # This program is free software; you can redistribute it and/or modify it under
@@ -18,7 +18,9 @@ Contains a listbox definition that walk the repo log and display an ascii graph
 '''
 
 from itertools import izip_longest as zzip
+from logging import warn
 
+from mercurial.node import short
 from urwid import AttrMap, Text, ListWalker, Columns, WidgetWrap, emit_signal
 
 from hgviewlib.hgpatches.graphmod import (_fixlongrightedges,
@@ -42,8 +44,10 @@ _COLUMNMAP = {
     'Author': lambda m, c, g: tounicode(c.user().split('<',1)[0]),
     'Date': getdate,
     'Tags': gettags,
+    'Bookmarks': lambda m, c, g: ', '.join(c.bookmarks() or ()),
     'Branch': lambda m, c, g: c.branch() != 'default' and c.branch(),
     'Filename': lambda m, c, g: g.extra[0],
+    'Phase': lambda model, ctx, gnode: ctx.phasestr(),
     }
 GRAPH_MIN_WIDTH = 6
 
@@ -56,7 +60,7 @@ class RevisionsWalker(ListWalker):
     signals = ['focus changed']
     _columns = HgRepoListWalker._columns
 
-    _allfields = (('Branch', 'Tags', 'Log'),)
+    _allfields = (('Bookmarks', 'Branch', 'Tags', 'Log'),)
     _allcolumns = (('Date', 16), ('Author', 20), ('ID', 6),)
 
     def __init__(self, walker, branch='', fromhead=None, follow=False,
@@ -70,18 +74,10 @@ class RevisionsWalker(ListWalker):
     def connect_commands(self):
         """Connect usefull commands to callbacks"""
         connect_command('goto', self.set_rev)
-        connect_command('refresh', self.refresh)
 
     def _modified(self):
         """obsolete widget content"""
         super(RevisionsWalker, self)._modified()
-
-    def refresh(self):
-        """refresh widget content"""
-        self._invalidate()
-        self.walker.setRepo()
-        emit_signal(self, 'focus changed', self.get_ctx())
-        self._modified()
 
     def _invalidate(self):
         """obsolete rendering cache"""
@@ -148,17 +144,24 @@ class RevisionsWalker(ListWalker):
                    for col, sz in self._allcolumns
                    if col in self._columns]
         columns.append(SelectableText(txts, wrap='clip'))
+        # tune style
+        spec_style = {} # style modifier for normal
+        foc_style = {} # style modifier for focused
+        all_styles = set(self._columns) | set(['GraphLog', 'GraphLog.node', None])
+        important_styles = set(['ID', 'GraphLog.node'])
+        if ctx.obsolete():
+            spec_style.update(dict.fromkeys(all_styles, 'obsolete'))
         # normal style: use special styles for woking directory and tip
         style = None
         if gnode.rev is None:
             style = 'modified' # pending changes
         elif gnode.rev in self.walker.wd_revs:
             style = 'current'
-        spec_style = {'ID':style, 'GraphLog.node':style} if style else {}
+        if style is not None:
+            spec_style.update(dict.fromkeys(important_styles, style))
         # focused style: use special stles for working directory and tip
-        foc_style = dict.fromkeys(self._columns + ('GraphLog', None,),
-                                  style or 'focus')
-        foc_style['GraphLog.node'] = 'focus.alternate'
+        foc_style.update(dict.fromkeys(all_styles, style or 'focus'))
+        foc_style.update(dict.fromkeys(important_styles, 'focus.alternate'))
         # wrap widget with style modified
         widget = AttrMap(Columns(columns, 1), spec_style, foc_style)
         return widget
@@ -167,25 +170,28 @@ class RevisionsWalker(ListWalker):
         """Return a generator that get lines of graph log for the node
         """
         # define node symbol
-        char = 'o'
         if gnode.rev is None:
             char = '!' # pending changes
-        elif gnode.rev in self.walker.wd_revs:
-            char = '@'
-
-        if len(ctx.parents()) > 1:
-            char = 'M' # merge
         elif not getattr(ctx, 'applied', True):
             char = ' '
         elif set(ctx.tags()).intersection(self.walker.mqueues):
             char = '*'
+        else:
+            phase = ctx.phase()
+            try:
+                char = 'o#^'[phase]
+            except IndexError:
+                warn('"%(node)s" has an unknown phase: %(phase)i',
+                     {'node':short(ctx.node()), 'phase':phase})
+                char = '?'
 
         # build the column data for the graphlogger from data given by hgview
         curcol = gnode.x
-        curedges = [(start, end) for start, end, _ in gnode.bottomlines
+        curedges = [(start, end)
+                    for start, end, color, fill in gnode.bottomlines
                     if start == curcol]
         try:
-            prv, nxt, _ = zip(*gnode.bottomlines)
+            prv, nxt, _, _ = zip(*gnode.bottomlines)
             prv, nxt = len(set(prv)), len(set(nxt))
         except ValueError: # last
             prv, nxt = 1, 0
@@ -279,7 +285,9 @@ def hgview_ascii(state, char, height, coldata):
            graphlog extension for mercurial
     """
     idx, edges, ncols, coldiff = coldata
-    assert -2 < coldiff < 2
+    # graphlog is broken with multiple parent. But we have ignore that to allow
+    # some support of obsolet relation display
+    # assert -2 < coldiff < 2
     assert height > 0
     if coldiff == -1:
         _fixlongrightedges(edges)

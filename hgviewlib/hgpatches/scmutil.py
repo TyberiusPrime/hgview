@@ -1,4 +1,4 @@
-# Copyright (c) 2003-2011 LOGILAB S.A. (Paris, FRANCE).
+# Copyright (c) 2003-2012 LOGILAB S.A. (Paris, FRANCE).
 # http://www.logilab.fr/ -- mailto:contact@logilab.fr
 #
 # This program is free software; you can redistribute it and/or modify it under
@@ -17,7 +17,7 @@
 """
 
 try:
-    from mercurial.scmutil import match
+    from mercurial.scmutil import match  #pylint: disable=E1101
 except ImportError:
     from mercurial import cmdutil
     def match(ctx, *args, **kwargs):
