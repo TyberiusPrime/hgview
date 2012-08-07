@@ -14,7 +14,6 @@
 build: build-stamp
 build-stamp: 
 	dh_testdir
-	make -C doc
 	python setup.py -q build 
 	touch build-stamp
 
@@ -34,7 +33,7 @@ install: build
 	dh_testroot
 	dh_clean -k
 	dh_installdirs
-	python setup.py -q install --no-compile --root=debian/tmp/ --install-layout=deb
+	python setup.py -q install --no-compile --root=$(CURDIR)/debian/tmp/ --install-layout=deb
 	rm -rf debian/tmp/usr/lib/python*/site-packages/hgview/test
 	rm -f debian/tmp/usr/lib/python*/site-packages/hgext/__init__.py*
 

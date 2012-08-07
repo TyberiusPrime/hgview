@@ -246,16 +246,21 @@ class install_doc(_install_data):
     description = "install the documentation"
 
     def initialize_options (self):
+        _install_data.initialize_options(self)
         self.install_dir = None
         self.build_dir = None
 
     def finalize_options (self):
+        _install_data.finalize_options(self)
         self.set_undefined_options('build', ('build_doc', 'build_dir'))
         self.set_undefined_options('install', ('install_base', 'install_dir'))
 
     def run(self):
-        to_dir = relpath(self.install_dir, self.build_dir)
-        check_call(['make', '-C', self.build_dir, '-f', '../../doc/Makefile', 'VPATH=../../doc', 'install', 'PREFIX=%s' % to_dir])
+        check_call(['make', '-C', self.build_dir, '-f',
+                    '../../doc/Makefile',
+                    'VPATH=../../doc',
+                    'install',
+                    'PREFIX=%s' % self.install_dir])
 
 
 class install(_install):
