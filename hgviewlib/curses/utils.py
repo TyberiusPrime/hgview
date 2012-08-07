@@ -33,8 +33,12 @@ __all__ = ['register_command', 'unregister_command', 'connect_command',
 
 
 # ____________________________________________________________________ commands
-CommandEntry = namedtuple('CommandEntry', ('func', 'args', 'kwargs'))
-CommandArg = namedtuple('CommandArg', ('name', 'parser', 'help'))
+class CommandArg(object):
+    def __init__(self, name, parser, help):
+        self.name = name
+        self.parser = parser
+        self.help = help
+
 class Commands(object):
     """A class that handle commands using a signal-like system.
 
@@ -115,8 +119,7 @@ class Commands(object):
             args = ()
         if kwargs is None:
             kwargs = {}
-        data = CommandEntry(callback, args, kwargs)
-        self._calls[name].append(data)
+        self._calls[name].append((callback, args, kwargs))
 
     def disconnect(self, name, callback, args=None, kwargs=None):
         """Disconnect the ``callback`` assiciated to the givent ``args`` and
@@ -135,7 +138,7 @@ class Commands(object):
         if kwargs is None:
             kwargs = {}
         try:
-            self._calls[name].remove(CommandEntry(callback, args, kwargs))
+            self._calls[name].remove((callback, args, kwargs))
         except KeyError:
             raise RegisterCommandError('Command not registered: %s' % name)
         except ValueError:
@@ -177,11 +180,11 @@ class Commands(object):
         cmdargs = tuple(cmdargs)
 
         result = False
-        for data in self._calls[name]:
-            ags = data.args + (args or ()) + cmdargs
-            kws = data.kwargs.copy()
+        for _func_, _args_, _kwargs_  in self._calls[name]:
+            ags = _args_ + (args or ()) + cmdargs
+            kws = _kwargs_.copy()
             kws.update(kwargs or {})
-            result |= bool(data.func(*ags, **kws))
+            result |= bool(_func_(*ags, **kws))
         return result
 
     def help(self, name):
