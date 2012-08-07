@@ -98,8 +98,8 @@ class TestCommandsRegister(TestCase):
         func2 = lambda: True
         utils.connect_command('foo', func1)
         utils.connect_command('foo', func2)
-        ref = ('A command', (), [utils.CommandEntry(func1, (), {}),
-                                 utils.CommandEntry(func2, (), {})])
+        ref = ('A command', (), [(func1, (), {}),
+                                 (func2, (), {})])
         res = utils.unregister_command('foo')
         self.assertEqual(ref, res)
 
@@ -110,8 +110,8 @@ class TestCommandsRegister(TestCase):
         utils.connect_command('foo', func1)
         utils.connect_command('foo', func2, args=(1,2), kwargs={'c':3, 'd':4})
         ref = ('A command', (),
-               [utils.CommandEntry(func1, (), {}),
-                utils.CommandEntry(func2, (1, 2), {'c':3, 'd':4})])
+               [(func1, (), {}),
+                (func2, (1, 2), {'c':3, 'd':4})])
         res = utils.unregister_command('foo')
         self.assertEqual(ref, res)
 
@@ -122,7 +122,7 @@ class TestCommandsRegister(TestCase):
         utils.connect_command('foo', func1)
         utils.connect_command('foo', func2, args=(1,2), kwargs={'c':3, 'd':4})
         utils.disconnect_command('foo', func2, args=(1,2), kwargs={'c':3, 'd':4})
-        ref = ('A command', (), [utils.CommandEntry(func1, (), {})])
+        ref = ('A command', (), [(func1, (), {})])
         res = utils.unregister_command('foo')
         self.assertEqual(ref, res)
 
