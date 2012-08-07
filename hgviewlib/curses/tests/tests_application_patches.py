@@ -58,3 +58,6 @@ class TestConnectLogging(TestCase):
         ref = ['hello world', 'Traceback (most recent call last):']
         self.assertEqual(ref, res[:2])
 
+if __name__ == '__main__':
+    main()
+
