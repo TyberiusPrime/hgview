@@ -13,6 +13,7 @@ include bin/hgview
 include bin/hgview.bat
 
 include hgviewlib/qt4/*.ui
+include hgviewlib/qt4/*.py
 include hgviewlib/qt4/hgqv.qrc
 include hgviewlib/qt4/icons/*
 
