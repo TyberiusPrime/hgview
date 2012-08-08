@@ -1,3 +1,7 @@
+2011-08-08 -- 1.6.1
+
+    * Include missing hgviewlib/qt4/application.py (#103444)
+
 2011-08-08 -- 1.6.0
 
 
