@@ -24,6 +24,9 @@ from mercurial import demandimport
 # for CPython > 2.7 (see pkg_resources) module [loaded by pygments])
 demandimport.ignore.append("_frozen_importlib")
 
+# from pyinotify which try from functools import reduce
+demandimport.ignore.append("functools")
+
 if not hasattr(changelog.changelog, '__len__'):
     changelog.changelog.__len__ = changelog.changelog.count
 if not hasattr(filelog.filelog, '__len__'):
