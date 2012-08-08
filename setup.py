@@ -110,7 +110,7 @@ class build_qt(_build_py):
         for dirpath, _, filenames in os.walk(self.get_package_dir(self.PACKAGE)):
             package = dirpath.split(os.sep)
             for filename in filenames:
-                module = '_'.join(filename.split(os.extsep))
+                module = self.get_module_name(filename)
                 module_file = self.get_module_outfile(self.build_lib, package, module)
                 src_file = os.path.join(dirpath, filename)
                 self.compile_src(src_file, module_file)
@@ -129,6 +129,11 @@ class build_qt(_build_py):
     def get_compiler(self, source_file):
         name = 'compile_' + source_file.rsplit(os.extsep, 1)[-1]
         return getattr(self, name, None)
+
+    @staticmethod
+    def get_module_name(src_filename):
+        name, ext = os.path.splitext(src_filename)
+        return {'.qrc': '%s_rc', '.ui': '%s_ui'}.get(ext, '%s') % name
 
 class build_curses(_build_py):
 
