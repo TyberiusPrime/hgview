@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2003-2011 LOGILAB S.A. (Paris, FRANCE).
+# Copyright (c) 2003-2012 LOGILAB S.A. (Paris, FRANCE).
 # http://www.logilab.fr/ -- mailto:contact@logilab.fr
 #
 # This program is free software; you can redistribute it and/or modify it under
@@ -61,7 +61,10 @@ class ManifestWalker(ListWalker):
         return self._files[self._focus]
     def set_filename(self, filename):
         """change focus element by giving the corresponding file name"""
-        focus = self._files.index(filename)
+        try:
+            focus = self._files.index(filename)
+        except ValueError: # focus on description
+            focus = -1
         self.set_focus(focus)
     filename = property(get_filename, set_filename, None,
                         'File name under focus.')
@@ -72,12 +75,13 @@ class ManifestWalker(ListWalker):
     def get_ctx(self):
         """Return the current context"""
         return self._ctx
-    def set_ctx(self, ctx):
+    def set_ctx(self, ctx, reset_focus=True):
         """set the curreont context (obsolete the content)"""
         self._cached_flags.clear()
         self._ctx = ctx
         self._files = tuple(self._ctx.files())
-        del self.focus
+        if reset_focus:
+            del self.focus
         self._modified()
     ctx = property(get_ctx, set_ctx, None, 'Current changeset context')
 

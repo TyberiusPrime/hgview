@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2003-2011 LOGILAB S.A. (Paris, FRANCE).
+# Copyright (c) 2003-2012 LOGILAB S.A. (Paris, FRANCE).
 # http://www.logilab.fr/ -- mailto:contact@logilab.fr
 #
 # This program is free software; you can redistribute it and/or modify it under
@@ -57,4 +57,7 @@ class TestConnectLogging(TestCase):
         res = self.mainframe.footer.get_text()[0].splitlines()
         ref = ['hello world', 'Traceback (most recent call last):']
         self.assertEqual(ref, res[:2])
+
+if __name__ == '__main__':
+    main()
 

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2003-2011 LOGILAB S.A. (Paris, FRANCE).
+# Copyright (c) 2003-2012 LOGILAB S.A. (Paris, FRANCE).
 # http://www.logilab.fr/ -- mailto:contact@logilab.fr
 #
 # This program is free software; you can redistribute it and/or modify it under
@@ -20,7 +20,6 @@ A Module that contains usefull utilities.
 
 import shlex
 import fnmatch
-from collections import namedtuple
 
 from urwid.command_map import CommandMap
 from hgviewlib.curses.exceptions import UnknownCommand, RegisterCommandError
@@ -240,7 +239,7 @@ class Commands(object):
             return tuple(sorted(fnmatch.filter(self._args, cmd)))
 
 # Instanciate a Commands object to handle command from a global scope.
-#pylint: disable-msg=C0103
+#pylint: disable=C0103
 _commands = Commands()
 register_command = _commands.register
 unregister_command = _commands.unregister
@@ -250,7 +249,7 @@ emit_command = _commands.emit
 help_command = _commands.help
 help_commands = _commands.helps
 complete_command = _commands.complete
-#pylint: enable-msg=C0103
+#pylint: enable=C0103
 
 class History(list):
     def __init__(self, list=None, current=None):

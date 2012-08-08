@@ -1,4 +1,4 @@
-# Copyright (c) 2009-2011 LOGILAB S.A. (Paris, FRANCE).
+# Copyright (c) 2009-2012 LOGILAB S.A. (Paris, FRANCE).
 # http://www.logilab.fr/ -- mailto:contact@logilab.fr
 #
 # This program is free software; you can redistribute it and/or modify it under
@@ -91,6 +91,58 @@ class Annotator(qsci):
 
 
 
+class HgQsci(qsci):
+
+    def __init__(self, *args, **kwargs):
+        super(HgQsci, self).__init__(*args, **kwargs)
+        self.createActions()
+
+    def _action_defs(self):
+        return [
+            ("diffmode", self.tr("Diff mode"), 'diffmode' ,
+             self.tr('Enable/Disable Diff mode'), None, None),
+            ("annmode", self.tr("Annotate mode"), None,
+             self.tr('Anable/Disable Annotatte mode'), None, None),
+            ("next", self.tr('Next hunk'), 'down', self.tr('Jump to the next hunk'),
+             Qt.ALT + Qt.Key_Down, None),
+            ("prev", self.tr('Prior hunk'), 'up', self.tr('Jump to the previous hunk'),
+             Qt.ALT + Qt.Key_Up, None),
+            ("show-big-file", self.tr('Display heavy file'), 'heavy',
+             self.tr('Display file Content even if it is marked as too big'
+                     '[config: maxfilesize]'),
+             None, None),
+
+        ]
+
+    def createActions(self):
+        self._actions = {}
+        for name, desc, icon, tip, key, cb in self._action_defs():
+            act = QtGui.QAction(desc, self)
+            if icon:
+                act.setIcon(geticon(icon))
+            if tip:
+                act.setStatusTip(tip)
+            if key:
+                act.setShortcut(key)
+            if cb:
+                connect(act, SIGNAL('triggered()'), cb)
+            self._actions[name] = act
+            self.addAction(act)
+        self._actions['diffmode'].setCheckable(True)
+        self._actions['annmode'].setCheckable(True)
+        self._actions['show-big-file'].setCheckable(True)
+
+    def contextMenuEvent(self, event):
+        menu = QtGui.QMenu(self)
+        for act in [None, 'diffmode', 'prev', 'next',
+                    None, 'show-big-file']:
+            if act:
+                menu.addAction(self._actions[act])
+            else:
+                menu.addSeparator()
+        menu.exec_(event.globalPos())
+
+
 class HgFileView(QtGui.QFrame):
     def __init__(self, parent=None):
         QtGui.QFrame.__init__(self, parent)
@@ -116,7 +168,7 @@ class HgFileView(QtGui.QFrame):
         framelayout.addLayout(self.topLayout)
         framelayout.addLayout(l, 1)
 
-        self.sci = qsci(self)
+        self.sci = HgQsci(self)
         self.sci.setFrameStyle(0)
         l.addWidget(self.sci, 1)
         self.sci.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
@@ -183,6 +235,17 @@ class HgFileView(QtGui.QFrame):
         self.timer.setSingleShot(False)
         self.connect(self.timer, QtCore.SIGNAL("timeout()"),
                      self.idle_fill_files)
+        self.connect(self.sci._actions['diffmode'], SIGNAL('toggled(bool)'),
+                     self.setMode)
+        self.connect(self.sci._actions['annmode'], SIGNAL('toggled(bool)'),
+                     self.setAnnotate)
+        self.connect(self.sci._actions['prev'], SIGNAL('triggered()'),
+                     self.prevDiff)
+        self.connect(self.sci._actions['next'], SIGNAL('triggered()'),
+                     self.nextDiff)
+        self.connect(self.sci._actions['show-big-file'], SIGNAL('toggled(bool)'),
+                     self.showBigFile)
+        self.sci._actions['diffmode'].setChecked(True)
 
     def resizeEvent(self, event):
         QtGui.QFrame.resizeEvent(self, event)
@@ -190,10 +253,26 @@ class HgFileView(QtGui.QFrame):
         self._spacer.setMinimumHeight(h)
         self._spacer.setMaximumHeight(h)
 
+    def showBigFile(self, state):
+        """Force displaying the content related to a file considered previously as
+        too big.
+        """
+        if not self._model.graph:
+            return
+        if not state:
+            self._model.graph.maxfilesize = self.cfg.getMaxFileSize()
+        else:
+            self._model.graph.maxfilesize = -1
+        self.displayFile()
+
     def setMode(self, mode):
         if isinstance(mode, bool):
             mode = ['file', 'diff'][mode]
         assert mode in ('diff', 'file')
+
+        self.sci._actions['annmode'].setEnabled(not mode)
+        self.sci._actions['next'].setEnabled(not mode)
+        self.sci._actions['prev'].setEnabled(not mode)
         if mode != self._mode:
             self._mode = mode
             self.blk.setVisible(self._mode == 'file')
@@ -209,6 +288,12 @@ class HgFileView(QtGui.QFrame):
     def setModel(self, model):
         # XXX we really need only the "Graph" instance
         self._model = model
+        self.cfg = HgConfig(self._model.repo.ui)
+        if self._model.graph:
+            is_show_big_file = self._model.graph.maxfilesize < 0
+        else:
+            is_show_big_file = self.cfg.getMaxFileSize()
+        self.sci._actions['show-big-file'].setChecked(is_show_big_file)
         self.sci.clear()
 
     def setContext(self, ctx):
@@ -260,8 +345,7 @@ class HgFileView(QtGui.QFrame):
         if flag == '':
             return
 
-        cfg = HgConfig(self._model.repo.ui)
-        lexer = get_lexer(filename, data, flag, cfg)
+        lexer = get_lexer(filename, data, flag, self.cfg)
         if flag == "+":
             nlines = data.count('\n')
             self.sci.setMarginWidth(1, str(nlines)+'0')
@@ -294,7 +378,7 @@ class HgFileView(QtGui.QFrame):
         self.sci.setText(data)
         if self._find_text:
             self.highlightSearchString(self._find_text)
-        self.emit(SIGNAL('fileDisplayed'), self._filename)
+        self.sci._actions['prev'].setEnabled(False)
         self.updateDiffDecorations()
         if self._mode == 'file' and self._annotate:
             if filectx.rev() is None: # XXX hide also for binary files
@@ -338,7 +422,7 @@ class HgFileView(QtGui.QFrame):
                 self.blk.syncPageStep()
                 self.timer.start()
 
-    def nextDiff(self):
+    def _nextDiff(self):
         if self._mode == 'file':
             row, column = self.sci.getCursorPosition()
             for i, (lo, hi) in enumerate(self._diffs):
@@ -351,7 +435,12 @@ class HgFileView(QtGui.QFrame):
             self.sci.verticalScrollBar().setValue(lo)
             return not last
 
-    def prevDiff(self):
+    def nextDiff(self):
+        notlast = self._nextDiff()
+        self.sci._actions['next'].setEnabled(self.fileMode() and notlast and self.nDiffs())
+        self.sci._actions['prev'].setEnabled(self.fileMode() and self.nDiffs())
+
+    def _prevDiff(self):
         if self._mode == 'file':
             row, column = self.sci.getCursorPosition()
             for i, (lo, hi) in enumerate(reversed(self._diffs)):
@@ -363,6 +452,13 @@ class HgFileView(QtGui.QFrame):
             self.sci.setCursorPosition(lo, 0)
             self.sci.verticalScrollBar().setValue(lo)
             return not first
+
+    def prevDiff(self):
+        notfirst = self._prevDiff()
+        self.sci._actions['prev'].setEnabled(self.fileMode() and notfirst and self.nDiffs())
+        self.sci._actions['next'].setEnabled(self.fileMode() and self.nDiffs())
+
+
 
     def nextLine(self):
         x, y = self.sci.getCursorPosition()
@@ -443,7 +539,7 @@ class HgFileView(QtGui.QFrame):
             if self._diff is None or not self._diff.get_opcodes():
                 self._diff = None
                 self.timer.stop()
-                self.emit(SIGNAL('filled'))
+                self.sci._actions['next'].setEnabled(self.fileMode() and self.nDiffs())
                 break
 
             tag, alo, ahi, blo, bhi = self._diff.get_opcodes().pop(0)
@@ -533,6 +629,8 @@ class HgFileListView(QtGui.QTableView):
 
     def fileActivated(self, index, alternate=False):
         sel_file = self.model().fileFromIndex(index)
+        if sel_file is '':
+            return
         if alternate:
             self.navigate(sel_file)
         else:
@@ -551,7 +649,7 @@ class HgFileListView(QtGui.QTableView):
         if filename is None:
             filename = self.currentFile()
         model = self.model()
-        if filename is not None and len(model.repo.file(filename))>0:
+        if filename and len(model.repo.file(filename))>0:
             if filename not in dlgdict:
                 dlg = dlgclass(model.repo, filename,
                                repoviewer=self.window())

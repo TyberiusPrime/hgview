@@ -17,7 +17,7 @@ from mercurial import ui, hg
 from mercurial import util
 
 from hgviewlib.application import HgRepoViewer as _HgRepoViewer
-from hgviewlib.util import tounicode, has_closed_branch_support
+from hgviewlib.util import tounicode
 from hgviewlib.util import rootpath, find_repository
 from hgviewlib.hggraph import diff as revdiff
 from hgviewlib.decorators import timeit
@@ -34,7 +34,7 @@ from hgviewlib.qt4.helpviewer import HelpViewer
 try:
     from mercurial.error import RepoError
 except ImportError: # old API
-    from mercurial.repo import RepoError
+    from mercurial.repo import RepoError #pylint: disable=E0611
 
 Qt = QtCore.Qt
 bold = QtGui.QFont.Bold
@@ -48,7 +48,6 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin, _HgRepoViewer):
     def __init__(self, repo, fromhead=None):
         self.repo = repo
         self.cfg = HgConfig(repo.ui)
-        self._closed_branch_supp = has_closed_branch_support(self.repo)
 
         # these are used to know where to go after a reload
         self._reload_rev = None
@@ -63,6 +62,9 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin, _HgRepoViewer):
         self.splitter_2.setStretchFactor(0, 2)
         self.splitter_2.setStretchFactor(1, 1)
 
+        # hide bottom at startup
+        self.frame_maincontent.setVisible(self.cfg.getContentAtStartUp())
+
         self.createActions()
         self.createToolbars()
 
@@ -74,8 +76,6 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin, _HgRepoViewer):
 
         # setup tables and views
         self.setupHeaderTextview()
-        connect(self.textview_status, SIGNAL('fileDisplayed'),
-                self.file_displayed)
         self.setupBranchCombo()
         self.setupModels(fromhead)
         if fromhead:
@@ -94,18 +94,20 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin, _HgRepoViewer):
 
                 self.reload()
 
+    def setupBranchComboAndReload(self, *args):
+        self.setupBranchCombo()
+        self.reload()
+
     def setupBranchCombo(self, *args):
         allbranches = sorted(self.repo.branchtags().items())
-        if self._closed_branch_supp:
-            openbr = []
-            for branch, brnode in allbranches:
-                openbr.extend(self.repo.branchheads(branch, closed=False))
-            clbranches = [br for br, node in allbranches if node not in openbr]
-            branches = [br for br, node in allbranches if node in openbr]
-            if self.branch_checkBox_action.isChecked():
-                branches = branches + clbranches
-        else:
-            branches = [br for br, node in allbranches] # open branches
+
+        openbr = []
+        for branch, brnode in allbranches:
+            openbr.extend(self.repo.branchheads(branch, closed=False))
+        clbranches = [br for br, node in allbranches if node not in openbr]
+        branches = [br for br, node in allbranches if node in openbr]
+        if self.branch_checkBox_action.isChecked():
+            branches = branches + clbranches
 
         if len(branches) == 1:
             self.branch_label_action.setEnabled(False)
@@ -132,6 +134,7 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin, _HgRepoViewer):
         self.attachQuickBar(self.find_toolbar)
 
         # navigation toolbar
+        self.toolBar_edit.addAction(self.actionShowMainContent)
         self.toolBar_edit.addAction(self.tableView_revisions._actions['back'])
         self.toolBar_edit.addAction(self.tableView_revisions._actions['forward'])
 
@@ -140,6 +143,10 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin, _HgRepoViewer):
         self.toolBar_edit.addAction(findaction)
 
         # tree filters toolbar
+        self.toolBar_treefilters.addAction(self.actionShowHidden)
+        self.toolBar_treefilters.addAction(self.tableView_revisions._actions['unfilter'])
+        self.toolBar_treefilters.addAction(self.actionShowHidden)
+
         self.branch_label = QtGui.QToolButton()
         self.branch_label.setText("Branch")
         self.branch_label.setStatusTip("Display graph the named branch only")
@@ -153,21 +160,12 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin, _HgRepoViewer):
         connect(self.branch_comboBox, SIGNAL('activated(const QString &)'),
                 self.refreshRevisionTable)
         connect(cbranch_action, SIGNAL('toggled(bool)'),
-                self.setupBranchCombo)
+                self.setupBranchComboAndReload)
 
         self.toolBar_treefilters.layout().setSpacing(3)
 
         self.branch_label_action = self.toolBar_treefilters.addWidget(self.branch_label)
         self.branch_comboBox_action = self.toolBar_treefilters.addWidget(self.branch_comboBox)
-        # hidden changeset action
-        self.hidden_action = QtGui.QAction(self.tr('Show Hidden'), self)
-        self.hidden_action.setCheckable(True)
-        self.hidden_action.setChecked(self.cfg.getShowHidden())
-        self.hidden_action.setToolTip(self.tr('Show hidden changeset'))
-        self.hidden_action.setStatusTip(self.tr('Show hidden changeset'))
-        self.toolBar_treefilters.addAction(self.hidden_action)
-        connect(self.hidden_action, SIGNAL('triggered()'),
-                self.refreshRevisionTable)
         # separator
         self.toolBar_treefilters.addSeparator()
 
@@ -183,27 +181,29 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin, _HgRepoViewer):
         follow_action.setStatusTip("Follow changeset history from start revision")
         self.startrev_follow_action = follow_action
         self.startrev_label.setMenu(self.startrev_menu)
-        connect(self.startrev_entry, SIGNAL('editingFinished()'),
-                self.refreshRevisionTable)
+        callback = lambda *a: self.tableView_revisions.emit(
+                    SIGNAL('startFromRev'),
+                    self.startrev_entry, self.startrev_follow_action)
+        connect(self.startrev_entry, SIGNAL('editingFinished()'), callback)
+        connect(self.startrev_follow_action, SIGNAL('toggled(bool)'), callback)
 
         self.revscompl_model = QtGui.QStringListModel(['tip'])
         self.revcompleter = QtGui.QCompleter(self.revscompl_model, self)
         self.startrev_entry.setCompleter(self.revcompleter)
 
-        connect(self.startrev_follow_action, SIGNAL('toggled(bool)'),
-                self.refreshRevisionTable)
         self.startrev_label_action = self.toolBar_treefilters.addWidget(self.startrev_label)
         self.startrev_entry_action = self.toolBar_treefilters.addWidget(self.startrev_entry)
 
         # diff mode toolbar
-        self.toolBar_diff.addAction(self.actionDiffMode)
-        self.toolBar_diff.addAction(self.actionAnnMode)
-        self.toolBar_diff.addAction(self.actionNextDiff)
-        self.toolBar_diff.addAction(self.actionPrevDiff)
+        actions = self.textview_status.sci._actions
+        for action_name in ('diffmode', 'prev', 'next', 'show-big-file'):
+            self.toolBar_diff.addAction(actions[action_name])
+        self.toolBar_diff.setVisible(self.cfg.getToolBarDiffAtStartup())
 
         # rev mod toolbar
         if self.textview_header.rst_action is not None:
             self.toolBar_rev.addAction(self.textview_header.rst_action)
+        self.toolBar_rev.setVisible(self.cfg.getToolBarRevAtStartup())
 
     def createActions(self):
         # main window actions (from .ui file)
@@ -216,31 +216,30 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin, _HgRepoViewer):
         self.actionQuit.setIcon(geticon('quit'))
         self.actionRefresh.setIcon(geticon('reload'))
 
-        self.actionDiffMode = QtGui.QAction('Diff mode', self)
-        self.actionDiffMode.setCheckable(True)
-        connect(self.actionDiffMode, SIGNAL('toggled(bool)'),
-                self.setMode)
-
-        self.actionAnnMode = QtGui.QAction('Annotate', self)
-        self.actionAnnMode.setCheckable(True)
-        connect(self.actionAnnMode, SIGNAL('toggled(bool)'),
-                self.textview_status.setAnnotate)
-
         self.actionHelp.setShortcut(Qt.Key_F1)
         self.actionHelp.setIcon(geticon('help'))
         connect(self.actionHelp, SIGNAL('triggered()'),
                 self.on_help)
 
-        # Next/Prev diff (in full file mode)
-        self.actionNextDiff = QtGui.QAction(geticon('down'), 'Next diff', self)
-        self.actionNextDiff.setShortcut('Alt+Down')
-        self.actionPrevDiff = QtGui.QAction(geticon('up'), 'Previous diff', self)
-        self.actionPrevDiff.setShortcut('Alt+Up')
-        connect(self.actionNextDiff, SIGNAL('triggered()'),
-                self.nextDiff)
-        connect(self.actionPrevDiff, SIGNAL('triggered()'),
-                self.prevDiff)
-        self.actionDiffMode.setChecked(True)
+        self.actionShowHidden = QtGui.QAction(self.tr('Show/Hide Hidden'), self)
+        self.actionShowHidden.setIcon(geticon('showhide'))
+        self.actionShowHidden.setCheckable(True)
+        self.actionShowHidden.setChecked(self.cfg.getShowHidden())
+        self.actionShowHidden.setToolTip(self.tr('Show/Hide hidden changeset'))
+        self.actionShowHidden.setStatusTip(self.tr('Show/hide hidden changeset'))
+        connect(self.actionShowHidden, SIGNAL('triggered()'),
+                self.refreshRevisionTable)
+
+        self.actionShowMainContent = QtGui.QAction('Content', self)
+        self.actionShowMainContent.setIcon(geticon('content'))
+        self.actionShowMainContent.setCheckable(True)
+        self.actionShowMainContent.setChecked(self.cfg.getContentAtStartUp())
+        tip = self.tr('Show/Hide changeset content')
+        self.actionShowMainContent.setToolTip(tip)
+        self.actionShowMainContent.setStatusTip(tip)
+        self.actionShowMainContent.setShortcut(Qt.Key_Space)
+        connect(self.actionShowMainContent, SIGNAL('triggered()'),
+                self.toggleMainContent)
 
         # Next/Prev file
         self.actionNextFile = QtGui.QAction('Next file', self)
@@ -310,57 +309,20 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin, _HgRepoViewer):
                 lambda self=self:
                 self.tableView_filelist.fileActivated(self.tableView_filelist.currentIndex(),
                                                       alternate=True))
-        self.actionActivateRev = QtGui.QAction('Activate rev.', self)
-        self.actionActivateRev.setShortcuts([Qt.SHIFT+Qt.Key_Return, Qt.SHIFT+Qt.Key_Enter])
-        connect(self.actionActivateRev, SIGNAL('triggered()'),
-                self.revision_activated)
-        self.addAction(self.actionActivateFile)
-        self.addAction(self.actionActivateFileAlt)
-        self.addAction(self.actionActivateRev)
-        self.disab_shortcuts.append(self.actionActivateFile)
-        self.disab_shortcuts.append(self.actionActivateRev)
 
-        self.actionStartAtRev = QtGui.QAction('Start at rev.', self)
-        self.actionStartAtRev.setShortcuts([Qt.Key_Backspace,])
-        connect(self.actionStartAtRev, SIGNAL('triggered()'),
-                self.startAtCurrentRev)
-        self.addAction(self.actionStartAtRev)
-
-        self.actionClearStartAtRev = QtGui.QAction('Clear start at rev.', self)
-        self.actionClearStartAtRev.setShortcuts([Qt.SHIFT + Qt.Key_Backspace,])
-        connect(self.actionClearStartAtRev, SIGNAL('triggered()'),
-                self.clearStartAtRev)
-        self.addAction(self.actionClearStartAtRev)
-
-    def startAtCurrentRev(self):
-        crev = self.tableView_revisions.current_rev
-        if crev:
-            self.startrev_entry.setText(str(crev))
-            # XXX workaround: see refreshRevisionTable method
-            self.refreshRevisionTable(sender=self)
-
-    def clearStartAtRev(self):
-        self.startrev_entry.setText("")
-        self._reload_rev = self.tableView_revisions.current_rev
-        self._reload_file = self.tableView_filelist.currentFile()
-        # XXX workaround: see refreshRevisionTable method
-        self.refreshRevisionTable(sender=self)
+    def toggleMainContent(self, visible=None):
+        if visible is None:
+            visible = self.actionShowMainContent.isChecked()
+        visible = bool(visible)
+        if visible == self.frame_maincontent.isVisible():
+            return
+        self.actionShowMainContent.setChecked(visible)
+        self.frame_maincontent.setVisible(visible)
+        if visible:
+            self.revision_selected(-1)
 
     def setMode(self, mode):
         self.textview_status.setMode(mode)
-        self.actionAnnMode.setEnabled(not mode)
-        self.actionNextDiff.setEnabled(not mode)
-        self.actionPrevDiff.setEnabled(not mode)
-
-    def nextDiff(self):
-        notlast = self.textview_status.nextDiff()
-        self.actionNextDiff.setEnabled(self.textview_status.fileMode() and notlast and self.textview_status.nDiffs())
-        self.actionPrevDiff.setEnabled(self.textview_status.fileMode() and self.textview_status.nDiffs())
-
-    def prevDiff(self):
-        notfirst = self.textview_status.prevDiff()
-        self.actionPrevDiff.setEnabled(self.textview_status.fileMode() and notfirst and self.textview_status.nDiffs())
-        self.actionNextDiff.setEnabled(self.textview_status.fileMode() and self.textview_status.nDiffs())
 
     def load_config(self):
         cfg = HgDialogMixin.load_config(self)
@@ -383,23 +345,51 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin, _HgRepoViewer):
         self.textview_status.setModel(self.repomodel)
         self.find_toolbar.setModel(self.repomodel)
 
-        filetable = self.tableView_filelist
-        connect(filetable, SIGNAL('fileSelected'),
-                self.textview_status.displayFile)
+        if self.cfg.getFileDescriptionView() == 'asfile':
+            fileselcallback = self.displaySelectedFile
+        else:
+            fileselcallback = self.textview_status.displayFile
+        connect(self.tableView_filelist, SIGNAL('fileSelected'),
+                fileselcallback)
+
         connect(self.textview_status, SIGNAL('revForDiffChanged'),
                 self.textview_header.setDiffRevision)
+
+    def displaySelectedFile(self, filename=None, rev=None):
+        if filename == '':
+            self.textview_status.hide()
+            self.textview_header.show()
+        else:
+            self.textview_header.hide()
+            self.textview_status.show()
+            self.textview_status.displayFile(filename, rev)
 
     def setupRevisionTable(self):
         view = self.tableView_revisions
         view.installEventFilter(self)
+        connect(view, SIGNAL('clicked (const QModelIndex &)'),
+                self.toggleMainContent)
         connect(view, SIGNAL('revisionSelected'), self.revision_selected)
         connect(view, SIGNAL('revisionActivated'), self.revision_activated)
+        connect(view, SIGNAL('startFromRev'), self.start_from_rev)
         connect(self.textview_header, SIGNAL('revisionSelected'), view.goto)
-        connect(self.textview_header, SIGNAL('parentRevisionSelected'), self.textview_status.displayDiff)
+        connect(self.textview_header, SIGNAL('parentRevisionSelected'),
+                self.textview_status.displayDiff)
         self.attachQuickBar(view.goto_toolbar)
         gotoaction = view.goto_toolbar.toggleViewAction()
         gotoaction.setIcon(geticon('goto'))
         self.toolBar_edit.addAction(gotoaction)
+
+    def start_from_rev(self, rev=None, follow=False):
+        if rev == self.startrev_entry:
+            rev = str(self.startrev_entry.text()).strip() or None
+        if follow == self.startrev_follow_action:
+            follow = self.startrev_follow_action.isChecked()
+
+        self.startrev_entry.setText(str(rev or ''))
+        self.startrev_follow_action.setChecked(follow)
+
+        self.refreshRevisionTable(rev=rev, follow=follow)
 
     def _setup_table(self, table):
         table.setTabKeyNavigation(False)
@@ -431,7 +421,12 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin, _HgRepoViewer):
                 return
             except IndexError:
                 pass
-        tv.setCurrentIndex(tv.model().index(0, 0))
+        wc = self.repo[None]
+        idx = tv.model().index(0, 0) # Working directory or tip
+        if not wc.dirty() and wc.p1().rev() >= 0:
+            # parent of working directory is not nullrev
+            idx = tv.model().indexFromRev(wc.p1().rev())
+        tv.setCurrentIndex(idx)
 
     def revision_activated(self, rev=None):
         """
@@ -439,26 +434,33 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin, _HgRepoViewer):
         """
         if rev is None:
             rev = self.tableView_revisions.current_rev
+        self.toggleMainContent(True)
         self._manifestdlg = ManifestViewer(self.repo, rev)
         self._manifestdlg.show()
-
-    def file_displayed(self, filename):
-        self.actionPrevDiff.setEnabled(False)
-        connect(self.textview_status, SIGNAL('filled'),
-                lambda self=self: self.actionNextDiff.setEnabled(self.textview_status.fileMode() \
-                                                                 and self.textview_status.nDiffs()))
 
     def revision_selected(self, rev):
         """
         Callback called when a revision is selected in the revisions table
+        if rev == -1: refresh the current selected revision
         """
-        if self.repomodel.graph:
-            ctx = self.repomodel.repo[rev]
-            self.textview_status.setContext(ctx)
-            self.textview_header.displayRevision(ctx)
-            self.filelistmodel.setSelectedRev(ctx)
-            if len(self.filelistmodel):
-                self.tableView_filelist.selectRow(0)
+        if not self.frame_maincontent.isVisible() or not self.repomodel.graph:
+            return
+        if rev == -1:
+            view = self.tableView_revisions
+            indexes = view.selectedIndexes()
+            if not indexes:
+                return
+            rev = view.revFromindex(indexes[0])
+        ctx = self.repomodel.repo[rev]
+        self.textview_status.setContext(ctx)
+        if self.repomodel.show_hidden:
+            self.textview_header.excluded = ()
+        else:
+            self.textview_header.excluded = self.repo.hiddenrevs
+        self.textview_header.displayRevision(ctx)
+        self.filelistmodel.setSelectedRev(ctx)
+        if len(self.filelistmodel):
+            self.tableView_filelist.selectRow(0)
 
     def goto(self, rev):
         if len(self.tableView_revisions.model().graph):
@@ -475,12 +477,20 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin, _HgRepoViewer):
                         (self.repo.root, ".hg", "dirstate"),
                         (self.repo.root, ".hg", "store", "phasesroots"),]
         watchedfiles = [os.path.join(*wf) for wf in watchedfiles]
-        mtime = [os.path.getmtime(wf) for wf in watchedfiles \
-                 if os.path.exists(wf)]
-        if mtime:
-            return max(mtime)
-        # humm, directory has probably been deleted, exiting...
-        self.close()
+        for l in (self.repo.sjoin('lock'), self.repo.join('wlock')):
+            try:
+                if util.readlock(l):
+                    break
+            except OSError, err:
+                if err.errno != 2:
+                    raise
+        else: # repo not locked by an Hg operation
+            mtime = [os.path.getmtime(wf) for wf in watchedfiles \
+                     if os.path.exists(wf)]
+            if mtime:
+                return max(mtime)
+            # humm, directory has probably been deleted, exiting...
+            self.close()
 
     def reload(self):
         """Reload the repository"""
@@ -494,29 +504,23 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin, _HgRepoViewer):
     #@timeit
     def refreshRevisionTable(self, *args, **kw):
         """Starts the process of filling the HgModel"""
-        branch = self.branch_comboBox.currentText()
-        branch = str(branch)
-        startrev = str(self.startrev_entry.text()).strip()
-        if not startrev:
-            startrev = None
+        branch = str(self.branch_comboBox.currentText())
+        startrev = kw.get('rev', None)
         # XXX workaround: self.sender() may provoque a core dump if
         # this method is called directly (not via a connected signal);
         # the 'sender' keyword is a way to discrimimne that the method
         # has been called directly (thus caller MUST set this kw arg)
         sender = kw.get('sender') or self.sender()
-        if sender is self.startrev_follow_action and startrev is None:
-            return
+        follow = kw.get('follow', False)
+        closed = self.branch_checkBox_action.isChecked()
         startrev = self.repo.changectx(startrev).rev()
-        follow = self.startrev_follow_action.isChecked()
-        self.repomodel.show_hidden = self.hidden_action.isChecked()
-        self.revscompl_model.setStringList(self.repo.tags().keys())
-
+        self.repomodel.show_hidden = self.actionShowHidden.isChecked()
         self.repomodel.setRepo(self.repo, branch=branch, fromhead=startrev,
-                               follow=follow)
+                               follow=follow, closed=closed)
 
     def on_about(self, *args):
         """ Display about dialog """
-        from hgviewlib.__pkginfo__ import modname, version, short_desc, long_desc
+        from hgviewlib.__pkginfo__ import modname, version, description
         try:
             from mercurial.version import get_version
             hgversion = get_version()
@@ -525,8 +529,7 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin, _HgRepoViewer):
 
         msg = "<h2>About %(appname)s %(version)s</h2> (using hg %(hgversion)s)" % \
               {"appname": modname, "version": version, "hgversion": hgversion}
-        msg += "<p><i>%s</i></p>" % short_desc.capitalize()
-        msg += "<p>%s</p>" % long_desc
+        msg += "<p><i>%s</i></p>" % description.capitalize()
         QtGui.QMessageBox.about(self, "About %s" % modname, msg)
 
     def on_help(self, *args):

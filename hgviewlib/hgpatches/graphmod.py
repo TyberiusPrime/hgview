@@ -17,6 +17,7 @@
 Contains Hg compatibility for older versions
 '''
 
+#pylint: disable=E0611
 try:
     from mercurial import graphmod
     if not getattr(graphmod, '_fixlongrightedges', None): # because of lazy import
