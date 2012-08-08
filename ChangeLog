@@ -1,3 +1,7 @@
+2011-08-08 -- 1.6.2
+
+    * generate hgqv.qrc to hgqv_rc.py not hgqv_qrc.py (#103538)
+
 2011-08-08 -- 1.6.1
 
     * Include missing hgviewlib/qt4/application.py (#103444)
