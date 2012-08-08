@@ -130,7 +130,7 @@ class build_qt(_build_py):
 
 class build_curses(_build_py):
 
-    description = "build every qt related curses"
+    description = "build every curses related resource"
 
     def finalize_options(self):
         _build_py.finalize_options(self)
