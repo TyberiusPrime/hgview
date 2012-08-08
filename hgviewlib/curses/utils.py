@@ -20,7 +20,6 @@ A Module that contains usefull utilities.
 
 import shlex
 import fnmatch
-from collections import namedtuple
 
 from urwid.command_map import CommandMap
 from hgviewlib.curses.exceptions import UnknownCommand, RegisterCommandError

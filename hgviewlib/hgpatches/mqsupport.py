@@ -38,7 +38,6 @@ import os
 import os.path as osp
 from operator import or_
 from itertools import chain
-from collections import namedtuple
 
 from mercurial import error, node, patch, context, manifest
 from hgext.mq import patchheader
@@ -47,7 +46,11 @@ from hgviewlib.hgpatches import phases
 
 MODIFY, ADD, REMOVE, DELETE, UNKNOWN, RENAME = range(6) # order is important for status
 
-PatchMetaData = namedtuple('Meta', 'path oldpath op')
+class PatchMetaData(object):
+    def __init__(self, path, oldpath, op):
+        self.path = path
+        self.oldpath = oldpath
+        self.op = op
 
 class MqLookupError(error.LookupError):
     """Specific exception dedicated to mq patches"""

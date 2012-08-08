@@ -17,7 +17,29 @@
 Contains a listbox definition that walk the repo log and display an ascii graph
 '''
 
-from itertools import izip_longest as zzip
+try:
+    from itertools import izip_longest as zzip
+except ImportError: # python2.5 support
+    from itertools import repeat, chain
+    class ZipExhausted(Exception):
+        pass
+    def zzip(*args, **kwds):
+        # izip_longest('ABCD', 'xy', fillvalue='-') --> Ax By C- D-
+        fillvalue = kwds.get('fillvalue')
+        counter = [len(args) - 1]
+        def sentinel():
+            if not counter[0]:
+                raise ZipExhausted
+            counter[0] -= 1
+            yield fillvalue
+        fillers = repeat(fillvalue)
+        iterators = [chain(it, sentinel(), fillers) for it in args]
+        try:
+            while iterators:
+                yield tuple(iterator.next() for iterator in iterators)
+        except ZipExhausted:
+            pass
+
 from logging import warn
 
 from mercurial.node import short

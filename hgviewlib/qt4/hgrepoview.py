@@ -133,7 +133,25 @@ class HgRepoView(QtGui.QTableView):
                 self.goto)
 
     def _action_defs(self):
-        ActDef = namedtuple('ActDef', ['name', 'desc', 'icon', 'tip', 'keys', 'cb'])
+        class ActDef(object):
+            def __init__(self, name, desc, icon, tip, keys, cb):
+                self.name = name
+                self.desc = desc
+                self.icon = icon
+                self.tip  = tip
+                self.keys = keys
+                self.cb   = cb
+            def __iter__(self):
+                yield self.name
+                yield self.desc
+                yield self.icon
+                yield self.tip
+                yield self.keys
+                yield self.cb
+            def __repr__(self):
+                out = super(ActDef, self).__repr__()
+                return out[:-1] + 'name=%r' % self.name + out[-1:]
+
         return [
             ActDef(name="back",
                    desc=self.tr("Previous visited"),
