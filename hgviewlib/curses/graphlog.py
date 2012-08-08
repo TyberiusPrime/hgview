@@ -19,7 +19,8 @@ Contains a listbox definition that walk the repo log and display an ascii graph
 
 try:
     from itertools import izip_longest as zzip
-except ImportError: # python2.5 support
+    zzip(()) # force check over lazy import
+except (ImportError, TypeError): # python2.5 support
     from itertools import repeat, chain
     class ZipExhausted(Exception):
         pass
