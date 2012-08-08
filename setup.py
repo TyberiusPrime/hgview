@@ -90,8 +90,6 @@ class build_qt(_build_py):
 
     PACKAGE = 'hgviewlib.qt4'
 
-    def dir2pkg(self, dirpath):
-        os.sep.join(dispath.split('.'))
 
     def compile_src(self, src, dest):
         compiler = self.get_compiler(src)
