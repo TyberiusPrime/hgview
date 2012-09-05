@@ -35,7 +35,7 @@ class Viewer(object):
 class FileViewer(Viewer):
     """Single file revision graph viewer."""
     def __init__(self, repo, filename, **kwargs):
-        super(FileDiffViewer, self).__init__(**kwargs)
+        super(FileViewer, self).__init__(**kwargs)
 
 class FileDiffViewer(Viewer):
     """Viewer that displays diffs between different revisions of a file."""
