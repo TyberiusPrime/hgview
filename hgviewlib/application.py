@@ -122,7 +122,6 @@ def start(repo, opts, args, fnerror):
         except ImportError:
             if '--traceback' in sys.argv:
                 raise
-            pass
     if not opts.interface or opts.interface in ('raw', 'curses'):
         try:
             from hgviewlib.curses.application import HgViewUrwidApplication as Application
@@ -130,7 +129,6 @@ def start(repo, opts, args, fnerror):
         except ImportError:
             if '--traceback' in sys.argv:
                 raise
-            pass
     if not opts.interface:
         fnerror('No interface found')
     if not Application:
