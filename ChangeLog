@@ -1,3 +1,82 @@
+2011-08-08 -- 1.6.2
+
+    * generate hgqv.qrc to hgqv_rc.py not hgqv_qrc.py (#103538)
+
+2011-08-08 -- 1.6.1
+
+    * Include missing hgviewlib/qt4/application.py (#103444)
+
+2011-08-08 -- 1.6.0
+
+
+    * compat> improve compatibility with Mercurial 2.2 and 2.3
+
+    * compat> improve compatibility with Python 2.5
+
+    * graph> support for changesets obsolescence
+
+    * graph> support for hiding closed branches
+
+    * graph> improve support for hidden changeset
+
+    * graph> select current working directory parent at startup instead of tip
+	     (#82231)
+
+    * graph> allow to reorder mutable changeset on top (#92312)
+
+    * graph> add some basic support for bookmarks (#92295, #92750)
+
+    * config> allow overriding ``maxfilesize`` config value in the UIs (#20597)
+
+    * config> allow to hide changeset content at startup (#92204)
+
+    * config> allow per-interface configuration
+
+    * GUI> allow to mimic the raw text layout by adding "description" to the
+	   files list (#83294)
+
+    * GUI> move "start" and "follow" actions from toolbar to context menu
+	   (#87901)
+
+    * GUI> move diff actions from toolbar to context menu  and hide toolbar
+	   diff at startup (#87901)
+
+    * GUI> add icon to "show/hide" hidden changesets action (#87901)
+
+    * GUI> allow to pass node/rev/tag as link anchor (#87902)
+
+    * TUI> phases support (#87899)
+
+    * TUI> use short hash
+
+    * TUI> goto command now accept any changeid, not only the rev (#92736)
+
+    * bugfix> Do not reload data from locked repository (#92297)
+
+    * bugfix> fix encoding error while browsing the content of an unapplied
+	      mqpatch that contains unicode chars (#87210)
+
+    * bugfix> fix OSError while focusing on removed file on mq patches (#87839)
+
+    * bugfix> fix ``dev/null`` file entry appearing with removed files on
+	      unapplied mq patches (#89335)
+
+    * bugfix> Raw-UI prevent over refreshing with mercurial 2.1 (#89336)
+
+    * bugfix> do not swallow exception with ``--traceback`` (#89337)
+
+    * bugfix> Fix some unicode issue in raw text ui (#98647)
+
+    * bugfix> Properly keep currently visited rev and file on reload (#93641)
+
+    * bugfix> re-enable copy action in right click menu of the description
+	      (#93421)
+
+    * bugfix> do nothing if the entry of ``find`` is empty in the GUI (#93422)
+
+    * bugfix> Fix a typo leading to a name error when using bfile.
+
+
 2011-12-23 -- 1.5.0
 
     * GUI> replace text in description for fancy display (#84465)

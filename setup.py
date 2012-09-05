@@ -86,12 +86,13 @@ def ensure_scripts(linux_scripts):
 
 class build_qt(_build_py):
 
-    description = "build every qt related resources (.uic and .qrc)"
+    description = "build every qt related resources (.uic and .qrc and .pyc)"
 
     PACKAGE = 'hgviewlib.qt4'
 
-    def dir2pkg(self, dirpath):
-        os.sep.join(dispath.split('.'))
+    def finalize_options(self):
+        _build_py.finalize_options(self)
+        self.packages = ['hgviewlib.qt4']
 
     def compile_src(self, src, dest):
         compiler = self.get_compiler(src)
@@ -106,15 +107,14 @@ class build_qt(_build_py):
             sys.stderr.write('[Error] %r\n' % str(e))
 
     def run(self):
-        # be sure to compile man page
-        _package = self.PACKAGE.split('.')
         for dirpath, _, filenames in os.walk(self.get_package_dir(self.PACKAGE)):
-            package =  dirpath.split(os.sep)
+            package = dirpath.split(os.sep)
             for filename in filenames:
-                module = '_'.join(filename.split(os.extsep))
+                module = self.get_module_name(filename)
                 module_file = self.get_module_outfile(self.build_lib, package, module)
                 src_file = os.path.join(dirpath, filename)
                 self.compile_src(src_file, module_file)
+        _build_py.run(self)
 
     @staticmethod
     def compile_ui(ui_file, py_file):
@@ -130,9 +130,14 @@ class build_qt(_build_py):
         name = 'compile_' + source_file.rsplit(os.extsep, 1)[-1]
         return getattr(self, name, None)
 
+    @staticmethod
+    def get_module_name(src_filename):
+        name, ext = os.path.splitext(src_filename)
+        return {'.qrc': '%s_rc', '.ui': '%s_ui'}.get(ext, '%s') % name
+
 class build_curses(_build_py):
 
-    description = "build every qt related curses"
+    description = "build every curses related resource"
 
     def finalize_options(self):
         _build_py.finalize_options(self)
