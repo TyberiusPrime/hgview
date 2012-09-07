@@ -573,7 +573,7 @@ class RevDisplay(QtGui.QTextBrowser):
             replace = cfg.getFancyReplace()
             if replace:
                 desc = replace(desc)
-            desc = rst2html(desc).decode('utf-8')
+            desc = tounicode(rst2html(desc))
         else:
             desc = raw2html(desc)
         buf += '<div class="diff_desc">%s</div>\n' % desc
