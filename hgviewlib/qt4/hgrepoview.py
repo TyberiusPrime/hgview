@@ -39,11 +39,11 @@ from hgviewlib.qt4.hgmanifestdialog import ManifestViewer
 from hgviewlib.qt4.quickbar import QuickBar
 
 # Re-Structured Text support
-raw2html = lambda x: "<pre>%s</pre>" % xml_escape(x)
+raw2html = lambda x: u'<pre>%s</pre>' % xml_escape(x)
 try:
     from docutils.core import publish_string
     import docutils.utils
-    def  rst2html (text):
+    def rst2html(text):
         try:
             # halt_level allows the parser to raise errors
             # report_level cleans the standard output
@@ -51,7 +51,11 @@ try:
                 'halt_level':docutils.utils.Reporter.WARNING_LEVEL,
                 'report_level':docutils.utils.Reporter.SEVERE_LEVEL + 1})
         except:
+            # docutils is not always reliable (or reliably packaged)
             out = raw2html(text)
+        if not isinstance(out, unicode):
+            # if the docutils call did not fail, we likely got an str ...
+            out = tounicode(out)
         return out
 except ImportError:
     rst2html = None
@@ -573,7 +577,7 @@ class RevDisplay(QtGui.QTextBrowser):
             replace = cfg.getFancyReplace()
             if replace:
                 desc = replace(desc)
-            desc = tounicode(rst2html(desc))
+            desc = rst2html(desc)
         else:
             desc = raw2html(desc)
         buf += '<div class="diff_desc">%s</div>\n' % desc
