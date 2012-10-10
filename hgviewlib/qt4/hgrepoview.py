@@ -124,7 +124,7 @@ class GotoQuickBar(QuickBar):
         rows = self.search()
         self.emit(SIGNAL('goto_next'), rows)
         #  usecase: quick jump to a revision
-        if len(rows) == 1:
+        if rows and len(rows) == 1:
             self.setVisible(False)
 
     def goto_prev(self):
@@ -137,6 +137,7 @@ class GotoQuickBar(QuickBar):
         self.revexp = revexp
         if not self.revexp:
             self.found = ()
+            self.emit(SIGNAL('new_set'), self.found)
             return self.found
         model = self._parent.model()
         revset = None
@@ -155,6 +156,7 @@ class GotoQuickBar(QuickBar):
                 if idx is not None)
         rows = tuple(sorted(rows))
         self.found = rows
+        self.emit(SIGNAL('new_set'), rows)
         return rows
 
 class HgRepoView(QtGui.QTableView):
@@ -198,6 +200,8 @@ class HgRepoView(QtGui.QTableView):
                 lambda revs: self.goto_next_from(revs, forward=True))
         connect(self.goto_toolbar, SIGNAL('goto_prev'),
                 lambda revs: self.goto_next_from(revs, forward=False))
+        connect(self.goto_toolbar, SIGNAL('new_set'),
+                self.highlight_rows)
 
     def _action_defs(self):
         class ActDef(object):
@@ -499,6 +503,17 @@ class HgRepoView(QtGui.QTableView):
     def prevRev(self):
         row = self.currentIndex().row()
         self.setCurrentIndex(self.model().index(max(row - 1, 0), 0))
+
+    def highlight_rows(self, rows):
+        self.model().highlight_rows(rows)
+        self.refresh_display()
+
+    def refresh_display(self):
+        for item in self.children():
+            try:
+                item.update()
+            except AttributeError:
+                pass
 
 TROUBLE_EXPLANATIONS = {
     'unstable': "Based on obsolete ancestor",
