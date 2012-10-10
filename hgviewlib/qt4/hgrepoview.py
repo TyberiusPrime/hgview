@@ -145,16 +145,15 @@ class GotoQuickBar(QuickBar):
             revset = revrange(model.repo, [self.revexp])
         except (RepoError, ParseError, LookupError, RepoLookupError), err:
             self.parent().statusBar().showMessage("ERROR: %s" % str(err), 2000)
-        else:
-            nb = len(revset)
-            message = '%i entr%s found' % (nb, 'y' if nb <= 1 else 'ies')
-            self.parent().statusBar().showMessage(message, -1)
         if revset is None:
             return
         rows = (idx.row() for idx in
                 (model.indexFromRev(rev) for rev in revset)
                 if idx is not None)
         rows = tuple(sorted(rows))
+        nb = len(rows)
+        message = '%i entr%s found' % (nb, 'y' if nb <= 1 else 'ies')
+        self.parent().statusBar().showMessage(message, -1)
         self.found = rows
         self.emit(SIGNAL('new_set'), rows)
         return rows
