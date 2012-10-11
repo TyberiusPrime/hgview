@@ -101,7 +101,7 @@ class build_qt(_build_py):
             return
         dir = os.path.dirname(dest)
         self.mkpath(dir)
-        sys.stderr.write("compiling %s -> %s\n" % (src, dest))
+        sys.stdout.write("compiling %s -> %s\n" % (src, dest))
         try:
             compiler(src, dest)
         except Exception, e:
