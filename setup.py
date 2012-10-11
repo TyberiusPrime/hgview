@@ -308,9 +308,6 @@ def main():
     else:
         scripts = ['bin/hgview']
 
-    kwargs['package_dir'] = {modname : modname}
-    packages = ['hgviewlib', 'hgext', 'hgviewlib.hgpatches']
-    kwargs['packages'] = packages
     return setup(name=distname,
                  version=version,
                  license=license,
@@ -320,6 +317,8 @@ def main():
                  author_email=author_email,
                  url=web,
                  scripts=ensure_scripts(scripts),
+                 package_dir={modname : modname},
+                 packages=['hgviewlib', 'hgext', 'hgviewlib.hgpatches'],
                  data_files=data_files,
                  ext_modules=ext_modules,
                  cmdclass={'build_qt': build_qt,
