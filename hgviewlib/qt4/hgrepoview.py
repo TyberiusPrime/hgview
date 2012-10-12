@@ -139,13 +139,16 @@ class GotoQuickBar(QuickBar):
             self.found = ()
             self.emit(SIGNAL('new_set'), self.found)
             return self.found
+        self.parent().statusBar().showMessage("Quering ...")
         model = self._parent.model()
         revset = None
         try:
             revset = revrange(model.repo, [self.revexp])
         except (RepoError, ParseError, LookupError, RepoLookupError), err:
             self.parent().statusBar().showMessage("ERROR: %s" % str(err), 2000)
+            return
         if revset is None:
+            self.parent().statusBar().showMessage("")
             return
         rows = (idx.row() for idx in
                 (model.indexFromRev(rev) for rev in revset)
@@ -428,7 +431,7 @@ class HgRepoView(QtGui.QTableView):
             ctx2 = repo[rev]
             ancestor = ctx.ancestor(ctx2)
             self.emit(SIGNAL('showMessage'),
-                      "Goto ancestor of %s and %s"%(ctx.rev(), ctx2.rev()), 2000)
+                      "Goto ancestor of %s and %s"%(ctx.rev(), ctx2.rev()), 5000)
             self.goto(ancestor.rev())
 
     def set_navigation_button_state(self):
@@ -488,6 +491,7 @@ class HgRepoView(QtGui.QTableView):
         try:
             row = (row for row in _rows if comparer(row, currow)).next()
         except StopIteration:
+            self.visual_bell()
             row = rows[0 if forward else -1]
         self.setCurrentIndex(self.model().index(row, 0))
         pos = rows.index(row) + 1
@@ -504,7 +508,10 @@ class HgRepoView(QtGui.QTableView):
         self.setCurrentIndex(self.model().index(max(row - 1, 0), 0))
 
     def highlight_rows(self, rows):
-        self.model().highlight_rows(rows)
+        if not rows:
+            self.visual_bell()
+            self.emit(SIGNAL('showMessage'), 'Revision set cleared.', 2000)
+        self.model().highlight_rows(rows or ())
         self.refresh_display()
 
     def refresh_display(self):
@@ -513,6 +520,11 @@ class HgRepoView(QtGui.QTableView):
                 item.update()
             except AttributeError:
                 pass
+
+    def visual_bell(self):
+        self.hide()
+        QtCore.QTimer.singleShot(0.01, self.show)
+
 
 TROUBLE_EXPLANATIONS = {
     'unstable': "Based on obsolete ancestor",
