@@ -17,6 +17,7 @@ Qt4 high level widgets for hg repo changelogs and filelogs
 """
 import sys
 from collections import namedtuple
+from operator import lt, gt
 
 from mercurial import cmdutil, ui
 from mercurial.node import hex, short as short_hex, bin as short_bin
@@ -69,13 +70,21 @@ class GotoQuickBar(QuickBar):
 
         act = QtGui.QAction("Goto Next", self)
         act.setIcon(geticon('forward'))
-        #  XXX Shortcut shall be specified after general shortcuts refactorization
+        # XXX Shortcut shall be specified after general shortcuts refactorization
         act.setStatusTip("Goto next found revision")
         act.triggered.connect(self.goto_next)
         self._actions['next'] = act
 
+        act = QtGui.QAction("Goto Previous", self)
+        act.setIcon(geticon('back'))
+        # XXX Shortcut shall be specified after general shortcuts refactorization
+        act.setStatusTip("Goto previous found revision")
+        act.triggered.connect(self.goto_prev)
+        self._actions['prev'] = act
+
         act = QtGui.QAction("help about revset", self)
         act.setIcon(geticon('help'))
+        # XXX Shortcut shall be specified after general shortcuts refactorization
         act.setStatusTip("Display documentation about 'revset'")
         act.triggered.connect(self.show_help)
         self._actions['help'] = act
@@ -88,6 +97,7 @@ class GotoQuickBar(QuickBar):
         self.entry.setCompleter(self.completer)
         self.entry.setStatusTip("Enter a 'revset' to query a set of revisions")
         self.addWidget(self.entry)
+        self.addAction(self._actions['prev'])
         self.addAction(self._actions['next'])
         self.addAction(self._actions['help'])
         connect(self.entry, SIGNAL('returnPressed()'),
@@ -112,6 +122,9 @@ class GotoQuickBar(QuickBar):
 
     def goto_next(self):
         self.emit(SIGNAL('goto_next'), self.search())
+
+    def goto_prev(self):
+        self.emit(SIGNAL('goto_prev'), self.search())
 
     def search(self):
         revexp = str(self.entry.text()).strip()
@@ -177,7 +190,10 @@ class HgRepoView(QtGui.QTableView):
 
     def createToolbars(self):
         self.goto_toolbar = GotoQuickBar(self)
-        connect(self.goto_toolbar, SIGNAL('goto_next'), self.goto_next_from)
+        connect(self.goto_toolbar, SIGNAL('goto_next'),
+                lambda revs: self.goto_next_from(revs, forward=True))
+        connect(self.goto_toolbar, SIGNAL('goto_prev'),
+                lambda revs: self.goto_next_from(revs, forward=False))
 
     def _action_defs(self):
         class ActDef(object):
@@ -456,15 +472,16 @@ class HgRepoView(QtGui.QTableView):
                 self.goto_toolbar.setVisible(False)
                 self.setCurrentIndex(idx)
 
-    def goto_next_from(self, rows):
+    def goto_next_from(self, rows, forward=True):
         """Select the next row available in rows."""
         if not rows:
             return
         currow = self.currentIndex().row()
+        comparer, _rows = (gt, rows) if forward else (lt, reversed(rows))
         try:
-            row = (row for row in rows if row > currow).next()
+            row = (row for row in _rows if comparer(row, currow)).next()
         except StopIteration:
-            row = rows[0]
+            row = rows[0 if forward else -1]
         self.setCurrentIndex(self.model().index(row, 0))
         pos = rows.index(row) + 1
         self.emit(SIGNAL('showMessage'),
