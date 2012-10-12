@@ -23,3 +23,7 @@ except ImportError:
     def match(ctx, *args, **kwargs):
         return cmdutil.match(ctx._repo, *args, **kwargs)
 
+try:
+    from mercurial.scmutil import revrange
+except ImportError:
+    revrange = lambda repo, rev: [repo.changectx(rev).rev()]

@@ -21,7 +21,7 @@ from collections import namedtuple
 from mercurial import cmdutil, ui
 from mercurial.node import hex, short as short_hex, bin as short_bin
 
-from mercurial.error import RepoError
+from mercurial.error import RepoError, ParseError, LookupError, RepoLookupError
 
 from PyQt4 import QtCore, QtGui
 Qt = QtCore.Qt
@@ -31,11 +31,13 @@ nullvariant = QtCore.QVariant()
 
 from hgviewlib.decorators import timeit
 from hgviewlib.config import HgConfig
+from hgviewlib.hgpatches.scmutil import revrange
 from hgviewlib.util import format_desc, xml_escape, tounicode
 from hgviewlib.util import first_known_precursors, first_known_successors
 from hgviewlib.qt4 import icon as geticon
 from hgviewlib.qt4.hgmanifestdialog import ManifestViewer
 from hgviewlib.qt4.quickbar import QuickBar
+from hgviewlib.qt4.helpviewer import HgHelpViewer
 
 # Re-Structured Text support
 raw2html = lambda x: "<pre>%s</pre>" % xml_escape(x)
@@ -57,16 +59,26 @@ except ImportError:
 
 class GotoQuickBar(QuickBar):
     def __init__(self, parent):
+        self._parent = parent
+        self.revexp = u''
+        self.found = []
         QuickBar.__init__(self, "Goto", "Ctrl+G", "Goto", parent)
 
     def createActions(self, openkey, desc):
         QuickBar.createActions(self, openkey, desc)
-        self._actions['go'] = QtGui.QAction("Go", self)
-        connect(self._actions['go'], SIGNAL('triggered()'),
-                self.goto)
 
-    def goto(self):
-        self.emit(SIGNAL('goto'), unicode(self.entry.text()))
+        act = QtGui.QAction("Goto Next", self)
+        act.setIcon(geticon('forward'))
+        #  XXX Shortcut shall be specified after general shortcuts refactorization
+        act.setStatusTip("Goto next found revision")
+        act.triggered.connect(self.goto_next)
+        self._actions['next'] = act
+
+        act = QtGui.QAction("help about revset", self)
+        act.setIcon(geticon('help'))
+        act.setStatusTip("Display documentation about 'revset'")
+        act.triggered.connect(self.show_help)
+        self._actions['help'] = act
 
     def createContent(self):
         QuickBar.createContent(self)
@@ -74,11 +86,12 @@ class GotoQuickBar(QuickBar):
         self.completer = QtGui.QCompleter(self.compl_model, self)
         self.entry = QtGui.QLineEdit(self)
         self.entry.setCompleter(self.completer)
+        self.entry.setStatusTip("Enter a 'revset' to query a set of revisions")
         self.addWidget(self.entry)
-        self.addAction(self._actions['go'])
-
+        self.addAction(self._actions['next'])
+        self.addAction(self._actions['help'])
         connect(self.entry, SIGNAL('returnPressed()'),
-                self._actions['go'].trigger)
+                self.goto_next)
 
     def setVisible(self, visible=True):
         QuickBar.setVisible(self, visible)
@@ -90,6 +103,42 @@ class GotoQuickBar(QuickBar):
         # prevent a warning in the console:
         # QObject::startTimer: QTimer can only be used with threads started with QThread
         self.entry.setCompleter(None)
+
+    def show_help(self):
+        w = HgHelpViewer(self._parent.model().repo, 'revset', self)
+        w.show()
+        w.raise_()
+        w.activateWindow()
+
+    def goto_next(self):
+        self.emit(SIGNAL('goto_next'), self.search())
+
+    def search(self):
+        revexp = str(self.entry.text()).strip()
+        if self.revexp == revexp:
+            return self.found
+        self.revexp = revexp
+        if not self.revexp:
+            self.found = ()
+            return self.found
+        model = self._parent.model()
+        revset = None
+        try:
+            revset = revrange(model.repo, [self.revexp])
+        except (RepoError, ParseError, LookupError, RepoLookupError), err:
+            self.parent().statusBar().showMessage("ERROR: %s" % str(err), 2000)
+        else:
+            nb = len(revset)
+            message = '%i entr%s found' % (nb, 'y' if nb <= 1 else 'ies')
+            self.parent().statusBar().showMessage(message, -1)
+        if revset is None:
+            return
+        rows = (idx.row() for idx in
+                (model.indexFromRev(rev) for rev in revset)
+                if idx is not None)
+        rows = tuple(sorted(rows))
+        self.found = rows
+        return rows
 
 class HgRepoView(QtGui.QTableView):
     """
@@ -128,8 +177,7 @@ class HgRepoView(QtGui.QTableView):
 
     def createToolbars(self):
         self.goto_toolbar = GotoQuickBar(self)
-        connect(self.goto_toolbar, SIGNAL('goto'),
-                self.goto)
+        connect(self.goto_toolbar, SIGNAL('goto_next'), self.goto_next_from)
 
     def _action_defs(self):
         class ActDef(object):
@@ -400,12 +448,28 @@ class HgRepoView(QtGui.QTableView):
         try:
             rev = repo.changectx(rev).rev()
         except RepoError:
-            self.emit(SIGNAL('showMessage'), "Can't find revision '%s'" % rev, 2000)
+            self.emit(SIGNAL('showMessage'),
+                      "Can't find revision '%s'" % rev, 2000)
         else:
             idx = self.model().indexFromRev(rev)
             if idx is not None:
                 self.goto_toolbar.setVisible(False)
                 self.setCurrentIndex(idx)
+
+    def goto_next_from(self, rows):
+        """Select the next row available in rows."""
+        if not rows:
+            return
+        currow = self.currentIndex().row()
+        try:
+            row = (row for row in rows if row > currow).next()
+        except StopIteration:
+            row = rows[0]
+        self.setCurrentIndex(self.model().index(row, 0))
+        pos = rows.index(row) + 1
+        self.emit(SIGNAL('showMessage'),
+                  "revision #%i of %i" % (pos, len(rows)),
+                  -1)
 
     def nextRev(self):
         row = self.currentIndex().row()
