@@ -63,6 +63,7 @@ class GotoQuickBar(QuickBar):
         self._parent = parent
         self.revexp = u''
         self.found = []
+        self.row_before = None
         QuickBar.__init__(self, "Goto", "Ctrl+G", "Goto", parent)
 
     def createActions(self, openkey, desc):
@@ -100,14 +101,23 @@ class GotoQuickBar(QuickBar):
         self.addAction(self._actions['prev'])
         self.addAction(self._actions['next'])
         self.addAction(self._actions['help'])
-        connect(self.entry, SIGNAL('returnPressed()'),
-                self.goto_next)
+        self.entry.returnPressed.connect(self.validate)
+        self.entry.textEdited.connect(self.goto_first)
 
     def setVisible(self, visible=True):
         QuickBar.setVisible(self, visible)
         if visible:
+            self.row_before = self._parent.currentIndex()
+            self.revexp_before = str(self.entry.text())
             self.entry.setFocus()
             self.entry.selectAll()
+        else:
+            if self.row_before:
+                self._parent.setCurrentIndex(self.row_before)
+                self.entry.setText(self.revexp_before)
+                rows = self.search(safety=False)
+                self.emit(SIGNAL('new_set'), rows)
+                self.parent().statusBar().showMessage('', -1)
 
     def __del__(self):
         # prevent a warning in the console:
@@ -120,6 +130,28 @@ class GotoQuickBar(QuickBar):
         w.raise_()
         w.activateWindow()
 
+    def goto_first(self):
+        revexp = str(self.entry.text())
+        # low revision number may force to load too much data tree
+        if revexp.strip().isdigit():
+            return
+        # empty revexp bring back selection
+        if not revexp:
+            self.emit(SIGNAL('new_set'), ())
+            rows = [self.row_before.row()]
+        else:
+            try:
+                rows = self.search(safety=False)
+            except (RepoError, ParseError, LookupError, RepoLookupError):
+                return
+        if not rows:
+            return
+        self._parent.setCurrentIndex(self._parent.model().index(rows[0], 0))
+
+    def validate(self):
+        self.row_before = None
+        self.setVisible(False)
+
     def goto_next(self):
         rows = self.search()
         self.emit(SIGNAL('goto_next'), rows)
@@ -130,13 +162,13 @@ class GotoQuickBar(QuickBar):
     def goto_prev(self):
         self.emit(SIGNAL('goto_prev'), self.search())
 
-    def search(self):
+    def search(self, safety=True):
         revexp = str(self.entry.text()).strip()
         if self.revexp == revexp:
             return self.found
         self.revexp = revexp
         if not self.revexp:
-            self.found = ()
+            self.found = None
             self.emit(SIGNAL('new_set'), self.found)
             return self.found
         self.parent().statusBar().showMessage("Quering ...")
@@ -146,6 +178,8 @@ class GotoQuickBar(QuickBar):
             revset = revrange(model.repo, [self.revexp])
         except (RepoError, ParseError, LookupError, RepoLookupError), err:
             self.parent().statusBar().showMessage("ERROR: %s" % str(err), 2000)
+            if not safety:
+                raise
             return
         if revset is None:
             self.parent().statusBar().showMessage("")
@@ -155,7 +189,8 @@ class GotoQuickBar(QuickBar):
                 if idx is not None)
         rows = tuple(sorted(rows))
         nb = len(rows)
-        message = '%i entr%s found' % (nb, 'y' if nb <= 1 else 'ies')
+        message = '%i entr%s found (ESC to cancel or Enter to validate)' \
+            % (nb, 'y' if nb <= 1 else 'ies')
         self.parent().statusBar().showMessage(message, -1)
         self.found = rows
         self.emit(SIGNAL('new_set'), rows)
@@ -508,7 +543,7 @@ class HgRepoView(QtGui.QTableView):
         self.setCurrentIndex(self.model().index(max(row - 1, 0), 0))
 
     def highlight_rows(self, rows):
-        if not rows:
+        if rows is None:
             self.visual_bell()
             self.emit(SIGNAL('showMessage'), 'Revision set cleared.', 2000)
         self.model().highlight_rows(rows or ())
