@@ -27,6 +27,7 @@ from mercurial.error import RepoError, ParseError, LookupError, RepoLookupError
 from PyQt4 import QtCore, QtGui
 Qt = QtCore.Qt
 connect = QtCore.QObject.connect
+disconnect = QtCore.QObject.disconnect
 SIGNAL = QtCore.SIGNAL
 nullvariant = QtCore.QVariant()
 
@@ -58,12 +59,40 @@ try:
 except ImportError:
     rst2html = None
 
+
+class GotoQuery(QtCore.QThread):
+    """A dedicated thread that queries a revset to the repo related to
+    the model"""
+    def __init__(self, revexp, model, parent):
+        QtCore.QThread.__init__(self, parent)
+        self.model = model
+        self.revexp = revexp
+
+    def run(self):
+        revset = None
+        try:
+            revset = revrange(self.model.repo, [self.revexp])
+        except (RepoError, ParseError, LookupError, RepoLookupError), err:
+            self.emit(SIGNAL('failed_revset'), err)
+            return
+        if revset is None:
+            self.emit(SIGNAL('new_revset'), ())
+            return
+        rows = (idx.row() for idx in
+                (self.model.indexFromRev(rev) for rev in revset)
+                if idx is not None)
+        rows = tuple(sorted(rows))
+        self.emit(SIGNAL('new_revset'), rows)
+
+
 class GotoQuickBar(QuickBar):
     def __init__(self, parent):
         self._parent = parent
         self.revexp = u''
         self.found = []
         self.row_before = None
+        self._goto_query_thread = None
+        self.goto_signal = None
         QuickBar.__init__(self, "Goto", "Ctrl+G", "Goto", parent)
 
     def createActions(self, openkey, desc):
@@ -115,14 +144,16 @@ class GotoQuickBar(QuickBar):
             if self.row_before:
                 self._parent.setCurrentIndex(self.row_before)
                 self.entry.setText(self.revexp_before)
-                rows = self.search(safety=False)
+                rows = self.search()
                 self.emit(SIGNAL('new_set'), rows)
-                self.parent().statusBar().showMessage('', -1)
+                self.show_message('')
 
     def __del__(self):
         # prevent a warning in the console:
         # QObject::startTimer: QTimer can only be used with threads started with QThread
         self.entry.setCompleter(None)
+        if self._goto_query_thread:
+            self._goto_query_thread.terminate()
 
     def show_help(self):
         w = HgHelpViewer(self._parent.model().repo, 'revset', self)
@@ -131,70 +162,66 @@ class GotoQuickBar(QuickBar):
         w.activateWindow()
 
     def goto_first(self):
+        self.is_goto_next = True
         revexp = str(self.entry.text())
         # low revision number may force to load too much data tree
         if revexp.strip().isdigit():
             return
         # empty revexp bring back selection
-        if not revexp:
-            self.emit(SIGNAL('new_set'), ())
-            rows = [self.row_before.row()]
-        else:
-            try:
-                rows = self.search(safety=False)
-            except (RepoError, ParseError, LookupError, RepoLookupError):
-                return
-        if not rows:
-            return
-        self._parent.setCurrentIndex(self._parent.model().index(rows[0], 0))
+        if not revexp.strip() and self.row_before:
+            self._parent.setCurrentIndex(self.row_before)
+        self.goto_signal = 'goto_first'
+        rows = self.search()
 
     def validate(self):
         self.row_before = None
-        self.setVisible(False)
+        self.goto_signal = 'validate'
+        self.search()
 
     def goto_next(self):
-        rows = self.search()
-        self.emit(SIGNAL('goto_next'), rows)
-        #  usecase: quick jump to a revision
-        if rows and len(rows) == 1:
-            self.setVisible(False)
+        self.goto_signal = 'goto_next'
+        self.search()
 
     def goto_prev(self):
-        self.emit(SIGNAL('goto_prev'), self.search())
+        self.goto_signal = 'goto_prev'
+        self.search()
 
-    def search(self, safety=True):
+    def search(self):
         revexp = str(self.entry.text()).strip()
         if self.revexp == revexp:
-            return self.found
+            self.on_queried()
+            return
         self.revexp = revexp
         if not self.revexp:
-            self.found = None
+            self.found = ()
+            self.on_queried()
+            return
+        self.show_message("Quering ... (edit the entry to cancel)")
+        if self._goto_query_thread:
+            thr = self._goto_query_thread
+            thr.terminate()
+            disconnect(thr, SIGNAL('failed_revset'), self.show_message)
+            disconnect(thr, SIGNAL('new_revset'), self.on_queried)
+        self._goto_query_thread = thr = GotoQuery(
+            revexp, self._parent.model(), self)
+        connect(thr, SIGNAL('failed_revset'), self.show_message)
+        connect(thr, SIGNAL('new_revset'), self.on_queried)
+        thr.start()
+
+    def show_message(self, message, delay=-1):
+        self.parent().statusBar().showMessage(unicode(message), delay)
+
+    def on_queried(self, rows=None):
+        """Slot to handle new revset."""
+        if rows is not None:
+            self.found = rows
             self.emit(SIGNAL('new_set'), self.found)
-            return self.found
-        self.parent().statusBar().showMessage("Quering ...")
-        model = self._parent.model()
-        revset = None
-        try:
-            revset = revrange(model.repo, [self.revexp])
-        except (RepoError, ParseError, LookupError, RepoLookupError), err:
-            self.parent().statusBar().showMessage("ERROR: %s" % str(err), 2000)
-            if not safety:
-                raise
-            return
-        if revset is None:
-            self.parent().statusBar().showMessage("")
-            return
-        rows = (idx.row() for idx in
-                (model.indexFromRev(rev) for rev in revset)
-                if idx is not None)
-        rows = tuple(sorted(rows))
-        nb = len(rows)
-        message = '%i entr%s found (ESC to cancel or Enter to validate)' \
-            % (nb, 'y' if nb <= 1 else 'ies')
-        self.parent().statusBar().showMessage(message, -1)
-        self.found = rows
-        self.emit(SIGNAL('new_set'), rows)
-        return rows
+        if self.goto_signal:
+            self.emit(SIGNAL(self.goto_signal), self.found)
+        if self.goto_signal == 'validate':
+            self.setVisible(False)
+        self.goto_signal = None
+
 
 class HgRepoView(QtGui.QTableView):
     """
@@ -237,6 +264,8 @@ class HgRepoView(QtGui.QTableView):
                 lambda revs: self.goto_next_from(revs, forward=True))
         connect(self.goto_toolbar, SIGNAL('goto_prev'),
                 lambda revs: self.goto_next_from(revs, forward=False))
+        connect(self.goto_toolbar, SIGNAL('goto_first'),
+                lambda revs: self.goto_first_from(revs))
         connect(self.goto_toolbar, SIGNAL('new_set'),
                 self.highlight_rows)
 
@@ -516,6 +545,15 @@ class HgRepoView(QtGui.QTableView):
             if idx is not None:
                 self.goto_toolbar.setVisible(False)
                 self.setCurrentIndex(idx)
+
+    def goto_first_from(self, rows):
+        """Select the first available row in rows"""
+        if not rows:
+            return
+        self.setCurrentIndex(self.model().index(rows[0], 0))
+        self.emit(SIGNAL('showMessage'),
+                  "revision #%i of %i" % (1, len(rows)),
+                  -1)
 
     def goto_next_from(self, rows, forward=True):
         """Select the next row available in rows."""
