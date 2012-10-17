@@ -84,6 +84,23 @@ class GotoQuery(QtCore.QThread):
         rows = tuple(sorted(rows))
         self.emit(SIGNAL('new_revset'), rows)
 
+class QueryLineEdit(QtGui.QLineEdit):
+    """Special line edit class with visual marks dedicated to the revset query."""
+    FORGROUNDS = {'valid':Qt.color1, 'failed':Qt.darkRed, 'query':Qt.darkGray}
+    def __init__(self, parent):
+        self._parent = parent
+        self._style = None
+        QtGui.QLineEdit.__init__(self, parent)
+        self.setTextMargins(0,0,-16,0)
+        self.valide = True
+
+    def set_style(self, style=None):
+        self._style = style
+        color = self.FORGROUNDS.get(style, None)
+        if color is not None:
+            palette = self.palette()
+            palette.setColor(QtGui.QPalette.Text, color)
+            self.setPalette(palette)
 
 class GotoQuickBar(QuickBar):
     def __init__(self, parent):
@@ -123,7 +140,7 @@ class GotoQuickBar(QuickBar):
         QuickBar.createContent(self)
         self.compl_model = QtGui.QStringListModel(['tip'])
         self.completer = QtGui.QCompleter(self.compl_model, self)
-        self.entry = QtGui.QLineEdit(self)
+        self.entry = QueryLineEdit(self)
         self.entry.setCompleter(self.completer)
         self.entry.setStatusTip("Enter a 'revset' to query a set of revisions")
         self.addWidget(self.entry)
@@ -197,22 +214,24 @@ class GotoQuickBar(QuickBar):
             self.on_queried()
             return
         self.show_message("Quering ... (edit the entry to cancel)")
+        self.entry.set_style('query')
         if self._goto_query_thread:
             thr = self._goto_query_thread
             thr.terminate()
-            disconnect(thr, SIGNAL('failed_revset'), self.show_message)
+            disconnect(thr, SIGNAL('failed_revset'), self.on_failed)
             disconnect(thr, SIGNAL('new_revset'), self.on_queried)
         self._goto_query_thread = thr = GotoQuery(
             revexp, self._parent.model(), self)
-        connect(thr, SIGNAL('failed_revset'), self.show_message)
+        connect(thr, SIGNAL('failed_revset'), self.on_failed)
         connect(thr, SIGNAL('new_revset'), self.on_queried)
         thr.start()
 
     def show_message(self, message, delay=-1):
-        self.parent().statusBar().showMessage(unicode(message), delay)
+        self.parent().statusBar().showMessage(message, delay)
 
     def on_queried(self, rows=None):
         """Slot to handle new revset."""
+        self.entry.set_style('valid')
         if rows is not None:
             self.found = rows
             self.emit(SIGNAL('new_set'), self.found)
@@ -221,6 +240,10 @@ class GotoQuickBar(QuickBar):
         if self.goto_signal == 'validate':
             self.setVisible(False)
         self.goto_signal = None
+
+    def on_failed(self, err):
+        self.entry.set_style('failed')
+        self.show_message(unicode(err))
 
 
 class HgRepoView(QtGui.QTableView):
