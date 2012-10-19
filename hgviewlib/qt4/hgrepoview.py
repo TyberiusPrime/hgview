@@ -121,7 +121,11 @@ class GotoQuickBar(QuickBar):
         w.activateWindow()
 
     def goto_next(self):
-        self.emit(SIGNAL('goto_next'), self.search())
+        rows = self.search()
+        self.emit(SIGNAL('goto_next'), rows)
+        #  usecase: quick jump to a revision
+        if len(rows) == 1:
+            self.setVisible(False)
 
     def goto_prev(self):
         self.emit(SIGNAL('goto_prev'), self.search())
