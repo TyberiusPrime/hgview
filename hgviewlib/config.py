@@ -333,6 +333,16 @@ class HgConfig(object):
         """
         return bool(self._fromconfig('showobsolete', default))
 
+    @cached
+    def getExportTemplate(self):
+        """
+        exporttemplate: template used to serialise changeset metadata
+                        while exporting into the window manager clipboard.
+                        (default to `ui.logtemplate`)
+        """
+        return self._fromconfig('exporttemplate', None) or \
+               self.ui.config('ui', 'logtemplate')
+
 _HgConfig = HgConfig
 # HgConfig is instanciated only once (singleton)
 #

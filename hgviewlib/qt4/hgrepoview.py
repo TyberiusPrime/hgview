@@ -18,7 +18,9 @@ Qt4 high level widgets for hg repo changelogs and filelogs
 import sys
 from collections import namedtuple
 
+from mercurial import cmdutil, ui
 from mercurial.node import hex, short as short_hex, bin as short_bin
+
 try:
     from mercurial.error import RepoError
 except ImportError: # old API
@@ -153,6 +155,12 @@ class HgRepoView(QtGui.QTableView):
                 return out[:-1] + 'name=%r' % self.name + out[-1:]
 
         return [
+            ActDef(name="copycs",
+                   desc=self.tr("Export to clipboard"),
+                   icon=None,
+                   tip=self.tr("Export changeset metadata the window manager clipboard [see configuration entry 'copytemplate']"),
+                   keys=None, # XXX shall be specified after general shortcuts refactorization
+                   cb=self.copy_cs_to_clipboard),
             ActDef(name="back",
                    desc=self.tr("Previous visited"),
                    icon='back',
@@ -215,6 +223,16 @@ class HgRepoView(QtGui.QTableView):
     def update_filter_action(self, rev=None, follow=None):
         self._actions['unfilter'].setEnabled(rev is not None)
 
+    def copy_cs_to_clipboard(self):
+        """ Copy changeset metada into the window manager clipboard."""
+        repo = self.model().repo
+        ctx = repo[self.current_rev]
+        u = ui.ui(repo.ui)
+        template = HgConfig(u).getExportTemplate()
+        u.pushbuffer()
+        cmdutil.show_changeset(u, repo, {'template':template}, False).show(ctx)
+        QtGui.QApplication.clipboard().setText(u.popbuffer())
+
     def showAtRev(self):
         self.emit(SIGNAL('revisionActivated'), self.current_rev)
 
@@ -229,7 +247,10 @@ class HgRepoView(QtGui.QTableView):
 
     def contextMenuEvent(self, event):
         menu = QtGui.QMenu(self)
-        for act in ['manifest', None, 'start', 'follow', 'unfilter', None, 'back', 'forward']:
+        for act in ['copycs', None,
+                    'manifest', None,
+                    'start', 'follow', 'unfilter', None,
+                    'back', 'forward']:
             if act:
                 menu.addAction(self._actions[act])
             else:
