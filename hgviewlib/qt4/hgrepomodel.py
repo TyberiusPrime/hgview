@@ -44,9 +44,11 @@ COLORS = [ "blue", "darkgreen", "red", "green", "darkblue", "purple",
 COLORS = [str(QtGui.QColor(x).name()) for x in COLORS]
 #COLORS = [str(color) for color in QtGui.QColor.colorNames()]
 
-# We use two colors, One for even nd one for odd rows
+# We use two colors, One for even rows and one for odd rows
 COLOR_BG_OBSOLETE = [QtGui.QColor(255, 250, 250), QtGui.QColor(243, 230, 230)]
 COLOR_BG_TROUBLED = [QtGui.QColor(255, 193,  71), QtGui.QColor(255, 153,  51)]
+COLOR_BG_HIGHLIGHT = [QtGui.QColor(127, 199, 175),
+                      QtGui.QColor(127, 199, 175).lighter()]
 
 
 
@@ -128,12 +130,18 @@ class HgRepoListModel(QtCore.QAbstractTableModel, HgRepoListWalker):
         self._fill_timer = None
         QtCore.QAbstractTableModel.__init__(self, parent)
         HgRepoListWalker.__init__(self, repo, branch, fromhead, follow, closed=closed)
+        self.highlights = []
 
     def setRepo(self, repo, branch='', fromhead=None, follow=False, closed=False):
         HgRepoListWalker.setRepo(self, repo, branch, fromhead, follow, closed=closed)
         self.emit(SIGNAL('layoutChanged()'))
         QtCore.QTimer.singleShot(0, Curry(self.emit, SIGNAL('filled')))
         self._fill_timer = self.startTimer(50)
+
+    def highlight_rows(self, rows):
+        """mark ``rows`` to be highlighted."""
+        self.highlights[:] = rows
+        self._datacache.clear()
 
     def timerEvent(self, event):
         if event.timerId() == self._fill_timer:
@@ -232,11 +240,15 @@ class HgRepoListModel(QtCore.QAbstractTableModel, HgRepoListWalker):
                 color = QtGui.QColor('grey')
             if color is not None:
                 return QtCore.QVariant(color)
+
         elif role == QtCore.Qt.BackgroundRole:
-            if ctx.obsolete():
-                return COLOR_BG_OBSOLETE[index.row() % 2]
+            row = index.row()
+            if row in self.highlights:
+                return COLOR_BG_HIGHLIGHT[row % 2]
+            elif ctx.obsolete():
+                return COLOR_BG_OBSOLETE[row % 2]
             elif ctx.troubles():
-                return COLOR_BG_TROUBLED[index.row() % 2]
+                return COLOR_BG_TROUBLED[row % 2]
 
         elif role == QtCore.Qt.DecorationRole:
             if column == 'Log':
