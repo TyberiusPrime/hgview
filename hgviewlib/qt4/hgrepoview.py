@@ -87,6 +87,7 @@ class GotoQuery(QtCore.QThread):
 class QueryLineEdit(QtGui.QLineEdit):
     """Special line edit class with visual marks dedicated to the revset query."""
     FORGROUNDS = {'valid':Qt.color1, 'failed':Qt.darkRed, 'query':Qt.darkGray}
+    ICONS = {'valid':'valid', 'query':'loading'}
     def __init__(self, parent):
         self._parent = parent
         self._style = None
@@ -101,6 +102,15 @@ class QueryLineEdit(QtGui.QLineEdit):
             palette = self.palette()
             palette.setColor(QtGui.QPalette.Text, color)
             self.setPalette(palette)
+
+    def paintEvent(self, event):
+        QtGui.QLineEdit.paintEvent(self, event)
+        icn = geticon(self.ICONS.get(self._style))
+        if icn is None:
+            return
+        painter = QtGui.QPainter(self)
+        icn.paint(painter, self.width() - 18, (self.height() - 18) / 2, 16, 16)
+
 
 class GotoQuickBar(QuickBar):
     def __init__(self, parent):
