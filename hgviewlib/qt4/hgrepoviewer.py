@@ -29,7 +29,7 @@ from hgviewlib.qt4.hgfiledialog import FileViewer, FileDiffViewer
 from hgviewlib.qt4.hgmanifestdialog import ManifestViewer
 from hgviewlib.qt4.hgdialogmixin import HgDialogMixin
 from hgviewlib.qt4.quickbar import FindInGraphlogQuickBar
-from hgviewlib.qt4.helpviewer import HelpViewer
+from hgviewlib.qt4.helpviewer import HgviewHelpViewer
 
 from mercurial.error import RepoError
 
@@ -530,7 +530,7 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin, _HgRepoViewer):
         QtGui.QMessageBox.about(self, "About %s" % modname, msg)
 
     def on_help(self, *args):
-        w = HelpViewer(self.repo, self)
+        w = HgviewHelpViewer(self.repo, self)
         w.show()
         w.raise_()
         w.activateWindow()
