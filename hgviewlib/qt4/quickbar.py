@@ -321,15 +321,3 @@ class FindInGraphlogQuickBar(FindQuickBar):
             else:
                 self.on_findnext()
 
-if __name__ == "__main__":
-    import sys
-    import hgviewlib.qt4 # to force importation of resource module w/ icons
-    app = QtGui.QApplication(sys.argv)
-    root = QtGui.QMainWindow()
-    w = QtGui.QFrame()
-    root.setCentralWidget(w)
-
-    qbar = QuickBar("test", "Ctrl+G", "toto", w)
-    root.show()
-    app.exec_()
-

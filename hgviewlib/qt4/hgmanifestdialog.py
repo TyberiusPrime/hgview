@@ -130,27 +130,3 @@ class ManifestViewer(QtGui.QMainWindow, HgDialogMixin, _ManifestViewer):
                     index = newindex
                     break
         self.treeView.setCurrentIndex(index)
-
-
-if __name__ == '__main__':
-    from mercurial import ui, hg
-    from optparse import OptionParser
-    opt = OptionParser()
-    opt.add_option('-R', '--repo',
-                   dest='repo',
-                   default='.',
-                   help='Hg repository')
-
-    options, args = opt.parse_args()
-    if len(args) != 1:
-        opt.error('Please specify a revision number')
-    rev = args[0]
-
-    u = ui.ui()
-    repo = hg.repository(u, options.repo)
-    app = QtGui.QApplication([])
-
-    view = ManifestViewer(repo, int(rev))
-    view.show()
-    sys.exit(app.exec_())
-

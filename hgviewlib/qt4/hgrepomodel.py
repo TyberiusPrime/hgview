@@ -848,39 +848,3 @@ class ManifestModel(QtCore.QAbstractItemModel):
             index = self.parent(index)
         return osp.sep.join([index.internalPointer().data(0) for index in idxs])
 
-
-if __name__ == "__main__":
-    from mercurial import ui, hg
-    from optparse import OptionParser
-    p = OptionParser()
-    p.add_option('-R', '--root', default='.',
-                 dest='root',
-                 help="Repository main directory")
-    p.add_option('-f', '--file', default=None,
-                 dest='filename',
-                 help="display the revision graph of this file (if not given, display the whole rev graph)")
-
-    opt, args = p.parse_args()
-
-    u = ui.ui()
-    repo = hg.repository(u, opt.root)
-    app = QtGui.QApplication(sys.argv)
-    if opt.filename is not None:
-        model = FileRevModel(repo, opt.filename)
-    else:
-        model = HgRepoListModel(repo)
-
-    view = QtGui.QTableView()
-    #delegate = GraphDelegate()
-    #view.setItemDelegateForColumn(1, delegate)
-    view.setShowGrid(False)
-    view.verticalHeader().hide()
-    view.verticalHeader().setDefaultSectionSize(20)
-    view.setSelectionMode(QtGui.QAbstractItemView.SingleSelection)
-    view.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
-    view.setModel(model)
-    view.setWindowTitle("Simple Hg List Model")
-    view.show()
-    view.setAlternatingRowColors(True)
-    #view.resizeColumnsToContents()
-    sys.exit(app.exec_())
