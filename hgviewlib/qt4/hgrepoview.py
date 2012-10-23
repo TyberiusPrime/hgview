@@ -638,7 +638,7 @@ class HgRepoView(QtGui.QTableView):
 
 TROUBLE_EXPLANATIONS = {
     'unstable': "Based on obsolete ancestor",
-    'latecomer': "Hopeless successors of a public changeset",
+    'bumped': "Hopeless successors of a public changeset",
     'conflicting': "Another changeset are also a successors of "
                    "one of your precursor",
 }

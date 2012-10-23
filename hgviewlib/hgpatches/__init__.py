@@ -69,15 +69,25 @@ if getattr(context.changectx, 'unstable', None) is None:
 # They will probably because official, but maybe with a different name
 if getattr(context.changectx, 'conflicting', None) is None:
     context.changectx.conflicting = lambda self: False
+
+has_latecomer = True
 if getattr(context.changectx, 'latecomer', None) is None:
-    context.changectx.latecomer = lambda self: False
+    has_latecomer = False
+    context.changectx.latecomer = lambda self: self.bumped()
+if getattr(context.changectx, 'bumped', None) is None:
+    if has_latecomer:
+        # older version with real latecomer support. rely on this for bumped.
+        context.changectx.bumped = lambda self: self.latecomer()
+    else:
+        context.changectx.bumped = lambda self: False
+
 if getattr(context.changectx, 'troubles', None) is None:
     def troubles(ctx):
         troubles = []
         if ctx.unstable():
             troubles.append('unstable')
-        if ctx.latecomer():
-            troubles.append('latecomer')
+        if ctx.bumped(): # rename
+            troubles.append('bumped')
         if ctx.conflicting():
             troubles.append('conflicting')
         return tuple(troubles)
