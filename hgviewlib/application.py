@@ -35,7 +35,7 @@ class Viewer(object):
 class FileViewer(Viewer):
     """Single file revision graph viewer."""
     def __init__(self, repo, filename, **kwargs):
-        super(FileDiffViewer, self).__init__(**kwargs)
+        super(FileViewer, self).__init__(**kwargs)
 
 class FileDiffViewer(Viewer):
     """Viewer that displays diffs between different revisions of a file."""
@@ -122,7 +122,6 @@ def start(repo, opts, args, fnerror):
         except ImportError:
             if '--traceback' in sys.argv:
                 raise
-            pass
     if not opts.interface or opts.interface in ('raw', 'curses'):
         try:
             from hgviewlib.curses.application import HgViewUrwidApplication as Application
@@ -130,7 +129,6 @@ def start(repo, opts, args, fnerror):
         except ImportError:
             if '--traceback' in sys.argv:
                 raise
-            pass
     if not opts.interface:
         fnerror('No interface found')
     if not Application:

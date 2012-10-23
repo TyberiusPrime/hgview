@@ -10,6 +10,7 @@ Main Qt4 application for hgview
 """
 import sys, os
 import re
+import errno
 
 from PyQt4 import QtCore, QtGui, Qsci
 
@@ -478,8 +479,11 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin, _HgRepoViewer):
             try:
                 if util.readlock(l):
                     break
-            except OSError, err:
-                if err.errno != 2:
+            except EnvironmentError, err:
+                # depending on platform (win, nix) the "posix file" abstraction
+                # defined and used by mercurial may raise one of both subclasses
+                # of EnvironmentError
+                if err.errno != errno.ENOENT:
                     raise
         else: # repo not locked by an Hg operation
             mtime = [os.path.getmtime(wf) for wf in watchedfiles \

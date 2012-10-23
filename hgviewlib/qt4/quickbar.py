@@ -21,7 +21,7 @@ from mercurial import util
 
 from PyQt4 import QtCore, QtGui
 
-from hgviewlib.util import Curry
+from hgviewlib.util import Curry, tounicode
 from hgviewlib.qt4 import icon as geticon
 
 Qt = QtCore.Qt
@@ -205,9 +205,9 @@ class FindInGraphlogQuickBar(FindQuickBar):
         for node in graph[idx:]:
             rev = node.rev
             ctx = self._model.repo.changectx(rev)
-            if text in unicode(ctx.description(), 'utf-8', 'replace'):
+            # XXX should be an re search with undecoded chars as '?'
+            if text in tounicode(ctx.description()):
                 yield rev, None
-            pos = 0
             files = ctx.files()
             if self._filter_files:
                 files = [x for x in files if x in self._filter_files]

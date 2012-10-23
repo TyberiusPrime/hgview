@@ -19,3 +19,8 @@ written with efficiency in mind when dealing with big repositories
 (it can happily be used to browse Linux kernel source code
 repository).
 """
+
+from mercurial import demandimport
+
+# this should help docutils, see hgrepoview.rst2html
+demandimport.ignore.append('roman')

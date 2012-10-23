@@ -24,14 +24,15 @@ from __future__ import nested_scopes, with_statement
 import os
 import sys
 import shutil
+from os.path import isdir, exists, join, walk, splitext, basename
+from subprocess import check_call, call as sub_call
+
 from distutils.core import setup
 from distutils.command.build import build as _build
 from distutils.command.build_py import build_py as _build_py
 from distutils.command.install import install as _install
 from distutils.command.install_lib import install_lib
 from distutils.command.install_data import install_data as _install_data
-from os.path import isdir, exists, join, walk, splitext, basename
-from subprocess import check_call, call as sub_call
 
 
 # import required features
@@ -100,7 +101,7 @@ class build_qt(_build_py):
             return
         dir = os.path.dirname(dest)
         self.mkpath(dir)
-        sys.stderr.write("compiling %s -> %s\n" % (src, dest))
+        sys.stdout.write("compiling %s -> %s\n" % (src, dest))
         try:
             compiler(src, dest)
         except Exception, e:
@@ -307,9 +308,6 @@ def main():
     else:
         scripts = ['bin/hgview']
 
-    kwargs['package_dir'] = {modname : modname}
-    packages = ['hgviewlib', 'hgext', 'hgviewlib.hgpatches']
-    kwargs['packages'] = packages
     return setup(name=distname,
                  version=version,
                  license=license,
@@ -319,6 +317,8 @@ def main():
                  author_email=author_email,
                  url=web,
                  scripts=ensure_scripts(scripts),
+                 package_dir={modname : modname},
+                 packages=['hgviewlib', 'hgext', 'hgviewlib.hgpatches'],
                  data_files=data_files,
                  ext_modules=ext_modules,
                  cmdclass={'build_qt': build_qt,

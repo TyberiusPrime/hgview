@@ -117,14 +117,13 @@ def xml_escape(data):
             .replace('"','&quot;').replace("'",'&#39;'))
 
 def format_desc(desc, width):
-    """
-    Helper function to format a ctx description for oneliner
-    representation (summary view)
-    """
-    desc = xml_escape(unicode(desc, 'utf-8', 'replace').split('\n', 1)[0])
-    if len(desc) > width:
-        desc = desc[:width] + '...'
-    return desc
+    """ format a ctx description for oneliner
+    representation (summary view) """
+    udesc = tounicode(desc)
+    udesc = xml_escape(udesc.split('\n', 1)[0])
+    if len(udesc) > width:
+        udesc = udesc[:width] + '...'
+    return udesc
 
 
 def first_known_precursors(ctx, excluded=()):
