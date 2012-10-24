@@ -163,7 +163,7 @@ def first_known_successors(ctx, excluded=()):
             if crev is not None and crev not in excluded:
                 yield ctx._repo[crev]
             else:
-                for mark in obsstore.successors.get(current, ()):
+                for mark in obsstore.precursors.get(current, ()):
                     if mark[0] not in seen:
                         candidates.add(mark[0])
                         seen.add(mark[0])
