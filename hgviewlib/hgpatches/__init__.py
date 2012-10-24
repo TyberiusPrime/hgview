@@ -67,8 +67,16 @@ if getattr(context.changectx, 'unstable', None) is None:
 
 ### unofficial API implemented by mutable extension
 # They will probably because official, but maybe with a different name
+has_conflicting = True
 if getattr(context.changectx, 'conflicting', None) is None:
+    has_conflicting = False
     context.changectx.conflicting = lambda self: False
+if getattr(context.changectx, 'divergent', None) is None:
+    if has_latecomer:
+        # older version with real conflicting support. rely on this for divergent.
+        context.changectx.divergent = lambda self: self.conflicting()
+    else:
+        context.changectx.divergent = lambda self: False
 
 has_latecomer = True
 if getattr(context.changectx, 'latecomer', None) is None:
@@ -88,7 +96,7 @@ if getattr(context.changectx, 'troubles', None) is None:
             troubles.append('unstable')
         if ctx.bumped(): # rename
             troubles.append('bumped')
-        if ctx.conflicting():
-            troubles.append('conflicting')
+        if ctx.divergent():
+            troubles.append('divergent')
         return tuple(troubles)
     context.changectx.troubles = troubles

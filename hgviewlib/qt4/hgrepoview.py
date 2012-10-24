@@ -637,10 +637,10 @@ class HgRepoView(QtGui.QTableView):
 
 
 TROUBLE_EXPLANATIONS = {
-    'unstable': "Based on obsolete ancestor",
-    'bumped': "Hopeless successors of a public changeset",
-    'conflicting': "Another changeset are also a successors of "
-                   "one of your precursor",
+    'unstable':  "Based on obsolete ancestor",
+    'bumped':    "Hopeless successors of a public changeset",
+    'divergent': "Another changeset are also a successors of "
+                 "one of your precursor",
 }
 class RevDisplay(QtGui.QTextBrowser):
     """
