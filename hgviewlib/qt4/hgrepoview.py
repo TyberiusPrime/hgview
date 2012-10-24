@@ -642,6 +642,9 @@ TROUBLE_EXPLANATIONS = {
     'divergent': "Another changeset are also a successors of "
                  "one of your precursor",
 }
+# temporary compat with older evolve version
+TROUBLE_EXPLANATIONS['latecomer'] = TROUBLE_EXPLANATIONS['bumped']
+TROUBLE_EXPLANATIONS['conflicting'] = TROUBLE_EXPLANATIONS['divergent']
 class RevDisplay(QtGui.QTextBrowser):
     """
     Display metadata for one revision (rev, author, description, etc.)
