@@ -16,7 +16,7 @@
 Qt4 high level widgets for hg repo changelogs and filelogs
 """
 import sys
-from collections import namedtuple
+from collections import namedtuple, defaultdict
 from operator import lt, gt
 
 from mercurial import cmdutil, ui
@@ -638,12 +638,11 @@ class HgRepoView(QtGui.QTableView):
         QtCore.QTimer.singleShot(0.01, self.show)
 
 
-TROUBLE_EXPLANATIONS = {
-    'unstable':  "Based on obsolete ancestor",
-    'bumped':    "Hopeless successors of a public changeset",
-    'divergent': "Another changeset are also a successors of "
-                 "one of your precursor",
-}
+TROUBLE_EXPLANATIONS = defaultdict(lambda:'unknown trouble')
+TROUBLE_EXPLANATIONS['unstable']  = "Based on obsolete ancestor"
+TROUBLE_EXPLANATIONS['bumped']    = "Hopeless successors of a public changeset"
+TROUBLE_EXPLANATIONS['divergent'] = "Another changeset are also a successors "\
+                                    "of one of your precursor"
 # temporary compat with older evolve version
 TROUBLE_EXPLANATIONS['latecomer'] = TROUBLE_EXPLANATIONS['bumped']
 TROUBLE_EXPLANATIONS['conflicting'] = TROUBLE_EXPLANATIONS['divergent']
