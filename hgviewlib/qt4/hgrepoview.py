@@ -621,6 +621,8 @@ class HgRepoView(QtGui.QTableView):
         if rows is None:
             self.visual_bell()
             self.emit(SIGNAL('showMessage'), 'Revision set cleared.', 2000)
+        else:
+            self.emit(SIGNAL('showMessage'), '%i revisions found.' % len(rows), 2000)
         self.model().highlight_rows(rows or ())
         self.refresh_display()
 
