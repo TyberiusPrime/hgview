@@ -75,7 +75,7 @@ class GotoQuery(QtCore.QThread):
     def run(self):
         revset = None
         try:
-            revset = revrange(self.model.repo, [self.revexp])
+            revset = revrange(self.model.repo, [self.revexp.encode('utf-8')])
         except (RepoError, ParseError, LookupError, RepoLookupError), err:
             self.emit(SIGNAL('failed_revset'), err)
             return
@@ -168,7 +168,7 @@ class GotoQuickBar(QuickBar):
         QuickBar.setVisible(self, visible)
         if visible:
             self.row_before = self._parent.currentIndex()
-            self.revexp_before = str(self.entry.text())
+            self.revexp_before = unicode(self.entry.text())
             self.entry.setFocus()
             self.entry.selectAll()
         else:
@@ -194,7 +194,7 @@ class GotoQuickBar(QuickBar):
 
     def goto_first(self):
         self.is_goto_next = True
-        revexp = str(self.entry.text())
+        revexp = unicode(self.entry.text())
         # low revision number may force to load too much data tree
         if revexp.strip().isdigit():
             return
@@ -218,7 +218,7 @@ class GotoQuickBar(QuickBar):
         self.search()
 
     def search(self):
-        revexp = str(self.entry.text()).strip()
+        revexp = unicode(self.entry.text()).strip()
         if self.revexp == revexp:
             self.on_queried()
             return
