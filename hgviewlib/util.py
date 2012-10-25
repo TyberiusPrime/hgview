@@ -13,6 +13,7 @@ import string
 from mercurial import ui
 
 from hgviewlib.hgpatches.scmutil import match
+from hgviewlib.hgpatches import precursorsmarkers, successorsmarkers
 
 def tounicode(string):
     """
@@ -130,7 +131,7 @@ def first_known_precursors(ctx, excluded=()):
     obsstore = getattr(ctx._repo, 'obsstore', None)
     nm = ctx._repo.changelog.nodemap
     if obsstore is not None:
-        markers = obsstore.successors.get(ctx.node(), ())
+        markers = precursorsmarkers(obsstore, ctx.node())
         # consider all precursors
         candidates = set(mark[0] for mark in markers)
         seen = set(candidates)
@@ -141,7 +142,7 @@ def first_known_precursors(ctx, excluded=()):
             if crev is not None and crev not in excluded:
                 yield ctx._repo[crev]
             else:
-                for mark in obsstore.successors.get(current, ()):
+                for mark in precursorsmarkers(obsstore, current):
                     if mark[0] not in seen:
                         candidates.add(mark[0])
                         seen.add(mark[0])
@@ -150,7 +151,7 @@ def first_known_successors(ctx, excluded=()):
     obsstore = getattr(ctx._repo, 'obsstore', None)
     nm = ctx._repo.changelog.nodemap
     if obsstore is not None:
-        markers = obsstore.precursors.get(ctx.node(), ())
+        markers = successorsmarkers(obsstore, ctx.node())
         # consider all precursors
         candidates = set()
         for mark in markers:
@@ -163,7 +164,7 @@ def first_known_successors(ctx, excluded=()):
             if crev is not None and crev not in excluded:
                 yield ctx._repo[crev]
             else:
-                for mark in obsstore.precursors.get(current, ()):
+                for mark in successorsmarkers(obsstore, current):
                     if mark[0] not in seen:
                         candidates.add(mark[0])
                         seen.add(mark[0])

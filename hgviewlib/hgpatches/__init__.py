@@ -100,3 +100,22 @@ if getattr(context.changectx, 'troubles', None) is None:
             troubles.append('divergent')
         return tuple(troubles)
     context.changectx.troubles = troubles
+
+try:
+    # meaning of obsstore attribute have been flipped betwen mercurial 2.3 and
+    # mercurial 2.4
+    import mercurial.obsolete
+    mercurial.obsolete.getrevs
+except (ImportError, AttributeError):
+    # pre Mercurial 2.4
+    def precursorsmarkers(obsstore, node):
+        return obsstore.successors.get(node, ())
+
+    def successorsmarkers(obsstore, node):
+        return obsstore.precursors.get(node, ())
+else:
+    def precursorsmarkers(obsstore, node):
+        return obsstore.precursors.get(node, ())
+
+    def successorsmarkers(obsstore, node):
+        return obsstore.successors.get(node, ())
