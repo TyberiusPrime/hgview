@@ -72,7 +72,7 @@ if getattr(context.changectx, 'conflicting', None) is None:
     has_conflicting = False
     context.changectx.conflicting = lambda self: False
 if getattr(context.changectx, 'divergent', None) is None:
-    if has_latecomer:
+    if has_conflicting:
         # older version with real conflicting support. rely on this for divergent.
         context.changectx.divergent = lambda self: self.conflicting()
     else:
