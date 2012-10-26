@@ -55,37 +55,12 @@ start hgview log viewer
 
     import sys
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
-    try:
-        from hgviewlib.application import start
-        def fnerror(text):
-            """process errors"""
-            raise(error.Abort(text))
-        options = Values(opts)
-        start(repo, options, pats, fnerror)
-    except Exception, e:
-        if ui.config('ui', 'traceback'):
-            raise
-        # If we're unable to start hgviewlib from here, try to
-        # run the application directly.
-        # You can specificy it's location in ~/.hgrc via
-        #   [hgview]
-        #   path=
-        cmd = [ui.config("hgview", "path", "hgview")]
-        cmd += ['--%s %s' % (name, value)
-                for name, value in opts.iteritems() if value]
-        cmd += ['-R %s' % repo.root]
-        if pats:
-            cmd += list(pats)
-        if ui.configlist('ui', 'debug'):
-            sys.stdout.write('Enable to run Hg extension: ')
-            sys.stdout.write(str(e))
-            sys.stdout.write('\n')
-            sys.stdout.write('-> starting alternative command:')
-            sys.stdout.write('\n')
-            sys.stdout.write(' '.join(cmd))
-            sys.stdout.write('\n')
-            sys.stdout.flush()
-        os.system(' '.join(cmd))
+    from hgviewlib.application import start
+    def fnerror(text):
+        """process errors"""
+        raise(error.Abort(text))
+    options = Values(opts)
+    start(repo, options, pats, fnerror)
 
 import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
