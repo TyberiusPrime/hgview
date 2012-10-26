@@ -131,7 +131,10 @@ def start(repo, opts, args, fnerror):
         inter = config.getInterface()
 
     if inter is None:
-        interfaces = ['qt', 'raw']
+        interfaces = ['qt']
+        if os.name != 'nt':
+            # if we are not on Windows try terms fallback
+            interfaces.append('raw')
     elif inter == 'qt':
         interfaces = ['qt']
     elif inter in ('raw', 'curses'):
