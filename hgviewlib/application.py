@@ -17,7 +17,7 @@
 Application utilities.
 """
 
-import os, sys
+import os, sys, traceback
 from optparse import OptionParser
 
 from mercurial import hg, ui
@@ -105,34 +105,62 @@ class HgViewApplication(object):
     def exec_(self):
         raise NotImplementedError()
 
+def _qt_application():
+    from hgviewlib.qt4.application import HgViewQtApplication as Application
+    return Application
+
+def _curses_application():
+    from hgviewlib.curses.application import HgViewUrwidApplication as Application
+    return Application
+
+LOADERS = {'qt': _qt_application,
+           'raw': _curses_application,
+           'curses': _curses_application}
+
+
 def start(repo, opts, args, fnerror):
     """
     start hgview
     """
     config = HgConfig(repo.ui)
     repo.ui.opts = opts
-    if not opts.interface:
-        opts.interface = config.getInterface()
 
+    # pick the interface to use
+    inter = opts.interface
+    if not inter:
+        inter = config.getInterface()
+
+    if inter is None:
+        interfaces = ['qt', 'raw']
+    elif inter == 'qt':
+        interfaces = ['qt']
+    elif inter in ('raw', 'curses'):
+        interfaces = [inter]
+    else:
+        fnerror('Unknown interface: %s' % inter)
+        return 1
+
+    # initialize possible interface
+    errors = []
     Application = None
-    if not opts.interface or opts.interface == 'qt':
+    for inter in interfaces:
         try:
-            from hgviewlib.qt4.application import HgViewQtApplication as Application
-            opts.interface = 'qt'
+            Application = LOADERS[inter]()
         except ImportError:
+            # we store full exception context to allow --traceback option
+            # to print a proper traceback.
+            errors.append((inter, sys.exc_info()))
+        else:
+            opts.interface = inter
+            break
+    else:
+        for inter, err in errors:
             if '--traceback' in sys.argv:
-                raise
-    if not opts.interface or opts.interface in ('raw', 'curses'):
-        try:
-            from hgviewlib.curses.application import HgViewUrwidApplication as Application
-            opts.interface = opts.interface or 'raw'
-        except ImportError:
-            if '--traceback' in sys.argv:
-                raise
-    if not opts.interface:
-        fnerror('No interface found')
-    if not Application:
-        fnerror('Interface is not available: %s' % opts.interface)
+                traceback.print_exception(*err)
+            fnerror('Interface %s is not available: %s' % (inter, err[1]))
+        return 2
+
+    # actually launch the application
     try:
         app = Application(repo, opts, args)
     except (ApplicationError, NotImplementedError), err:
