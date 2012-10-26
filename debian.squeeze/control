@@ -33,7 +33,7 @@ Architecture: all
 Depends:
   ${python:Depends},
   ${misc:Depends},
-  mercurial (>= 1.1.0),
+  mercurial (>= 1.9.1-1),
 Enhances: mercurial
 Replaces: hgview (<< 1.4)
 Conflicts: hgview (<< 1.4)
