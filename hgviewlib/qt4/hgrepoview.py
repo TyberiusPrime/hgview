@@ -212,7 +212,6 @@ class GotoQuickBar(QuickBar):
     def search(self):
         revexp = unicode(self.entry.text()).strip()
         if self.revexp == revexp:
-            self.on_queried()
             return
         self.revexp = revexp
         if not self.revexp:
