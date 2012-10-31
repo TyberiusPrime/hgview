@@ -69,6 +69,7 @@ class GotoQuery(QtCore.QThread):
     the model"""
     def __init__(self):
         super(GotoQuery, self).__init__()
+        self.rows = None
         self.revexp = None
         self.model = None
 
@@ -80,22 +81,27 @@ class GotoQuery(QtCore.QThread):
         try:
             revset = revrange(self.model.repo, [self.revexp.encode('utf-8')])
         except (RepoError, ParseError, LookupError, RepoLookupError), err:
+            self.rows = None
             self.emit(SIGNAL('failed_revset'), err)
             return
         if revset is None:
-            self.emit(SIGNAL('new_revset'), ())
+            self.rows = ()
+            self.emit(SIGNAL('new_revset'), self.rows)
             return
         rows = (idx.row() for idx in
                 (self.model.indexFromRev(rev) for rev in revset)
                 if idx is not None)
-        rows = tuple(sorted(rows))
-        self.emit(SIGNAL('new_revset'), rows)
+        self.rows = tuple(sorted(rows))
+        self.emit(SIGNAL('new_revset'), self.rows)
 
     def perform(self, revexp, model):
         self.terminate()
         self.revexp = revexp
         self.model = model
         self.start()
+
+    def get_last_results(self):
+        return self.rows
 
 class QueryLineEdit(QtGui.QLineEdit):
     """Special LineEdit class with visual marks for the revset query status"""
@@ -131,7 +137,6 @@ class GotoQuickBar(QuickBar):
         self.revexp = u''
         self.revexp_before = u''
         self._goto_query = None
-        self.goto_signal = None
         QuickBar.__init__(self, "Goto", "Ctrl+G", "Goto", parent)
 
     def createActions(self, openkey, desc):
@@ -205,20 +210,23 @@ class GotoQuickBar(QuickBar):
         # low revision number may force to load too much data tree
         if revexp.strip().isdigit():
             return
-        self.goto_signal = 'goto_first'
+        # empty revexp bring back selection
+        if not revexp.strip() and self.row_before:
+            self._parent.setCurrentIndex(self.row_before)
         rows = self.search()
 
     def validate(self):
-        self.goto_signal = 'validate'
-        self.search()
+        rows = self._goto_query.get_last_results()
+        self.emit(SIGNAL('validate'), rows)
+        self.setVisible(False)
 
     def goto_next(self):
-        self.goto_signal = 'goto_next'
-        self.search()
+        rows = self._goto_query.get_last_results()
+        self.emit(SIGNAL('goto_next'), rows)
 
     def goto_prev(self):
-        self.goto_signal = 'goto_prev'
-        self.search()
+        rows = self._goto_query.get_last_results()
+        self.emit(SIGNAL('goto_prev'), rows)
 
     def search(self):
         revexp = unicode(self.entry.text()).strip()
@@ -239,12 +247,7 @@ class GotoQuickBar(QuickBar):
         """Slot to handle new revset."""
         self.entry.set_status('valid')
         self.emit(SIGNAL('new_set'), rows)
-        if self.goto_signal:
-            self.emit(SIGNAL(self.goto_signal), rows)
-        if self.goto_signal == 'validate':
-            self.goto_signal = None # prevent recursion
-            self.setVisible(False)
-        self.goto_signal = None
+        self.emit(SIGNAL('goto_next'), rows)
 
     def on_failed(self, err):
         self.entry.set_status('failed')
