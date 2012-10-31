@@ -136,36 +136,36 @@ class GotoQuickBar(QuickBar):
 
     def createActions(self, openkey, desc):
         QuickBar.createActions(self, openkey, desc)
-
+        # goto next
         act = QtGui.QAction("Goto Next", self)
         act.setIcon(geticon('forward'))
-        # XXX Shortcut shall be specified after general shortcuts refactorization
         act.setStatusTip("Goto next found revision")
         act.triggered.connect(self.goto_next)
         self._actions['next'] = act
-
+        # goto prev
         act = QtGui.QAction("Goto Previous", self)
         act.setIcon(geticon('back'))
-        # XXX Shortcut shall be specified after general shortcuts refactorization
         act.setStatusTip("Goto previous found revision")
         act.triggered.connect(self.goto_prev)
         self._actions['prev'] = act
-
+        # help
         act = QtGui.QAction("help about revset", self)
         act.setIcon(geticon('help'))
-        # XXX Shortcut shall be specified after general shortcuts refactorization
         act.setStatusTip("Display documentation about 'revset'")
         act.triggered.connect(self.show_help)
         self._actions['help'] = act
 
     def createContent(self):
         QuickBar.createContent(self)
+        # completer
         self.compl_model = QtGui.QStringListModel(['tip'])
         self.completer = QtGui.QCompleter(self.compl_model, self)
+        # entry
         self.entry = QueryLineEdit(self)
         self.entry.setCompleter(self.completer)
         self.entry.setStatusTip("Enter a 'revset' to query a set of revisions")
         self.addWidget(self.entry)
+        # actions
         self.addAction(self._actions['prev'])
         self.addAction(self._actions['next'])
         self.addAction(self._actions['help'])
@@ -189,8 +189,8 @@ class GotoQuickBar(QuickBar):
             self.show_message('')
 
     def __del__(self):
-        # prevent a warning in the console:
-        # QObject::startTimer: QTimer can only be used with threads started with QThread
+        #  QObject::startTimer: QTimer can only be used with threads
+        #  started with QThread
         self.entry.setCompleter(None)
 
     def show_help(self):
