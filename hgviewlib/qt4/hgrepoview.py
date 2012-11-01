@@ -86,13 +86,13 @@ class GotoQuery(QtCore.QThread):
             return
         if revset is None:
             self.rows = ()
-            self.emit(SIGNAL('new_revset'), self.rows)
+            self.emit(SIGNAL('new_revset'), self.rows, self.revexp)
             return
         rows = (idx.row() for idx in
                 (self.model.indexFromRev(rev) for rev in revset)
                 if idx is not None)
         self.rows = tuple(sorted(rows))
-        self.emit(SIGNAL('new_revset'), self.rows)
+        self.emit(SIGNAL('new_revset'), self.rows, self.revexp)
 
     def perform(self, revexp, model):
         self.terminate()
@@ -107,6 +107,15 @@ class GotoQuery(QtCore.QThread):
 
     def get_last_results(self):
         return self.rows
+
+class CompleterModel(QtGui.QStringListModel):
+    def add_to_string_list(self, *values):
+        strings = self.stringList()
+        for value in values:
+            if value not in strings:
+                strings.append(value)
+        self.setStringList(strings)
+
 
 class QueryLineEdit(QtGui.QLineEdit):
     """Special LineEdit class with visual marks for the revset query status"""
@@ -155,6 +164,9 @@ class GotoQuickBar(QuickBar):
     def __init__(self, parent):
         self._parent = parent
         self._goto_query = None
+        self.compl_model = None
+        self.completer = None
+        self.row_before = 0
         self._standby_revexp = None # revexp that requires an action from user
         QuickBar.__init__(self, "Goto", "Ctrl+G", "Goto", parent)
 
@@ -182,8 +194,10 @@ class GotoQuickBar(QuickBar):
     def createContent(self):
         QuickBar.createContent(self)
         # completer
-        self.compl_model = QtGui.QStringListModel(['tip'])
+        self.compl_model = CompleterModel(['tip'])
         self.completer = QtGui.QCompleter(self.compl_model, self)
+        cb = lambda text: self.search(unicode(text))
+        self.completer.activated[str].connect(cb)
         # entry
         self.entry = QueryLineEdit(self)
         self.entry.setCompleter(self.completer)
@@ -264,9 +278,12 @@ class GotoQuickBar(QuickBar):
             self.setVisible(False)
 
     def search(self, revexp, threaded=True):
+        if revexp is None:
+            revexp = self._standby_revexp
         self._standby_revexp = None
         if not revexp:
-            self.on_queried(None)
+            self.emit(SIGNAL('new_set'), None)
+            self.emit(SIGNAL('goto_next_from'), (self.row_before,))
             return
         self.show_message("Quering ... (edit the entry to cancel)")
         self._actions['next'].setEnabled(False)
@@ -280,13 +297,15 @@ class GotoQuickBar(QuickBar):
     def show_message(self, message, delay=-1):
         self.parent().statusBar().showMessage(message, delay)
 
-    def on_queried(self, rows=None):
+    def on_queried(self, rows=None, revexp=''):
         """Slot to handle new revset."""
         self.entry.status = 'valid'
         self.emit(SIGNAL('new_set'), rows)
         self.emit(SIGNAL('goto_next_from'), rows)
         self._actions['next'].setEnabled(True)
         self._actions['prev'].setEnabled(True)
+        if rows and revexp:
+            self.compl_model.add_to_string_list(revexp)
 
     def on_failed(self, err):
         self.entry.status = 'failed'
@@ -482,7 +501,8 @@ class HgRepoView(QtGui.QTableView):
         connect(self.selectionModel(),
                 QtCore.SIGNAL('currentRowChanged (const QModelIndex & , const QModelIndex & )'),
                 self.revisionSelected)
-        self.goto_toolbar.compl_model.setStringList(model.repo.tags().keys())
+        tags = model.repo.tags().keys()
+        self.goto_toolbar.compl_model.add_to_string_list(*tags)
         col = list(model._columns).index('Log')
         self.horizontalHeader().setResizeMode(col, QtGui.QHeaderView.Stretch)
 
