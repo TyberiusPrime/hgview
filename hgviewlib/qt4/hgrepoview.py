@@ -17,7 +17,7 @@ Qt4 high level widgets for hg repo changelogs and filelogs
 """
 import sys
 from collections import namedtuple, defaultdict
-from operator import lt, gt
+from operator import le, ge, lt, gt
 
 from mercurial import cmdutil, ui
 from mercurial.node import hex, short as short_hex, bin as short_bin
@@ -214,11 +214,11 @@ class GotoQuickBar(QuickBar):
 
     def goto_next(self):
         rows = self._goto_query.get_last_results()
-        self.emit(SIGNAL('goto_next'), rows)
+        self.emit(SIGNAL('goto_strict_next_from'), rows)
 
     def goto_prev(self):
         rows = self._goto_query.get_last_results()
-        self.emit(SIGNAL('goto_prev'), rows)
+        self.emit(SIGNAL('goto_strict_prev_from'), rows)
 
     def search(self, revexp):
         if not revexp:
@@ -235,7 +235,7 @@ class GotoQuickBar(QuickBar):
         """Slot to handle new revset."""
         self.entry.set_status('valid')
         self.emit(SIGNAL('new_set'), rows)
-        self.emit(SIGNAL('goto_next'), rows)
+        self.emit(SIGNAL('goto_next_from'), rows)
 
     def on_failed(self, err):
         self.entry.set_status('failed')
@@ -279,12 +279,13 @@ class HgRepoView(QtGui.QTableView):
 
     def createToolbars(self):
         self.goto_toolbar = GotoQuickBar(self)
-        connect(self.goto_toolbar, SIGNAL('goto_next'),
-                lambda revs: self.goto_next_from(revs, forward=True))
-        connect(self.goto_toolbar, SIGNAL('goto_prev'),
-                lambda revs: self.goto_next_from(revs, forward=False))
-        connect(self.goto_toolbar, SIGNAL('goto_first'),
-                lambda revs: self.goto_next_from(revs))
+        goto = self.goto_next_from
+        connect(self.goto_toolbar, SIGNAL('goto_strict_next_from'),
+                lambda revs: goto(revs, strict=True, forward=True))
+        connect(self.goto_toolbar, SIGNAL('goto_strict_prev_from'),
+                lambda revs: goto(revs, strict=True, forward=False))
+        connect(self.goto_toolbar, SIGNAL('goto_next_from'),
+                lambda revs: goto(revs))
         connect(self.goto_toolbar, SIGNAL('new_set'),
                 self.highlight_rows)
 
@@ -566,12 +567,19 @@ class HgRepoView(QtGui.QTableView):
                 self.goto_toolbar.setVisible(False)
                 self.setCurrentIndex(idx)
 
-    def goto_next_from(self, rows, forward=True):
+    def goto_next_from(self, rows, strict=False, forward=True):
         """Select the next row available in rows."""
         if not rows:
             return
         currow = self.currentIndex().row()
-        comparer, _rows = (gt, rows) if forward else (lt, reversed(rows))
+        if strict:
+            greater, less = gt, lt
+        else:
+            greater, less = ge, le
+        if forward:
+            comparer, _rows = greater, rows
+        else:
+            comparer, _rows = less, reversed(rows)
         try:
             row = (row for row in _rows if comparer(row, currow)).next()
         except StopIteration:
