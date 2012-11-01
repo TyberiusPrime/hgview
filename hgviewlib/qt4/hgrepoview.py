@@ -123,6 +123,9 @@ class QueryLineEdit(QtGui.QLineEdit):
             palette = self.palette()
             palette.setColor(QtGui.QPalette.Text, color)
             self.setPalette(palette)
+    def get_status(self):
+        return self._status
+    status = property(get_status, set_status, None, "query status")
 
     def paintEvent(self, event):
         QtGui.QLineEdit.paintEvent(self, event)
@@ -152,13 +155,13 @@ class GotoQuickBar(QuickBar):
         act = QtGui.QAction("Goto Next", self)
         act.setIcon(geticon('forward'))
         act.setStatusTip("Goto next found revision")
-        act.triggered.connect(self.goto_next)
+        act.triggered.connect(lambda: self.goto(forward=True))
         self._actions['next'] = act
         # goto prev
         act = QtGui.QAction("Goto Previous", self)
         act.setIcon(geticon('back'))
         act.setStatusTip("Goto previous found revision")
-        act.triggered.connect(self.goto_prev)
+        act.triggered.connect(lambda: self.goto(forward=False))
         self._actions['prev'] = act
         # help
         act = QtGui.QAction("help about revset", self)
@@ -178,7 +181,7 @@ class GotoQuickBar(QuickBar):
         self.entry.setStatusTip("Enter a 'revset' to query a set of revisions")
         self.addWidget(self.entry)
         connect(self.entry, SIGNAL('text_edited_no_blank'), self.auto_search)
-        self.entry.returnPressed.connect(self.goto_next)
+        self.entry.returnPressed.connect(lambda: self.goto(True))
         # actions
         self.addAction(self._actions['prev'])
         self.addAction(self._actions['next'])
@@ -212,20 +215,33 @@ class GotoQuickBar(QuickBar):
             return
         rows = self.search(revexp)
 
-    def goto_next(self):
+    def goto(self, forward=True):
+        # returnPressed from the `entry` also call this slot
+        # We check if the main corresponding action is enabled
+        if not self._actions['next'].isEnabled():
+            if self.entry.status == 'failed':
+                self.show_message("Invalid revset expression.")
+            else:
+                self.show_message("Quering, please wait (or edit to cancel).")
+            return
         rows = self._goto_query.get_last_results()
-        self.emit(SIGNAL('goto_strict_next_from'), rows)
-
-    def goto_prev(self):
-        rows = self._goto_query.get_last_results()
-        self.emit(SIGNAL('goto_strict_prev_from'), rows)
+        if rows is None:
+            self.entry.status = 'failed'
+            return
+        if forward:
+            signal = 'goto_strict_next_from'
+        else:
+            signal = 'goto_strict_prev_from'
+        self.emit(SIGNAL(signal), rows)
 
     def search(self, revexp):
         if not revexp:
             self.on_queried(None)
             return
         self.show_message("Quering ... (edit the entry to cancel)")
-        self.entry.set_status('query')
+        self._actions['next'].setEnabled(False)
+        self._actions['prev'].setEnabled(False)
+        self.entry.status = 'query'
         self._goto_query.perform(revexp, self._parent.model())
 
     def show_message(self, message, delay=-1):
@@ -233,13 +249,17 @@ class GotoQuickBar(QuickBar):
 
     def on_queried(self, rows=None):
         """Slot to handle new revset."""
-        self.entry.set_status('valid')
+        self.entry.status = 'valid'
         self.emit(SIGNAL('new_set'), rows)
         self.emit(SIGNAL('goto_next_from'), rows)
+        self._actions['next'].setEnabled(True)
+        self._actions['prev'].setEnabled(True)
 
     def on_failed(self, err):
-        self.entry.set_status('failed')
+        self.entry.status = 'failed'
         self.show_message(unicode(err))
+        self._actions['next'].setEnabled(False)
+        self._actions['prev'].setEnabled(False)
 
 
 class HgRepoView(QtGui.QTableView):
