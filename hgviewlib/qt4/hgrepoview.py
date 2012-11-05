@@ -89,19 +89,19 @@ class GotoQuery(QtCore.QThread):
         self.emit(SIGNAL('new_revset'), rows)
 
 class QueryLineEdit(QtGui.QLineEdit):
-    """Special line edit class with visual marks dedicated to the revset query."""
+    """Special LineEdit class with visual marks for the revset query status"""
     FORGROUNDS = {'valid':Qt.color1, 'failed':Qt.darkRed, 'query':Qt.darkGray}
     ICONS = {'valid':'valid', 'query':'loading'}
     def __init__(self, parent):
         self._parent = parent
-        self._style = None
+        self._status = None # one of the keys of self.FORGROUNDS and self.ICONS
         QtGui.QLineEdit.__init__(self, parent)
         self.setTextMargins(0,0,-16,0)
         self.valide = True
 
-    def set_style(self, style=None):
-        self._style = style
-        color = self.FORGROUNDS.get(style, None)
+    def set_status(self, status=None):
+        self._status = status
+        color = self.FORGROUNDS.get(status, None)
         if color is not None:
             palette = self.palette()
             palette.setColor(QtGui.QPalette.Text, color)
@@ -109,7 +109,7 @@ class QueryLineEdit(QtGui.QLineEdit):
 
     def paintEvent(self, event):
         QtGui.QLineEdit.paintEvent(self, event)
-        icn = geticon(self.ICONS.get(self._style))
+        icn = geticon(self.ICONS.get(self._status))
         if icn is None:
             return
         painter = QtGui.QPainter(self)
@@ -218,7 +218,7 @@ class GotoQuickBar(QuickBar):
             self.on_queried(None)
             return
         self.show_message("Quering ... (edit the entry to cancel)")
-        self.entry.set_style('query')
+        self.entry.set_status('query')
         if self._goto_query_thread:
             thr = self._goto_query_thread
             thr.terminate()
@@ -235,7 +235,7 @@ class GotoQuickBar(QuickBar):
 
     def on_queried(self, rows=None):
         """Slot to handle new revset."""
-        self.entry.set_style('valid')
+        self.entry.set_status('valid')
         self.emit(SIGNAL('new_set'), rows)
         if self.goto_signal:
             self.emit(SIGNAL(self.goto_signal), rows)
@@ -245,7 +245,7 @@ class GotoQuickBar(QuickBar):
         self.goto_signal = None
 
     def on_failed(self, err):
-        self.entry.set_style('failed')
+        self.entry.set_status('failed')
         self.show_message(unicode(err))
 
 
