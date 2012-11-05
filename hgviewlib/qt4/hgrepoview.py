@@ -257,6 +257,11 @@ class GotoQuickBar(QuickBar):
         else:
             signal = 'goto_strict_prev_from'
         self.emit(SIGNAL(signal), rows)
+        # usecase: enter a nodeid and hit enter to go on,
+        #          so the goto tool bar is no more required and may be
+        #          annoying
+        if rows and len(rows) == 1:
+            self.setVisible(False)
 
     def search(self, revexp, threaded=True):
         self._standby_revexp = None
