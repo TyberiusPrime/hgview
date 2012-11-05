@@ -120,7 +120,6 @@ class GotoQuickBar(QuickBar):
     def __init__(self, parent):
         self._parent = parent
         self.revexp = u''
-        self.found = []
         self.revexp_before = u''
         self._goto_query_thread = None
         self.goto_signal = None
@@ -217,8 +216,7 @@ class GotoQuickBar(QuickBar):
             return
         self.revexp = revexp
         if not self.revexp:
-            self.found = ()
-            self.on_queried()
+            self.on_queried(())
             return
         self.show_message("Quering ... (edit the entry to cancel)")
         self.entry.set_style('query')
@@ -240,10 +238,9 @@ class GotoQuickBar(QuickBar):
         """Slot to handle new revset."""
         self.entry.set_style('valid')
         if rows is not None:
-            self.found = rows
-            self.emit(SIGNAL('new_set'), self.found)
+            self.emit(SIGNAL('new_set'), rows)
         if self.goto_signal:
-            self.emit(SIGNAL(self.goto_signal), self.found)
+            self.emit(SIGNAL(self.goto_signal), rows)
         if self.goto_signal == 'validate':
             self.goto_signal = None # prevent recursion
             self.setVisible(False)
