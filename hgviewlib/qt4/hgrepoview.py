@@ -143,8 +143,6 @@ class QueryLineEdit(QtGui.QLineEdit):
 class GotoQuickBar(QuickBar):
     def __init__(self, parent):
         self._parent = parent
-        self.revexp = u''
-        self.revexp_before = u''
         self._goto_query = None
         QuickBar.__init__(self, "Goto", "Ctrl+G", "Goto", parent)
 
@@ -179,8 +177,8 @@ class GotoQuickBar(QuickBar):
         self.entry.setCompleter(self.completer)
         self.entry.setStatusTip("Enter a 'revset' to query a set of revisions")
         self.addWidget(self.entry)
-        connect(self.entry, SIGNAL('text_edited_no_blank'), self.goto_first)
-        self.entry.returnPressed.connect(self.validate)
+        connect(self.entry, SIGNAL('text_edited_no_blank'), self.auto_search)
+        self.entry.returnPressed.connect(self.goto_next)
         # actions
         self.addAction(self._actions['prev'])
         self.addAction(self._actions['next'])
@@ -193,14 +191,8 @@ class GotoQuickBar(QuickBar):
     def setVisible(self, visible=True):
         QuickBar.setVisible(self, visible)
         if visible:
-            self.revexp_before = unicode(self.entry.text())
             self.entry.setFocus()
             self.entry.selectAll()
-        else:
-            self.entry.setText(self.revexp_before)
-            rows = self.search(self.revexp_before)
-            self.emit(SIGNAL('new_set'), rows)
-            self.show_message('')
 
     def __del__(self):
         #  QObject::startTimer: QTimer can only be used with threads
@@ -213,20 +205,12 @@ class GotoQuickBar(QuickBar):
         w.raise_()
         w.activateWindow()
 
-    def goto_first(self, revexp):
+    def auto_search(self, revexp):
         self.is_goto_next = True
         # low revision number may force to load too much data tree
         if revexp.strip().isdigit():
             return
-        # empty revexp bring back selection
-        if not revexp.strip() and self.row_before:
-            self._parent.setCurrentIndex(self.row_before)
         rows = self.search(revexp)
-
-    def validate(self):
-        rows = self._goto_query.get_last_results()
-        self.emit(SIGNAL('validate'), rows)
-        self.setVisible(False)
 
     def goto_next(self):
         rows = self._goto_query.get_last_results()
@@ -237,8 +221,7 @@ class GotoQuickBar(QuickBar):
         self.emit(SIGNAL('goto_prev'), rows)
 
     def search(self, revexp):
-        self.revexp = revexp
-        if not self.revexp:
+        if not revexp:
             self.on_queried(None)
             return
         self.show_message("Quering ... (edit the entry to cancel)")
@@ -301,7 +284,7 @@ class HgRepoView(QtGui.QTableView):
         connect(self.goto_toolbar, SIGNAL('goto_prev'),
                 lambda revs: self.goto_next_from(revs, forward=False))
         connect(self.goto_toolbar, SIGNAL('goto_first'),
-                lambda revs: self.goto_first_from(revs))
+                lambda revs: self.goto_next_from(revs))
         connect(self.goto_toolbar, SIGNAL('new_set'),
                 self.highlight_rows)
 
@@ -582,15 +565,6 @@ class HgRepoView(QtGui.QTableView):
             if idx is not None:
                 self.goto_toolbar.setVisible(False)
                 self.setCurrentIndex(idx)
-
-    def goto_first_from(self, rows):
-        """Select the first available row in rows"""
-        if not rows:
-            return
-        self.setCurrentIndex(self.model().index(rows[0], 0))
-        self.emit(SIGNAL('showMessage'),
-                  "revision #%i of %i" % (1, len(rows)),
-                  -1)
 
     def goto_next_from(self, rows, forward=True):
         """Select the next row available in rows."""
