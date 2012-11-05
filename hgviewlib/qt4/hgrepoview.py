@@ -216,7 +216,7 @@ class GotoQuickBar(QuickBar):
             return
         self.revexp = revexp
         if not self.revexp:
-            self.on_queried(())
+            self.on_queried(None)
             return
         self.show_message("Quering ... (edit the entry to cancel)")
         self.entry.set_style('query')
@@ -237,8 +237,7 @@ class GotoQuickBar(QuickBar):
     def on_queried(self, rows=None):
         """Slot to handle new revset."""
         self.entry.set_style('valid')
-        if rows is not None:
-            self.emit(SIGNAL('new_set'), rows)
+        self.emit(SIGNAL('new_set'), rows)
         if self.goto_signal:
             self.emit(SIGNAL(self.goto_signal), rows)
         if self.goto_signal == 'validate':
