@@ -145,11 +145,13 @@ class HgRepoListModel(QtCore.QAbstractTableModel, HgRepoListWalker):
 
     def timerEvent(self, event):
         if event.timerId() == self._fill_timer:
-            self.emit(SIGNAL('showMessage'), 'filling (%s)'%(len(self.graph)))
+            self.emit(SIGNAL('showMessage'),
+                      'filling (%s)' % (len(self.graph)),
+                      -1)
             if self.graph.isfilled():
                 self.killTimer(self._fill_timer)
                 self._fill_timer = None
-                self.emit(SIGNAL('showMessage'), '')
+                self.emit(SIGNAL('showMessage'), '', -1)
             # we only fill the graph data strctures without telling
             # views (until we atually did the full job), to keep
             # maximal GUI reactivity
@@ -157,7 +159,7 @@ class HgRepoListModel(QtCore.QAbstractTableModel, HgRepoListWalker):
                 self.killTimer(self._fill_timer)
                 self._fill_timer = None
                 self.updateRowCount()
-                self.emit(SIGNAL('showMessage'), '')
+                self.emit(SIGNAL('showMessage'), '', -1)
 
     def updateRowCount(self):
         currentlen = self.rowcount

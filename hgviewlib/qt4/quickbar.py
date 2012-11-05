@@ -278,11 +278,13 @@ class FindInGraphlogQuickBar(FindQuickBar):
         for next_find in self._findinlog_iter:
             if next_find is None: # not yet found, let's animate a bit the GUI
                 if (step % 20) == 0:
-                    self.emit(SIGNAL("showMessage"), 'Searching'+'.'*(step/20))
+                    self.emit(SIGNAL("showMessage"),
+                              'Searching'+'.'*(step/20),
+                              -1)
                 step += 1
                 QtCore.QTimer.singleShot(0, Curry(self.find_next_in_log, (step % 80)))
             else:
-                self.emit(SIGNAL("showMessage"), '')
+                self.emit(SIGNAL("showMessage"), '', -1)
                 self.setCancelEnabled(False)
 
                 rev, filename = next_find
@@ -297,7 +299,9 @@ class FindInGraphlogQuickBar(FindQuickBar):
                         self._findinfile_iter = self._fileview.searchString(text)
                         self.on_findnext()
             return
-        self.emit(SIGNAL('showMessage'), 'No more matches found in repository', 2000)
+        self.emit(SIGNAL('showMessage'),
+                  'No more matches found in repository',
+                  2000)
         self.setCancelEnabled(False)
         self._findinlog_iter = None
 
@@ -317,7 +321,8 @@ class FindInGraphlogQuickBar(FindQuickBar):
                 self.emit(SIGNAL('showMessage'),
                           'Search string not found in current diff. '
                           'Hit "Find next" button to start searching '
-                          'in the repository', 2000)
+                          'in the repository',
+                          2000)
             else:
                 self.on_findnext()
 

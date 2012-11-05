@@ -532,7 +532,8 @@ class HgRepoView(QtGui.QTableView):
             ctx2 = repo[rev]
             ancestor = ctx.ancestor(ctx2)
             self.emit(SIGNAL('showMessage'),
-                      "Goto ancestor of %s and %s"%(ctx.rev(), ctx2.rev()), 5000)
+                      "Goto ancestor of %s and %s"%(ctx.rev(), ctx2.rev()),
+                      5000)
             self.goto(ancestor.rev())
 
     def set_navigation_button_state(self):
@@ -622,7 +623,9 @@ class HgRepoView(QtGui.QTableView):
             self.visual_bell()
             self.emit(SIGNAL('showMessage'), 'Revision set cleared.', 2000)
         else:
-            self.emit(SIGNAL('showMessage'), '%i revisions found.' % len(rows), 2000)
+            self.emit(SIGNAL('showMessage'),
+                      '%i revisions found.' % len(rows),
+                      2000)
         self.model().highlight_rows(rows or ())
         self.refresh_display()
 
