@@ -121,7 +121,7 @@ class GotoQuickBar(QuickBar):
         self._parent = parent
         self.revexp = u''
         self.found = []
-        self.row_before = None
+        self.revexp_before = u''
         self._goto_query_thread = None
         self.goto_signal = None
         QuickBar.__init__(self, "Goto", "Ctrl+G", "Goto", parent)
@@ -167,17 +167,14 @@ class GotoQuickBar(QuickBar):
     def setVisible(self, visible=True):
         QuickBar.setVisible(self, visible)
         if visible:
-            self.row_before = self._parent.currentIndex()
             self.revexp_before = unicode(self.entry.text())
             self.entry.setFocus()
             self.entry.selectAll()
         else:
-            if self.row_before:
-                self._parent.setCurrentIndex(self.row_before)
-                self.entry.setText(self.revexp_before)
-                rows = self.search()
-                self.emit(SIGNAL('new_set'), rows)
-                self.show_message('')
+            self.entry.setText(self.revexp_before)
+            rows = self.search()
+            self.emit(SIGNAL('new_set'), rows)
+            self.show_message('')
 
     def __del__(self):
         # prevent a warning in the console:
@@ -198,14 +195,10 @@ class GotoQuickBar(QuickBar):
         # low revision number may force to load too much data tree
         if revexp.strip().isdigit():
             return
-        # empty revexp bring back selection
-        if not revexp.strip() and self.row_before:
-            self._parent.setCurrentIndex(self.row_before)
         self.goto_signal = 'goto_first'
         rows = self.search()
 
     def validate(self):
-        self.row_before = None
         self.goto_signal = 'validate'
         self.search()
 
@@ -252,6 +245,7 @@ class GotoQuickBar(QuickBar):
         if self.goto_signal:
             self.emit(SIGNAL(self.goto_signal), self.found)
         if self.goto_signal == 'validate':
+            self.goto_signal = None # prevent recursion
             self.setVisible(False)
         self.goto_signal = None
 
