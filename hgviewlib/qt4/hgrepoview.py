@@ -113,6 +113,8 @@ class QueryLineEdit(QtGui.QLineEdit):
         QtGui.QLineEdit.__init__(self, parent)
         self.setTextMargins(0,0,-16,0)
         self.valide = True
+        self.textEdited.connect(self.on_text_edited)
+        self.previous_text = ''
 
     def set_status(self, status=None):
         self._status = status
@@ -129,6 +131,13 @@ class QueryLineEdit(QtGui.QLineEdit):
             return
         painter = QtGui.QPainter(self)
         icn.paint(painter, self.width() - 18, (self.height() - 18) / 2, 16, 16)
+
+    def on_text_edited(self):
+        current_text = unicode(self.text()).strip()
+        if  current_text == self.previous_text:
+            return
+        self.previous_text = current_text
+        self.emit(SIGNAL('text_edited_no_blank'), current_text)
 
 
 class GotoQuickBar(QuickBar):
@@ -170,12 +179,12 @@ class GotoQuickBar(QuickBar):
         self.entry.setCompleter(self.completer)
         self.entry.setStatusTip("Enter a 'revset' to query a set of revisions")
         self.addWidget(self.entry)
+        connect(self.entry, SIGNAL('text_edited_no_blank'), self.goto_first)
+        self.entry.returnPressed.connect(self.validate)
         # actions
         self.addAction(self._actions['prev'])
         self.addAction(self._actions['next'])
         self.addAction(self._actions['help'])
-        self.entry.returnPressed.connect(self.validate)
-        self.entry.textEdited.connect(self.goto_first)
         # querier (threaded)
         self._goto_query = GotoQuery()
         connect(self._goto_query, SIGNAL('failed_revset'), self.on_failed)
@@ -189,7 +198,7 @@ class GotoQuickBar(QuickBar):
             self.entry.selectAll()
         else:
             self.entry.setText(self.revexp_before)
-            rows = self.search()
+            rows = self.search(self.revexp_before)
             self.emit(SIGNAL('new_set'), rows)
             self.show_message('')
 
@@ -204,16 +213,15 @@ class GotoQuickBar(QuickBar):
         w.raise_()
         w.activateWindow()
 
-    def goto_first(self):
+    def goto_first(self, revexp):
         self.is_goto_next = True
-        revexp = unicode(self.entry.text())
         # low revision number may force to load too much data tree
         if revexp.strip().isdigit():
             return
         # empty revexp bring back selection
         if not revexp.strip() and self.row_before:
             self._parent.setCurrentIndex(self.row_before)
-        rows = self.search()
+        rows = self.search(revexp)
 
     def validate(self):
         rows = self._goto_query.get_last_results()
@@ -228,10 +236,7 @@ class GotoQuickBar(QuickBar):
         rows = self._goto_query.get_last_results()
         self.emit(SIGNAL('goto_prev'), rows)
 
-    def search(self):
-        revexp = unicode(self.entry.text()).strip()
-        if self.revexp == revexp:
-            return
+    def search(self, revexp):
         self.revexp = revexp
         if not self.revexp:
             self.on_queried(None)
