@@ -100,12 +100,20 @@ class GotoQuery(QtCore.QThread):
         self.model = model
         self.start()
 
+    def perform_now(self, revexp, model):
+        self.revexp = revexp
+        self.model = model
+        self.run()
+
     def get_last_results(self):
         return self.rows
 
 class QueryLineEdit(QtGui.QLineEdit):
     """Special LineEdit class with visual marks for the revset query status"""
-    FORGROUNDS = {'valid':Qt.color1, 'failed':Qt.darkRed, 'query':Qt.darkGray}
+    FORGROUNDS = {'normal':Qt.color1,
+                  'valid':Qt.color1,
+                  'failed':Qt.darkRed,
+                  'query':Qt.darkGray}
     ICONS = {'valid':'valid', 'query':'loading'}
     def __init__(self, parent):
         self._parent = parent
@@ -147,6 +155,7 @@ class GotoQuickBar(QuickBar):
     def __init__(self, parent):
         self._parent = parent
         self._goto_query = None
+        self._standby_revexp = None # revexp that requires an action from user
         QuickBar.__init__(self, "Goto", "Ctrl+G", "Goto", parent)
 
     def createActions(self, openkey, desc):
@@ -209,11 +218,24 @@ class GotoQuickBar(QuickBar):
         w.activateWindow()
 
     def auto_search(self, revexp):
-        self.is_goto_next = True
-        # low revision number may force to load too much data tree
-        if revexp.strip().isdigit():
+        # Do not automatically search for revision nimber.
+        # The problem is that the auto search system will
+        # query for lower revision number: users may type the revision
+        # number by hand which induce that the first numeric char will be
+        # querined alone.
+        # But the first found revision is automatically selected, so to much
+        # revision tree will be loaded.
+        if revexp.isdigit():
+            self.entry.status = 'normal'
+            self._actions['next'].setEnabled(True)
+            self._actions['prev'].setEnabled(True)
+            self.show_message(
+                'Hit [Enter] because '
+                'revision number is not automaically queried '
+                'for optimmization purpose.')
+            self._standby_revexp = revexp
             return
-        rows = self.search(revexp)
+        self.search(revexp)
 
     def goto(self, forward=True):
         # returnPressed from the `entry` also call this slot
@@ -224,6 +246,8 @@ class GotoQuickBar(QuickBar):
             else:
                 self.show_message("Quering, please wait (or edit to cancel).")
             return
+        if self._standby_revexp is not None:
+            self.search(self._standby_revexp, threaded=False)
         rows = self._goto_query.get_last_results()
         if rows is None:
             self.entry.status = 'failed'
@@ -234,7 +258,8 @@ class GotoQuickBar(QuickBar):
             signal = 'goto_strict_prev_from'
         self.emit(SIGNAL(signal), rows)
 
-    def search(self, revexp):
+    def search(self, revexp, threaded=True):
+        self._standby_revexp = None
         if not revexp:
             self.on_queried(None)
             return
@@ -242,7 +267,10 @@ class GotoQuickBar(QuickBar):
         self._actions['next'].setEnabled(False)
         self._actions['prev'].setEnabled(False)
         self.entry.status = 'query'
-        self._goto_query.perform(revexp, self._parent.model())
+        if threaded:
+            self._goto_query.perform(revexp, self._parent.model())
+        else:
+            self._goto_query.perform_now(revexp, self._parent.model())
 
     def show_message(self, message, delay=-1):
         self.parent().statusBar().showMessage(message, delay)
