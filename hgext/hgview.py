@@ -11,6 +11,8 @@ The hgview extension allows browsing the history of a repository in a
 graphical way. It requires PyQt4 with QScintilla.
 '''
 
+testedwith = '2.4'
+
 buglink = 'https://www.logilab.org/project/hgview'
 
 import os
