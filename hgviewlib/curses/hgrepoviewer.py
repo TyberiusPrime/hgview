@@ -28,6 +28,8 @@ import urwid
 from urwid import AttrWrap, Pile, Columns, SolidFill, signals
 from urwid.util import is_mouse_press
 
+from mercurial.error import RepoError
+
 from hgviewlib.config import HgConfig
 from hgviewlib.hggraph import HgRepoListWalker
 from hgviewlib.util import exec_flag_changed, isbfile, tounicode
@@ -305,6 +307,8 @@ class RepoViewer(Pile):
     CONTEXT_SIZE = 0.5
 
     def __init__(self, repo, *args, **kwargs):
+        if repo.root is None:
+            raise RepoError("There is no Mercurial repository here (.hg not found)!")
         self.repo = repo
         self.cfg = HgConfig(repo.ui)
         self._show_context = 0 # O:hide, 1:half, 2:maximized

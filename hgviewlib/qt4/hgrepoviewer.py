@@ -16,10 +16,11 @@ from PyQt4 import QtCore, QtGui, Qsci
 
 from mercurial import ui, hg
 from mercurial import util
+from mercurial.error import RepoError
+
 
 from hgviewlib.application import HgRepoViewer as _HgRepoViewer
-from hgviewlib.util import tounicode
-from hgviewlib.util import rootpath, find_repository
+from hgviewlib.util import tounicode, find_repository, rootpath
 from hgviewlib.hggraph import diff as revdiff
 from hgviewlib.decorators import timeit
 from hgviewlib.config import HgConfig
@@ -52,9 +53,13 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin, _HgRepoViewer):
         self._reload_file = None
         QtGui.QApplication.setStyle(QtGui.QStyleFactory.create('Cleanlooks'))
         QtGui.QMainWindow.__init__(self)
+        if not self.repo.root:
+            repo = self.ask_repository()
+            if repo:
+                self.repo = repo
         HgDialogMixin.__init__(self)
 
-        self.setWindowTitle('hgview: %s' % os.path.abspath(self.repo.root))
+        self.setWindowTitle('hgview: %s' % os.path.abspath(str(self.repo.root)))
         self.menubar.hide()
 
         self.splitter_2.setStretchFactor(0, 2)
@@ -73,15 +78,19 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin, _HgRepoViewer):
                 self.statusBar().showMessage)
 
         # setup tables and views
-        self.setupHeaderTextview()
-        self.setupBranchCombo()
-        self.setupModels(fromhead)
+        if self.repo.root is not None:
+
+            self.setupHeaderTextview()
+            self.setupBranchCombo()
+            self.setupModels(fromhead)
+ 
         if fromhead:
             self.startrev_entry.setText(str(fromhead))
         self.setupRevisionTable()
 
-        self._repodate = self._getrepomtime()
-        self._watchrepotimer = self.startTimer(500)
+        if self.repo.root is not None:
+            self._repodate = self._getrepomtime()
+            self._watchrepotimer = self.startTimer(500)
 
     def timerEvent(self, event):
         if event.timerId() == self._watchrepotimer:
@@ -205,6 +214,8 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin, _HgRepoViewer):
 
     def createActions(self):
         # main window actions (from .ui file)
+        connect(self.actionOpen_repository, SIGNAL('triggered()'),
+                self.open_repository)
         connect(self.actionRefresh, SIGNAL('triggered()'),
                 self.reload)
         connect(self.actionAbout, SIGNAL('triggered()'),
@@ -493,11 +504,37 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin, _HgRepoViewer):
             # humm, directory has probably been deleted, exiting...
             self.close()
 
+    def ask_repository(self):
+        qrepopath = QtGui.QFileDialog.getExistingDirectory(
+            self,
+            'Select a mercurial repository',
+            self.repo.root or os.path.expanduser('~'))
+        repopath = find_repository(str(qrepopath))
+        if not repopath:
+            if not self.repo.root:
+                raise RepoError("There is no Mercurial repository here (.hg not found)!")
+            else:
+                return
+        repo = hg.repository(ui.ui(), repopath)
+        return repo
+
+    def open_repository(self):
+        repo = self.ask_repository()
+        if not repo:
+            return
+        self.repo = repo
+        self.cfg = HgConfig(self.repo.ui)
+        self.setWindowTitle('hgview: %s' % os.path.abspath(self.repo.root))
+        self._finish_load()
+
     def reload(self):
         """Reload the repository"""
         self._reload_rev = self.tableView_revisions.current_rev
         self._reload_file = self.tableView_filelist.currentFile()
         self.repo = hg.repository(self.repo.ui, self.repo.root)
+        self._finish_load()
+
+    def _finish_load(self):
         self._repodate = self._getrepomtime()
         self.setupBranchCombo()
         self.setupModels()

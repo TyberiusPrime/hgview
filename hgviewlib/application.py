@@ -20,11 +20,16 @@ Application utilities.
 import os, sys, traceback
 from optparse import OptionParser
 
-from mercurial import hg, ui
+from mercurial import hg, ui as uimod
 from mercurial.error import RepoError
 
 from hgviewlib.util import find_repository, rootpath
 from hgviewlib.config import HgConfig
+
+class NullRepo(object):
+    """Placeholder repository"""
+    ui = uimod.ui()
+    root = None
 
 class Viewer(object):
     """Base viewer class interface."""
@@ -208,17 +213,18 @@ def main():
         dir_ = opts.repo
     else:
         dir_ = os.getcwd()
-    dir_ = find_repository(dir_)
+    repopath = find_repository(dir_)
 
     try:
-        u = ui.ui()
-        repo = hg.repository(u, dir_)
+        if repopath:
+            u = uimod.ui()
+            repo = hg.repository(u, repopath)
+        else:
+            repo = NullRepo()
+        try:
+            sys.exit(start(repo, opts, args, parser.error))
+        except KeyboardInterrupt:
+            print 'interrupted!'
     except RepoError, e:
         parser.error(e)
-    except:
-        parser.error("There is no Mercurial repository here (.hg not found)!")
-    try:
-        sys.exit(start(repo, opts, args, parser.error))
-    except KeyboardInterrupt:
-        print 'interrupted!'
 
