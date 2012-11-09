@@ -67,10 +67,13 @@ except ImportError:
 class GotoQuery(QtCore.QThread):
     """A dedicated thread that queries a revset to the repo related to
     the model"""
-    def __init__(self, revexp, model, parent):
-        QtCore.QThread.__init__(self, parent)
-        self.model = model
-        self.revexp = revexp
+    def __init__(self):
+        super(GotoQuery, self).__init__()
+        self.revexp = None
+        self.model = None
+
+    def __del__(self):
+        self.terminate()
 
     def run(self):
         revset = None
@@ -87,6 +90,12 @@ class GotoQuery(QtCore.QThread):
                 if idx is not None)
         rows = tuple(sorted(rows))
         self.emit(SIGNAL('new_revset'), rows)
+
+    def perform(self, revexp, model):
+        self.terminate()
+        self.revexp = revexp
+        self.model = model
+        self.start()
 
 class QueryLineEdit(QtGui.QLineEdit):
     """Special LineEdit class with visual marks for the revset query status"""
@@ -121,7 +130,7 @@ class GotoQuickBar(QuickBar):
         self._parent = parent
         self.revexp = u''
         self.revexp_before = u''
-        self._goto_query_thread = None
+        self._goto_query = None
         self.goto_signal = None
         QuickBar.__init__(self, "Goto", "Ctrl+G", "Goto", parent)
 
@@ -162,6 +171,10 @@ class GotoQuickBar(QuickBar):
         self.addAction(self._actions['help'])
         self.entry.returnPressed.connect(self.validate)
         self.entry.textEdited.connect(self.goto_first)
+        # querier (threaded)
+        self._goto_query = GotoQuery()
+        connect(self._goto_query, SIGNAL('failed_revset'), self.on_failed)
+        connect(self._goto_query, SIGNAL('new_revset'), self.on_queried)
 
     def setVisible(self, visible=True):
         QuickBar.setVisible(self, visible)
@@ -179,8 +192,6 @@ class GotoQuickBar(QuickBar):
         # prevent a warning in the console:
         # QObject::startTimer: QTimer can only be used with threads started with QThread
         self.entry.setCompleter(None)
-        if self._goto_query_thread:
-            self._goto_query_thread.terminate()
 
     def show_help(self):
         w = HgHelpViewer(self._parent.model().repo, 'revset', self)
@@ -219,16 +230,7 @@ class GotoQuickBar(QuickBar):
             return
         self.show_message("Quering ... (edit the entry to cancel)")
         self.entry.set_status('query')
-        if self._goto_query_thread:
-            thr = self._goto_query_thread
-            thr.terminate()
-            disconnect(thr, SIGNAL('failed_revset'), self.on_failed)
-            disconnect(thr, SIGNAL('new_revset'), self.on_queried)
-        self._goto_query_thread = thr = GotoQuery(
-            revexp, self._parent.model(), self)
-        connect(thr, SIGNAL('failed_revset'), self.on_failed)
-        connect(thr, SIGNAL('new_revset'), self.on_queried)
-        thr.start()
+        self._goto_query.perform(revexp, self._parent.model())
 
     def show_message(self, message, delay=-1):
         self.parent().statusBar().showMessage(message, delay)
