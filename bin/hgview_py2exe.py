@@ -30,11 +30,18 @@ os.environ['HGRCPATH'] = path
 # We could not import the module that defines the original class because
 # of sys._Messagebox missing error (see py2exe.boot_common.py). So, we
 # intropect to get access to the original class.
+LOGPATH = pos.join(pos.expanduser('~'), 'hgview.log') 
 class Stderr(sys.stderr.__class__):
     def write(self, *args, **kwargs):
-        kwargs['fname'] =  pos.join(pos.expanduser('~'), 'hgview.log')
+        kwargs['fname'] =  LOGPATH
 	super(Stderr, self).write(*args[:2], **kwargs)
 sys.stderr = Stderr() # open(pos.join(pos.expanduser('~'), 'hgview.log'), 'a')
+# clean log
+if pos.exists(LOGPATH):
+    try:
+        os.remove(LOGPATH)
+    except EnvironmentError: # could not be remove if 2 hgview are opened
+        pass
 
 from hgviewlib.application import main
 
