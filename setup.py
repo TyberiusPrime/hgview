@@ -337,7 +337,8 @@ def main():
         fmtpath = join(dirname(PyQt4.__file__), 'plugins', 'imageformats')
         global data_files
         data_files += [('imageformats', [join(fmtpath, 'qsvg4.dll')])]
-        extrargs = dict(windows=[dict(script='bin/hgview')],
+        extrargs = dict(windows=[dict(script='bin/hgview_py2exe.py', 
+                                      dest_base='hgview')],
                         options=dict(
                            py2exe=dict(
                                includes=extra_include,
