@@ -826,8 +826,8 @@ class RevDisplay(QtGui.QTextBrowser):
                    '<span class="rev_hash">%s</span>'\
                    '</b></td>\n' % (ctx.rev(), short_hex(ctx.node()))
 
-        buf += '<td title="Author">%s</td>\n' \
-               % tounicode(ctx.user())
+        user = tounicode(ctx.user()) if ctx.node() else u''
+        buf += '<td title="Author">%s</td>\n' % user
         buf += '<td title="Branch name">%s</td>\n' % ctx.branch()
         buf += '<td title="Phase name">%s</td>\n' % ctx.phasestr()
         buf += '</tr>'

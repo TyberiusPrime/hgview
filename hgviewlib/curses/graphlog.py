@@ -64,7 +64,7 @@ COLORS = ["brown", "dark red", "dark magenta", "dark blue", "dark cyan",
 _COLUMNMAP = {
     'ID': lambda m, c, g: c.rev() is not None and str(c.rev()) or "",
     'Log': getlog,
-    'Author': lambda m, c, g: tounicode(c.user().split('<',1)[0]),
+    'Author': lambda m, c, g: tounicode((c.user() if c.node() else '').split('<',1)[0]),
     'Date': getdate,
     'Tags': gettags,
     'Bookmarks': lambda m, c, g: ', '.join(c.bookmarks() or ()),

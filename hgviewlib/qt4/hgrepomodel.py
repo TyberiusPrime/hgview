@@ -207,7 +207,8 @@ class HgRepoListModel(QtCore.QAbstractTableModel, HgRepoListWalker):
         ctx = self.repo.changectx(gnode.rev)
         if role == QtCore.Qt.DisplayRole:
             if column == 'Author': #author
-                return QtCore.QVariant(self.user_name(_columnmap[column](self, ctx, gnode)))
+                user = _columnmap[column](self, ctx, gnode) if ctx.node() else u'' 
+                return QtCore.QVariant(self.user_name(user))
             elif column == 'Log':
                 msg = _columnmap[column](self, ctx, gnode)
                 bookmarks = ctx.bookmarks()
@@ -231,7 +232,8 @@ class HgRepoListModel(QtCore.QAbstractTableModel, HgRepoListWalker):
         elif role == QtCore.Qt.ForegroundRole:
             color = None
             if column == 'Author': #author
-                color = QtGui.QColor(self.user_color(ctx.user()))
+                user = ctx.user() if ctx.node() else ''
+                color = QtGui.QColor(self.user_color(user))
                 if ctx.obsolete():
                     color = color.lighter()
             elif column == 'Branch': #branch
