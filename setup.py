@@ -24,7 +24,7 @@ from __future__ import nested_scopes, with_statement
 import os
 import sys
 import shutil
-from os.path import isdir, exists, join, walk, splitext, basename
+from os.path import isdir, exists, join, walk, splitext, basename, dirname
 from subprocess import check_call, call as sub_call
 
 from distutils.core import setup
@@ -34,6 +34,12 @@ from distutils.command.install import install as _install
 from distutils.command.install_lib import install_lib
 from distutils.command.install_data import install_data as _install_data
 
+py2exe, innosetup = None, None
+try:
+    import py2exe
+    import innosetup
+except ImportError:
+    pass
 
 # import required features
 from hgviewlib.__pkginfo__ import modname, version, license, description, \
@@ -50,7 +56,7 @@ except ImportError:
 try:
     from hgviewlib.__pkginfo__ import data_files
 except ImportError:
-    data_files = None
+    data_files = []
 try:
     from hgviewlib.__pkginfo__ import subpackage_of
 except ImportError:
@@ -157,8 +163,16 @@ class build_doc(_build):
     def run(self):
         # be sure to compile man page
         self.mkpath(self.build_dir)
-        check_call(['make', '-C', self.build_dir, '-f', '../../doc/Makefile', 'VPATH=../../doc'])
-
+        try:
+            check_call(['make', '-C', self.build_dir,
+                        '-f', '../../doc/Makefile', 'VPATH=../../doc'])
+        except:
+            if not py2exe:
+                # does not make sense (either because of windows vs toolchain
+                # or we don't need the doc in the installer)
+                print ('we cannot build the doc,'
+                       ' you may want to use --no-doc')
+                raise
 
 class build(_build):
 
@@ -293,20 +307,49 @@ class install(_install):
         ('install_doc', has_doc),
         ] + _install.sub_commands
 
+# innosetup monkeypatching
+if innosetup:
+    # let's help a bit innosetup.py ....
+    long_description = description # innosetup fails with generated multiline long description
+    import codecs
+    codecs.BOM_UTF8 = '' # Ugly hack to correct the BOM erroneously inserted by
+                         # innosetup in the generated .iss file
 
 def main():
     """setup entry point"""
-    kwargs = {}
     # to generate qct MSI installer, you run python setup.py bdist_msi
     #from setuptools import setup
-    if os.name in ['nt']:
-        # the msi will automatically install the qct.py plugin into hgext
-        kwargs['data_files'] = [('lib/site-packages/hgext', ['hgext/hgview.py']),
-                ('mercurial/hgview.d', ['hgview.rc']),
-                ('share/hgview', ['README'])]
-        scripts = ['win32/hgview_postinstall.py']
-    else:
-        scripts = ['bin/hgview']
+    extrargs = {}
+    if py2exe and innosetup:
+        import PyQt4
+        extra_include = [
+            'sip',
+            'PyQt4',
+            'PyQt4.QtCore',
+            'PyQt4.QtGui',
+            'PyQt4.QtSvg',
+            'PyQt4.QtXml',
+            'hgviewlib.qt4.hgqv_ui',
+            'hgviewlib.qt4.helpviewer_ui',
+            'hgviewlib.qt4.manifestviewer_ui',
+            'hgviewlib.qt4.fileviewer_ui',
+            ]
+        fmtpath = join(dirname(PyQt4.__file__), 'plugins', 'imageformats')
+        global data_files
+        data_files += [('imageformats', [join(fmtpath, 'qsvg4.dll')])]
+        extrargs = dict(windows=[dict(script='bin/hgview')],
+                        options=dict(
+                           py2exe=dict(
+                               includes=extra_include,
+                               excludes=['PyQt4.uic.port_v3']
+                            ),
+                           innosetup=dict(
+                               regist_startup=True,
+                               # force MinVersion to a valid value ...
+                               inno_script= innosetup.DEFAULT_ISS + '[Setup]\nMinVersion=5.0\n',
+                               )
+                           )
+                        )
 
     return setup(name=distname,
                  version=version,
@@ -316,7 +359,7 @@ def main():
                  author=author,
                  author_email=author_email,
                  url=web,
-                 scripts=ensure_scripts(scripts),
+                 scripts=ensure_scripts(['bin/hgview']),
                  package_dir={modname : modname},
                  packages=['hgviewlib', 'hgext', 'hgviewlib.hgpatches'],
                  data_files=data_files,
@@ -330,7 +373,7 @@ def main():
                            'install_doc': install_doc,
                            'install':install,
                            },
-                 **kwargs
+                 **extrargs
                  )
 
 if __name__ == '__main__' :
