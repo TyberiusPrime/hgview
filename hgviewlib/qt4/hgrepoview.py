@@ -385,7 +385,7 @@ class HgRepoView(QtGui.QTableView):
             ActDef(name="copycs",
                    desc=self.tr("Export to clipboard"),
                    icon=None,
-                   tip=self.tr("Export changeset metadata the window manager clipboard [see configuration entry 'copytemplate']"),
+                   tip=self.tr("Export changeset metadata the window manager clipboard [see configuration entry 'exporttemplate']"),
                    keys=None, # XXX shall be specified after general shortcuts refactorization
                    cb=self.copy_cs_to_clipboard),
             ActDef(name="back",
