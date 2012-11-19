@@ -174,6 +174,16 @@ class build_doc(_build):
                        ' you may want to use --no-doc')
                 raise
 
+class build_fullhgext(_build):
+    """XXX ugly hack to include hgext in standalone hgview.exe"""
+
+    description = "[DO NOT USE] install full mercurial's hgext package (for internal hgview purpose)"
+
+    def run(self):
+        import hgext
+        shutil.copytree(dirname(hgext.__file__), join(self.build_lib, 'hgext'))
+
+
 class build(_build):
 
     user_options =  [
@@ -213,12 +223,17 @@ class build(_build):
     def has_doc(self):
         return self.distribution.with_doc
 
+    def has_fullhgext(self):
+        """XXX ugly hack to include hgext in standalone hgview.exe"""
+        return py2exe is not None # hugly hack to include every hgext modules
+
     # 'sub_commands': a list of commands this command might have to run to
     # get its work done.  See cmd.py for more info.
     sub_commands = [
         ('build_qt', has_qt),
         ('build_curses', has_curses),
         ('build_doc', has_doc),
+        ('build_fullhgext', has_fullhgext),
         ] + _build.sub_commands
 
 
@@ -231,7 +246,6 @@ class install_qt(install_lib):
             self.run_command('build_qt')
         self.distribution.packages.append('hgviewlib.qt4')
         install_lib.run(self)
-
 
 class install_curses(install_lib):
 
@@ -333,7 +347,18 @@ def main():
             'hgviewlib.qt4.helpviewer_ui',
             'hgviewlib.qt4.manifestviewer_ui',
             'hgviewlib.qt4.fileviewer_ui',
+            'hgext.hgview',
             ]
+        # XXX ugly hack to include hgext in standalone hgview.exe
+        import hgext
+        hgextpath = dirname(hgext.__file__)
+        import glob
+        for f in glob.glob(join(hgextpath, '*.py*')) +  glob.glob(join(hgextpath, '*/*.py*')):
+            parts = f[len(hgextpath):-4].split(os.sep)
+            parts = [i for i in parts if i.strip() and i != '__init__' ]
+            m = '.'.join(['hgext']+parts)
+            extra_include.append(m)
+        # end of ugly hack
         fmtpath = join(dirname(PyQt4.__file__), 'plugins', 'imageformats')
         global data_files
         data_files += [('imageformats', [join(fmtpath, 'qsvg4.dll')])]
@@ -342,7 +367,8 @@ def main():
                         options=dict(
                            py2exe=dict(
                                includes=extra_include,
-                               excludes=['PyQt4.uic.port_v3']
+                               excludes=['PyQt4.uic.port_v3'],
+                               packages=['hgext', 'email'],
                             ),
                            innosetup=dict(
                                regist_startup=True,
@@ -368,6 +394,7 @@ def main():
                  cmdclass={'build_qt': build_qt,
                            'build_curses': build_curses,
                            'build_doc': build_doc,
+                           'build_fullhgext' : build_fullhgext,
                            'build' : build,
                            'install_qt': install_qt,
                            'install_curses': install_curses,
