@@ -58,13 +58,15 @@ def diff(repo, ctx1, ctx2=None, files=None):
         matchfn = match.exact(repo.root, repo.getcwd(), files)
     # try/except for the sake of hg compatibility (API changes between
     # 1.0 and 1.1)
+    diffopts = patch.diffopts(repo.ui)
     try:
         out = StringIO()
-        patch.diff(repo, ctx2.node(), ctx1.node(), match=matchfn, fp=out)
+        patch.diff(repo, ctx2.node(), ctx1.node(), match=matchfn, fp=out,
+                   opts=diffopts)
         diffdata = out.getvalue()
     except:
         diffdata = '\n'.join(patch.diff(repo, ctx2.node(), ctx1.node(),
-                                        match=matchfn))
+                                        match=matchfn, opts=diffopts))
     # XXX how to deal diff encodings?
     try:
         diffdata = unicode(diffdata, "utf-8")
