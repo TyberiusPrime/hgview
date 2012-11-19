@@ -531,7 +531,8 @@ class Graph(object):
                 else:
                     parentctx = self.repo[self._fileparent(fctx)]
                 data = diff(self.repo, ctx, parentctx, files=[filename])
-                data = data.split(os.linesep, 3)[-1]
+                # we assume that \n@@ marks the end of the diff header
+                data = ''.join(data.partition(os.linesep + '@@')[1:]).lstrip()
             elif flag == '':
                 data = ''
             else: # file renamed
