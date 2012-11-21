@@ -504,6 +504,8 @@ class HgRepoView(QtGui.QTableView):
                 self.revisionSelected)
         tags = model.repo.tags().keys()
         self.goto_toolbar.compl_model.add_to_string_list(*tags)
+        revaliases = [item[0] for item in model.repo.ui.configitems("revsetalias")]
+        self.goto_toolbar.compl_model.add_to_string_list(*revaliases)
         col = list(model._columns).index('Log')
         self.horizontalHeader().setResizeMode(col, QtGui.QHeaderView.Stretch)
 
