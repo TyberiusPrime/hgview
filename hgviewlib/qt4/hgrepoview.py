@@ -22,7 +22,8 @@ from operator import le, ge, lt, gt
 from mercurial import cmdutil, ui
 from mercurial.node import hex, short as short_hex, bin as short_bin
 
-from mercurial.error import RepoError, ParseError, LookupError, RepoLookupError
+from mercurial.error import (RepoError, ParseError, LookupError,
+                             RepoLookupError, Abort)
 
 from PyQt4 import QtCore, QtGui
 Qt = QtCore.Qt
@@ -80,7 +81,7 @@ class GotoQuery(QtCore.QThread):
         revset = None
         try:
             revset = revrange(self.model.repo, [self.revexp.encode('utf-8')])
-        except (RepoError, ParseError, LookupError, RepoLookupError), err:
+        except (RepoError, ParseError, LookupError, RepoLookupError, Abort), err:
             self.rows = None
             self.emit(SIGNAL('failed_revset'), err)
             return
