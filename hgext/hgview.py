@@ -53,8 +53,6 @@ start hgview log viewer
     except ImportError:
         pass
 
-    import sys
-    sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
     try:
         from hgviewlib.application import start
         def fnerror(text):
@@ -87,8 +85,6 @@ start hgview log viewer
             sys.stdout.flush()
         os.system(' '.join(cmd))
 
-import sys
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 import hgviewlib.hgviewhelp as hghelp
 
 start_hgview.__doc__ = hghelp.long_help_msg
