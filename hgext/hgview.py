@@ -42,8 +42,6 @@ start hgview log viewer
     With the '-r' option, launch the manifest viexer for the given revision.
 
     """
-    
-    rundir = repo.root
 
     # If this user has a username validation hook enabled,
     # it could conflict with hgview because both will try to
