@@ -20,23 +20,23 @@ help_msg = """
 hgview: a visual hg log viewer
 ==============================
 
-This command will launch the hgview log navigator, allowing to
-visually browse in the hg graph log, search in logs, and display diff
+hgview without any parameters will launch the hgview log navigator, allowing to
+visually browse the hg graph log, search in logs, and display diff
 between arbitrary revisions of a file, with simple support for mq and
 bigfile extensions.
 
-If a filename is given, launch the filelog diff viewer for this file,
-and with the '-n' option, launch the filelog navigator for the file.
+If a filename is given the filelog diff viewer is launched for this file,
+and with the '-n' option the filelog navigator is launched for the file.
 
-With the '-r' option, launch the manifest viewer for the given revision.
+With the '-r' option the manifest viewer is launched for the given revision.
 
-Revlog graph
-------------
+Revision graph browser
+----------------------
 
-The main revision graph display the repository history as a graph,
+The main revision graph displays the repository history as a graph,
 sorted by revision number.
 
-Hit Space key or click on a revision item to display/hide the revision
+Hit Space key or click the button to show or hide the changeset
 content.
 
 The color of the node of each revision depends on the named branch the
@@ -44,79 +44,77 @@ revision belongs to.
 
 The color of the links (between nodes) is randomly chosen.
 
-The position of the working directory is marked on the graph using a
-small sunny icon as node marker. If the working directory has local
-modifications, a *virtual* is added in the graph with a special sign
+The position of the working directory is marked on the graph with a red
+border around the node marker. If the working directory has local
+modifications, a virtual 'WORKING DIRECTORY' revision is added in the graph with a warning
 icon (with no revision number). Modified, added and removed files are
 listed and browsable as a normal changeset node.
 
-Note that if the working directoy is in merge state, there will be 2
+Note that if the working directory is in merge state, there will be 2
 revisions marked as modified in the graph (since the working directory
-is then a son of both the merged nodes).
+is then a child of both the merged nodes).
 
 mq support
 ~~~~~~~~~~
 
 There is a simple support for the mq extension. Applied patches are
 seen in the revlog graph with a special arrow icon. Unapplied patches
-are *not* in the revlog graph (since they are not mercurial
-changesets).
+are not changesets and are not shown in the revlog graph.
 
-When the currently selected revision is an applied patch, the revision
-metadata display (see below) area point this by showing an additional
-line with coloured background listing all available patches (applied
-or not, so if you cannot see the content of an unapplied patch, you
-are aware there are unapplied patches, as long as there is at leat one
-applied patch). Current patch is displayed using bold font; unapplied
-patches are displayed in italic.
+Instead, when the currently selected revision is an applied patch, the revision
+metadata display (see below) area shows an additional
+'Patch queue' line with colored background listing all available patches, applied
+or not. The content of unapplied patches cannot be shown, but it will be indicated that
+there are other unapplied patches if there is at least one
+applied patch). The current patch is bold and unapplied
+patches are italic.
 
 
 Revision metadata display
 -------------------------
 
-The area where current revision's metadata is displayed
-(description, parents revisions, etc.) may contain two kinds of hyperlink:
+Parents, ancestors and children of the current changeset are showed with two kinds of links:
 
-- when the hyperlink is the **changeset ID**, it allows you to
-  directly go to the given revision,
+- clicking the **changeset ID** (hash value) navigates to the given revision,
 
-- when the hyperlink is the **revision number** (on merge nodes only),
-  it means that you can change the other revision used to comput
-  the diff. This allows you to compare the merged node with each
+- clicking the **revision number** (integer value) of parents and ancestors
+  changes which other revision is used to compute
+  the diff of merges. This allows you to compare the merged node with each
   of its parents, or even with the common ancestor of these 2
-  nodes.
+  nodes. The currently selected ancestor is shown bold.
+
 
 Revision description rendering
 ------------------------------
 
 The revision's description text is interpreted as ReStructuredText.
-So, commit message may contains formatted text, links, tables, references, etc.
+Commit messages can thus contain formatted text, links, tables, references, etc.
 
-Links with href as node/revision number/tag allows to jump to another revision::
+RST links without scheme will link to the specified revision (changeset ID/revision number/tag name). For instance::
 
   `links in fancy view open browser <e449146a687d7ca71520>`_
 
 
-Revision's modified file list
+Revisions modified file list
 -----------------------------
 
-The file list diplay the list of modified files. The diff
-displayed is the one of the selected file, between the selected
-revision and its parent revision.
+The file list displays the list of files modified in the current revision. The diff
+view shows the diff of the currently selected modified file 
+and the currently selected ancestor.
 
 On a merge node, by default, only files which are different from
 both its parents are listed here. However, you can display the
-list of all modified files by double-clickig the file list column
+list of all modified files by double-clicking the file list column
 header.
 
 
 Quickbars
 ---------
 
-Quickbars are tollbar that appear when asked for by hitting it's
-keybord shortcut. Only one quickbar can be displayed at a time.
+Quickbars are toolbars that appear at the bottom of the screen.
+Only one quickbar can be displayed at a time.
 
-When a quickbar is visible, hitting the Esc key make it disappear.
+When a quickbar is visible, hitting the Esc key makes it disappear.
 
 The goto quickbar
 ~~~~~~~~~~~~~~~~~
@@ -124,11 +122,11 @@ The goto quickbar
 This toolbar appears when hitting Ctrl+G. It allows you to jump to a
 given revision. The destination revision can be entered by:
 
-- it's revision number (negative values allowed, count from tip)
+- it's revision number (negative values allowed, counting back from tip=-1)
 - it's changeset ID (short or long)
-- a tag name (with completion)
+- a tag name (partial or full)
 - a branch name
-- an empty string; means "goto current working directory"
+- an empty string - means the current parent of the working directory
 
 The search quickbar
 ~~~~~~~~~~~~~~~~~~~
@@ -140,9 +138,9 @@ It allows you to type a string to be searched for:
 - in the currently displayed revision commit message (with highlight-as-you-type)
 - in the currently displayed file or diff (with highlight-as-you-type)
 
-Hitting the "Search next" button starts a background task for searching among the whole
-revision log, starting from the current position (selected revision
-and file).
+Hitting the "Search next" button starts a background task for searching through the whole
+revision log, starting from the currently selected revision
+and file.
 
 
 Keyboard shortcuts
@@ -151,9 +149,8 @@ Keyboard shortcuts
 **Up/Down**
   go to next/previous revision
 
-**MidButton**
+**Middle Click**
   go to the common ancestor of the clicked revision and the currently selected one
-
 
 **Left/Right**
   display previous/next files of the current changeset
@@ -165,7 +162,7 @@ Keyboard shortcuts
   display the goto 'quickbar'
 
 **Esc**
-  exit or hide the visible 'quickbar'
+  exit hgview or hide the visible 'quickbar'
 
 **Enter**
   run the diff viewer for the currently selected file (display diff
@@ -178,8 +175,8 @@ Keyboard shortcuts
   run the manifest viewer for the displayed revision
 
 **Ctrl+R**
-  reread repo; note that by default, repo will be automatically
-  reloaded if it is modified (due to a commit, a pull, etc.)
+  reload repository; should happen automatically
+  if it is modified outside hgview (due to a commit, a pull, etc.)
 
 **Alt+Up/Down**
   display previous/next diff block
@@ -190,7 +187,7 @@ Keyboard shortcuts
 **Backspace**
   set current revision the current start revision (hide any revision above it)
 
-**Shit+Backspace**
+**Shift+Backspace**
   clear the start revision value
 
 
@@ -205,26 +202,20 @@ def get_options_helpmsg(rest=False):
 Configuration options
 =====================
 
-These should be set under the ``[hgview]`` section of the hgrc config file.
+The following options can be set in the ``[hgview]`` section of a Mercurial configuration file.
 
-:Note: *Per-interface configuration* is permitted.
-       You can add a ``"interface."`` prefix to each option
-       (where ``interface`` is an interface name like ``qt`` or ``raw``)
-       in order to target a particular interface.
+:Note: *User interface specific configuration* is possible.
+       You can add a ``qt.`` or ``raw.`` prefix to each option
+       in order to target a particular user interface.
 
-       Without any prefix, the value is available for all interfaces, as
-       global configuration value.
-
-       Both per-interface and global configuration values can be set.
-       For each option, per-interface configuration values take precedance
-       over the global configuration value.
+       Without any prefix, the value is used as default for both user interfaces.
 
 
 """
     msg += '\n'.join(["- " + v for v in options]) + '\n'
     msg += """
-The 'users' config statement should be the path of a file
-describing users, like::
+The value of 'users' should be the name of a file
+describing well-known users, like::
 
     --8<-------------------------------------------
     # file ~/.hgusers
@@ -240,8 +231,8 @@ describing users, like::
     color=#00FF00
     --8<-------------------------------------------
 
-This allow to make several 'authors' under the same name, with the
-same color, in the graphlog browser.
+This allows authors to be shown with consistent coloring in the graphlog
+browser, even if they use different usernames.
     """
     return msg
 
