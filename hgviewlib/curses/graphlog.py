@@ -120,7 +120,7 @@ class RevisionsWalker(ListWalker):
 
     def data(self, pos):
         """Return a widget and the position passed."""
-        # cache may be very hudge on very big repo
+        # cache may be very huge on very big repo
         # (cpython for instance: >1.5GB)
         if pos in self._data_cache: # speed up rendering
             return self._data_cache[pos], pos
@@ -156,9 +156,9 @@ class RevisionsWalker(ListWalker):
                     continue
                 txts.append((field, txt))
                 txts.append(('default', ' '))
-            txts.pop() # remove pendding space
+            txts.pop() # remove pending space
             txts.append('\n')
-        txts.pop() # remove pendding newline
+        txts.pop() # remove pending newline
         # prepare other columns
         txter = lambda col, sz: Text(
                  (col, _COLUMNMAP[col](self.walker, ctx, gnode)[:sz]),
@@ -174,7 +174,7 @@ class RevisionsWalker(ListWalker):
         important_styles = set(['ID', 'GraphLog.node'])
         if ctx.obsolete():
             spec_style.update(dict.fromkeys(all_styles, 'obsolete'))
-        # normal style: use special styles for woking directory and tip
+        # normal style: use special styles for working directory and tip
         style = None
         if gnode.rev is None:
             style = 'modified' # pending changes
@@ -182,7 +182,7 @@ class RevisionsWalker(ListWalker):
             style = 'current'
         if style is not None:
             spec_style.update(dict.fromkeys(important_styles, style))
-        # focused style: use special stles for working directory and tip
+        # focused style: use special styles for working directory and tip
         foc_style.update(dict.fromkeys(all_styles, style or 'focus'))
         foc_style.update(dict.fromkeys(important_styles, 'focus.alternate'))
         # wrap widget with style modified
@@ -292,9 +292,9 @@ def hgview_ascii(state, char, height, coldata):
 
     :param state: Somewhere to keep the needed state in (init to [0, 0])
     :param char: character to use as node's symbol.
-    :pram height: minimal line number to use for this node
+    :param height: minimal line number to use for this node
     :param coldata: (idx, edges, ncols, coldiff)
-        * idx: column index for the curent changeset
+        * idx: column index for the current changeset
         * edges: a list of (col, next_col) indicating the edges between
           the current node and its parents.
         * ncols: number of columns (ongoing edges) in the current revision.
@@ -309,7 +309,7 @@ def hgview_ascii(state, char, height, coldata):
     """
     idx, edges, ncols, coldiff = coldata
     # graphlog is broken with multiple parent. But we have ignore that to allow
-    # some support of obsolet relation display
+    # some support of obsolete relation display
     # assert -2 < coldiff < 2
     assert height > 0
     if coldiff == -1:
@@ -356,7 +356,7 @@ def hgview_ascii(state, char, height, coldata):
     # print lines
     indentation_level = max(ncols, ncols + coldiff)
     for line in lines:
-        # justify to GRAPH_MIN_WIDTH for conveniance
+        # justify to GRAPH_MIN_WIDTH for convenience
         if len(line) < GRAPH_MIN_WIDTH:
             line.append(' ' * (GRAPH_MIN_WIDTH - len(line)))
         yield [('GraphLog', item) if isinstance(item, basestring) else item for item in line]

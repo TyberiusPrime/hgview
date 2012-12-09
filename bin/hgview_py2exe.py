@@ -17,19 +17,19 @@ See README file included.
 import sys, os
 import os.path as pos
 
-# Standalone version of hgview built with py2exe use they how version
-# of mercurial. Using configuration from the global Mercurial.ini will be
+# Standalone version of hgview built with py2exe use its own version
+# of Mercurial. Using configuration from the global Mercurial.ini will be
 # ill-advised as the installed version of Mercurial itself may be
 # different than the one we ship.
 #
-# this will lay aside Mercurial.ini
+# this will be found next to Mercurial.ini
 path = pos.join(os.path.expanduser('~'), 'hgview.ini')
 os.environ['HGRCPATH'] = path
 
 
 # We could not import the module that defines the original class because
 # of sys._Messagebox missing error (see py2exe.boot_common.py). So, we
-# intropect to get access to the original class.
+# introspect to get access to the original class.
 LOGPATH = pos.join(pos.expanduser('~'), 'hgview.log') 
 class Stderr(sys.stderr.__class__):
     def write(self, *args, **kwargs):

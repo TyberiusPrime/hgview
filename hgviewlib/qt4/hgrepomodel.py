@@ -152,9 +152,9 @@ class HgRepoListModel(QtCore.QAbstractTableModel, HgRepoListWalker):
                 self.killTimer(self._fill_timer)
                 self._fill_timer = None
                 self.emit(SIGNAL('showMessage'), '', -1)
-            # we only fill the graph data strctures without telling
-            # views (until we atually did the full job), to keep
-            # maximal GUI reactivity
+            # we fill the graph data structures without telling
+            # views until we are done - this gives
+            # maximal GUI responsiveness
             elif not self.graph.build_nodes(nnodes=self.fill_step):
                 self.killTimer(self._fill_timer)
                 self._fill_timer = None

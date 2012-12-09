@@ -49,7 +49,7 @@ from hgviewlib.curses import (CommandArg as CA, help_command,
 
 def quitall():
     """
-    usage: quall
+    usage: quitall
 
     Quit the program
     """
@@ -160,7 +160,7 @@ class MainFrame(urwid.Frame):
         Show the help massage of the ``command``.
 
         :command: a command name for which to display the help.
-                  If omited, the overall program help is displayed.
+                  If omitted, the overall program help is displayed.
         """
         doc = None
         if command:
@@ -221,7 +221,7 @@ class Footer(urwid.AttrWrap):
     def complete(self):
         """
         Lookup for text in the edit area (until the cursor) and complete with
-        available command names (one per call). Calling mutiple times
+        available command names (one per call). Calling multiple times
         consequently will loop over all candidates.
         """
         if self.previous_keypress != 'tab': # hard coded :/
@@ -235,11 +235,11 @@ class Footer(urwid.AttrWrap):
 
     def history(self, next=True):
         """
-        Remind the commands history to the edit area. Calling mutiple times
+        Recall command from history to the edit area. Calling multiple times
         consequently will loop over all history entries.
 
         """
-        # key are hard coded :/
+        # keys are hard coded :/
         if self.previous_keypress not in ('up', 'down', 'ctrl p', 'ctrl n'):
             self._history[0] = self.get_edit_text()
             self._history.reset_position()

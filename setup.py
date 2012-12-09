@@ -225,7 +225,7 @@ class build(_build):
 
     def has_fullhgext(self):
         """XXX ugly hack to include hgext in standalone hgview.exe"""
-        return py2exe is not None # hugly hack to include every hgext modules
+        return py2exe is not None # ugly hack to include every hgext modules
 
     # 'sub_commands': a list of commands this command might have to run to
     # get its work done.  See cmd.py for more info.

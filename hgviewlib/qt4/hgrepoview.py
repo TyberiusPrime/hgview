@@ -233,11 +233,11 @@ class GotoQuickBar(QuickBar):
         w.activateWindow()
 
     def auto_search(self, revexp):
-        # Do not automatically search for revision nimber.
+        # Do not automatically search for revision number.
         # The problem is that the auto search system will
         # query for lower revision number: users may type the revision
         # number by hand which induce that the first numeric char will be
-        # querined alone.
+        # queried alone.
         # But the first found revision is automatically selected, so to much
         # revision tree will be loaded.
         if revexp.isdigit():
@@ -246,8 +246,8 @@ class GotoQuickBar(QuickBar):
             self._actions['prev'].setEnabled(True)
             self.show_message(
                 'Hit [Enter] because '
-                'revision number is not automaically queried '
-                'for optimmization purpose.')
+                'revision number is not automatically queried '
+                'for optimization purpose.')
             self._standby_revexp = revexp
             return
         self.search(revexp)
@@ -259,7 +259,7 @@ class GotoQuickBar(QuickBar):
             if self.entry.status == 'failed':
                 self.show_message("Invalid revset expression.")
             else:
-                self.show_message("Quering, please wait (or edit to cancel).")
+                self.show_message("Querying, please wait (or edit to cancel).")
             return
         if self._standby_revexp is not None:
             self.search(self._standby_revexp, threaded=False)
@@ -286,7 +286,7 @@ class GotoQuickBar(QuickBar):
             self.emit(SIGNAL('new_set'), None)
             self.emit(SIGNAL('goto_next_from'), (self.row_before,))
             return
-        self.show_message("Quering ... (edit the entry to cancel)")
+        self.show_message("Querying ... (edit the entry to cancel)")
         self._actions['next'].setEnabled(False)
         self._actions['prev'].setEnabled(False)
         self.entry.status = 'query'
@@ -392,7 +392,7 @@ class HgRepoView(QtGui.QTableView):
             ActDef(name="back",
                    desc=self.tr("Previous visited"),
                    icon='back',
-                   tip=self.tr("Barward to the previous visited changeset"),
+                   tip=self.tr("Backward to the previous visited changeset"),
                    keys=[QtGui.QKeySequence(QtGui.QKeySequence.Back)],
                    cb=self.back),
             ActDef(name="forward",
@@ -452,7 +452,7 @@ class HgRepoView(QtGui.QTableView):
         self._actions['unfilter'].setEnabled(rev is not None)
 
     def copy_cs_to_clipboard(self):
-        """ Copy changeset metada into the window manager clipboard."""
+        """ Copy changeset metadata into the window manager clipboard."""
         repo = self.model().repo
         ctx = repo[self.current_rev]
         u = ui.ui(repo.ui)
@@ -493,7 +493,7 @@ class HgRepoView(QtGui.QTableView):
         self._rev_pos = -1
         self._in_history = False # flag set when we are "in" the
         # history. It is required cause we cannot known, in
-        # "revision_selected", if we are crating a new branch in the
+        # "revision_selected", if we are creating a new branch in the
         # history navigation or if we are navigating the history
 
     def setModel(self, model):

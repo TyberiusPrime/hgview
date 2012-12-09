@@ -27,7 +27,7 @@ from mercurial import error
 # they are required.
 
 def start_hgview(ui, repo, *pats, **opts):
-    # WARNING, this docstring is superseeded programatically 
+    # WARNING, this docstring is superseeded programmatically 
     """
 start hgview log viewer
 =======================
@@ -39,7 +39,7 @@ start hgview log viewer
     If a filename is given, launch the filelog diff viewer for this file, 
     and with the '-n' option, launch the filelog navigator for the file.
 
-    With the '-r' option, launch the manifest viexer for the given revision.
+    With the '-r' option, launch the manifest viewer for the given revision.
 
     """
     ### 2.5 compat

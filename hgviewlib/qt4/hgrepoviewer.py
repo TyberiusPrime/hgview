@@ -544,9 +544,9 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin, _HgRepoViewer):
         """Starts the process of filling the HgModel"""
         branch = str(self.branch_comboBox.currentText())
         startrev = kw.get('rev', None)
-        # XXX workaround: self.sender() may provoque a core dump if
+        # XXX workaround: self.sender() may provoke a core dump if
         # this method is called directly (not via a connected signal);
-        # the 'sender' keyword is a way to discrimimne that the method
+        # the 'sender' keyword is a way to detect that the method
         # has been called directly (thus caller MUST set this kw arg)
         sender = kw.get('sender') or self.sender()
         follow = kw.get('follow', False)

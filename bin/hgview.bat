@@ -13,12 +13,12 @@ import sys
 import os.path as pos
 
 if getattr(sys, 'frozen', None) == "windows_exe":
-    # Standalone version of hgview built with py2exe use they how version
-    # of mercurial. Using configuration from the global Mercurial.ini will be
+    # Standalone version of hgview built with py2exe use its own version
+    # of Mercurial. Using configuration from the global Mercurial.ini will be
     # ill-advised as the installed version of Mercurial itself may be
     # different than the one we ship.
     #
-    # this will lay aside Mercurial.ini
+    # this will be found next to Mercurial.ini
     path = pos.join(os.path.expanduser('~'), 'hgview.ini')
     os.environ['HGRCPATH'] = path
 

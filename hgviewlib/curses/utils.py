@@ -49,8 +49,8 @@ class Commands(object):
     You can fix callback arguments when connecting and/or emmitting a command.
 
     Emit method accept a command line string. This command line can only be a
-    command namei if all arguments for all callbacks have been fixed (or if they
-    are optionals). Otherwise the command options can be automaticly parsed
+    command name if all arguments for all callbacks have been fixed (or if they
+    are optionals). Otherwise the command options can be automatically parsed
     by giving `CommandArg`s to register.
 
     """
@@ -104,7 +104,7 @@ class Commands(object):
         return help, args, calls
 
     def connect(self, name, callback, args=None, kwargs=None):
-        """Disconnect the ``callback`` assiciated to the givent ``args`` and
+        """Disconnect the ``callback`` associated to the given ``args`` and
         ``kwargs`` from the command ``name``.
 
         See documentation of ``emit_command`` for details about ``args`` and
@@ -121,7 +121,7 @@ class Commands(object):
         self._calls[name].append((callback, args, kwargs))
 
     def disconnect(self, name, callback, args=None, kwargs=None):
-        """Disconnect the ``callback`` assiciated to the givent ``args`` and
+        """Disconnect the ``callback`` associated to the given ``args`` and
         ``kwargs`` from the command ``name``.
 
         >>> from hgviewlib.curses import utils
@@ -144,7 +144,7 @@ class Commands(object):
             raise RegisterCommandError('Callbacks not connected.')
 
     def emit(self, cmdline, args=None, kwargs=None):
-        """Call all callbacks connected to the command previously registred.
+        """Call all callbacks connected to the command previously registered.
 
         Callbacks are processed as following::
 
@@ -289,7 +289,7 @@ class History(list):
 
 
 class HgCommandMap(object):
-    """Map keys to more expliite action names."""
+    """Map keys to more explicit action names."""
     _command_defaults = (
 
         ('f1', '@help'),
@@ -361,7 +361,7 @@ class HgCommandMap(object):
         self._map = dict(self._command_defaults)
     def __getitem__(self, key):
         """a.__getitem__(key) <=> a[key]
-        return an explicite name associated to the key or None if not found.
+        return an explicit name associated to the key or None if not found.
         """
         return self._map.get(key)
     def items(self):

@@ -110,8 +110,8 @@ class FindQuickBar(QuickBar):
         connect(self._actions['cancel'], SIGNAL('triggered()'), self.cancel)
 
     def find(self, *args):
-        '''Scan the repository metadata and search for occurence of the
-        text in tre entry.
+        '''Scan the repository metadata and search for occurrences of the
+        text in the entry.
         :note: do not scan if no text was provided'''
         text = unicode(self.entry.text())
         if not text: # do not strip() as user may want to find space sequences

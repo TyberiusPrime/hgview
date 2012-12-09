@@ -76,7 +76,7 @@ class ManifestWalker(ListWalker):
         """Return the current context"""
         return self._ctx
     def set_ctx(self, ctx, reset_focus=True):
-        """set the curreont context (obsolete the content)"""
+        """set the current context (obsolete the content)"""
         self._cached_flags.clear()
         self._ctx = ctx
         self._files = tuple(self._ctx.files())
@@ -139,7 +139,7 @@ class ManifestWalker(ListWalker):
         if flag is None:
             flag = self._cached_flags.setdefault(filename,
                     self._walker.graph.fileflag(filename, self._ctx.rev()))
-        if not isinstance(flag, str): # I don't know why it could occures :P
+        if not isinstance(flag, str): # I don't know why it could occur :P
             flag = '?'
         return  AttrWrap(SelectableText(filename, align='right', wrap='clip'),
                          flag, 'focus')

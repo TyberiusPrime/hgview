@@ -35,7 +35,7 @@ class Viewer(object):
     """Base viewer class interface."""
     def __init__(self, *args, **kwargs):
         raise NotImplementedError(
-            'This feature has not yet been implemented. Comming soon ...')
+            'This feature has not yet been implemented. Coming soon ...')
 
 class FileViewer(Viewer):
     """Single file revision graph viewer."""
@@ -58,10 +58,10 @@ class ManifestViewer(Viewer):
         super(ManifestViewer, self).__init__(**kwargs)
 
 class ApplicationError(ValueError):
-    """Exception that may occures while lunching the application"""
+    """Exception that may occur while launching the application"""
 
 class HgViewApplication(object):
-    # class that must be instancied
+    # class that must be instantiated
     FileViewer = FileViewer
     FileDiffViewer = FileDiffViewer
     HgRepoViewer = HgRepoViewer
@@ -178,7 +178,7 @@ def start(repo, opts, args, fnerror):
 
 def main():
     """
-    Main application acces point.
+    Main application entry point.
     """
 
     usage = '''%prog [options] [filename]

@@ -45,8 +45,8 @@ from hgviewlib.qt4.blockmatcher import BlockList
 qsci = Qsci.QsciScintilla
 
 class Annotator(qsci):
-    # we use a QScintilla for the annotater cause it makes
-    # it much easier to keep the text area and the annotater sync
+    # we use a QScintilla for the annotator cause it makes
+    # it much easier to keep the text area and the annotator sync
     # (same font rendering etc). However, it have the drawback of making much
     # more difficult to implement things like QTextBrowser.anchorClicked, which
     # would have been nice to directly go to the annotated revision...
@@ -102,7 +102,7 @@ class HgQsci(qsci):
             ("diffmode", self.tr("Diff mode"), 'diffmode' ,
              self.tr('Enable/Disable Diff mode'), None, None),
             ("annmode", self.tr("Annotate mode"), None,
-             self.tr('Anable/Disable Annotatte mode'), None, None),
+             self.tr('Enable/Disable Annotate mode'), None, None),
             ("next", self.tr('Next hunk'), 'down', self.tr('Jump to the next hunk'),
              Qt.ALT + Qt.Key_Down, None),
             ("prev", self.tr('Prior hunk'), 'up', self.tr('Jump to the previous hunk'),

@@ -14,7 +14,7 @@
 # this program.  If not, see <http://www.gnu.org/licenses/>.
 """helper functions and classes to ease hg revision graph building
 
-Based on graphlog's algorithm, with insipration stolen to TortoiseHg
+Based on graphlog's algorithm, with inspiration stolen to TortoiseHg
 revision grapher.
 """
 
@@ -125,7 +125,7 @@ def ismerge(ctx):
     return False
 
 def _graph_iterator(repo, start_rev, stop_rev, reorder=False):
-    """Iter thought revisions from start_rev to stop_rev (included)
+    """Iter through revisions from start_rev to stop_rev (included)
     Handle Working directory as None.
     """
     # check parameters
@@ -188,7 +188,7 @@ def revision_grapher(repo, start_rev=None, stop_rev=0, branch=None, follow=False
             if not repo.mq.isapplied(patchname):
                 yield (patchname, 0, 0, [(0, 0 ,0, False)], [])
 
-    # No uncommited change
+    # No uncommitted change
     if start_rev is None and repo.status() == ([],)*7:
         start_rev = len(repo.changelog) -1
     assert start_rev is None or start_rev >= stop_rev
@@ -353,7 +353,7 @@ class GraphNode(object):
 class Graph(object):
     """
     Graph object to ease hg repo navigation. The Graph object
-    instanciate a `revision_grapher` generator, and provide a `fill`
+    instantiate a `revision_grapher` generator, and provide a `fill`
     method to build the graph progressively.
     """
     #@timeit
@@ -391,7 +391,7 @@ class Graph(object):
             self.nodesdict[nrev] = gnode
             mcol.append(gnode.cols)
             if rev is not None and nrev <= rev:
-                rev = None # we reached rev, switching to nnode counter
+                rev = None # we reached rev, switching to nnodes counter
             if rev is None:
                 if nnodes is not None:
                     nnodes -= 1

@@ -102,7 +102,7 @@ if getattr(context.changectx, 'troubles', None) is None:
     context.changectx.troubles = troubles
 
 try:
-    # meaning of obsstore attribute have been flipped betwen mercurial 2.3 and
+    # meaning of obsstore attribute have been flipped between mercurial 2.3 and
     # mercurial 2.4
     import mercurial.obsolete
     mercurial.obsolete.getrevs

@@ -34,7 +34,7 @@ except ImportError:
     # pylint: disable=C0103
     pygments = None
     # pylint: enable=C0103
-# _________________________________________________________________ Applicaiton
+# _________________________________________________________________ Application
 
 class HgViewUrwidApplication(HgViewApplication):
     """
@@ -75,7 +75,7 @@ class HgViewUrwidApplication(HgViewApplication):
             if optimize_inotify:
                 import ctypes.util
                 orig = ctypes.util.find_library
-                ctypes.util.find_library = lambda lib: None # durty optim
+                ctypes.util.find_library = lambda lib: None # dirty optimization
             inotify(self.mainloop)
             if optimize_inotify:
                 ctypes.util.find_library = orig
@@ -137,27 +137,27 @@ def inotify(mainloop):
 # ________________________________________________________________ patch screen
 def patch_screen(screen_cls):
     """
-    Return a patched screen class that allows parent token inheritence in
+    Return a patched screen class that allows parent token inheritance in
     the palette
     """
     class Palette(dict):
-        """Special dictionary that take into account parent token inheritence.
+        """Special dictionary that take into account parent token inheritance.
         """
         def __contains__(self, key):
             if super(Palette, self).__contains__(key):
                 return True
             if (not isinstance(key, _TokenType)) or (key.parent is None):
                 return False
-            if key.parent in self: # fonction is now recursive
+            if key.parent in self: # function is now recursive
                 self[key] = self[key.parent] # cache + __getitem__ ok
                 return True
             return False
         has_key = __contains__
 
     class PatchedScreen(screen_cls, object):
-        """hack Screen to allow parent token inheritence in the palette"""
+        """hack Screen to allow parent token inheritance in the palette"""
         # Use a special container for storing style definition. This container
-        # take into accoutn parent token inheritence
+        # take into account parent token inheritance
         # raw_display.Screen store the palette definition in the container
         # ``_pal_escape``, web_display and curses display in ``palette`` and
         # ``attrconv``
@@ -209,7 +209,7 @@ def connect_logging(mainloop, level=logging.INFO):
         '''
         def __init__(self, callback, redraw, redraw_levelno=logging.CRITICAL):
             """
-            :param callback: A funtion called to display a message as
+            :param callback: A function called to display a message as
                 ``callback(style, levelname, message)`` where:
 
                 * ``levelname`` is the name of the message level
@@ -217,7 +217,7 @@ def connect_logging(mainloop, level=logging.INFO):
 
                 Mostly, it is the ``set`` method of a ``Footer`` instance.
 
-            :param redraw: a function that performe the screen redrawing
+            :param redraw: a function that performs the screen redrawing
 
             """
             self.callback = callback

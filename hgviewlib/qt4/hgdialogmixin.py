@@ -15,7 +15,7 @@
 # this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #
-# make sur the Qt rc files are converted into python modules, then load them
+# make sure the Qt rc files are converted into python modules, then load them
 # this must be done BEFORE other hgview qt4 modules are loaded.
 import os
 import os.path as osp
@@ -32,10 +32,10 @@ from hgviewlib.qt4 import should_rebuild
 
 class HgDialogMixin(object):
     """
-    Mixin for QDialogs defined from a .ui file, wich automates the
+    Mixin for QDialogs defined from a .ui file, which automates the
     setup of the UI from the ui file, and the loading of user
     preferences.
-    The main class must define a '_ui_file' class attribute.
+    The main class must define a '_uifile' class attribute.
     """
     def __init__(self):
         # self.repo must be defined in actual class before calling __init__
@@ -71,7 +71,7 @@ class HgDialogMixin(object):
         self.disab_shortcuts = []
 
     def load_ui(self):
-        # we explicitely create a QShortcut so we can disable it
+        # we explicitly create a QShortcut so we can disable it
         # when a "helper context toolbar" is activated (which can be
         # closed hitting the Esc shortcut)
         self.esc_shortcut = QtGui.QShortcut(self)

@@ -109,7 +109,7 @@ ESC_CAR_TABLE = string.maketrans(''.join(CONTROL_CHARS),
 ESC_UCAR_TABLE = unicode(ESC_CAR_TABLE, 'latin1')
 
 def xml_escape(data):
-    """escapes XML forbidden characters in attributes and PCDATA"""
+    """escapes XML forbidden characters in attributes and CDATA"""
     if isinstance(data, unicode):
         data = data.translate(ESC_UCAR_TABLE)
     else:

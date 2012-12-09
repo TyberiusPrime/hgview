@@ -14,10 +14,10 @@
 # this program.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-The main goal of this module is to fakse mercurial change context classes from
+The main goal of this module is to create fake mercurial change context classes from
 data information available in mq patch files.
 
-Only methods that are requiered by hgview had been implemented.
+Only methods that are required by hgview had been implemented.
 They may have special features to help hgview, So use it with care.
 
 The main differences are:
@@ -26,7 +26,7 @@ The main differences are:
 * files within patches are always displayed as modified files
 * manifest only shows files modified by the mq patch.
 * data may be empty (date, description, status, tags, branch, etc.)
-* the parent of a patch may by the last appied on or previous patch or nullid
+* the parent of a patch may by the last applied on or previous patch or nullid
 * the child of a patch is the next patch
 * patches are hidden
 """
@@ -90,7 +90,7 @@ class MqCtx(context.changectx):
 class MqChangeCtx(MqCtx):
     """
     A Mercurial change context fake for unapplied mq patch.
-    Use with care as methodes may be missing or have special features.
+    Use with care as methods may be missing or have special features.
     """
 
     def __init__(self, repo, patch_name):
@@ -102,7 +102,7 @@ class MqChangeCtx(MqCtx):
         self._files_cache = None
 
     def __repr__(self):
-        return '<MQchangectx (unapplied) %s>' % self.name
+        return '<MqChangeCtx (unapplied) %s>' % self.name
 
     @property
     def _header(self):
@@ -230,7 +230,7 @@ class MqMissingChangeCtx(MqChangeCtx):
         self._files_cache = ()
 
     def __repr__(self):
-        return '<MQchangectx (missing file) %s>' % self.name
+        return '<MqChangeCtx (missing file) %s>' % self.name
 
 class MqFileCtx(context.filectx):
     """Mq Fake for file context"""
@@ -274,7 +274,7 @@ class MqFileCtx(context.filectx):
         return False #  XXX
 
     def __repr__(self):
-        return ('<mqfilectx (unapplied) %s@%s>' %
+        return ('<MqFileCtx (unapplied) %s@%s>' %
                 (self._path, self._changectx.name))
 
     def flags(self):

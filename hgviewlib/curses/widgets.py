@@ -34,7 +34,7 @@ __all__ = ['Body', 'ScrollableListBox', 'SelectableText', 'SourceText']
 
 
 class SelectableText(Text):
-    """A seletable Text widget"""
+    """A selectable Text widget"""
     _selectable = True
     keypress = lambda self, size, key: key
 
@@ -49,7 +49,7 @@ class Body(Frame):
     |  Text with title |
     +------------------+
 
-    Use the ``title`` property to chage the footer text.
+    Use the ``title`` property to change the footer text.
 
     """
     def __init__(self, body):
@@ -97,7 +97,7 @@ class ScrollableListBox(ListBox):
 class SourceText(SelectableText):
     """A widget that display source code content.
 
-    It cans number lines and highlight content using pygments.
+    It can number lines and highlight content using pygments.
     """
 
     signals = ['highlight']
@@ -138,8 +138,8 @@ class SourceText(SelectableText):
         self._lexer = lexer
         if lexer == None: # No lexer found => finish
             return
-        # reduce "lag" while rendering the text as pyments may take a while to
-        # highligth the text. So we colorize only the first part of the text
+        # reduce "lag" while rendering the text as pygments may take a while to
+        # highlight the text. So we colorize only the first part of the text
         # and delay coloring the full text. The 3000st chars seems good on my
         # laptop :)
         signals.delay_emit_signal(self, 'highlight', 0.05, self.text)

@@ -21,10 +21,10 @@ class HgviewCursesException(Exception):
     """Base class for all hgview curses exception """
 
 class CommandError(ValueError, HgviewCursesException):
-    """Error that occures while calling a command"""
+    """Error that occurs while calling a command"""
 
 class UnknownCommand(StopIteration, HgviewCursesException):
-    """Error that occures when not callback found"""
+    """Error that occurs when callback not found"""
 
 class RegisterCommandError(KeyError, HgviewCursesException):
-    """Error that occures when a conflict occures while registering a comand"""
+    """Error that occurs when a conflict occurs while registering a command"""

@@ -15,7 +15,7 @@
 # this program.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-Module that contains special canva features.
+Module that contains special canvas features.
 """
 # pylint: disable=W,C,I,R
 
@@ -27,7 +27,7 @@ __all__ = ['apply_text_layout']
 # hack marks: "#+": added, "#=": modified
 def apply_text_layout(text, attr, ls, maxcol, numbering=False): #=
     """
-    Hack for urwid.canvas.apply_text_layout that able to diwplay line numbers
+    Hack for urwid.canvas.apply_text_layout that able to display line numbers
     """
     if numbering: #+
         lnb = len(str(text.count('\n') + 1)) + 1 #+

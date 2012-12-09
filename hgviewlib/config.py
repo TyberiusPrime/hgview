@@ -220,7 +220,7 @@ class HgConfig(object):
     @cached
     def getDisplayDiffStats(self, default="yes"):
         """
-        displaydiffstats: flag controllong the appearance of the
+        displaydiffstats: flag controlling the appearance of the
                     'Diff' column in a revision's file list
         """
         val = str(self._fromconfig('displaydiffstats', default))
@@ -336,7 +336,7 @@ class HgConfig(object):
     @cached
     def getExportTemplate(self):
         """
-        exporttemplate: template used to serialise changeset metadata
+        exporttemplate: template used to serialize changeset metadata
                         while exporting into the window manager clipboard.
                         (default to `ui.logtemplate`)
         """
@@ -344,13 +344,13 @@ class HgConfig(object):
                self.ui.config('ui', 'logtemplate')
 
 _HgConfig = HgConfig
-# HgConfig is instanciated only once (singleton)
+# HgConfig is instantiated only once (singleton)
 #
 # this 'factory' is used to manage this (not using heavy guns of
 # metaclass or so)
 _hgconfig = None
 def HgConfig(ui):
-    """Factory to instanciate HgConfig class as a singleton
+    """Factory to instantiate HgConfig class as a singleton
     """
     # pylint: disable=E0102
     global _hgconfig
