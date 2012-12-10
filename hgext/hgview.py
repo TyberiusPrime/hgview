@@ -18,7 +18,7 @@ buglink = 'https://www.logilab.org/project/hgview'
 import os
 from optparse import Values
 from mercurial import error
-    
+
 # every command must take a ui and and repo as arguments.
 # opts is a dict where you can find other command line flags
 #
@@ -59,8 +59,6 @@ start hgview log viewer
     except ImportError:
         pass
 
-    import sys
-    sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
     from hgviewlib.application import start
     def fnerror(text):
         """process errors"""
@@ -68,8 +66,6 @@ start hgview log viewer
     options = Values(opts)
     start(repo, options, pats, fnerror)
 
-import sys
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 import hgviewlib.hgviewhelp as hghelp
 
 start_hgview.__doc__ = hghelp.long_help_msg
