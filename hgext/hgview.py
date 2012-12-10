@@ -42,6 +42,10 @@ start hgview log viewer
     With the '-r' option, launch the manifest viexer for the given revision.
 
     """
+    ### 2.5 compat
+    # We ensure here that we work on unfiltered repo in all case. Unfiltered
+    # repo are repo has we know them now.
+    repo = getattr(repo, 'unfiltered', lambda: repo)()
 
     # If this user has a username validation hook enabled,
     # it could conflict with hgview because both will try to
