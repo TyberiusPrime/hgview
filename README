@@ -31,7 +31,7 @@ You can run ``hgview`` without installing it.
 
 ::
 
-  hg clone http://www.logilab.org/hg/hgview
+  hg clone http://hg.logilab.org/hgview
 
 You may want to add the following to your main .hgrc file::
 
