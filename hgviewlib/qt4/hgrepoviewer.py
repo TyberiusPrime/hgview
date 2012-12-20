@@ -79,6 +79,17 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin, _HgRepoViewer):
         self.setupHeaderTextview()
         self.setupBranchCombo()
         self.setupModels(fromhead)
+
+        if self.cfg.getFileDescriptionView() == 'asfile':
+            fileselcallback = self.displaySelectedFile
+        else:
+            fileselcallback = self.textview_status.displayFile
+        connect(self.tableView_filelist, SIGNAL('fileSelected'),
+                fileselcallback)
+
+        connect(self.textview_status, SIGNAL('revForDiffChanged'),
+                self.textview_header.setDiffRevision)
+
         if fromhead:
             self.startrev_entry.setText(str(fromhead))
         self.setupRevisionTable()
@@ -346,15 +357,6 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin, _HgRepoViewer):
         self.textview_status.setModel(self.repomodel)
         self.find_toolbar.setModel(self.repomodel)
 
-        if self.cfg.getFileDescriptionView() == 'asfile':
-            fileselcallback = self.displaySelectedFile
-        else:
-            fileselcallback = self.textview_status.displayFile
-        connect(self.tableView_filelist, SIGNAL('fileSelected'),
-                fileselcallback)
-
-        connect(self.textview_status, SIGNAL('revForDiffChanged'),
-                self.textview_header.setDiffRevision)
 
     def displaySelectedFile(self, filename=None, rev=None):
         if filename == '':
