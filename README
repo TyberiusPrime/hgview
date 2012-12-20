@@ -39,7 +39,7 @@ You may want to add the following to your main .hgrc file::
   hgext.hgview=path/to/hqgv/hgext/hgview.py
 
   [hgview]
-  # your hgview configs statements like: 
+  # your hgview configs statements like:
   dotradius=6
   interface=qt # or curses or raw
   # type hg qv-config to list available options
