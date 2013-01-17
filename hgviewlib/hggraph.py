@@ -29,7 +29,7 @@ from mercurial.node import nullrev
 from mercurial import patch, util, match, error, hg
 
 import hgviewlib.hgpatches # force apply patches to mercurial
-from hgviewlib.hgpatches import mqsupport, phases
+from hgviewlib.hgpatches import mqsupport, phases, hiddenrevs
 
 from hgviewlib.util import tounicode, isbfile, first_known_precursors, build_repo
 from hgviewlib.config import HgConfig
@@ -201,7 +201,7 @@ def revision_grapher(repo, start_rev=None, stop_rev=0, branch=None, follow=False
                     #            False for weak one (obsolete)
     rev_color = {}
     free_color = count(0)
-    excluded = () if show_hidden else repo.hiddenrevs
+    excluded = () if show_hidden else hiddenrevs(repo)
     closedbranches = [tag for tag, node in repo.branchtags().items()
                       if repo.lookup(node) not in repo.branchheads(tag, closed=False)]
     for curr_rev in _graph_iterator(repo, start_rev, stop_rev, not show_hidden and reorder):

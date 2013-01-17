@@ -50,13 +50,23 @@ if not hasattr(context.changectx, 'phase'):
     context.changectx.phasestr = lambda self: phasenames[self.phase()]
     context.workingctx.phase = lambda self: 1
 
-# mercurial < 2.3
 # note: use dir(...) has localrepo.localrepository.hiddenrevs always raises
 #       an attribute error - because the repo is not set yet
 if 'hiddenrevs' not in dir(localrepo.localrepository):
     def hiddenrevs(self):
         return getattr(self.changelog, 'hiddenrevs', ())
     localrepo.localrepository.hiddenrevs = property(hiddenrevs, None, None)
+try:
+    from mercurial.repoview import filterrevs
+    def hiddenrevs(repo):
+        return filterrevs(repo, 'visible')
+except ImportError:
+    def hiddenrevs(repo):
+        # mercurial < 2.5 has no filteredrevs
+        # mercurial < 2.3 has hiddenrevs on changelog
+        # mercurial < 1.9 has no hiddenrevs
+        return getattr(repo, 'hiddenrevs',
+                       getattr(repo.changelog, 'hiddenrevs', ()))
 
 # obsolete feature
 if getattr(context.changectx, 'obsolete', None) is None:

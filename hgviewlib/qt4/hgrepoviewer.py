@@ -32,6 +32,7 @@ from hgviewlib.qt4.hgmanifestdialog import ManifestViewer
 from hgviewlib.qt4.hgdialogmixin import HgDialogMixin
 from hgviewlib.qt4.quickbar import FindInGraphlogQuickBar
 from hgviewlib.qt4.helpviewer import HgviewHelpViewer
+from hgviewlib.hgpatches import hiddenrevs
 
 from mercurial.error import RepoError
 
@@ -466,7 +467,7 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin, _HgRepoViewer):
         if self.repomodel.show_hidden:
             self.textview_header.excluded = ()
         else:
-            self.textview_header.excluded = self.repo.hiddenrevs
+            self.textview_header.excluded = hiddenrevs(self.repo)
         self.textview_header.displayRevision(ctx)
         self.filelistmodel.setSelectedRev(ctx)
         if len(self.filelistmodel):
