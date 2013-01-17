@@ -31,7 +31,7 @@ from mercurial import patch, util, match, error, hg
 import hgviewlib.hgpatches # force apply patches to mercurial
 from hgviewlib.hgpatches import mqsupport, phases
 
-from hgviewlib.util import tounicode, isbfile, first_known_precursors
+from hgviewlib.util import tounicode, isbfile, first_known_precursors, build_repo
 from hgviewlib.config import HgConfig
 
 DATE_FMT = '%F %R'
@@ -588,7 +588,7 @@ class HgRepoListWalker(object):
 
     def setRepo(self, repo=None, branch='', fromhead=None, follow=False, closed=False):
         if repo is None:
-            repo = hg.repository(self.repo.ui, self.repo.root)
+            repo = build_repo(self.repo.ui, self.repo.root)
         self._hasmq = hasattr(self.repo, "mq")
         if not getattr(repo, '__hgview__', False) and self._hasmq:
             mqsupport.reposetup(repo.ui, repo)

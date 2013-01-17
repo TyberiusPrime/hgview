@@ -23,7 +23,7 @@ from optparse import OptionParser
 from mercurial import hg, ui as uimod
 from mercurial.error import RepoError
 
-from hgviewlib.util import find_repository, rootpath
+from hgviewlib.util import find_repository, rootpath, build_repo
 from hgviewlib.config import HgConfig
 
 class NullRepo(object):
@@ -218,7 +218,7 @@ def main():
     try:
         if repopath:
             u = uimod.ui()
-            repo = hg.repository(u, repopath)
+            repo = build_repo(u, repopath)
         else:
             repo = NullRepo()
         try:

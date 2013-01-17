@@ -20,7 +20,7 @@ from mercurial.error import RepoError
 
 
 from hgviewlib.application import HgRepoViewer as _HgRepoViewer
-from hgviewlib.util import tounicode, find_repository, rootpath
+from hgviewlib.util import tounicode, find_repository, rootpath, build_repo
 from hgviewlib.hggraph import diff as revdiff
 from hgviewlib.decorators import timeit
 from hgviewlib.config import HgConfig
@@ -516,7 +516,7 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin, _HgRepoViewer):
                 raise RepoError("There is no Mercurial repository here (.hg not found)!")
             else:
                 return
-        repo = hg.repository(ui.ui(), repopath)
+        repo = build_repo(ui.ui(), repopath)
         return repo
 
     def open_repository(self):
@@ -532,7 +532,7 @@ class HgRepoViewer(QtGui.QMainWindow, HgDialogMixin, _HgRepoViewer):
         """Reload the repository"""
         self._reload_rev = self.tableView_revisions.current_rev
         self._reload_file = self.tableView_filelist.currentFile()
-        self.repo = hg.repository(self.repo.ui, self.repo.root)
+        self.repo = build_repo(self.repo.ui, self.repo.root)
         self._finish_load()
 
     def _finish_load(self):

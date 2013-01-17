@@ -10,7 +10,7 @@ Several helper functions
 """
 import os
 import string
-from mercurial import ui
+from mercurial import ui, hg
 
 from hgviewlib.hgpatches.scmutil import match
 from hgviewlib.hgpatches import precursorsmarkers, successorsmarkers
@@ -168,3 +168,7 @@ def first_known_successors(ctx, excluded=()):
                     if mark[0] not in seen:
                         candidates.add(mark[0])
                         seen.add(mark[0])
+
+def build_repo(ui, path):
+    """build a repo like hg.repository"""
+    return hg.repository(ui, path)

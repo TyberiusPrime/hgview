@@ -72,7 +72,7 @@ class AbstractFileDialog(QtGui.QMainWindow, HgDialogMixin):
                     lambda x: self.setRepoViewer())
 
     def reload(self):
-        self.repo = hg.repository(self.repo.ui, self.repo.root)
+        self.repo = util.build_repo(self.repo.ui, self.repo.root)
         self.setupModels()
 
     def findLexer(self):
