@@ -723,16 +723,3 @@ class HgRepoListWalker(object):
 
     def notify_data_changed(self):
         pass
-
-if __name__ == "__main__":
-    # pylint: disable=C0103
-    import sys
-    from mercurial import ui, hg
-    u = ui.ui()
-    r = hg.repository(u, sys.argv[1])
-    if len(sys.argv) == 3:
-        rg = filelog_grapher(r, sys.argv[2])
-    else:
-        rg = revision_grapher(r)
-    g = Graph(r, rg)
-
