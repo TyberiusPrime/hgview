@@ -170,5 +170,8 @@ def first_known_successors(ctx, excluded=()):
                         seen.add(mark[0])
 
 def build_repo(ui, path):
-    """build a repo like hg.repository"""
-    return hg.repository(ui, path)
+    """build a repo like hg.repository
+
+    But ensure it is not filtered whatever the version used"""
+    repo = hg.repository(ui, path)
+    return getattr(repo, 'unfiltered', lambda: repo)()
