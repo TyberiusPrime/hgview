@@ -129,12 +129,17 @@ def format_desc(desc, width):
 
 def first_known_precursors(ctx, excluded=()):
     obsstore = getattr(ctx._repo, 'obsstore', None)
+    startnode = ctx.node()
     nm = ctx._repo.changelog.nodemap
     if obsstore is not None:
-        markers = precursorsmarkers(obsstore, ctx.node())
+        markers = precursorsmarkers(obsstore, startnode)
         # consider all precursors
         candidates = set(mark[0] for mark in markers)
         seen = set(candidates)
+        if startnode in candidates:
+            candidates.remove(startnode)
+        else:
+            seen.add(startnode)
         while candidates:
             current = candidates.pop()
             # is this changeset in the displayed set ?
