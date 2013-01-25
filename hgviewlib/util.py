@@ -154,14 +154,19 @@ def first_known_precursors(ctx, excluded=()):
 
 def first_known_successors(ctx, excluded=()):
     obsstore = getattr(ctx._repo, 'obsstore', None)
+    startnode = ctx.node()
     nm = ctx._repo.changelog.nodemap
     if obsstore is not None:
-        markers = successorsmarkers(obsstore, ctx.node())
+        markers = successorsmarkers(obsstore, startnode)
         # consider all precursors
         candidates = set()
         for mark in markers:
             candidates.update(mark[1])
         seen = set(candidates)
+        if startnode in candidates:
+            candidates.remove(startnode)
+        else:
+            seen.add(startnode)
         while candidates:
             current = candidates.pop()
             # is this changeset in the displayed set ?
