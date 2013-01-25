@@ -170,9 +170,10 @@ def first_known_successors(ctx, excluded=()):
                 yield ctx._repo[crev]
             else:
                 for mark in successorsmarkers(obsstore, current):
-                    if mark[0] not in seen:
-                        candidates.add(mark[0])
-                        seen.add(mark[0])
+                    for succ in mark[1]:
+                        if succ not in seen:
+                            candidates.add(succ)
+                            seen.add(succ)
 
 def build_repo(ui, path):
     """build a repo like hg.repository
