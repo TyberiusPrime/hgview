@@ -29,7 +29,7 @@
     * graph> improve support for hidden changeset
 
     * graph> select current working directory parent at startup instead of tip
-	     (#82231)
+            (#82231)
 
     * graph> allow to reorder mutable changeset on top (#92312)
 
