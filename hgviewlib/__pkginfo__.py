@@ -17,7 +17,7 @@ http://www.logilab.fr/ -- mailto:contact@logilab.fr
 
 import glob
 distname = modname = 'hgview'
-numversion = (1, 7, 0)
+numversion = (1, 7, 1)
 version = '.'.join([str(num) for num in numversion])
 
 
