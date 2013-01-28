@@ -1,3 +1,11 @@
+2013-01-28 -- 1.7.1
+
+    * remove yellow from possible text and line color
+    * compatinility with Mercurial 2.5
+    * bugfix> prevent obsolescence cycle to confuse hgview
+    * bugfix> fix successors changesets computation
+    * bugfix> fix an issue leading hg to get slower and slower with reload
+
 2012-11-20 -- 1.7.0
 
     * allow copying changeset to clipboard
