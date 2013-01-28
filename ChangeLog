@@ -1,3 +1,12 @@
+2012-11-20 -- 1.7.0
+
+    * allow copying changeset to clipboard
+    * add support for revset in goto toolbar
+    * standalone executable for hgview on windows
+    * compatibility with Mercurial 2.4
+    * Use an "open file" dialog when `hgview` is run outside a repo
+    * bugfix> fix badly reported successors
+
 2011-08-08 -- 1.6.2
 
     * generate hgqv.qrc to hgqv_rc.py not hgqv_qrc.py (#103538)
