@@ -1,3 +1,9 @@
+hgview (1.7.1-1) unstable; urgency=low
+
+  * New Upstream Release.
+
+ -- Pierre-Yves David <pierre-yves.david@logilab.fr>  Mon, 28 Jan 2013 17:34:33 +0100
+
 hgview (1.7.0-1) unstable; urgency=low
 
   * New Upstream Release.
