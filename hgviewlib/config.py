@@ -182,6 +182,20 @@ class HgConfig(object):
         return int(self._fromconfig('rowheight', default))
 
     @cached
+    def getRowHeightTrimmed(self, default=3):
+        """
+        rowheighttrimmed: height (in pixels) on a row of the revision table that is trimmed
+        """
+        return int(self._fromconfig('rowheighttrimmed', default))
+
+    @cached
+    def getRevsetView(self, default='highlight'):
+        """
+        revsetview: view style of filtered revision set: 'highlight' or 'trim'
+        """
+        return self._fromconfig('revsetview', default).strip().lower()
+
+    @cached
     def getHideFindDelay(self, default=10000):
         """
         hidefinddelay: delay (in ms) after which the find bar will disappear

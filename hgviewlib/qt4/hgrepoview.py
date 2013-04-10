@@ -322,10 +322,10 @@ class HgRepoView(QtGui.QTableView):
     """
     def __init__(self, parent=None):
         QtGui.QTableView.__init__(self, parent)
+        self.cfg = None
         self.init_variables()
         self.setShowGrid(False)
         self.verticalHeader().hide()
-        self.verticalHeader().setDefaultSectionSize(20)
         self.setSelectionMode(QtGui.QAbstractItemView.SingleSelection)
         self.setSelectionBehavior(QtGui.QAbstractItemView.SelectRows)
         self.setAlternatingRowColors(True)
@@ -508,6 +508,9 @@ class HgRepoView(QtGui.QTableView):
         self.goto_toolbar.compl_model.add_to_string_list(*revaliases)
         col = list(model._columns).index('Log')
         self.horizontalHeader().setResizeMode(col, QtGui.QHeaderView.Stretch)
+        self.cfg = HgConfig(model.repo.ui)
+        self.rowheight = self.cfg.getRowHeight()
+        self.verticalHeader().setDefaultSectionSize(self.rowheight)
 
     def enableAutoResize(self, *args):
         self._autoresize =  True
@@ -676,14 +679,23 @@ class HgRepoView(QtGui.QTableView):
         self.setCurrentIndex(self.model().index(max(row - 1, 0), 0))
 
     def highlight_rows(self, rows):
+        assert self.cfg is not None
         if rows is None:
             self.visual_bell()
             self.emit(SIGNAL('showMessage'), 'Revision set cleared.', 2000)
+            self.verticalHeader().setDefaultSectionSize(self.rowheight)
         else:
             self.emit(SIGNAL('showMessage'),
                       '%i revisions found.' % len(rows),
                       2000)
-        self.model().highlight_rows(rows or ())
+            if rows and self.cfg.getRevsetView() == 'trim':
+                rowheight = self.cfg.getRowHeightTrimmed()
+            else:
+                rowheight = self.rowheight
+            self.verticalHeader().setDefaultSectionSize(rowheight)
+            for row in rows:
+                self.setRowHeight(row, self.rowheight)
+        self.model().highlight_rows(rows)
         self.refresh_display()
 
     def refresh_display(self):

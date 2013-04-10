@@ -128,6 +128,7 @@ class HgRepoListModel(QtCore.QAbstractTableModel, HgRepoListWalker):
         repo is a hg repo instance
         """
         self._fill_timer = None
+        self.cfg = HgConfig(repo.ui)
         QtCore.QAbstractTableModel.__init__(self, parent)
         HgRepoListWalker.__init__(self, repo, branch, fromhead, follow, closed=closed)
         self.highlights = []
@@ -140,7 +141,7 @@ class HgRepoListModel(QtCore.QAbstractTableModel, HgRepoListWalker):
 
     def highlight_rows(self, rows):
         """mark ``rows`` to be highlighted."""
-        self.highlights[:] = rows
+        self.highlights = rows # None (no revset ~ not filtered) != [] (empty revset)
         self._datacache.clear()
 
     def timerEvent(self, event):
@@ -201,11 +202,13 @@ class HgRepoListModel(QtCore.QAbstractTableModel, HgRepoListWalker):
         if not index.isValid():
             return nullvariant
         row = index.row()
+        is_trimmed = (self.highlights) and (row not in self.highlights) \
+            and (self.cfg.getRevsetView() == 'trim')
         self.ensureBuilt(row=row)
         column = self._columns[index.column()]
         gnode = self.graph[row]
         ctx = self.repo.changectx(gnode.rev)
-        if role == QtCore.Qt.DisplayRole:
+        if role == QtCore.Qt.DisplayRole and not is_trimmed:
             if column == 'Author': #author
                 user = _columnmap[column](self, ctx, gnode) if ctx.node() else u'' 
                 return QtCore.QVariant(self.user_name(user))
@@ -229,7 +232,7 @@ class HgRepoListModel(QtCore.QAbstractTableModel, HgRepoListWalker):
                 msg += "</i><br>\n"
             msg += _tooltips.get(column, _columnmap[column])(self, ctx, gnode)
             return QtCore.QVariant(msg)
-        elif role == QtCore.Qt.ForegroundRole:
+        elif role == QtCore.Qt.ForegroundRole and not is_trimmed:
             color = None
             if column == 'Author': #author
                 user = ctx.user() if ctx.node() else ''
@@ -247,7 +250,7 @@ class HgRepoListModel(QtCore.QAbstractTableModel, HgRepoListWalker):
 
         elif role == QtCore.Qt.BackgroundRole:
             row = index.row()
-            if row in self.highlights:
+            if self.highlights and row in self.highlights:
                 return COLOR_BG_HIGHLIGHT[row % 2]
             elif ctx.obsolete():
                 return COLOR_BG_OBSOLETE[row % 2]
@@ -261,7 +264,10 @@ class HgRepoListModel(QtCore.QAbstractTableModel, HgRepoListWalker):
                 radius = self.dot_radius
                 pan = 2
                 w = self.col2x(gnode.cols, pan)
-                h = self.rowheight
+                if is_trimmed:
+                    h = self.cfg.getRowHeightTrimmed()
+                else:
+                    h = self.rowheight
 
                 dot_x = self.col2x(gnode.x, pan)
                 dot_y = h / 2
@@ -342,8 +348,9 @@ class HgRepoListModel(QtCore.QAbstractTableModel, HgRepoListWalker):
                     else:
                         icn = geticon('clean')
 
-
-                if icn:
+                if is_trimmed:
+                    pass
+                elif icn:
                     icn.paint(painter, dot_x-5, dot_y-5, 17, 17)
                 elif phase == phases.draft:
                     painter.drawRect(dot_x, dot_y, radius, radius)
